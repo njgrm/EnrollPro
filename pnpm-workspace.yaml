@@ -1,0 +1,8 @@
+packages:
+  - server
+  - client
+allowBuilds:
+  '@prisma/engines': true
+  canvas: true
+  esbuild: true
+  prisma: true

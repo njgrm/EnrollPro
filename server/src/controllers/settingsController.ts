@@ -1,0 +1,239 @@
+import type { Request, Response } from 'express';
+import path from 'path';
+import fs from 'fs';
+import { Prisma } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
+import { extractPalette, extractAccentColor, contrastForeground } from '../services/logoColorService.js';
+import { auditLog } from '../services/auditLogger.js';
+
+async function getOrCreateSettings() {
+  let settings = await prisma.schoolSettings.findFirst();
+  if (!settings) {
+    settings = await prisma.schoolSettings.create({ data: {} });
+  }
+  return settings;
+}
+
+export async function getPublicSettings(req: Request, res: Response): Promise<void> {
+  const settings = await getOrCreateSettings();
+  res.json({
+    schoolName: settings.schoolName,
+    logoUrl: settings.logoUrl,
+    colorScheme: settings.colorScheme,
+    selectedAccentHsl: settings.selectedAccentHsl,
+    enrollmentOpen: settings.enrollmentOpen,
+    enrollmentOpenAt: settings.enrollmentOpenAt,
+    enrollmentCloseAt: settings.enrollmentCloseAt,
+    activeAcademicYearId: settings.activeAcademicYearId,
+  });
+}
+
+export async function updateIdentity(req: Request, res: Response): Promise<void> {
+  const { schoolName } = req.body;
+  const settings = await getOrCreateSettings();
+
+  const updated = await prisma.schoolSettings.update({
+    where: { id: settings.id },
+    data: { schoolName },
+  });
+
+  await auditLog({
+    userId: req.user!.userId,
+    actionType: 'SETTINGS_UPDATED',
+    description: `Admin updated school name to "${schoolName}"`,
+    req,
+  });
+
+  res.json(updated);
+}
+
+export async function uploadLogo(req: Request, res: Response): Promise<void> {
+  if (!req.file) {
+    res.status(400).json({ message: 'No file uploaded' });
+    return;
+  }
+
+  const settings = await getOrCreateSettings();
+
+  // Remove old logo file if it exists
+  if (settings.logoPath) {
+    try {
+      fs.unlinkSync(settings.logoPath);
+    } catch {
+      // ignore if file doesn't exist
+    }
+  }
+
+  const absolutePath = path.resolve(req.file.path);
+  const logoUrl = `/uploads/${req.file.filename}`;
+
+  // Extract full palette
+  const palette = await extractPalette(absolutePath);
+  const accentHsl = palette.find((c) => {
+    const parts = c.hsl.split(' ');
+    const s = parseInt(parts[1]);
+    const l = parseInt(parts[2]);
+    return s >= 20 && l >= 15 && l <= 85;
+  })?.hsl ?? '221 83% 53%';
+
+  const colorScheme = {
+    accent_hsl: accentHsl,
+    palette,
+    extracted_at: new Date().toISOString(),
+  } as unknown as Prisma.InputJsonValue;
+
+  const updated = await prisma.schoolSettings.update({
+    where: { id: settings.id },
+    data: {
+      logoPath: absolutePath,
+      logoUrl,
+      colorScheme,
+      selectedAccentHsl: accentHsl,
+    },
+  });
+
+  await auditLog({
+    userId: req.user!.userId,
+    actionType: 'SETTINGS_UPDATED',
+    description: 'Admin uploaded school logo and accent color extracted',
+    req,
+  });
+
+  res.json({
+    logoUrl: updated.logoUrl,
+    colorScheme: updated.colorScheme,
+    selectedAccentHsl: updated.selectedAccentHsl,
+  });
+}
+
+export async function selectAccentColor(req: Request, res: Response): Promise<void> {
+  const { hsl } = req.body;
+  if (!hsl || typeof hsl !== 'string') {
+    res.status(400).json({ message: 'hsl is required' });
+    return;
+  }
+  const accentHsl = hsl;
+
+  const settings = await getOrCreateSettings();
+
+  // Validate: must be from the palette
+  const palette = (settings.colorScheme as { palette?: { hsl: string }[] } | null)?.palette;
+  if (palette && !palette.some((c: { hsl: string }) => c.hsl === accentHsl)) {
+    res.status(400).json({ message: 'Selected color is not in the extracted palette' });
+    return;
+  }
+
+  // Compute contrast foreground
+  const parts = accentHsl.split(/\s+/);
+  const h = parseInt(parts[0]);
+  const s = parseInt(parts[1]);
+  const l = parseInt(parts[2]);
+  const foreground = contrastForeground(h, s, l);
+
+  // Update colorScheme.accent_hsl too
+  const colorSchemeData = (settings.colorScheme as Record<string, unknown>) ?? {};
+  const updatedColorScheme = {
+    ...colorSchemeData,
+    accent_hsl: accentHsl,
+    accent_foreground: foreground,
+  };
+
+  const updated = await prisma.schoolSettings.update({
+    where: { id: settings.id },
+    data: {
+      selectedAccentHsl: accentHsl,
+      colorScheme: updatedColorScheme,
+    },
+  });
+
+  await auditLog({
+    userId: req.user!.userId,
+    actionType: 'SETTINGS_UPDATED',
+    description: `Admin selected accent color: ${accentHsl}`,
+    req,
+  });
+
+  res.json({
+    selectedAccentHsl: updated.selectedAccentHsl,
+    colorScheme: updated.colorScheme,
+  });
+}
+
+export async function removeLogo(req: Request, res: Response): Promise<void> {
+  const settings = await getOrCreateSettings();
+
+  if (settings.logoPath) {
+    try {
+      fs.unlinkSync(settings.logoPath);
+    } catch {
+      // ignore
+    }
+  }
+
+  const updated = await prisma.schoolSettings.update({
+    where: { id: settings.id },
+    data: {
+      logoPath: null,
+      logoUrl: null,
+      colorScheme: Prisma.JsonNull,
+      selectedAccentHsl: null,
+    },
+  });
+
+  await auditLog({
+    userId: req.user!.userId,
+    actionType: 'SETTINGS_UPDATED',
+    description: 'Admin removed school logo — accent color reset to default blue',
+    req,
+  });
+
+  res.json({
+    logoUrl: updated.logoUrl,
+    colorScheme: updated.colorScheme,
+    selectedAccentHsl: updated.selectedAccentHsl,
+  });
+}
+
+export async function toggleEnrollmentGate(req: Request, res: Response): Promise<void> {
+  const { enrollmentOpen } = req.body;
+  const settings = await getOrCreateSettings();
+
+  const updated = await prisma.schoolSettings.update({
+    where: { id: settings.id },
+    data: { enrollmentOpen },
+  });
+
+  await auditLog({
+    userId: req.user!.userId,
+    actionType: 'ENROLLMENT_GATE_TOGGLED',
+    description: `Admin set enrollment to ${enrollmentOpen ? 'OPEN' : 'CLOSED'}`,
+    req,
+  });
+
+  res.json({ enrollmentOpen: updated.enrollmentOpen });
+}
+
+export async function updateEnrollmentSchedule(req: Request, res: Response): Promise<void> {
+  const { enrollmentOpenAt, enrollmentCloseAt } = req.body;
+  const settings = await getOrCreateSettings();
+
+  const updated = await prisma.schoolSettings.update({
+    where: { id: settings.id },
+    data: {
+      enrollmentOpenAt: enrollmentOpenAt ? new Date(enrollmentOpenAt) : null,
+      enrollmentCloseAt: enrollmentCloseAt ? new Date(enrollmentCloseAt) : null,
+    },
+  });
+
+  await auditLog({
+    userId: req.user!.userId,
+    actionType: 'ENROLLMENT_SCHEDULE_UPDATED',
+    description: `Enrollment window: ${enrollmentOpenAt ?? 'unset'} → ${enrollmentCloseAt ?? 'unset'}`,
+    req,
+  });
+
+  res.json({
+    enrollmentOpenAt: updated.enrollmentOpenAt,
+    enrollmentCloseAt: updated.enrollmentCloseAt,
+  });
+}

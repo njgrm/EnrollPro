@@ -1,0 +1,127 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+
+  --animate-modal-in: modal-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-modal-out: modal-out 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-in: fade-in 0.2s ease-out forwards;
+  --animate-out: fade-out 0.15s ease-in forwards;
+
+  @keyframes modal-in {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -48%) scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+  }
+
+  @keyframes modal-out {
+    from {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: translate(-50%, -48%) scale(0.9);
+    }
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes fade-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+}
+
+:root {
+  /* ─── PERMANENT MAIN LAYER — never overridden by logo extraction ─── */
+  --background: 0 0% 100%;
+  --foreground: 222 47% 11%;
+  --muted: 220 14% 96%;
+  --muted-foreground: 215 16% 47%;
+  --border: 220 13% 91%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --input: 220 13% 91%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --secondary: 220 14% 96%;
+  --secondary-foreground: 222 47% 11%;
+
+  /* ─── DEFAULT ACCENT LAYER — blue; replaced on logo upload ─── */
+  --accent: 221 83% 53%;
+  --accent-foreground: 0 0% 100%;
+  --accent-muted: 213 97% 94%;
+  --accent-ring: 221 83% 53%;
+
+  /* shadcn/ui semantic aliases — point to accent tokens */
+  --primary: var(--accent);
+  --primary-foreground: var(--accent-foreground);
+  --ring: var(--accent-ring);
+  --radius: 0.5rem;
+
+  --sidebar-background: 0 0% 98%;
+  --sidebar-foreground: 222 47% 11%;
+  --sidebar-primary: var(--accent);
+  --sidebar-primary-foreground: var(--accent-foreground);
+  --sidebar-accent: var(--accent-muted);
+  --sidebar-accent-foreground: 222 47% 11%;
+  --sidebar-border: 220 13% 91%;
+  --sidebar-ring: var(--accent-ring);
+}
+
+@layer base {
+  * {
+    @apply border-[hsl(var(--border))];
+  }
+  body {
+    @apply bg-[hsl(var(--background))] text-[hsl(var(--foreground))];
+  }
+}
+
+/* ─── Sileo toast: WCAG contrast against accent fill ───────────────────────────
+   Sileo's state colors (--sileo-state-success, etc.) flow into --_c → --sileo-tone → color.
+   Overriding them at the viewport level ensures ALL internal elements
+   (badge icons, title text, action buttons) inherit the correct foreground color.
+   Sileo's own CSS already handles [data-sileo-description] via data-theme.
+─────────────────────────────────────────────────────────────────────────────── */
+
+/* Dark accent fill (theme="light") → white internal elements */
+[data-sileo-viewport][data-theme="light"] {
+  --sileo-state-success: rgba(255, 255, 255, 1);
+  --sileo-state-loading: rgba(255, 255, 255, 1);
+  --sileo-state-error:   rgba(255, 255, 255, 1);
+  --sileo-state-warning: rgba(255, 255, 255, 1);
+  --sileo-state-info:    rgba(255, 255, 255, 1);
+  --sileo-state-action:  rgba(255, 255, 255, 1);
+}
+[data-sileo-viewport][data-theme="light"] [data-sileo-title],
+[data-sileo-viewport][data-theme="light"] [data-sileo-badge],
+[data-sileo-viewport][data-theme="light"] [data-sileo-description] {
+  color: rgba(255, 255, 255, 1) !important;
+}
+
+/* Light accent fill (theme="dark") → black internal elements */
+[data-sileo-viewport][data-theme="dark"] {
+  --sileo-state-success: rgba(0, 0, 0, 1);
+  --sileo-state-loading: rgba(0, 0, 0, 1);
+  --sileo-state-error:   rgba(0, 0, 0, 1);
+  --sileo-state-warning: rgba(0, 0, 0, 1);
+  --sileo-state-info:    rgba(0, 0, 0, 1);
+  --sileo-state-action:  rgba(0, 0, 0, 1);
+}
+[data-sileo-viewport][data-theme="dark"] [data-sileo-title],
+[data-sileo-viewport][data-theme="dark"] [data-sileo-badge],
+[data-sileo-viewport][data-theme="dark"] [data-sileo-description] {
+  color: rgba(0, 0, 0, 1) !important;
+}

@@ -1,0 +1,9 @@
+{
+  "name": "enrollpro",
+  "private": true,
+  "scripts": {
+    "dev:server": "pnpm --filter server dev",
+    "dev:client": "pnpm --filter client dev",
+    "dev": "pnpm run dev:server & pnpm run dev:client"
+  }
+}

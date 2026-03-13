@@ -1,0 +1,181 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ────────────────────────────────────────────────
+
+enum Role {
+  REGISTRAR
+  TEACHER
+}
+
+enum Sex {
+  MALE
+  FEMALE
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AcademicYearStatus {
+  DRAFT
+  UPCOMING
+  ACTIVE
+  ARCHIVED
+}
+
+// ─── Models ───────────────────────────────────────────────
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sections    Section[]
+  enrollments Enrollment[]
+  auditLogs   AuditLog[]
+}
+
+model SchoolSettings {
+  id                   Int           @id @default(autoincrement())
+  schoolName           String        @default("Hinigaran National High School")
+  logoPath             String?
+  logoUrl              String?
+  colorScheme          Json?
+  selectedAccentHsl    String?
+  enrollmentOpen       Boolean       @default(false)
+  enrollmentOpenAt     DateTime?
+  enrollmentCloseAt    DateTime?
+  activeAcademicYearId Int?
+
+  activeAcademicYear AcademicYear? @relation(fields: [activeAcademicYearId], references: [id])
+}
+
+model AcademicYear {
+  id           Int                @id @default(autoincrement())
+  yearLabel    String             @unique
+  status       AcademicYearStatus @default(DRAFT)
+  isActive     Boolean            @default(false)
+  startDate    DateTime?
+  endDate      DateTime?
+  clonedFromId Int?
+  createdAt    DateTime           @default(now())
+
+  clonedFrom     AcademicYear?  @relation("AYClone", fields: [clonedFromId], references: [id], onDelete: SetNull)
+  clones         AcademicYear[] @relation("AYClone")
+  gradeLevels    GradeLevel[]
+  strands        Strand[]
+  applicants     Applicant[]
+  enrollments    Enrollment[]
+  schoolSettings SchoolSettings[]
+}
+
+model GradeLevel {
+  id             Int      @id @default(autoincrement())
+  name           String
+  displayOrder   Int
+  academicYearId Int
+  createdAt      DateTime @default(now())
+
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  sections     Section[]
+  applicants   Applicant[]
+}
+
+model Strand {
+  id                      Int      @id @default(autoincrement())
+  name                    String
+  applicableGradeLevelIds Int[]
+  academicYearId          Int
+  createdAt               DateTime @default(now())
+
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  applicants   Applicant[]
+}
+
+model Section {
+  id                Int      @id @default(autoincrement())
+  name              String
+  maxCapacity       Int      @default(40)
+  gradeLevelId      Int
+  advisingTeacherId Int?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  gradeLevel      GradeLevel   @relation(fields: [gradeLevelId], references: [id], onDelete: Cascade)
+  advisingTeacher User?        @relation(fields: [advisingTeacherId], references: [id], onDelete: SetNull)
+  enrollments     Enrollment[]
+}
+
+model Applicant {
+  id                    Int               @id @default(autoincrement())
+  lrn                   String            @unique @db.VarChar(12)
+  lastName              String
+  firstName             String
+  middleName            String?
+  suffix                String?
+  birthDate             DateTime
+  sex                   Sex
+  address               String
+  parentGuardianName    String
+  parentGuardianContact String
+  emailAddress          String
+  trackingNumber        String            @unique
+  status                ApplicationStatus @default(PENDING)
+  rejectionReason       String?
+  gradeLevelId          Int
+  strandId              Int?
+  academicYearId        Int
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  gradeLevel   GradeLevel   @relation(fields: [gradeLevelId], references: [id])
+  strand       Strand?      @relation(fields: [strandId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  enrollment   Enrollment?
+
+  @@index([status, academicYearId])
+  @@index([lrn])
+}
+
+model Enrollment {
+  id             Int      @id @default(autoincrement())
+  applicantId    Int      @unique
+  sectionId      Int
+  academicYearId Int
+  enrolledAt     DateTime @default(now())
+  enrolledById   Int
+
+  applicant    Applicant    @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  section      Section      @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  enrolledBy   User         @relation(fields: [enrolledById], references: [id])
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  userId      Int?
+  actionType  String
+  description String
+  subjectType String?
+  subjectId   Int?
+  ipAddress   String   @db.VarChar(45)
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([actionType])
+  @@index([createdAt])
+}
