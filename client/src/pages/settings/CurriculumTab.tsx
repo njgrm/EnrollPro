@@ -293,7 +293,6 @@ export default function CurriculumTab() {
         title="Delete Grade Level"
         description={`Are you sure you want to delete "${deleteGLName}"? This will also remove all sections under it.`}
         confirmText="Delete"
-        confirmVariant="destructive"
         loading={deletingGL}
         onConfirm={handleDeleteGL}
       />
@@ -304,7 +303,6 @@ export default function CurriculumTab() {
         title="Delete Strand"
         description={`Are you sure you want to delete the strand "${deleteStrandName}"?`}
         confirmText="Delete"
-        confirmVariant="destructive"
         loading={deletingStrand}
         onConfirm={handleDeleteStrand}
       />

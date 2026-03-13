@@ -416,7 +416,6 @@ export default function AcademicYearTab() {
         title="Delete School Year"
         description={`Are you sure you want to delete "${deleteLabel}"?`}
         confirmText="Delete"
-        confirmVariant="destructive"
         loading={deleting}
         onConfirm={handleDelete}
       />

@@ -8,11 +8,11 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] hover:opacity-90",
-        destructive: "bg-[hsl(var(--destructive))] text-[hsl(var(--destructive-foreground))] hover:opacity-90",
-        outline: "border border-[hsl(var(--input))] bg-[hsl(var(--background))] hover:bg-[hsl(var(--accent-muted))] hover:text-[hsl(var(--foreground))]",
-        secondary: "bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))] hover:opacity-80",
-        ghost: "hover:bg-[hsl(var(--accent-muted))] hover:text-[hsl(var(--foreground))]",
+        default: "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]",
+        destructive: "bg-[hsl(var(--destructive))] text-[hsl(var(--destructive-foreground))] hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--foreground))]",
+        outline: "border border-[hsl(var(--input))] bg-[hsl(var(--background))] hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--foreground))]",
+        secondary: "bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))] hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--foreground))]",
+        ghost: "hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--foreground))]",
         link: "text-[hsl(var(--primary))] underline-offset-4 hover:underline",
       },
       size: {
@@ -49,4 +49,5 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 );
 Button.displayName = "Button";
 
+// eslint-disable-next-line react-refresh/only-export-components
 export { Button, buttonVariants };

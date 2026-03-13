@@ -10,7 +10,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[hsl(var(--muted))]/40 font-sans px-4">
       <Toaster
-        position="top-center"
+        position="top-right"
         theme={toastTheme}
         options={accentHsl ? { fill: `hsl(${accentHsl})` } : undefined}
       />

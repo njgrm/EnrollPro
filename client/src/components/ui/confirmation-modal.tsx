@@ -15,7 +15,6 @@ interface ConfirmationModalProps {
   description: string;
   onConfirm: () => void;
   confirmText?: string;
-  confirmVariant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
   loading?: boolean;
 }
 
@@ -26,7 +25,6 @@ export function ConfirmationModal({
   description,
   onConfirm,
   confirmText = 'Confirm',
-  confirmVariant = 'default',
   loading = false,
 }: ConfirmationModalProps) {
   return (
@@ -45,7 +43,7 @@ export function ConfirmationModal({
             Cancel
           </Button>
           <Button
-            variant={confirmVariant}
+            variant="default"
             onClick={() => {
               onConfirm();
               // We don't close here if it's loading, let the caller handle it

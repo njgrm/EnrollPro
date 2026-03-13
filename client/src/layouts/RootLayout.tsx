@@ -3,6 +3,7 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import api from '@/api/axiosInstance';
 
 const DEFAULT_ACCENT_HSL = '221 83% 53%';
+const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001';
 
 /** Relative luminance from HSL values */
 function luminanceFromHSL(h: number, s: number, l: number): number {
@@ -35,7 +36,7 @@ function contrastForeground(hsl: string): string {
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  const { colorScheme, selectedAccentHsl, setSettings } = useSettingsStore();
+  const { colorScheme, selectedAccentHsl, logoUrl, setSettings } = useSettingsStore();
 
   // Fetch public settings on mount
   useEffect(() => {
@@ -53,6 +54,18 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       })
       .catch(() => {});
   }, [setSettings]);
+
+  // Update favicon dynamically based on logoUrl
+  useEffect(() => {
+    const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+    if (link) {
+      if (logoUrl) {
+        link.href = `${API_BASE}${logoUrl}`;
+      } else {
+        link.href = '/vite.svg';
+      }
+    }
+  }, [logoUrl]);
 
   // Apply accent colors with WCAG contrast — use useLayoutEffect to prevent flash
   useLayoutEffect(() => {

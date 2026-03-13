@@ -49,7 +49,7 @@ function Calendar({
         ),
         // Selection / state modifiers (react-day-picker v9 names)
         selected:
-          "rounded-md bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+          "rounded-md bg-primary text-primary-foreground focus:bg-primary focus:text-primary-foreground",
         today: "rounded-md bg-accent text-accent-foreground",
         outside: "text-muted-foreground opacity-50",
         disabled: "text-muted-foreground opacity-50 cursor-not-allowed",

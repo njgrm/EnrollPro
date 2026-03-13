@@ -265,7 +265,6 @@ export default function SectionsTab() {
         title="Delete Section"
         description={`Are you sure you want to delete the section "${deleteName}"? This action cannot be undone.`}
         confirmText="Delete"
-        confirmVariant="destructive"
         loading={deleting}
         onConfirm={handleDelete}
       />

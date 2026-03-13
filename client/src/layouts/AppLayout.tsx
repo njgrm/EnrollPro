@@ -86,7 +86,7 @@ function AYSwitcher() {
                 setViewingAY(y.id === activeAcademicYearId ? null : y.id);
                 setOpen(false);
               }}
-              className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))] ${
+              className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--accent-foreground))] ${
                 y.id === currentId ? 'bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))]' : ''
               }`}
             >
@@ -228,7 +228,6 @@ function AppSidebar() {
         title="Sign Out"
         description="Are you sure you want to sign out of your account?"
         confirmText="Sign Out"
-        confirmVariant="destructive"
         onConfirm={handleLogout}
       />
     </>
