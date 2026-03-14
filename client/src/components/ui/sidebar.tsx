@@ -11,26 +11,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
+import { SidebarContext, useSidebar } from "@/components/ui/use-sidebar"
 
 const SIDEBAR_COOKIE_NAME = "sidebar:state"
 const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
-
-type SidebarContext = {
-  state: "expanded" | "collapsed"
-  open: boolean
-  setOpen: (open: boolean) => void
-  toggleSidebar: () => void
-}
-
-const SidebarContext = React.createContext<SidebarContext | null>(null)
-
-function useSidebar() {
-  const context = React.useContext(SidebarContext)
-  if (!context) throw new Error("useSidebar must be used within a SidebarProvider.")
-  return context
-}
 
 const SidebarProvider = React.forwardRef<
   HTMLDivElement,
@@ -354,7 +340,7 @@ const SidebarMenuItem = React.forwardRef<
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-[hsl(var(--sidebar-ring))] transition-[width,height,padding] hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--sidebar-accent-foreground))] focus-visible:ring-2 active:bg-[hsl(var(--sidebar-accent))] active:text-[hsl(var(--sidebar-accent-foreground))] disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-[hsl(var(--accent))] data-[active=true]:font-medium data-[active=true]:text-[hsl(var(--accent-foreground))] data-[active=true]:hover:text-[hsl(var(--accent-foreground))] data-[state=open]:hover:bg-[hsl(var(--sidebar-accent))] data-[state=open]:hover:text-[hsl(var(--sidebar-accent-foreground))] group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-[hsl(var(--sidebar-ring))] transition-[width,height,padding] hover:bg-[hsl(var(--sidebar-accent))] hover:text-[hsl(var(--sidebar-accent-foreground))] focus-visible:ring-2 active:bg-[hsl(var(--sidebar-accent))] active:text-[hsl(var(--sidebar-accent-foreground))] disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-[hsl(var(--accent))] data-[active=true]:font-bold data-[active=true]:text-[hsl(var(--accent-foreground))] data-[active=true]:hover:text-[hsl(var(--accent-foreground))] data-[state=open]:hover:bg-[hsl(var(--sidebar-accent))] data-[state=open]:hover:text-[hsl(var(--sidebar-accent-foreground))] group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -473,5 +459,4 @@ export {
   SidebarProvider,
   SidebarSeparator,
   SidebarTrigger,
-  useSidebar,
 }

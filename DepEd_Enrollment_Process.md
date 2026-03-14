@@ -679,3 +679,208 @@ KEY DOCUMENT FACTS:
 - *Manila Bulletin, June 15, 2025 — DepEd SY 2025–2026 Enrollment Policy Update*
 - *DepEd CALABARZON Official Release, June 14, 2025 — DO 017 Implementation*
 - *DepEd Learner Information System (LIS) Help Portal*
+
+---
+
+---
+
+## ADDENDUM — DepEd Memorandum No. 012, s. 2026
+### Strengthened Senior High School Curriculum: Full Implementation Starting SY 2026–2027
+
+**Issuance:** DepEd Memorandum No. 012, s. 2026
+**Date Issued:** February 27, 2026
+**Signed by:** Secretary Sonny Angara
+**Official Source:** https://www.deped.gov.ph/2026/02/27/february-27-2026-dm-012-s-2026-full-implementation-of-the-strengthened-senior-high-school-curriculum-in-school-year-2026-2027/
+**PDF:** https://www.deped.gov.ph/wp-content/uploads/DM_s2026_012r.pdf
+**Supersedes:** The SHS Track and Strand structure defined in the K–12 Curriculum Guide (DepEd Order No. 21, s. 2019 and related issuances)
+**Effective:** SY 2026–2027 — incoming Grade 11 learners only
+
+---
+
+### Overview
+
+DepEd DM 012, s. 2026 is one of the most significant structural reforms to Senior High School since the launch of the K–12 program. Starting SY 2026–2027, the traditional **four-track, strand-based SHS system** is replaced by a **two-track, elective-cluster-based Strengthened SHS Curriculum** for all incoming Grade 11 learners nationwide.
+
+> **Critical Transition Rule:** Grade 12 learners in SY 2026–2027 are **NOT** affected. They continue under the existing strand-based curriculum for a smooth transition. The new curriculum applies exclusively to **incoming Grade 11** learners starting SY 2026–2027.
+
+---
+
+### What Changed: Old vs. New SHS Structure
+
+| Dimension | Old System (until SY 2025–2026) | New System (SY 2026–2027 onward, Grade 11) |
+|---|---|---|
+| **Number of tracks** | 4 (Academic, TVL, Sports, Arts & Design) | **2** (Academic, Technical-Professional / TechPro) |
+| **Curriculum unit** | Fixed Strand (STEM, ABM, HUMSS, GAS, HE, ICT, etc.) | **Flexible Elective Cluster** (learner selects subjects across clusters) |
+| **Subject lock-in** | Learner locked into a strand's subject set | Learner may **mix subjects from multiple clusters** |
+| **Number of core subjects** | ~15 core subjects | **5 core subjects** (decongested) |
+| **Enrollment declaration** | Strand declared at enrollment (binding) | **Track** declared at enrollment (Academic or TechPro); elective clusters chosen with guidance counselor |
+| **Exit pathways** | Higher education, employment, entrepreneurship, middle-level skills | Same 4 pathways preserved |
+
+---
+
+### The Two New Tracks
+
+#### Track 1 — Academic
+
+For learners intending to pursue **higher education** after SHS. Academic track learners choose elective subjects from any of the following clusters:
+
+| Academic Elective Cluster | Representative Subjects / Focus |
+|---|---|
+| **Arts, Social Sciences, and Humanities** | Literature, social science research, creative writing, culture studies |
+| **Science, Technology, Engineering, and Mathematics (STEM)** | Advanced physics, calculus, chemistry, engineering fundamentals |
+| **Sports, Health, and Wellness** | Physical education science, sports management, health sciences |
+| **Business and Entrepreneurship** | Business math, economics, enterprise management |
+| **Field Experience** | Work immersion, community service, practicum modules |
+
+> **Note:** "STEM" now refers to an **elective cluster within the Academic track**, not a strand. Learners are no longer *locked into* STEM — they may mix STEM cluster subjects with subjects from other clusters.
+
+#### Track 2 — Technical-Professional (TechPro)
+
+For learners intending to enter the **workforce, technical education (TESDA), or entrepreneurship** after SHS. TechPro learners choose from industry-aligned clusters:
+
+| TechPro Elective Cluster | Industry Focus |
+|---|---|
+| **Aesthetic, Wellness, and Human Care** | Beauty services, caregiving, health support |
+| **Agri-Fishery Business and Food Innovation** | Agriculture, aquaculture, food processing |
+| **Artisanry and Creative Enterprise** | Handcrafts, design, cultural products |
+| **Automotive and Small Engine Technologies** | Vehicle maintenance, engine repair |
+| **Construction and Building Technologies** | Carpentry, masonry, plumbing, electrical |
+| **Creative Arts and Design Technologies** | Graphic design, multimedia, visual arts |
+| **Hospitality and Tourism** | Front office, food and beverage, travel management |
+| **Industrial Technologies** | Welding, electronics, machine operation |
+| **ICT Support and Computer Programming Technologies** | Programming, networking, systems administration |
+| **Maritime Transport** | Seafaring, port logistics, vessel operations |
+
+> **Note:** Not all schools are required to offer all TechPro clusters. Availability depends on school resources, TESDA accreditation, and DepEd-approved program offerings. Schools offer only the clusters they are equipped to deliver.
+
+---
+
+### The Five New Core Subjects (All Grade 11 Learners, Both Tracks)
+
+All incoming Grade 11 learners in SY 2026–2027 take the same five core subjects, regardless of track or elective cluster choices:
+
+| Core Subject | Filipino Title |
+|---|---|
+| Effective Communication | Mabisang Komunikasyon |
+| Life and Career Skills | — |
+| General Mathematics | — |
+| General Science | — |
+| Philippine History and Social Studies | Pag-aaral ng Kasaysayan at Lipunang Pilipino |
+
+**Removed from SHS core (previously required):** Oral Communication, Reading and Writing, Komunikasyon at Pananaliksik, Pagbasa at Pagsusuri, 21st Century Literature, Contemporary Philippine Arts, Media and Information Literacy, Statistics and Probability, Earth and Life Science, Physical Science, Personal Development, Understanding Culture Society and Politics, Introduction to Philosophy, and Physical Education and Health.
+
+---
+
+### Dual-Policy Enrollment Scenario: SY 2026–2027
+
+Because the new curriculum applies **only to Grade 11** while Grade 12 remains on the old system, SY 2026–2027 is a **dual-policy school year** for SHS:
+
+| Grade Level | Curriculum | Enrollment Declaration | Section Naming |
+|---|---|---|---|
+| **Grade 11** (incoming) | **Strengthened SHS** — NEW | Track (Academic or TechPro) | By track or cluster (e.g., "Academic-A", "TechPro-ICT-A") |
+| **Grade 12** (continuing) | **Old strand-based** — UNCHANGED | Strand continues from Grade 11 declaration | Same as SY 2025–2026 (STEM-A, ABM-A, HUMSS-A, GAS-A) |
+
+---
+
+### Impact on Enrollment Process (Appended to §5.3 and §9)
+
+#### Grade 11 Enrollment Under the New System (SY 2026–2027 onward)
+
+**What the learner declares on the BEEF / admission form:**
+- **Track:** Academic OR Technical-Professional (TechPro)
+- **Preferred Elective Cluster(s):** One or more clusters within the chosen track (guidance counselor assists in final selection)
+- The old "Strand" field is **replaced** by "Track" and "Preferred Elective Cluster(s)"
+
+**What the school section structure looks like:**
+- Sections may be organized by **track** (e.g., Academic-A, TechPro-A) or by **elective cluster focus** if the school designates cluster-specific sections (e.g., ICT-A, STEM-A as a cluster label, not a strand)
+- Section naming convention is **school-discretionary** — DepEd does not mandate a specific naming format under DM 012
+
+**Strand changes (old system) → Cluster/Track changes (new system):**
+- Learners may adjust their elective cluster selections with guidance counselor approval, typically within the first grading period
+- **Track changes** (Academic ↔ TechPro) are more significant and require school head approval
+- Grade 12 learners in SY 2026–2027 cannot switch to the new curriculum mid-stream — they complete their strand
+
+---
+
+### Updated SHS Track and Cluster Structure for the Admission Form
+
+For the online admission portal, the **Strand dropdown** (Grade 11) becomes:
+
+**Step 1 — Track Selection:**
+- `○ Academic`
+- `○ Technical-Professional (TechPro)`
+
+**Step 2 — Preferred Elective Cluster (conditional on Track):**
+
+If Academic:
+- Arts, Social Sciences, and Humanities
+- STEM (Science, Technology, Engineering, and Mathematics)
+- Sports, Health, and Wellness
+- Business and Entrepreneurship
+- Field Experience
+- Undecided / To be advised by guidance counselor
+
+If TechPro:
+- ICT Support and Computer Programming Technologies
+- Hospitality and Tourism
+- Construction and Building Technologies
+- Automotive and Small Engine Technologies
+- Industrial Technologies
+- Agri-Fishery Business and Food Innovation
+- Creative Arts and Design Technologies
+- Artisanry and Creative Enterprise
+- Aesthetic, Wellness, and Human Care
+- Maritime Transport
+- Undecided / To be advised by guidance counselor
+
+> **Important:** Not all clusters are available at every school. The admission portal should display only the clusters offered at Hinigaran NHS. The school configures available clusters in the system settings before opening the portal.
+
+---
+
+### Grade 12 in SY 2026–2027: No Change to Enrollment Process
+
+Grade 12 learners in SY 2026–2027:
+- Are **pre-registered** (Confirmation Slip only — Annex C of DO 017, s. 2025)
+- Continue under their existing strand (STEM, ABM, HUMSS, GAS, or TVL)
+- Their sections, subject loads, and academic records follow the old strand-based framework
+- No re-declaration of strand or cluster is required
+- Their SF10-SHS (Form 137) will reflect their original strand upon graduation
+
+---
+
+### Updated Phase 1 Early Registration Impact (Grade 11, SY 2026–2027)
+
+During Early Registration (January 31 – February 27, 2026 for SY 2026–2027), incoming Grade 11 learners now declare:
+- **Track** (Academic or TechPro) instead of Strand
+- **Preferred elective cluster(s)** (indicative, subject to guidance counseling)
+
+The school uses this data to:
+- Project how many Academic vs. TechPro sections to prepare
+- Identify which TechPro clusters have sufficient demand to open
+- Plan equipment and teacher readiness per cluster
+
+---
+
+### Pilot History
+
+DM 012, s. 2026 formalizes a national rollout based on a **successful pilot program conducted in over 800 schools** across the Philippines. Schools that participated in the pilot already have familiarity with the cluster-based system. For non-pilot schools like those in the Negros Occidental division, SY 2026–2027 is the first year of full implementation.
+
+---
+
+### Policy Coexistence Summary
+
+This document now governs enrollment under **two simultaneously active DepEd policy frameworks** for SHS:
+
+| Policy | Governs |
+|---|---|
+| **DO 017, s. 2025** (Revised Basic Education Enrollment Policy) | All grade levels, all enrollment procedures, documentary requirements, LRN, gate, phases |
+| **DM 012, s. 2026** (Strengthened SHS Curriculum) | Grade 11 only — curriculum structure, track/cluster declaration, section organization starting SY 2026–2027 |
+| **Old K–12 SHS Strand Framework** (still active for Grade 12 in SY 2026–2027) | Grade 12 only in SY 2026–2027 — strand continuation, subject loads, SF10 |
+
+---
+
+*Addendum compiled from:*
+- *DepEd Memorandum No. 012, s. 2026 — Full Implementation of the Strengthened Senior High School Curriculum in School Year 2026–2027 (February 27, 2026)*
+- *Official Source: https://www.deped.gov.ph/2026/02/27/february-27-2026-dm-012-s-2026-full-implementation-of-the-strengthened-senior-high-school-curriculum-in-school-year-2026-2027/*
+- *The Summit Express Report, March 2, 2026 — No more strands: DepEd to fully implement Strengthened SHS Curriculum in SY 2026–2027*
+- *DepEd Strengthened SHS Program Page: https://www.deped.gov.ph/strengthened-shs-program/*

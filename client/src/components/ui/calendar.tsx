@@ -19,8 +19,8 @@ function Calendar({
       className={cn("p-3", className)}
       classNames={{
         // Layout
-        months: "flex flex-col sm:flex-row gap-4",
-        month: "flex flex-col gap-4",
+        months: "flex flex-col sm:flex-row gap-4 font-medium",
+        month: "flex flex-col gap-4 font-medium",
         // Caption / header
         month_caption: "flex justify-center pt-1 items-center min-h-[28px] w-full",
         // In dropdown mode react-day-picker renders an aria-hidden caption label;

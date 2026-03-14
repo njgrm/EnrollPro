@@ -426,3 +426,148 @@ Before this proposal is merged into the PRD, please confirm the following:
 *Proposal prepared by: System Architect*
 *Based on: DepEd Order No. 12 s. 2025, DepEd Order No. 03 s. 2018, RA 7797 as amended by RA 11480*
 *Ready to integrate into PRD once decisions in §8 are confirmed.*
+
+---
+
+---
+
+## ADDENDUM — Impact of DM 012, s. 2026 on the School Year Setup Architecture
+
+**Governing Memorandum:** DepEd Memorandum No. 012, s. 2026 — Full Implementation of the Strengthened Senior High School Curriculum in School Year 2026–2027
+**Issued:** February 27, 2026
+**Source:** https://www.deped.gov.ph/2026/02/27/february-27-2026-dm-012-s-2026-full-implementation-of-the-strengthened-senior-high-school-curriculum-in-school-year-2026-2027/
+
+---
+
+### What DM 012 Changes About SHS Configuration
+
+The Strengthened SHS Curriculum eliminates traditional strands (STEM, ABM, HUMSS, GAS, TVL variants) for **incoming Grade 11 learners starting SY 2026–2027**. Grade 12 learners in SY 2026–2027 continue under the old strand-based system as a transition measure.
+
+This creates a **dual-policy SHS configuration requirement** that the Settings module must support simultaneously within the same academic year.
+
+---
+
+### Revised Panel C — Curriculum Structure (SY 2026–2027 and beyond)
+
+The existing `Strand` model in the system remains valid but must be expanded to accommodate two concurrent systems:
+
+#### What the Registrar configures in Settings for SY 2026–2027
+
+**For Grade 11 (new Strengthened SHS Curriculum):**
+
+Instead of configuring strands like `STEM`, `ABM`, `HUMSS`, `GAS`, the registrar now configures:
+
+**Track entries** (two fixed options, not CRUD-able — they are mandated by DepEd):
+- `Academic`
+- `Technical-Professional (TechPro)`
+
+**Elective Cluster entries** (school-specific — only configure clusters the school actually offers):
+
+| Cluster Name | Track | School Offers? |
+|---|---|---|
+| STEM | Academic | Configure if offered |
+| Arts, Social Sciences, and Humanities | Academic | Configure if offered |
+| Sports, Health, and Wellness | Academic | Configure if offered |
+| Business and Entrepreneurship | Academic | Configure if offered |
+| Field Experience | Academic | Configure if offered |
+| ICT Support and Computer Programming | TechPro | Configure if offered |
+| Hospitality and Tourism | TechPro | Configure if offered |
+| Construction and Building Technologies | TechPro | Configure if offered |
+| Industrial Technologies | TechPro | Configure if offered |
+| *(and other TechPro clusters per school capacity)* | TechPro | — |
+
+**For Grade 12 (old strand-based curriculum — SY 2026–2027 only):**
+
+The registrar retains the old strand entries for Grade 12 sections:
+- STEM (Grade 12 only)
+- ABM (Grade 12 only)
+- HUMSS (Grade 12 only)
+- GAS (Grade 12 only)
+
+> **Design implication:** The existing `Strand` model's `applicableGradeLevelIds` field handles this naturally. Old strands are linked only to `Grade 12`; new elective clusters are linked only to `Grade 11`. The grade-level filter on the admission portal correctly shows the right options per grade.
+
+---
+
+### Updated Click-Count for SY 2026–2027 Setup (Revised from §2)
+
+The original click-count audit in §2 was based on creating 4 strands (STEM, ABM, HUMSS, GAS). Under DM 012 for SY 2026–2027, the Registrar must now configure:
+
+- **Grade 11:** 2 tracks + N elective clusters (school-dependent; a typical school offering STEM + ICT + HE = 3 clusters across 2 tracks)
+- **Grade 12:** Same 4 old strands (for Grade 12 continuation only)
+
+This means slightly **more configuration items** in the first year of transition, but subsequent years (when Grade 12 is also on the new system) will be simpler.
+
+**Revised click count for SY 2026–2027 setup under the Smart Year Setup Card proposal:**
+
+| Step | Current System | Smart Setup (proposed) |
+|---|---|---|
+| Create Academic Year | 2 + typing | 1 (review + confirm) |
+| Grade Levels | 6 × 2 = 12 | Cloned automatically |
+| Grade 12 Strands (old) | 4 × 3 = 12 | Cloned automatically |
+| Grade 11 Tracks (new) | 2 × 2 = 4 | Template-assisted (pre-filled from DM 012) |
+| Grade 11 Elective Clusters | N × 2 = N×2 | Checklist from DM 012 master list |
+| Activate year | 2 | 1 |
+| **Total** | **~40+ clicks** | **~5–10 clicks** |
+
+---
+
+### Updated Section Naming Conventions (Panel D — Sections & Capacity)
+
+Under the new curriculum, SHS sections for Grade 11 are no longer named by strand. The registrar has two common options:
+
+**Option A — Track-level sections (simpler, fewer sections):**
+```
+Grade 11 – Academic-A     (all Academic track learners mixed)
+Grade 11 – Academic-B
+Grade 11 – TechPro-A      (all TechPro track learners mixed)
+Grade 11 – TechPro-B
+```
+
+**Option B — Cluster-focused sections (mirrors old strand naming):**
+```
+Grade 11 – STEM-A         (Academic track, STEM cluster focus)
+Grade 11 – BusEnt-A       (Academic track, Business and Entrepreneurship focus)
+Grade 11 – ICT-A          (TechPro track, ICT cluster)
+Grade 11 – HospTour-A     (TechPro track, Hospitality and Tourism)
+```
+
+**Grade 12 sections remain unchanged (old strand labels):**
+```
+Grade 12 – STEM-A         (continues old STEM strand)
+Grade 12 – ABM-A          (continues old ABM strand)
+Grade 12 – HUMSS-A        (continues old HUMSS strand)
+Grade 12 – GAS-A          (continues old GAS strand)
+```
+
+> The system's section naming is free-text — the registrar types whatever naming convention the school adopts. No system change is required to support either option above.
+
+---
+
+### Updated Revised API Additions (§5 Extension)
+
+One additional endpoint is needed to serve the DM 012 dual-policy context to the public portal:
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/settings/shs-config` | None (public) | Returns the SHS curriculum mode for each grade level: `{ grade11: "STRENGTHENED", grade12: "OLD_STRAND" }` and the list of offered tracks and clusters for Grade 11 |
+
+The public admission form uses this to conditionally render:
+- For **Grade 11**: Track selector (Academic/TechPro) → Elective Cluster selector
+- For **Grade 12**: Strand selector (STEM/ABM/HUMSS/GAS — old system, for any Grade 12 transferees or walk-ins)
+
+---
+
+### Decision Required (Addendum to §8)
+
+| # | Decision Point | Options |
+|---|---|---|
+| D-04 | How should Hinigaran NHS name Grade 11 sections for SY 2026–2027? | A) Track-level (Academic-A, TechPro-A) · B) Cluster-focused (STEM-A, ICT-A) |
+| D-05 | Which TechPro elective clusters will HNHS offer in SY 2026–2027? | Registrar/School Head to confirm based on available equipment, teachers, TESDA accreditation |
+| D-06 | Should the system expose both "Track" and "Elective Cluster" as separate fields on the BEEF form, or collapse them into a single "Program" selector? | A) Two separate selectors (accurate, mirrors DepEd structure) · B) Single combined selector (simpler UX) |
+| D-07 | For Grade 12 transferees in SY 2026–2027 applying through the portal: should the form show the old strand options or the new cluster options? | A) Old strands only (Grade 12 is on old curriculum) · B) Both, conditionally based on grade level selected |
+
+---
+
+*Addendum prepared by: System Architect*
+*Based on: DepEd Memorandum No. 012, s. 2026 — Strengthened SHS Curriculum (February 27, 2026)*
+*Source: https://www.deped.gov.ph/2026/02/27/february-27-2026-dm-012-s-2026-full-implementation-of-the-strengthened-senior-high-school-curriculum-in-school-year-2026-2027/*

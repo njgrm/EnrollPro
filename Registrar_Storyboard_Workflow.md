@@ -1773,3 +1773,441 @@ The registrar must **never** do the following. The system does not technically b
 *Sources: DepEd Order No. 017, s. 2025 · PRD v2.2.0 · RA 7797 as amended by RA 11480 · RA 11909*
 *Covers: Full SY Cycle — Act 0 (Setup) through Act 5 (Year Close) + Special Scenarios*
 *School: Hinigaran National High School · System: PERN Stack (PostgreSQL · Express · React · Node.js)*
+
+---
+
+---
+
+# ADDENDUM — DM 012, s. 2026: Strengthened SHS Curriculum Workflow Scenarios
+
+**Governing Memorandum:** DepEd Memorandum No. 012, s. 2026
+**Issued:** February 27, 2026
+**Source:** https://www.deped.gov.ph/2026/02/27/february-27-2026-dm-012-s-2026-full-implementation-of-the-strengthened-senior-high-school-curriculum-in-school-year-2026-2027/
+
+Starting SY 2026–2027, the traditional strand-based SHS system is replaced by a two-track, elective-cluster framework **for incoming Grade 11 learners only**. Grade 12 learners continue under their existing strands. The scenes below append to the main storyboard to cover the new workflows this policy introduces.
+
+---
+
+## SCENE A.1 — Registrar Configures the New Grade 11 Elective Clusters in Settings
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ WHEN   │ Act 0 — System Setup, April–May (before Early Reg)    │
+│ WHERE  │ /settings → Tab 3: Grade Levels & Strands             │
+│ WHY    │ Under DM 012, s. 2026, Grade 11 no longer uses        │
+│        │ strands. The registrar must configure which elective  │
+│        │ clusters HNHS offers — only those will appear on the  │
+│        │ public admission portal's Grade 11 dropdown.          │
+│ POLICY │ DM 012, s. 2026 — schools offer only clusters for    │
+│        │ which they have teachers, equipment, and DepEd        │
+│        │ recognition. Not all 15 clusters are required.        │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**What the registrar sees (new split UI in Tab 3):**
+
+```
+SETTINGS > Grade Levels & Strands       Year: [ SY 2026–2027 ▾ ]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ GRADE 11 — Strengthened SHS Curriculum (DM 012, s. 2026)
+ Select elective clusters offered by this school:
+
+  ACADEMIC TRACK
+  ☑  STEM (Science, Technology, Engineering & Mathematics)
+  ☑  Arts, Social Sciences, and Humanities
+  ☑  Business and Entrepreneurship
+  ☐  Sports, Health, and Wellness
+  ☐  Field Experience
+
+  TECHPRO TRACK
+  ☑  ICT Support and Computer Programming Technologies
+  ☑  Hospitality and Tourism
+  ☐  Construction and Building Technologies
+  ☐  Automotive and Small Engine Technologies
+  ☐  Industrial Technologies
+  ☐  Agri-Fishery Business and Food Innovation
+  ☐  Artisanry and Creative Enterprise
+  ☐  Aesthetic, Wellness, and Human Care
+  ☐  Creative Arts and Design Technologies
+  ☐  Maritime Transport
+
+                                               [ Save Clusters ]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ GRADE 12 — Old Strand-Based Curriculum (SY 2026–2027 transition)
+ Grade 12 continues under the existing strand system.
+
+  Strand    │  Grade         │  Actions
+  ──────────┼────────────────┼────────────────────────────────
+  STEM      │  Grade 12      │  [Edit]  [Delete]
+  ABM       │  Grade 12      │  [Edit]  [Delete]
+  HUMSS     │  Grade 12      │  [Edit]  [Delete]
+  GAS       │  Grade 12      │  [Edit]  [Delete]
+                               [ + Add Strand ]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**Steps:**
+1. Registrar checks with the school head and department heads which clusters HNHS is equipped to offer for SY 2026–2027.
+2. Checks the appropriate boxes in the Academic and TechPro sections.
+3. Leaves Grade 12 old strands as-is (they were cloned from the previous year or already configured).
+4. Clicks **Save Clusters**.
+
+**System:**
+- Each checked Academic cluster → `POST /api/strands` with `{ name, curriculumType: 'ELECTIVE_CLUSTER', track: 'ACADEMIC', applicableGradeLevelIds: [Grade11.id] }`.
+- Each checked TechPro cluster → same, `track: 'TECHPRO'`.
+- Grade 12 old strands: `curriculumType: 'OLD_STRAND'`, `track: null`, `applicableGradeLevelIds: [Grade12.id]`.
+- Sileo `success` toast: *"Elective Clusters saved — 5 Academic + 2 TechPro clusters configured for Grade 11."*
+- `AuditLog`: `SETTINGS_UPDATED — "Admin configured SY 2026–2027 Grade 11 elective clusters"`.
+
+**Outcome:** The admission portal's Grade 11 section now shows Track radio buttons and a correctly-filtered Elective Cluster dropdown. Grade 12 applicants (transferees) still see the old strand dropdown.
+
+---
+
+## SCENE A.2 — Registrar Creates Grade 11 Sections Under the New System
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ WHEN   │ Act 0 — Section setup, after Scene A.1                 │
+│ WHERE  │ /sections                                               │
+│ WHY    │ Grade 11 sections are now organized by track or        │
+│        │ cluster focus, not by the old strand names             │
+│ POLICY │ DM 012, s. 2026 — section naming is school-           │
+│        │ discretionary; DepEd mandates the curriculum, not      │
+│        │ the section label                                      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Registrar creates the following Grade 11 sections for SY 2026–2027:**
+
+*Option chosen by HNHS: cluster-focused naming (mirrors old strand naming for continuity):*
+
+| Grade | Section Name | Cluster Focus | Adviser |
+|---|---|---|---|
+| Grade 11 | STEM-A | Academic / STEM cluster | Mr. Lim |
+| Grade 11 | ArSocHum-A | Academic / Arts, Soc Sci, Humanities | Ms. Aquino |
+| Grade 11 | BusEnt-A | Academic / Business and Entrepreneurship | Mr. Marcos |
+| Grade 11 | ICT-A | TechPro / ICT Support & Programming | Ms. Palma |
+| Grade 11 | HospTour-A | TechPro / Hospitality and Tourism | Mr. Bautista |
+
+**Grade 12 sections (unchanged from previous year's naming):**
+
+| Grade | Section Name | Strand | Adviser |
+|---|---|---|---|
+| Grade 12 | STEM-A | STEM (old) | Mr. Lim |
+| Grade 12 | ABM-A | ABM (old) | Ms. Reyes |
+| Grade 12 | HUMSS-A | HUMSS (old) | Mr. Cruz |
+| Grade 12 | GAS-A | GAS (old) | Ms. Torres |
+
+**Outcome:** The `/sections` page now shows a clear two-tier structure — Grade 11 with cluster-labeled sections and Grade 12 with strand-labeled sections. Both are managed in the same interface.
+
+---
+
+## SCENE A.3 — Processing an Incoming Grade 11 Application Under the New System
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ WHEN   │ Act 1 — Phase 1 Early Registration (Jan–Feb 2026)      │
+│ WHERE  │ /applications → PENDING Grade 11 application           │
+│ WHY    │ Grade 11 applicant submitted under the new two-track   │
+│        │ system. Registrar must verify Track and Elective       │
+│        │ Cluster selection, then assign to the appropriate     │
+│        │ section.                                               │
+│ POLICY │ DM 012, s. 2026 — Track declaration is binding at     │
+│        │ enrollment. Cluster adjustments permitted within       │
+│        │ 1st grading period with guidance counselor approval.   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Application on the portal (what the parent filled out):**
+
+```
+ENROLLMENT PREFERENCE (Step 3 of 3)
+
+  Grade Level *       ●  Grade 11
+
+  SHS Track *         ●  Academic
+                      ○  Technical-Professional (TechPro)
+
+  Preferred Elective Cluster *
+                      [ STEM (Science, Technology, Engineering & Mathematics)  ▾ ]
+```
+
+**What the registrar sees in the application detail:**
+
+```
+╔══════════════════════════════════════════════════════════════════╗
+║  APPLICATION DETAIL                                              ║
+║  #HNS-2026-00041                          Status: ● PENDING      ║
+╠══════════════════════════════════════════════════════════════════╣
+║  PERSONAL INFORMATION                                            ║
+║  Full Name   :  SANTOS, Maria Luz                                ║
+║  LRN         :  876543219012                                     ║
+║  DOB         :  July 4, 2010  (Age: 15 yrs)                     ║
+║                                                                  ║
+║  ENROLLMENT PREFERENCE                                           ║
+║  Grade Level :  Grade 11                                         ║
+║  SHS Track   :  Academic                                         ║
+║  Elective    :  STEM                                             ║
+║  Curriculum  :  Strengthened SHS (DM 012, s. 2026)              ║
+╠══════════════════════════════════════════════════════════════════╣
+║                                                                  ║
+║  ⚠  PHASE 1: Pre-registration only. Official enrollment         ║
+║     confirmed in Phase 2 (June).                                 ║
+║                                                                  ║
+║   [ Approve & Assign Section ]   [ Reject Application ]         ║
+╚══════════════════════════════════════════════════════════════════╝
+```
+
+**Registrar verifies:**
+
+| Check | Criterion | Result |
+|---|---|---|
+| LRN format | 12 digits | ✓ |
+| Age for Grade 11 | ~15–17 years | ✓ Born July 4, 2010 → 15 yrs |
+| Grade 10 SF9 | Presented in person | ✓ Signed by JHS school head |
+| PSA Birth Certificate | New to school — once-only | ✓ PSA # noted |
+| Track declared | Academic or TechPro | ✓ Academic |
+| Cluster offered | STEM offered at HNHS | ✓ |
+
+**Registrar clicks Approve & Assign Section. Dialog opens:**
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  Assign Section                                                   │
+│  Maria Santos  ·  Grade 11  ·  Academic Track  ·  STEM Cluster  │
+│  ────────────────────────────────────────────────────────────── │
+│                                                                  │
+│  Grade 11 sections:                                              │
+│                                                                  │
+│  ○  Grade 11 – STEM-A      Mr. Lim        28/45  ● 17 slots    │
+│  ○  Grade 11 – ArSocHum-A  Ms. Aquino     22/45  ● 23 slots    │
+│  ○  Grade 11 – BusEnt-A    Mr. Marcos     19/45  ● 26 slots    │
+│  ○  Grade 11 – ICT-A       Ms. Palma      30/45  ● 15 slots    │
+│  ○  Grade 11 – HospTour-A  Mr. Bautista   25/45  ● 20 slots    │
+│                                                                  │
+│  Selected: ○ Grade 11 – STEM-A                                   │
+│                                                                  │
+│           [ Cancel ]           [ Confirm Enrollment ]           │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+> **Registrar note:** All Grade 11 sections are shown, regardless of cluster focus, consistent with the existing PRD design (section assignment is a registrar judgment call, not a system filter). The Track and Cluster labels on the dialog header inform the registrar which section to pick.
+
+**Registrar selects STEM-A. Confirms.**
+
+**System:**
+- Enrollment transaction (unchanged mechanism, `FOR UPDATE` lock).
+- Email to parent:
+  ```
+  Congratulations! Your Enrollment is Confirmed.
+
+  Learner      :  SANTOS, Maria Luz
+  Grade Level  :  Grade 11
+  SHS Track    :  Academic
+  Elective     :  STEM
+  Section      :  Grade 11 – STEM-A
+  Curriculum   :  Strengthened SHS Curriculum (DM 012, s. 2026)
+  ```
+- Sileo `success` toast: *"Application Approved — Maria Santos enrolled in Grade 11 STEM-A (Academic / STEM)."*
+- `AuditLog`: `APPLICATION_APPROVED — "Registrar Cruz approved #41 → Grade 11 STEM-A (Academic Track / STEM Cluster)"`.
+
+---
+
+## SCENE A.4 — Processing a Grade 11 TechPro Applicant
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ WHEN   │ Act 1 — Phase 1 Early Registration                     │
+│ WHERE  │ /applications → PENDING Grade 11 TechPro application   │
+│ WHY    │ Learner chose TechPro track with ICT cluster.          │
+│ POLICY │ DM 012, s. 2026 — TechPro replaces TVL. Cluster       │
+│        │ availability depends on school resources.              │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Application detail:**
+```
+Grade Level :  Grade 11
+SHS Track   :  Technical-Professional (TechPro)
+Elective    :  ICT Support and Computer Programming Technologies
+```
+
+**Registrar verifies:** ICT cluster is offered at HNHS (confirmed in Scene A.1 setup).
+
+**Section assignment:** Registrar selects Grade 11 – ICT-A.
+
+**Email to parent:**
+```
+SHS Track    :  Technical-Professional (TechPro)
+Elective     :  ICT Support and Computer Programming Technologies
+Section      :  Grade 11 – ICT-A
+```
+
+---
+
+## SCENE A.5 — Processing a Grade 12 Applicant (Transferee — Old Strand System Still Active)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ WHEN   │ Act 2 — Phase 2 Regular Enrollment / any time SY       │
+│        │ 2026–2027                                               │
+│ WHERE  │ /applications → Grade 12 transferee application        │
+│ WHY    │ A Grade 12 transferee arrives from another school.     │
+│        │ They were on the OLD strand system. The system must    │
+│        │ enroll them under the OLD strand — NOT the new         │
+│        │ Strengthened SHS curriculum.                           │
+│ POLICY │ DM 012, s. 2026 — Grade 12 in SY 2026–2027 continues  │
+│        │ under the existing strand framework for a smooth        │
+│        │ transition. No Grade 12 learner moves to the new       │
+│        │ curriculum mid-stream.                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**What the portal showed this applicant at Step 3:**
+```
+Grade Level :  Grade 12
+
+Strand *
+  [ STEM ▾ ]
+  (STEM / ABM / HUMSS / GAS)
+```
+*(The portal correctly showed OLD strand options for Grade 12, not the new cluster system.)*
+
+**Application detail:**
+```
+Grade Level :  Grade 12
+Curriculum  :  Old Strand-Based (Continuing)
+Strand      :  STEM
+```
+
+**Registrar verifies:** Grade 11 SF9 from sending school shows STEM strand. The learner was on STEM — continuity confirmed.
+
+**Section assignment:** Registrar selects Grade 12 – STEM-A.
+
+**Email to parent:**
+```
+Grade Level  :  Grade 12
+Strand       :  STEM
+Section      :  Grade 12 – STEM-A
+Note         :  Grade 12 continues under the strand-based curriculum.
+```
+
+**Outcome:** The two systems co-exist cleanly. The application record stores the correct curriculum type. Audit log, email, and section assignment all use the correct old-system terminology for this Grade 12 learner.
+
+---
+
+## SCENE A.6 — Handling a Grade 11 Applicant Who Selected an Unavailable Cluster
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ WHEN   │ During review of a PENDING Grade 11 application        │
+│ WHERE  │ /applications → application detail                     │
+│ WHY    │ A learner submitted via the portal and selected        │
+│        │ "Hospitality and Tourism" as their cluster. However,   │
+│        │ the school later decided NOT to offer this cluster     │
+│        │ due to insufficient kitchen facilities.                │
+│ POLICY │ DM 012, s. 2026 — schools offer only clusters they    │
+│        │ are equipped to deliver. Learners whose preferred      │
+│        │ cluster is unavailable may: (a) choose another offered │
+│        │ cluster, or (b) transfer to a school that offers it.   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Application detail:**
+```
+Grade Level :  Grade 11
+SHS Track   :  TechPro
+Elective    :  Hospitality and Tourism   ⚠ NOT offered at HNHS
+```
+*(System flags this with a warning banner: "Selected cluster is not configured for this school.")*
+
+**Registrar's options:**
+
+**Option A — Contact parent, offer alternative cluster:**
+1. Registrar calls or emails the parent.
+2. Parent agrees to switch to ICT cluster (also TechPro, but offered at HNHS).
+3. Registrar edits the application: changes `strandId` to the ICT cluster record.
+4. Approves and assigns to Grade 11 – ICT-A.
+
+**Option B — Reject with guidance to transfer:**
+1. Registrar clicks Reject.
+2. Rejection reason: *"The Hospitality and Tourism cluster is not offered at Hinigaran NHS for SY 2026–2027. We encourage the learner to apply at [nearest school with HospTour] or to select an available cluster: ICT Support and Computer Programming Technologies."*
+3. Parent receives the rejection email with clear instructions.
+
+> **Note:** Per DO 017, s. 2025, rejections must never be punitive. The reason must always be actionable and constructive. Option A (contact and offer alternative) is the preferred approach before resorting to rejection.
+
+---
+
+## SCENE A.7 — Checking the Dashboard: Dual-Policy Enrollment Summary
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ WHEN   │ Any time during SY 2026–2027                           │
+│ WHERE  │ /dashboard                                              │
+│ WHY    │ The school head wants a breakdown of Grade 11          │
+│        │ enrollment by track and cluster, plus the Grade 12     │
+│        │ old-strand breakdown                                    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Dashboard — SHS breakdown panel (proposed addition):**
+
+```
+SHS ENROLLMENT BREAKDOWN                          SY 2026–2027
+
+  GRADE 11 — Strengthened SHS Curriculum (DM 012, s. 2026)
+  ┌──────────────────┬──────────────────┬───────────┬──────────┐
+  │  Track           │  Cluster         │  Enrolled │  Section │
+  ├──────────────────┼──────────────────┼───────────┼──────────┤
+  │  Academic        │  STEM            │  42       │  STEM-A  │
+  │  Academic        │  Arts/Soc/Hum    │  38       │  ArSocHum│
+  │  Academic        │  Business & Ent. │  35       │  BusEnt-A│
+  │  TechPro         │  ICT             │  44       │  ICT-A   │
+  │  TechPro         │  Hospitality     │  39       │  HospTour│
+  ├──────────────────┼──────────────────┼───────────┼──────────┤
+  │  GRADE 11 TOTAL  │                  │  198      │          │
+  └──────────────────┴──────────────────┴───────────┴──────────┘
+
+  GRADE 12 — Old Strand-Based Curriculum (transition year)
+  ┌──────────────────┬───────────┬──────────┐
+  │  Strand          │  Enrolled │  Section │
+  ├──────────────────┼───────────┼──────────┤
+  │  STEM            │  44       │  STEM-A  │
+  │  ABM             │  40       │  ABM-A   │
+  │  HUMSS           │  45       │  HUMSS-A │
+  │  GAS             │  38       │  GAS-A   │
+  ├──────────────────┼───────────┼──────────┤
+  │  GRADE 12 TOTAL  │  167      │          │
+  └──────────────────┴───────────┴──────────┘
+```
+
+**Registrar uses this view to:**
+- Report to the school head how many learners chose Academic vs. TechPro track.
+- Identify if any cluster sections are under-enrolled (possible consolidation).
+- Prepare data for the SDO's SHS curriculum implementation monitoring report.
+
+---
+
+## APPENDIX E — Updated Appendix D (Quick Grade-Level Reference — DM 012 Revised)
+
+The original Appendix D is updated below to reflect the dual-policy SHS landscape:
+
+| Grade | Phase 1 Required? | Document | Phase 2 Action | Program Declaration |
+|---|---|---|---|---|
+| **Grade 7** | ✅ Yes | BEEF + PSA BC + Grade 6 SF9 | Confirm + section | None (JHS) |
+| **Grade 8** | ❌ Pre-registered | Confirmation Slip (Annex C) | Section assign | None |
+| **Grade 9** | ❌ Pre-registered | Confirmation Slip (Annex C) | Section assign | None |
+| **Grade 10** | ❌ Pre-registered | Confirmation Slip (Annex C) | Section assign | None |
+| **Grade 11 (NEW)** | ✅ Yes | BEEF + PSA BC + Grade 10 SF9 | Confirm + track/cluster section | **Track** (Academic/TechPro) + **Elective Cluster** — per DM 012, s. 2026 |
+| **Grade 12 (OLD)** | ❌ Pre-registered | Confirmation Slip (Annex C) | Section assign | **Strand** (STEM/ABM/HUMSS/GAS) continues — old system |
+| **Transferee G11** | ✅ During Phase 1 | BEEF + SF9 + LRN | Confirm + section | Track + Cluster (if from a school already on Strengthened SHS) OR from Old system assessment |
+| **Transferee G12** | ✅ During Phase 1 | BEEF + SF9 + LRN | Confirm + section | **Old strand** (Grade 12 does not shift to new system mid-stream) |
+
+---
+
+*Addendum to Registrar Storyboard Workflow*
+*Based on: DepEd Memorandum No. 012, s. 2026 — Full Implementation of the Strengthened Senior High School Curriculum in SY 2026–2027*
+*Source: https://www.deped.gov.ph/2026/02/27/february-27-2026-dm-012-s-2026-full-implementation-of-the-strengthened-senior-high-school-curriculum-in-school-year-2026-2027/*
+*All prior storyboard scenes remain valid. These scenes are additive — covering Grade 11 Strengthened SHS and dual-policy Grade 12 workflows.*

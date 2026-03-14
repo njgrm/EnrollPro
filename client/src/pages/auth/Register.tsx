@@ -4,6 +4,8 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { sileo } from "sileo";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { motion } from "motion/react";
 import api from "@/api/axiosInstance";
 import { useAuthStore } from "@/stores/authStore";
 import { useSettingsStore } from "@/stores/settingsStore";
@@ -84,19 +86,6 @@ export default function Register() {
           --brand-light: color-mix(in srgb, var(--brand), white 15%);
         }
 
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-
-        .animate-fade-up { animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
-        .delay-100 { animation-delay: 0.1s; }
-        .delay-200 { animation-delay: 0.2s; }
-        .delay-300 { animation-delay: 0.3s; }
-        .delay-400 { animation-delay: 0.4s; }
-        .delay-500 { animation-delay: 0.5s; }
-        .delay-600 { animation-delay: 0.6s; }
-
         .focus-brand:focus {
           border-color: var(--brand) !important;
           box-shadow: 0 0 0 4px hsl(var(--accent) / 0.12) !important;
@@ -144,7 +133,10 @@ export default function Register() {
           }}
         />
 
-        <div className="relative z-10 flex flex-col items-center gap-8 animate-fade-up">
+        <motion.div 
+          className="relative z-10 flex flex-col items-center gap-8"
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        >
           <div 
             className="p-4 rounded-[2.5rem] backdrop-blur-md border shadow-2xl overflow-hidden size-32 flex items-center justify-center"
             style={{ 
@@ -176,7 +168,7 @@ export default function Register() {
               Enrollment Management System
             </p>
           </div>
-        </div>
+        </motion.div>
 
         {/* Floating accents */}
         <div 
@@ -209,19 +201,22 @@ export default function Register() {
           <div className="w-full max-w-105 mx-auto py-4">
             
             {/* Header */}
-            <header className="mb-6 animate-fade-up delay-100">
+            <motion.header 
+              className="mb-6"
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }}
+            >
               <h1 className="text-3xl font-bold text-[#111] leading-tight tracking-tight mb-1">
                 Create Admin Account
               </h1>
               <p className="text-gray-500 text-base">
                 Join your school platform
               </p>
-            </header>
+            </motion.header>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-3.5">
               
               {/* Name Field */}
-              <div className="animate-fade-up delay-200">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }}>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                   Full Name
                 </label>
@@ -235,10 +230,10 @@ export default function Register() {
                 {errors.name && (
                   <p className="mt-1 text-[10px] font-medium text-red-500">{errors.name.message}</p>
                 )}
-              </div>
+              </motion.div>
 
               {/* Email Field */}
-              <div className="animate-fade-up delay-300">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.3 }}>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                   Email Address
                 </label>
@@ -253,10 +248,10 @@ export default function Register() {
                 {errors.email && (
                   <p className="mt-1 text-[10px] font-medium text-red-500">{errors.email.message}</p>
                 )}
-              </div>
+              </motion.div>
 
               {/* Password Field */}
-              <div className="animate-fade-up delay-400">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.4 }}>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                   Password
                 </label>
@@ -280,10 +275,10 @@ export default function Register() {
                 {errors.password && (
                   <p className="mt-1 text-[10px] font-medium text-red-500">{errors.password.message}</p>
                 )}
-              </div>
+              </motion.div>
 
               {/* Confirm Password Field */}
-              <div className="animate-fade-up delay-500">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.5 }}>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                   Confirm Password
                 </label>
@@ -298,40 +293,41 @@ export default function Register() {
                 {errors.confirmPassword && (
                   <p className="mt-1 text-[10px] font-medium text-red-500">{errors.confirmPassword.message}</p>
                 )}
-              </div>
+              </motion.div>
 
               {/* Submit Button */}
-              <button
+              <motion.button
+                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.6 }}
                 type="submit"
                 disabled={loading}
-                className="btn-brand animate-fade-up delay-600 w-full h-11 rounded-xl text-base font-bold tracking-tight cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed mt-2 flex items-center justify-center gap-2"
+                className="btn-brand w-full h-11 rounded-lg text-base font-bold tracking-tight cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed mt-2 flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" style={{ color: "var(--brand-foreground)" }}>
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
+                    <Loader2 className="animate-spin h-4 w-4" style={{ color: "var(--brand-foreground)" }} />
                     Creating account...
                   </>
                 ) : "Create Account"}
-              </button>
+              </motion.button>
 
               {/* Login Link */}
-              <div className="text-center pt-2 animate-fade-up delay-600">
+              <motion.div 
+                className="text-center pt-2"
+                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.6 }}
+              >
                 <p className="text-gray-500 text-sm font-medium">
                   Already have an account?{" "}
                   <Link to="/login" className="text-(--brand-link) font-bold hover:underline underline-offset-4">
                     Sign in here
                   </Link>
                 </p>
-              </div>
+              </motion.div>
             </form>
           </div>
         </div>
 
         {/* Footer */}
-        <footer className="px-8 sm:px-16 lg:px-20 xl:px-24 py-6 flex flex-col sm:flex-row justify-between items-center gap-2 border-t border-gray-100">
+        <footer className="px-8 sm:px-16 lg:px-20 xl:px-24 py-6 flex flex-col sm:row justify-between items-center gap-2 border-t border-gray-100">
            <span className="text-xs text-gray-400 font-medium order-2 sm:order-1">
              © 2026 {schoolName}
            </span>
@@ -355,26 +351,6 @@ function LogoMark({ color = "#851414", size = 48 }) {
       <rect x="4"  y="26" width="18" height="18" rx="4" fill={color} opacity="0.45" />
       <rect x="34" y="34" width="10" height="10" rx="2"   fill={color} opacity="0.95" />
       <rect x="26" y="26" width="6"  height="6"  rx="1.5" fill={color} opacity="0.70" />
-    </svg>
-  );
-}
-
-/* ── Icon Components ── */
-function Eye() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-      <circle cx="12" cy="12" r="3"/>
-    </svg>
-  );
-}
-
-function EyeOff() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-      <line x1="1" y1="1" x2="23" y2="23"/>
     </svg>
   );
 }

@@ -187,6 +187,7 @@ export default function SectionsTab() {
       </Card>
 
       {/* Sections grouped by grade level */}
+      <div className="grid gap-6 md:grid-cols-2">
       {groups.map((g) => (
         <Card key={g.gradeLevelId}>
           <CardHeader>
@@ -234,6 +235,7 @@ export default function SectionsTab() {
           </CardContent>
         </Card>
       ))}
+      </div>
 
       {/* Add Section Dialog */}
       <Dialog open={showAdd} onOpenChange={setShowAdd}>

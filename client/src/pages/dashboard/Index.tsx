@@ -96,7 +96,7 @@ export default function Dashboard() {
             <CardTitle className="text-xl font-semibold">Enrollment by Grade Level</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex h-[200px] items-center justify-center text-sm text-[hsl(var(--muted-foreground))]">
+            <div className="flex h-50 items-center justify-center text-sm text-[hsl(var(--muted-foreground))]">
               No enrollment data available yet.
             </div>
           </CardContent>
@@ -107,7 +107,7 @@ export default function Dashboard() {
             <CardTitle className="text-xl font-semibold">Application Status</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex h-[200px] items-center justify-center text-sm text-[hsl(var(--muted-foreground))]">
+            <div className="flex h-50 items-center justify-center text-sm text-[hsl(var(--muted-foreground))]">
               No application data available yet.
             </div>
           </CardContent>
@@ -120,7 +120,7 @@ export default function Dashboard() {
           <CardTitle className="text-xl font-semibold">Recent Activity</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex h-[100px] items-center justify-center text-sm text-[hsl(var(--muted-foreground))]">
+          <div className="flex h-50 items-center justify-center text-sm text-[hsl(var(--muted-foreground))]">
             No recent activity to display.
           </div>
         </CardContent>

@@ -1,20 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
+import { BookOpen, Layers } from 'lucide-react';
 import { sileo } from 'sileo';
-import { Plus, Trash2, GripVertical, BookOpen, Layers } from 'lucide-react';
 import api from '@/api/axiosInstance';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { toastApiError } from '@/hooks/useApiToast';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 
 interface GradeLevel {
   id: number;
@@ -29,8 +20,6 @@ interface Strand {
   applicableGradeLevelIds: number[];
 }
 
-import { ConfirmationModal } from '@/components/ui/confirmation-modal';
-
 export default function CurriculumTab() {
   const { activeAcademicYearId, viewingAcademicYearId } = useSettingsStore();
   const ayId = viewingAcademicYearId ?? activeAcademicYearId;
@@ -39,28 +28,9 @@ export default function CurriculumTab() {
   const [strands, setStrands] = useState<Strand[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Add grade level dialog
-  const [showAddGL, setShowAddGL] = useState(false);
-  const [glName, setGlName] = useState('');
-  const [addingGL, setAddingGL] = useState(false);
-
-  // Add strand dialog
-  const [showAddStrand, setShowAddStrand] = useState(false);
-  const [strandName, setStrandName] = useState('');
-  const [addingStrand, setAddingStrand] = useState(false);
-
   // Matrix dirty state
   const [matrixDirty, setMatrixDirty] = useState(false);
   const [savingMatrix, setSavingMatrix] = useState(false);
-
-  // Delete confirmation
-  const [deleteGLId, setDeleteGLId] = useState<number | null>(null);
-  const [deleteGLName, setDeleteGLName] = useState('');
-  const [deletingGL, setDeletingGL] = useState(false);
-
-  const [deleteStrandId, setDeleteStrandId] = useState<number | null>(null);
-  const [deleteStrandName, setDeleteStrandName] = useState('');
-  const [deletingStrand, setDeletingStrand] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!ayId) { setLoading(false); return; }
@@ -80,68 +50,6 @@ export default function CurriculumTab() {
   }, [ayId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
-
-  const handleAddGL = async () => {
-    if (!ayId || !glName.trim()) return;
-    setAddingGL(true);
-    try {
-      await api.post(`/curriculum/${ayId}/grade-levels`, { name: glName.trim() });
-      sileo.success({ title: 'Grade Level Added', description: glName.trim() });
-      setGlName('');
-      setShowAddGL(false);
-      fetchData();
-    } catch (err) {
-      toastApiError(err as never);
-    } finally {
-      setAddingGL(false);
-    }
-  };
-
-  const handleDeleteGL = async () => {
-    if (!deleteGLId) return;
-    setDeletingGL(true);
-    try {
-      await api.delete(`/curriculum/grade-levels/${deleteGLId}`);
-      sileo.success({ title: 'Deleted', description: deleteGLName });
-      setDeleteGLId(null);
-      fetchData();
-    } catch (err) {
-      toastApiError(err as never);
-    } finally {
-      setDeletingGL(false);
-    }
-  };
-
-  const handleAddStrand = async () => {
-    if (!ayId || !strandName.trim()) return;
-    setAddingStrand(true);
-    try {
-      await api.post(`/curriculum/${ayId}/strands`, { name: strandName.trim() });
-      sileo.success({ title: 'Strand Added', description: strandName.trim() });
-      setStrandName('');
-      setShowAddStrand(false);
-      fetchData();
-    } catch (err) {
-      toastApiError(err as never);
-    } finally {
-      setAddingStrand(false);
-    }
-  };
-
-  const handleDeleteStrand = async () => {
-    if (!deleteStrandId) return;
-    setDeletingStrand(true);
-    try {
-      await api.delete(`/curriculum/strands/${deleteStrandId}`);
-      sileo.success({ title: 'Deleted', description: deleteStrandName });
-      setDeleteStrandId(null);
-      fetchData();
-    } catch (err) {
-      toastApiError(err as never);
-    } finally {
-      setDeletingStrand(false);
-    }
-  };
 
   const toggleMatrixCell = (strandId: number, glId: number) => {
     setStrands((prev) =>
@@ -197,115 +105,75 @@ export default function CurriculumTab() {
       {/* Grade Levels */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <BookOpen className="h-5 w-5" />
-                Grade Levels
-              </CardTitle>
-              <CardDescription>Manage grade levels for the selected school year</CardDescription>
-            </div>
-            <Button size="sm" onClick={() => setShowAddGL(true)}>
-              <Plus className="mr-1 h-4 w-4" /> Add
-            </Button>
-          </div>
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <BookOpen className="h-5 w-5" />
+            Grade Levels
+          </CardTitle>
+          <CardDescription>Grade levels offered by the school</CardDescription>
         </CardHeader>
         <CardContent>
-          {gradeLevels.length === 0 ? (
-            <p className="text-sm text-[hsl(var(--muted-foreground))] text-center py-4">No grade levels. Add one to get started.</p>
-          ) : (
+          <div className="grid grid-cols-2 gap-4">
+            {/* Junior High School */}
             <div className="space-y-2">
-              {gradeLevels.map((gl) => (
-                <div
-                  key={gl.id}
-                  className="flex items-center gap-3 rounded-lg border border-[hsl(var(--border))] px-3 py-2"
-                >
-                  <GripVertical className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-                  <span className="flex-1 text-sm font-medium">{gl.name}</span>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">Junior High School</p>
+              {gradeLevels.filter((gl) => ['Grade 7','Grade 8','Grade 9','Grade 10'].includes(gl.name)).map((gl) => (
+                <div key={gl.id} className="flex items-center justify-between rounded-lg border border-[hsl(var(--border))] px-3 py-2">
+                  <span className="text-sm font-medium">{gl.name}</span>
                   <span className="text-xs text-[hsl(var(--muted-foreground))]">
                     {gl.sections.length} section{gl.sections.length !== 1 ? 's' : ''}
                   </span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 w-7 p-0 text-[hsl(var(--destructive))]"
-                    onClick={() => { setDeleteGLId(gl.id); setDeleteGLName(gl.name); }}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
                 </div>
               ))}
             </div>
-          )}
+            {/* Senior High School */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">Senior High School</p>
+              {gradeLevels.filter((gl) => ['Grade 11','Grade 12'].includes(gl.name)).map((gl) => (
+                <div key={gl.id} className="flex items-center justify-between rounded-lg border border-[hsl(var(--border))] px-3 py-2">
+                  <span className="text-sm font-medium">{gl.name}</span>
+                  <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                    {gl.sections.length} section{gl.sections.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         </CardContent>
       </Card>
 
       {/* Strands */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <Layers className="h-5 w-5" />
-                Strands / Tracks
-              </CardTitle>
-              <CardDescription>Define strands and assign them to applicable grade levels</CardDescription>
-            </div>
-            <Button size="sm" onClick={() => setShowAddStrand(true)}>
-              <Plus className="mr-1 h-4 w-4" /> Add
-            </Button>
-          </div>
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <Layers className="h-5 w-5" />
+            Strands / Tracks
+          </CardTitle>
+          <CardDescription>Strands offered by the school</CardDescription>
         </CardHeader>
         <CardContent>
-          {strands.length === 0 ? (
-            <p className="text-sm text-[hsl(var(--muted-foreground))] text-center py-4">No strands defined yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {strands.map((s) => (
-                <div
-                  key={s.id}
-                  className="flex items-center gap-3 rounded-lg border border-[hsl(var(--border))] px-3 py-2"
-                >
-                  <span className="flex-1 text-sm font-medium">{s.name}</span>
-                  <span className="text-xs text-[hsl(var(--muted-foreground))]">
-                    {s.applicableGradeLevelIds.length} grade{s.applicableGradeLevelIds.length !== 1 ? 's' : ''}
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 w-7 p-0 text-[hsl(var(--destructive))]"
-                    onClick={() => { setDeleteStrandId(s.id); setDeleteStrandName(s.name); }}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+          <div className="space-y-2">
+            {([
+              { acronym: 'STEM', full: 'Science, Technology, Engineering, and Mathematics' },
+              { acronym: 'ABM',  full: 'Accountancy, Business, and Management' },
+              { acronym: 'HUMSS', full: 'Humanities and Social Sciences' },
+              { acronym: 'GAS',  full: 'General Academic Strand' },
+            ] as const).map(({ acronym, full }) => {
+              const match = strands.find((s) => s.name === full);
+              return (
+                <div key={acronym} className="flex items-center gap-3 rounded-lg border border-[hsl(var(--border))] px-3 py-2">
+                  <span className="w-14 shrink-0 text-xs font-semibold text-[hsl(var(--muted-foreground))]">{acronym}</span>
+                  <span className="flex-1 text-sm font-medium">{full}</span>
+                  {match && (
+                    <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                      {match.applicableGradeLevelIds.length} grade{match.applicableGradeLevelIds.length !== 1 ? 's' : ''}
+                    </span>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
+              );
+            })}
+          </div>
         </CardContent>
       </Card>
-
-      {/* ... rest of the component (Matrix, Dialogs) ... */}
-
-      <ConfirmationModal
-        open={!!deleteGLId}
-        onOpenChange={(open) => !open && setDeleteGLId(null)}
-        title="Delete Grade Level"
-        description={`Are you sure you want to delete "${deleteGLName}"? This will also remove all sections under it.`}
-        confirmText="Delete"
-        loading={deletingGL}
-        onConfirm={handleDeleteGL}
-      />
-
-      <ConfirmationModal
-        open={!!deleteStrandId}
-        onOpenChange={(open) => !open && setDeleteStrandId(null)}
-        title="Delete Strand"
-        description={`Are you sure you want to delete the strand "${deleteStrandName}"?`}
-        confirmText="Delete"
-        loading={deletingStrand}
-        onConfirm={handleDeleteStrand}
-      />
 
       {/* Strand-to-Grade Matrix */}
       {strands.length > 0 && gradeLevels.length > 0 && (
@@ -361,42 +229,6 @@ export default function CurriculumTab() {
           </CardContent>
         </Card>
       )}
-
-      {/* Add Grade Level Dialog */}
-      <Dialog open={showAddGL} onOpenChange={setShowAddGL}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Add Grade Level</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label>Name</Label>
-            <Input placeholder="e.g. Grade 7" value={glName} onChange={(e) => setGlName(e.target.value)} />
-          </div>
-          <DialogFooter>
-            <Button onClick={handleAddGL} disabled={addingGL || !glName.trim()}>
-              {addingGL ? 'Adding...' : 'Add'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Strand Dialog */}
-      <Dialog open={showAddStrand} onOpenChange={setShowAddStrand}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Add Strand</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label>Name</Label>
-            <Input placeholder="e.g. STEM" value={strandName} onChange={(e) => setStrandName(e.target.value)} />
-          </div>
-          <DialogFooter>
-            <Button onClick={handleAddStrand} disabled={addingStrand || !strandName.trim()}>
-              {addingStrand ? 'Adding...' : 'Add'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

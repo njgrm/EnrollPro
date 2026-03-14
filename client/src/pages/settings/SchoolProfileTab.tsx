@@ -193,7 +193,7 @@ export default function SchoolProfileTab() {
                 className="hidden"
                 id="logo-upload"
               />
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 mt-4">
                 <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
                   <Upload className="mr-2 h-4 w-4" />
                   {uploading ? 'Uploading...' : 'Upload Logo'}

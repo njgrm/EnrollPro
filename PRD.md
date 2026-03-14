@@ -1324,3 +1324,294 @@ export const router = createBrowserRouter([
 *Package Manager: pnpm 10.x · All components: .tsx*
 *Prepared for: Claude Code Implementation*
 *School: Hinigaran National High School*
+
+---
+
+---
+
+## ADDENDUM — DM 012, s. 2026: Strengthened SHS Curriculum Integration
+### Document Version Addendum: PRD v2.2.1
+
+**Governing Memorandum:** DepEd Memorandum No. 012, s. 2026 — Full Implementation of the Strengthened Senior High School Curriculum in School Year 2026–2027
+**Issued:** February 27, 2026
+**Source:** https://www.deped.gov.ph/2026/02/27/february-27-2026-dm-012-s-2026-full-implementation-of-the-strengthened-senior-high-school-curriculum-in-school-year-2026-2027/
+**PRD Impact:** Additive only — no existing module is removed. The `Strand` model, API, and UI are extended to support the new Strengthened SHS Curriculum alongside the old strand-based system for Grade 12.
+
+---
+
+### Policy Context
+
+Starting SY 2026–2027, DepEd replaces the traditional SHS strand system with a **two-track, elective-cluster** framework for **incoming Grade 11 learners only**. Grade 12 learners in SY 2026–2027 remain on the old strand-based curriculum.
+
+The system must therefore support **both policies simultaneously** within the same academic year.
+
+| Grade Level | Active Policy | Curriculum Unit Declared |
+|---|---|---|
+| Grade 11 (new entrant) | DM 012, s. 2026 — Strengthened SHS | **Track** (Academic or TechPro) + Elective Cluster |
+| Grade 12 (continuing) | Old K–12 SHS strand framework | **Strand** (STEM, ABM, HUMSS, GAS) |
+| Grades 7–10 | DO 017, s. 2025 — JHS unchanged | N/A |
+
+---
+
+### A.1 — Database Schema Extension
+
+No new Prisma models are required. The existing `Strand` model is extended semantically:
+
+```prisma
+// ADDENDUM to server/prisma/schema.prisma
+// Extend the Strand model with two new fields to support DM 012, s. 2026
+
+model Strand {
+  id                      Int          @id @default(autoincrement())
+  name                    String       // e.g. "STEM", "ICT Support and Computer Programming"
+  applicableGradeLevelIds Int[]        // Array of GradeLevel IDs
+  academicYearId          Int
+  createdAt               DateTime     @default(now())
+
+  // ── DM 012, s. 2026 additions ──────────────────────────────
+  curriculumType          CurriculumType @default(OLD_STRAND)
+  // OLD_STRAND   : traditional strand (STEM, ABM, HUMSS, GAS) — for Grade 12 in SY 2026–2027
+  // ELECTIVE_CLUSTER : new cluster under Strengthened SHS — for Grade 11 SY 2026–2027+
+  // TRACK           : top-level track declaration (Academic, TechPro) — not selectable as a section unit
+
+  track                   SHSTrack?
+  // ACADEMIC   : applies to all Academic elective clusters
+  // TECHPRO    : applies to all TechPro elective clusters
+  // null       : for old strands (Grade 12 legacy) or JHS (not applicable)
+  // ────────────────────────────────────────────────────────────
+
+  academicYear            AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  applicants              Applicant[]
+}
+
+enum CurriculumType {
+  OLD_STRAND        // STEM, ABM, HUMSS, GAS — Grade 12 SY 2026–2027
+  ELECTIVE_CLUSTER  // New Strengthened SHS clusters — Grade 11 SY 2026–2027+
+}
+
+enum SHSTrack {
+  ACADEMIC
+  TECHPRO
+}
+```
+
+**The `Applicant` model requires one additional field:**
+
+```prisma
+// ADDENDUM to model Applicant in server/prisma/schema.prisma
+
+model Applicant {
+  // ... all existing fields unchanged ...
+
+  // ── DM 012, s. 2026 addition ───────────────────────────────
+  shsTrack    SHSTrack?   // ACADEMIC or TECHPRO — null for JHS and Grade 12 legacy
+  // ────────────────────────────────────────────────────────────
+}
+```
+
+---
+
+### A.2 — Online Admission Portal Updates (§6.1 Extension)
+
+**Route:** `/apply` — the admission form's Grade 11 enrollment preference step changes.
+
+#### Old behavior (Grade 11):
+```
+Grade Level: [Grade 11 ▾]
+Strand:      [STEM ▾]  ← single dropdown from Strand table
+```
+
+#### New behavior (Grade 11) — SY 2026–2027+:
+```
+Grade Level: [Grade 11 ▾]
+
+SHS Track: *
+  ○  Academic            (for higher education pathways)
+  ○  Technical-Professional (TechPro)   (for employment, TESDA, entrepreneurship)
+
+Preferred Elective Cluster: *   ← dynamically filtered by selected Track
+  [ STEM (Academic)                             ▾ ]
+  (Options change based on Track selection above;
+   only clusters offered by this school are shown)
+```
+
+#### Implementation — React component logic:
+
+```tsx
+// client/src/pages/admission/Apply.tsx — Step 3 (Enrollment Preferences)
+
+// When grade level = Grade 11 AND academic year uses Strengthened SHS:
+<>
+  <RadioGroup name="shsTrack" required>
+    <RadioGroupItem value="ACADEMIC" label="Academic" />
+    <RadioGroupItem value="TECHPRO" label="Technical-Professional (TechPro)" />
+  </RadioGroup>
+
+  {/* Strand (now elective cluster) — filtered by track AND by what school offers */}
+  {shsTrack && (
+    <Select
+      name="strandId"
+      label="Preferred Elective Cluster *"
+      options={clusters.filter(c => c.track === shsTrack && c.curriculumType === 'ELECTIVE_CLUSTER')}
+      placeholder="Select your preferred elective cluster"
+    />
+  )}
+</>
+
+// When grade level = Grade 12 (old strand system):
+<Select
+  name="strandId"
+  label="Strand *"
+  options={strands.filter(s => s.curriculumType === 'OLD_STRAND')}
+  placeholder="Select your strand"
+/>
+
+// When grade level = Grade 7–10: Strand/Cluster field hidden entirely
+```
+
+#### API changes for the public portal:
+
+The existing endpoint `GET /api/strands?gradeLevelId=` is extended with an optional filter:
+
+```
+GET /api/strands?gradeLevelId={id}&track=ACADEMIC
+GET /api/strands?gradeLevelId={id}&track=TECHPRO
+GET /api/strands?gradeLevelId={id}  ← returns all (for Grade 12 old strands)
+```
+
+Response shape (unchanged, new fields added):
+```json
+[
+  {
+    "id": 5,
+    "name": "STEM",
+    "curriculumType": "ELECTIVE_CLUSTER",
+    "track": "ACADEMIC",
+    "applicableGradeLevelIds": [5]
+  },
+  {
+    "id": 6,
+    "name": "ICT Support and Computer Programming Technologies",
+    "curriculumType": "ELECTIVE_CLUSTER",
+    "track": "TECHPRO",
+    "applicableGradeLevelIds": [5]
+  }
+]
+```
+
+---
+
+### A.3 — Settings Module Updates (§6.4 Extension — Tab 3: Grade Levels & Strands)
+
+**Tab 3** is extended to support configuring both curriculum types:
+
+#### Updated UI — Strands / Clusters Panel
+
+```
+SETTINGS > Grade Levels & Strands > Strands & Clusters
+
+  Academic Year Context: [ SY 2026–2027 ▾ ]
+
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  FOR GRADE 11 — Strengthened SHS (DM 012, s. 2026)            │
+  │  Elective Clusters offered by this school:                     │
+  │                                                                │
+  │  ACADEMIC TRACK                                                │
+  │  ✓ STEM (Science, Technology, Engineering & Mathematics)       │
+  │  ✓ Arts, Social Sciences, and Humanities                       │
+  │  ✓ Business and Entrepreneurship                               │
+  │  ☐ Sports, Health, and Wellness                                │
+  │  ☐ Field Experience                                            │
+  │                                                                │
+  │  TECHPRO TRACK                                                 │
+  │  ✓ ICT Support and Computer Programming Technologies           │
+  │  ✓ Hospitality and Tourism                                     │
+  │  ☐ Construction and Building Technologies                      │
+  │  ☐ Automotive and Small Engine Technologies                    │
+  │  ☐ Industrial Technologies                                     │
+  │  ☐ Agri-Fishery Business and Food Innovation                   │
+  │  ☐ Artisanry and Creative Enterprise                           │
+  │  ☐ Aesthetic, Wellness, and Human Care                         │
+  │  ☐ Creative Arts and Design Technologies                       │
+  │  ☐ Maritime Transport                                          │
+  │                                              [Save Clusters]   │
+  ├─────────────────────────────────────────────────────────────────┤
+  │  FOR GRADE 12 — Old Strand-Based Curriculum (SY 2026–2027)    │
+  │  (Grade 12 continues under the existing strand framework)      │
+  │                                                                │
+  │  Strand Name     │  Applicable Grades  │  Actions             │
+  │  ────────────────┼─────────────────────┼────────────────────── │
+  │  STEM            │  Grade 12           │  [Edit]  [Delete]    │
+  │  ABM             │  Grade 12           │  [Edit]  [Delete]    │
+  │  HUMSS           │  Grade 12           │  [Edit]  [Delete]    │
+  │  GAS             │  Grade 12           │  [Edit]  [Delete]    │
+  │                                        [+ Add Old Strand]     │
+  └─────────────────────────────────────────────────────────────────┘
+```
+
+> **Instruction for Claude Code:** The Grade 11 cluster list is rendered from the master DM 012 cluster list (hardcoded in the frontend as a constant — DepEd defines these, they are not user-created). The Registrar checks/unchecks which ones the school offers. Each checked cluster is saved as a `Strand` record with `curriculumType: 'ELECTIVE_CLUSTER'` and the corresponding `track`. The Grade 12 old strands remain fully CRUD-able as before.
+
+---
+
+### A.4 — Zod Validator Update (§2 Extension — Input Validation)
+
+```ts
+// server/src/validators/application.validator.ts — ADDENDUM
+
+import { z } from 'zod';
+
+// Existing Grade 11 applicant validator must now accept shsTrack
+export const applicationSchema = z.object({
+  // ... all existing fields unchanged ...
+
+  // SHS-specific — required when gradeLevelId maps to Grade 11 or 12
+  strandId:   z.number().int().positive().optional(),
+  shsTrack:   z.enum(['ACADEMIC', 'TECHPRO']).optional(),
+
+}).superRefine((data, ctx) => {
+  // If applicant is Grade 11 under Strengthened SHS: shsTrack required
+  // If applicant is Grade 12 (old): strandId required, shsTrack not applicable
+  // If applicant is Grade 7–10: neither required
+  // (grade level to curriculum type mapping is resolved by the service layer
+  //  using the active AcademicYear's SHS curriculum config)
+});
+```
+
+---
+
+### A.5 — New Acceptance Criteria (Appended to §11)
+
+| # | Acceptance Test |
+|---|---|
+| AC-25 | When Grade 11 is selected on the admission portal for SY 2026–2027, the form shows a **Track** selector (Academic / TechPro) instead of a Strand dropdown. |
+| AC-26 | After selecting **Academic**, the Elective Cluster dropdown shows only Academic track clusters offered by the school (no TechPro clusters visible). |
+| AC-27 | After selecting **TechPro**, the Elective Cluster dropdown shows only TechPro clusters offered by the school. |
+| AC-28 | When **Grade 12** is selected on the admission portal (transferee or walk-in), the form shows the old **Strand** selector (STEM, ABM, HUMSS, GAS) — not the new cluster system. |
+| AC-29 | Grade 7–10 selections on the form show **neither** a Track nor a Strand/Cluster field. |
+| AC-30 | In Settings → Grade Levels & Strands, the registrar can enable/disable which elective clusters the school offers for Grade 11 using a checklist. Changes immediately reflect in the admission portal dropdown. |
+| AC-31 | The `Strand` model in the database correctly stores both old strands (`curriculumType: OLD_STRAND`) and new elective clusters (`curriculumType: ELECTIVE_CLUSTER`) as separate record sets under the same academic year. |
+| AC-32 | An applicant's approval email correctly labels: "Track: Academic · Elective Cluster: STEM" (for Grade 11 new system) or "Strand: HUMSS" (for Grade 12 legacy) — never mixing the two terminologies. |
+
+---
+
+### A.6 — Terminology Reference (Old vs. New)
+
+This reference prevents terminology inconsistency across the UI, emails, and audit log descriptions:
+
+| Context | Old Terminology (Grade 12 / JHS) | New Terminology (Grade 11, SY 2026–2027+) |
+|---|---|---|
+| Top-level program grouping | Track (Academic, TVL, Sports, Arts & Design) | **Track** (Academic, TechPro) |
+| Specific program within track | **Strand** (STEM, ABM, HUMSS, GAS) | **Elective Cluster** (STEM, ICT, HospTour, etc.) |
+| Field on BEEF form | Strand | Track + Preferred Elective Cluster |
+| Field on admission portal | Strand dropdown | Track radio + Elective Cluster dropdown |
+| Section naming example | Grade 11 – STEM-A | Grade 11 – Academic-A OR Grade 11 – STEM-A (cluster-focused) |
+| Email to parent | "Strand: STEM" | "Track: Academic · Cluster: STEM" |
+| Audit log description | "assigned to Grade 11 STEM-A" | "assigned to Grade 11 Academic-A (STEM cluster)" |
+| Settings label | Strands | Strands (Grade 12) / Elective Clusters (Grade 11) |
+
+---
+
+*Addendum to PRD v2.2.0 — Version now: PRD v2.2.1*
+*Added: DM 012, s. 2026 — Strengthened SHS Curriculum integration*
+*Source: https://www.deped.gov.ph/2026/02/27/february-27-2026-dm-012-s-2026-full-implementation-of-the-strengthened-senior-high-school-curriculum-in-school-year-2026-2027/*
+*All prior PRD sections remain valid. This addendum layers on top of the existing specification.*

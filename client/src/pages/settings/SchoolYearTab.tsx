@@ -278,7 +278,7 @@ export default function AcademicYearTab() {
           <CardHeader className="bg-[hsl(var(--muted))] border-3 border-[hsl(var(--border))] rounded-tl-lg rounded-t-lg">
             <CardTitle className="flex items-center gap-2 text-xl">
               <CalendarIcon className="h-5 w-5" />
-              Smart Setup: {editYearLabel}
+              Smart Setup: School Year {editYearLabel}
             </CardTitle>
             <CardDescription>
               We've pre-filled the fields based on DepEd's calendar. You can adjust them if needed.
@@ -371,7 +371,7 @@ export default function AcademicYearTab() {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Badge variant="success" className="animate-pulse">● ACTIVE</Badge>
-                <span className="text-xl font-bold">{activeYear.yearLabel}</span>
+                <span className="text-xl font-bold">School Year {activeYear.yearLabel}</span>
               </div>
               <p className="text-sm text-[hsl(var(--muted-foreground))]">
                 Classes: {formatManilaDate(activeYear.classOpeningDate)} 
@@ -379,7 +379,7 @@ export default function AcademicYearTab() {
                 {formatManilaDate(activeYear.classEndDate)}
               </p>
               <p className="text-sm text-[hsl(var(--muted-foreground))]">
-                Enrolled: {activeYear._count.enrollments} students · Sections: {activeYear._count.gradeLevels /* close enough for summary */}
+                Enrolled: {activeYear._count.enrollments} students
               </p>
             </div>
             <div className="flex gap-2">

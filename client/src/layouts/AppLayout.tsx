@@ -78,7 +78,7 @@ function AYSwitcher() {
         <ChevronsUpDown className="size-3 opacity-50" />
       </Button>
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 min-w-[180px] rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--popover))] p-1 shadow-md">
+        <div className="absolute right-0 top-full z-50 mt-1 min-w-45 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--popover))] p-1 shadow-md">
           {years.map((y) => (
             <button
               key={y.id}
@@ -234,9 +234,12 @@ function AppSidebar() {
   );
 }
 
+import { motion, AnimatePresence } from 'motion/react';
+
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { selectedAccentHsl, colorScheme, accentForeground } = useSettingsStore();
   const accentHsl = selectedAccentHsl ?? (colorScheme as { accent_hsl?: string } | null)?.accent_hsl;
+  const location = useLocation();
 
   // Compute toast theme based on accent foreground
   // fg === '0 0% 100%' (white) means background is dark -> Sileo theme="light" (white text on dark bg)
@@ -264,7 +267,18 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
+        <AnimatePresence mode="wait">
+          <motion.main
+            key={location.pathname}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="flex-1 overflow-auto p-4 md:p-6"
+          >
+            {children}
+          </motion.main>
+        </AnimatePresence>
       </SidebarInset>
     </SidebarProvider>
   );
