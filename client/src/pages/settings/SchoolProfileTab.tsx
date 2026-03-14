@@ -277,7 +277,7 @@ export default function SchoolProfileTab() {
             <div className="flex flex-wrap gap-3">
               <Button size="sm">Primary Button</Button>
               <Button size="sm" variant="outline">Outline Button</Button>
-              <a href="#" onClick={(e) => e.preventDefault()} className="text-sm text-[hsl(var(--primary))] hover:underline">
+              <a href="#" onClick={(e) => e.preventDefault()} className="text-sm text-[hsl(var(--primary))] hover:underline pt-2">
                 Accent Link
               </a>
             </div>

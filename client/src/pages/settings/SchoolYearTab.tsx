@@ -274,8 +274,8 @@ export default function AcademicYearTab() {
   return (
     <div className="space-y-6">
       {!activeYear || showNextForm ? (
-        <Card className="border-[hsl(var(--primary))] shadow-sm">
-          <CardHeader className="bg-[hsl(var(--muted))] border-3 border-[hsl(var(--border))]">
+        <Card className="shadow-sm">
+          <CardHeader className="bg-[hsl(var(--muted))] border-3 border-[hsl(var(--border))] rounded-tl-lg rounded-t-lg">
             <CardTitle className="flex items-center gap-2 text-xl">
               <CalendarIcon className="h-5 w-5" />
               Smart Setup: {editYearLabel}
@@ -346,10 +346,21 @@ export default function AcademicYearTab() {
               </div>
             )}
 
-            <div className="flex justify-end gap-2">
+            <div className="flex items-center justify-end gap-2">
+              {activeYear && (
+                <Button
+                  variant="ghost"
+                  className="text-[hsl(var(--destructive))] mr-auto"
+                  onClick={() => { setDeleteId(activeYear.id); setDeleteLabel(activeYear.yearLabel); }}
+                  disabled={activeYear._count.enrollments > 0}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Active Year
+                </Button>
+              )}
               {activeYear && <Button variant="outline" onClick={() => setShowNextForm(false)}>Cancel</Button>}
               <Button onClick={handleActivateNext} disabled={creating || !editYearLabel.trim()}>
-                {creating ? 'Activating...' : 'Activate This Year'}
+                {creating ? 'Activating...' : 'Activate This School Year'}
               </Button>
             </div>
           </CardContent>
@@ -371,9 +382,14 @@ export default function AcademicYearTab() {
                 Enrolled: {activeYear._count.enrollments} students · Sections: {activeYear._count.gradeLevels /* close enough for summary */}
               </p>
             </div>
-            <Button onClick={() => setShowNextForm(true)}>
-              Prepare SY {defaults?.yearLabel} <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" className="text-[hsl(var(--destructive))]" onClick={() => { setDeleteId(activeYear.id); setDeleteLabel(activeYear.yearLabel); }} disabled={activeYear._count.enrollments > 0}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+              <Button onClick={() => setShowNextForm(true)}>
+                Prepare SY {defaults?.yearLabel} <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -393,17 +409,15 @@ export default function AcademicYearTab() {
                 <span className="text-[hsl(var(--muted-foreground))] hidden sm:inline">
                   {y._count.enrollments} Enrolled
                 </span>
-                {!y.isActive && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 w-8 p-0 text-[hsl(var(--destructive))]"
-                    onClick={() => { setDeleteId(y.id); setDeleteLabel(y.yearLabel); }}
-                    disabled={y._count.enrollments > 0}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 p-0 text-[hsl(var(--destructive))]"
+                  onClick={() => { setDeleteId(y.id); setDeleteLabel(y.yearLabel); }}
+                  disabled={y._count.enrollments > 0}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           ))}

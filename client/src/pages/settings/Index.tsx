@@ -1,7 +1,7 @@
 import { useSearchParams } from 'react-router';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import SchoolProfileTab from './SchoolProfileTab';
-import AcademicYearTab from './AcademicYearTab';
+import AcademicYearTab from './SchoolYearTab';
 import CurriculumTab from './CurriculumTab';
 import SectionsTab from './SectionsTab';
 import EnrollmentGateTab from './EnrollmentGateTab';
@@ -28,12 +28,12 @@ export default function Settings() {
         onValueChange={handleTabChange}
         className="w-full"
       >
-        <TabsList className="w-full flex flex-wrap h-auto gap-1">
-          <TabsTrigger value="profile" className="flex-1 min-w-[100px]">School Profile</TabsTrigger>
-          <TabsTrigger value="academic-year" className="flex-1 min-w-[100px]">School Year</TabsTrigger>
-          <TabsTrigger value="curriculum" className="flex-1 min-w-[100px]">Curriculum</TabsTrigger>
-          <TabsTrigger value="sections" className="flex-1 min-w-[100px]">Sections</TabsTrigger>
-          <TabsTrigger value="enrollment" className="flex-1 min-w-[100px]">Enrollment Gate</TabsTrigger>
+        <TabsList className="w-full flex flex-wrap h-auto gap-1 mb-4">
+          <TabsTrigger value="profile" className="flex-1 min-w-25">School Profile</TabsTrigger>
+          <TabsTrigger value="academic-year" className="flex-1 min-w-25">School Year</TabsTrigger>
+          <TabsTrigger value="curriculum" className="flex-1 min-w-25">Curriculum</TabsTrigger>
+          <TabsTrigger value="sections" className="flex-1 min-w-25">Sections</TabsTrigger>
+          <TabsTrigger value="enrollment" className="flex-1 min-w-25">Enrollment Gate</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile">

@@ -9,6 +9,36 @@ import {
 
 const MANILA_TIME_ZONE = 'Asia/Manila';
 
+const DEFAULT_GRADES = [
+  { name: 'Grade 7', displayOrder: 7 },
+  { name: 'Grade 8', displayOrder: 8 },
+  { name: 'Grade 9', displayOrder: 9 },
+  { name: 'Grade 10', displayOrder: 10 },
+  { name: 'Grade 11', displayOrder: 11 },
+  { name: 'Grade 12', displayOrder: 12 },
+];
+
+async function ensureDefaultGradeLevels(academicYearId: number) {
+  for (const grade of DEFAULT_GRADES) {
+    const existing = await prisma.gradeLevel.findFirst({
+      where: {
+        academicYearId,
+        name: grade.name,
+      },
+    });
+
+    if (!existing) {
+      await prisma.gradeLevel.create({
+        data: {
+          name: grade.name,
+          displayOrder: grade.displayOrder,
+          academicYearId,
+        },
+      });
+    }
+  }
+}
+
 function parseDateInput(value: unknown): Date | null {
   if (!value || typeof value !== 'string') {
     return null;
@@ -177,6 +207,10 @@ export async function createAcademicYear(req: Request, res: Response): Promise<v
     }
   }
 
+  // Ensure Grades 7-12 are available (baseline)
+  // This fills in standard grades if not cloned or if cloning was partial
+  await ensureDefaultGradeLevels(year.id);
+
   await auditLog({
     userId: req.user!.userId,
     actionType: 'AY_CREATED',
@@ -307,6 +341,9 @@ export async function transitionAcademicYear(req: Request, res: Response): Promi
       data: { status: 'ACTIVE', isActive: true },
     });
 
+    // Ensure Grades 7-12 are available immediately
+    await ensureDefaultGradeLevels(id);
+
     // Also update SchoolSettings
     const settings = await prisma.schoolSettings.findFirst();
     if (settings) {
@@ -362,17 +399,24 @@ export async function deleteAcademicYear(req: Request, res: Response): Promise<v
     return;
   }
 
-  if (year.status === 'ACTIVE') {
-    res.status(400).json({ message: 'Cannot delete the active school year' });
-    return;
-  }
-
   if (year._count.applicants > 0 || year._count.enrollments > 0) {
     res.status(400).json({ message: 'Cannot delete a school year with existing records' });
     return;
   }
 
+  const wasActive = year.status === 'ACTIVE' || year.isActive;
+
   await prisma.academicYear.delete({ where: { id } });
+
+  if (wasActive) {
+    const settings = await prisma.schoolSettings.findFirst();
+    if (settings && settings.activeAcademicYearId === id) {
+      await prisma.schoolSettings.update({
+        where: { id: settings.id },
+        data: { activeAcademicYearId: null },
+      });
+    }
+  }
 
   await auditLog({
     userId: req.user!.userId,

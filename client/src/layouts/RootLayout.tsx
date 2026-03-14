@@ -109,7 +109,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     });
 
     // Background stays white always
-    root.style.setProperty('--background', '0 0% 100%');
+    root.style.setProperty('--background', '0 0% 96%');
     root.style.setProperty('--card', '0 0% 100%');
   }, [colorScheme, selectedAccentHsl, setSettings]);
 

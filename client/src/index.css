@@ -43,7 +43,7 @@
 
 :root {
   /* ─── PERMANENT MAIN LAYER — never overridden by logo extraction ─── */
-  --background: 0 0% 100%;
+  --background: 0 0% 100%;  /* #F5F5F5 */
   --foreground: 222 47% 11%;
   --muted: 220 14% 96%;
   --muted-foreground: 215 16% 47%;
@@ -70,7 +70,7 @@
   --ring: var(--accent-ring);
   --radius: 0.5rem;
 
-  --sidebar-background: 0 0% 98%;
+  --sidebar-background: 0 0% 94%;  /* #EBEBEB */
   --sidebar-foreground: 222 47% 11%;
   --sidebar-primary: var(--accent);
   --sidebar-primary-foreground: var(--accent-foreground);

@@ -22,7 +22,7 @@ function Calendar({
         months: "flex flex-col sm:flex-row gap-4",
         month: "flex flex-col gap-4",
         // Caption / header
-        month_caption: "flex justify-center pt-1 items-center min-h-[28px]",
+        month_caption: "flex justify-center pt-1 items-center min-h-[28px] w-full",
         // In dropdown mode react-day-picker renders an aria-hidden caption label;
         // keep it visually hidden to avoid duplicated month/year text.
         caption_label: "sr-only",
@@ -49,7 +49,7 @@ function Calendar({
         ),
         // Selection / state modifiers (react-day-picker v9 names)
         selected:
-          "rounded-md bg-primary text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+          "rounded-md bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] focus:bg-[hsl(var(--accent))] focus:text-[hsl(var(--accent-foreground))]",
         today: "rounded-md bg-accent text-accent-foreground",
         outside: "text-muted-foreground opacity-50",
         disabled: "text-muted-foreground opacity-50 cursor-not-allowed",
@@ -59,10 +59,10 @@ function Calendar({
           "rounded-none bg-accent text-accent-foreground",
         hidden: "invisible",
         // Dropdown caption styles (captionLayout="dropdown" or "dropdown-buttons")
-        dropdowns: "flex items-center justify-center gap-2",
+        dropdowns: "flex items-center justify-center gap-2 w-full",
         dropdown_root: "relative inline-flex items-center",
         dropdown:
-          "h-8 appearance-none rounded-md border border-input bg-background py-1 pl-2 pr-6 text-sm font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1",
+          "h-8 appearance-none rounded-md border border-input bg-background py-1 pl-2 pr-6 text-sm font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 text-center",
         months_dropdown: "min-w-28",
         years_dropdown: "min-w-20",
         chevron: "h-3.5 w-3.5 opacity-60",

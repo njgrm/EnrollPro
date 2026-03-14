@@ -69,7 +69,7 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex bg-white font-['Instrument_Sans',sans-serif] w-full overflow-hidden">
+    <div className="min-h-screen flex bg-[hsl(var(--background))] font-['Instrument_Sans',sans-serif] w-full overflow-hidden">
       {/* Google Font import via style tag */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&display=swap');

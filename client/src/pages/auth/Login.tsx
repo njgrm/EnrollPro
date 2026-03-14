@@ -62,7 +62,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex bg-white font-['Instrument_Sans',sans-serif] w-full overflow-hidden">
+    <div className="min-h-screen flex bg-[hsl(var(--background))] font-['Instrument_Sans',sans-serif] w-full overflow-hidden">
       {/* Google Font import via style tag */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&display=swap');
@@ -185,7 +185,7 @@ export default function Login() {
       <div className="flex-1 lg:flex-none lg:w-135 xl:w-160 bg-white flex flex-col relative">
         
         {/* Mobile Logo / Brand */}
-        <div className="lg:hidden absolute top-8 left-8 flex items-center gap-3">
+        <div className="lg:hidden absolute top-8 left-1/2 -translate-x-1/2 flex flex-col items-center justify-center gap-3">
           {logoUrl ? (
             <img 
               src={`${API_BASE}${logoUrl}`} 
@@ -195,7 +195,7 @@ export default function Login() {
           ) : (
             <LogoMark color="hsl(var(--accent))" size={32} />
           )}
-          <span className="font-bold text-[#1a1a1a] tracking-tight">{schoolName}</span>
+          <div className="font-bold text-[#1a1a1a] tracking-tight">{schoolName}</div>
         </div>
 
         <div className="flex-1 flex flex-col justify-center px-8 sm:px-16 lg:px-20 xl:px-24">
