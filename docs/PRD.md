@@ -1615,3 +1615,146 @@ This reference prevents terminology inconsistency across the UI, emails, and aud
 *Added: DM 012, s. 2026 — Strengthened SHS Curriculum integration*
 *Source: https://www.deped.gov.ph/2026/02/27/february-27-2026-dm-012-s-2026-full-implementation-of-the-strengthened-senior-high-school-curriculum-in-school-year-2026-2027/*
 *All prior PRD sections remain valid. This addendum layers on top of the existing specification.*
+
+
+---
+
+---
+
+## ADDENDUM — System Administrator Role (PRD v2.3.0)
+
+**Document Version Update:** PRD v2.2.1 → v2.3.0
+**Full Specification:** See `SYSTEM_ADMIN_SPECIFICATION.md` for complete detail.
+
+---
+
+### Role Addition
+
+A third authenticated role `SYSTEM_ADMIN` is added to the system. This role is held by the school's IT coordinator or designated technical officer and is responsible for user account management, email delivery monitoring, and system health oversight.
+
+### Updated `Role` Enum
+
+```prisma
+enum Role {
+  REGISTRAR
+  TEACHER
+  SYSTEM_ADMIN   // ← new
+}
+```
+
+### Updated `User` Model (additions only)
+
+```prisma
+model User {
+  // ... all existing fields unchanged ...
+
+  // ── v2.3.0 additions ───────────────────────────────────
+  isActive        Boolean   @default(true)   // soft deactivation
+  lastLoginAt     DateTime?                  // updated on every successful login
+  mustChangePassword Boolean @default(false) // force PW change on first login
+  createdById     Int?                       // FK to the Admin who created this account
+
+  createdBy       User?  @relation("UserCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdUsers    User[] @relation("UserCreatedBy")
+  // ────────────────────────────────────────────────────────
+}
+```
+
+### New `EmailLog` Model
+
+```prisma
+model EmailLog {
+  id           Int          @id @default(autoincrement())
+  recipient    String
+  subject      String
+  trigger      EmailTrigger
+  status       EmailStatus  @default(PENDING)
+  applicantId  Int?
+  errorMessage String?
+  attemptedAt  DateTime     @default(now())
+  sentAt       DateTime?
+
+  applicant    Applicant?   @relation(fields: [applicantId], references: [id], onDelete: SetNull)
+}
+
+enum EmailTrigger {
+  APPLICATION_SUBMITTED
+  APPLICATION_APPROVED
+  APPLICATION_REJECTED
+}
+
+enum EmailStatus {
+  PENDING
+  SENT
+  FAILED
+}
+```
+
+### New Admin-Only Frontend Routes
+
+```tsx
+// Added to client/src/router/index.tsx
+
+{
+  element: <ProtectedRoute allowedRoles={['SYSTEM_ADMIN']} />,
+  children: [
+    { path: '/admin/users',      element: <AppLayout><AdminUsers /></AppLayout> },
+    { path: '/admin/email-logs', element: <AppLayout><AdminEmailLogs /></AppLayout> },
+    { path: '/admin/system',     element: <AppLayout><AdminSystemHealth /></AppLayout> },
+  ],
+},
+```
+
+### New Admin API Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/admin/users` | Paginated user list with role and status filters |
+| `POST` | `/admin/users` | Create REGISTRAR or TEACHER account |
+| `PUT` | `/admin/users/:id` | Update name, email, or role |
+| `PATCH` | `/admin/users/:id/deactivate` | Soft-deactivate — sets `isActive = false` |
+| `PATCH` | `/admin/users/:id/reactivate` | Re-enable — sets `isActive = true` |
+| `PATCH` | `/admin/users/:id/reset-password` | Admin-initiated password reset |
+| `GET` | `/admin/email-logs` | Paginated email delivery log |
+| `GET` | `/admin/email-logs/:id` | Single email log with full error message |
+| `PATCH` | `/admin/email-logs/:id/resend` | Manually resend a failed email |
+| `GET` | `/admin/email-logs/export` | CSV export of filtered email logs |
+| `GET` | `/admin/system/health` | DB, email, storage, server info, record counts |
+| `GET` | `/admin/dashboard/stats` | Admin-only system panel data for Dashboard |
+
+### Updated `authenticate` Middleware
+
+The `authenticate` middleware must now check `User.isActive` on every request. An inactive user's request returns `HTTP 401` even with a valid JWT.
+
+### New Audit Log Action Types
+
+| Action Type | Trigger |
+|---|---|
+| `ADMIN_USER_CREATED` | Admin creates a new user account |
+| `ADMIN_USER_UPDATED` | Admin edits name, email, or role |
+| `ADMIN_USER_DEACTIVATED` | Admin deactivates an account |
+| `ADMIN_USER_REACTIVATED` | Admin reactivates an account |
+| `ADMIN_PASSWORD_RESET` | Admin resets a user's password |
+| `ADMIN_EMAIL_RESENT` | Admin manually resends a failed email |
+
+`ADMIN_*` action types are filtered out of the Registrar's audit log response. Only `SYSTEM_ADMIN` sees them.
+
+### First Admin Account — Seeder
+
+The `SYSTEM_ADMIN` role cannot be assigned through the API or UI. The first Admin account is created via the Prisma seed script:
+
+```bash
+# server/
+pnpm prisma db seed
+```
+
+See `SYSTEM_ADMIN_SPECIFICATION.md §13` for full seeder code and environment variable configuration.
+
+### New Acceptance Criteria: AC-33 through AC-48
+
+See `SYSTEM_ADMIN_SPECIFICATION.md §12` for the full list of 16 new acceptance criteria covering Admin login, user management, email logs, system health, audit log visibility rules, and password enforcement.
+
+---
+
+*PRD updated to v2.3.0 — System Admin role added*
+*Full specification: SYSTEM_ADMIN_SPECIFICATION.md*

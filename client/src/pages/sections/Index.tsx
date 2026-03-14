@@ -7,7 +7,7 @@ export default function Sections() {
           Manage grade level sections and capacity
         </p>
       </div>
-      <div className="flex h-[300px] items-center justify-center rounded-lg border border-dashed border-[hsl(var(--border))]">
+      <div className="flex h-75 items-center justify-center rounded-lg border border-dashed border-[hsl(var(--border))]">
         <p className="text-sm text-[hsl(var(--muted-foreground))]">
           Section management coming soon.
         </p>

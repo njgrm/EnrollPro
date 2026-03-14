@@ -11,6 +11,7 @@ import dashboardRoutes from './routes/dashboard.routes.js';
 import academicYearRoutes from './routes/academicYear.routes.js';
 import curriculumRoutes from './routes/curriculum.routes.js';
 import sectionsRoutes from './routes/sections.routes.js';
+import studentsRoutes from './routes/students.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -47,6 +48,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/academic-years', academicYearRoutes);
 app.use('/api/curriculum', curriculumRoutes);
 app.use('/api/sections', sectionsRoutes);
+app.use('/api/students', studentsRoutes);
 
 // Error handler
 app.use(errorHandler);

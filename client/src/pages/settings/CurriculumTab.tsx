@@ -141,36 +141,120 @@ export default function CurriculumTab() {
         </CardContent>
       </Card>
 
-      {/* Strands */}
+      {/* Strands / Tracks */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-xl">
             <Layers className="h-5 w-5" />
-            Strands / Tracks
+            Senior High School Curriculum
           </CardTitle>
-          <CardDescription>Strands offered by the school</CardDescription>
+          <CardDescription>
+            DepEd DM 012, s. 2026: Strengthened SHS Curriculum for Grade 11 · Old strands for Grade 12 (transition)
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            {([
-              { acronym: 'STEM', full: 'Science, Technology, Engineering, and Mathematics' },
-              { acronym: 'ABM',  full: 'Accountancy, Business, and Management' },
-              { acronym: 'HUMSS', full: 'Humanities and Social Sciences' },
-              { acronym: 'GAS',  full: 'General Academic Strand' },
-            ] as const).map(({ acronym, full }) => {
-              const match = strands.find((s) => s.name === full);
-              return (
-                <div key={acronym} className="flex items-center gap-3 rounded-lg border border-[hsl(var(--border))] px-3 py-2">
-                  <span className="w-14 shrink-0 text-xs font-semibold text-[hsl(var(--muted-foreground))]">{acronym}</span>
-                  <span className="flex-1 text-sm font-medium">{full}</span>
-                  {match && (
-                    <span className="text-xs text-[hsl(var(--muted-foreground))]">
-                      {match.applicableGradeLevelIds.length} grade{match.applicableGradeLevelIds.length !== 1 ? 's' : ''}
-                    </span>
-                  )}
+          <div className="space-y-6">
+            {/* Grade 11: Strengthened SHS Curriculum */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-[hsl(var(--foreground))]">Grade 11 — Strengthened SHS Curriculum</h3>
+                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-md font-medium">NEW (SY 2026–2027)</span>
+              </div>
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                Students choose a Track, then select Elective Clusters based on school offerings.
+              </p>
+              
+              {/* Tracks */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">Tracks (Fixed)</p>
+                {([
+                  { name: 'Academic', description: 'College-preparatory track' },
+                  { name: 'Technical-Professional (TechPro)', description: 'Skills-based track' },
+                ] as const).map(({ name, description }) => {
+                  const match = strands.find((s) => s.name === name);
+                  return (
+                    <div key={name} className="flex items-center gap-3 rounded-lg border border-[hsl(var(--border))] px-3 py-2 bg-[hsl(var(--muted))]">
+                      <span className="flex-1">
+                        <span className="text-sm font-medium block">{name}</span>
+                        <span className="text-xs text-[hsl(var(--muted-foreground))]">{description}</span>
+                      </span>
+                      {match && (
+                        <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                          {match.applicableGradeLevelIds.length} grade{match.applicableGradeLevelIds.length !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Elective Clusters */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[hsl(var(--muted-foreground))]">Elective Clusters (School-Specific)</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {([
+                    { acronym: 'STEM', full: 'Science, Technology, Engineering, and Mathematics', track: 'Academic' },
+                    { acronym: 'ASSH', full: 'Arts, Social Sciences, and Humanities', track: 'Academic' },
+                    { acronym: 'SHW', full: 'Sports, Health, and Wellness', track: 'Academic' },
+                    { acronym: 'BE', full: 'Business and Entrepreneurship', track: 'Academic' },
+                    { acronym: 'ICT', full: 'ICT Support and Computer Programming', track: 'TechPro' },
+                    { acronym: 'HT', full: 'Hospitality and Tourism', track: 'TechPro' },
+                  ] as const).map(({ acronym, full, track }) => {
+                    const match = strands.find((s) => s.name === full);
+                    return (
+                      <div key={acronym} className="flex items-center gap-2 rounded-lg border border-[hsl(var(--border))] px-3 py-2">
+                        <span className="w-12 shrink-0 text-xs font-semibold text-[hsl(var(--muted-foreground))]">{acronym}</span>
+                        <span className="flex-1 min-w-0">
+                          <span className="text-xs font-medium block truncate">{full}</span>
+                          <span className="text-[10px] text-[hsl(var(--muted-foreground))]">{track}</span>
+                        </span>
+                        {match && (
+                          <span className="text-xs text-[hsl(var(--muted-foreground))] whitespace-nowrap">
+                            {match.applicableGradeLevelIds.length} grade{match.applicableGradeLevelIds.length !== 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-[hsl(var(--border))]" />
+
+            {/* Grade 12: Old Strand-Based Curriculum */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-[hsl(var(--foreground))]">Grade 12 — Old Strand-Based Curriculum</h3>
+                <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-md font-medium">TRANSITION (SY 2026–2027 only)</span>
+              </div>
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                Grade 12 students continue under the old strand system for SY 2026–2027.
+              </p>
+              
+              <div className="space-y-2">
+                {([
+                  { acronym: 'STEM', full: 'Science, Technology, Engineering, and Mathematics' },
+                  { acronym: 'ABM',  full: 'Accountancy, Business, and Management' },
+                  { acronym: 'HUMSS', full: 'Humanities and Social Sciences' },
+                  { acronym: 'GAS',  full: 'General Academic Strand' },
+                ] as const).map(({ acronym, full }) => {
+                  const match = strands.find((s) => s.name === full);
+                  return (
+                    <div key={acronym} className="flex items-center gap-3 rounded-lg border border-[hsl(var(--border))] px-3 py-2">
+                      <span className="w-14 shrink-0 text-xs font-semibold text-[hsl(var(--muted-foreground))]">{acronym}</span>
+                      <span className="flex-1 text-sm font-medium">{full}</span>
+                      {match && (
+                        <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                          {match.applicableGradeLevelIds.length} grade{match.applicableGradeLevelIds.length !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
