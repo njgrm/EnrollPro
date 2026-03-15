@@ -224,7 +224,7 @@ export default function Register() {
                   type="text"
                   placeholder="Juan Dela Cruz"
                   required
-                  className="focus-brand w-full h-10 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 text-sm text-[#1a1a1a] placeholder-[#94a3b8] transition-all"
+                  className="focus-brand w-full h-10 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 text-sm text-[#1a1a1a] placeholder-[#94a3b8] transition-all"
                   {...register("name")}
                 />
                 {errors.name && (
@@ -242,7 +242,7 @@ export default function Register() {
                   placeholder="admin@school.edu.ph"
                   required
                   autoComplete="email"
-                  className="focus-brand w-full h-10 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 text-sm text-[#1a1a1a] placeholder-[#94a3b8] transition-all"
+                  className="focus-brand w-full h-10 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 text-sm text-[#1a1a1a] placeholder-[#94a3b8] transition-all"
                   {...register("email")}
                 />
                 {errors.email && (
@@ -261,7 +261,7 @@ export default function Register() {
                     placeholder="Minimum 8 characters"
                     required
                     autoComplete="new-password"
-                    className="focus-brand w-full h-10 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 pr-11 text-sm text-[#1a1a1a] placeholder-[#94a3b8] transition-all"
+                    className="focus-brand w-full h-10 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 pr-11 text-sm text-[#1a1a1a] placeholder-[#94a3b8] transition-all"
                     {...register("password")}
                   />
                   <button
@@ -287,7 +287,7 @@ export default function Register() {
                   placeholder="Repeat your password"
                   required
                   autoComplete="new-password"
-                  className="focus-brand w-full h-10 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 text-sm text-[#1a1a1a] placeholder-[#94a3b8] transition-all"
+                  className="focus-brand w-full h-10 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 text-sm text-[#1a1a1a] placeholder-[#94a3b8] transition-all"
                   {...register("confirmPassword")}
                 />
                 {errors.confirmPassword && (
@@ -326,17 +326,6 @@ export default function Register() {
           </div>
         </div>
 
-        {/* Footer */}
-        <footer className="px-8 sm:px-16 lg:px-20 xl:px-24 py-6 flex flex-col sm:row justify-between items-center gap-2 border-t border-gray-100">
-           <span className="text-xs text-gray-400 font-medium order-2 sm:order-1">
-             © 2026 {schoolName}
-           </span>
-           <div className="flex gap-4 order-1 sm:order-2">
-             <a href="#" className="text-xs font-bold text-gray-500 hover:text-(--brand-link) transition-colors">Privacy</a>
-             <a href="#" className="text-xs font-bold text-gray-500 hover:text-(--brand-link) transition-colors">Terms</a>
-             <a href="#" className="text-xs font-bold text-gray-500 hover:text-(--brand-link) transition-colors">Help</a>
-           </div>
-        </footer>
       </div>
     </div>
   );

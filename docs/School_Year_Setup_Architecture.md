@@ -571,3 +571,112 @@ The public admission form uses this to conditionally render:
 *Addendum prepared by: System Architect*
 *Based on: DepEd Memorandum No. 012, s. 2026 — Strengthened SHS Curriculum (February 27, 2026)*
 *Source: https://www.deped.gov.ph/2026/02/27/february-27-2026-dm-012-s-2026-full-implementation-of-the-strengthened-senior-high-school-curriculum-in-school-year-2026-2027/*
+
+
+---
+
+---
+
+## ADDENDUM — Special Curricular Program (SCP) Configuration in System Setup
+**Research Basis:** DepEd Memorandum No. 149, s. 2011 · PRD v2.4.0
+**Document Version:** School Year Setup Architecture v2.4.0
+
+---
+
+### SCP Configuration as Part of Annual School Year Setup
+
+The introduction of the two-path admission system (Open Admission + SCP) means the **Panel C — Curriculum Structure** and **Panel D — Sections & Capacity** in Settings must now also capture which SCPs the school offers, so the admission portal and registrar workflow can correctly route applicants.
+
+---
+
+### Updated Panel C — Curriculum Structure (SCP Addition)
+
+Panel C is extended to include an SCP configuration block alongside the existing Grade Level and Strand/Cluster management:
+
+```
+SETTINGS > Panel C: Curriculum Structure        Year: [ SY 2026–2027 ▾ ]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ GRADE LEVELS
+ (unchanged — Grade 7 through Grade 12 CRUD list)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ SPECIAL CURRICULAR PROGRAMS (JHS — Grade 7)
+ Check programs offered by this school:
+
+ ☑  Science, Technology & Engineering (STE)
+      Cut-off score: [ 75.0 ]   Exam date: [ Feb 22, 2027  📅 ]
+
+ ☑  Special Program in the Arts (SPA)
+      Art Fields: [ ☑ Dance  ☑ Visual Arts  ☐ Theatre  ☑ Music ]
+      Audition date: [ Mar 8, 2027  📅 ]
+
+ ☐  Special Program in Sports (SPS)
+ ☐  Special Program in Journalism (SPJ)
+ ☐  Special Program in Foreign Language (SPFL)
+ ☐  Special Program in Technical-Vocational Education (SPTVE)
+
+                                              [ Save SCP Config ]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ GRADE 11 SHS TRACKS (unchanged from DM 012 addendum)
+ Grade 11 Elective Clusters · Grade 12 Old Strands
+```
+
+**SCP configuration drives the admission portal:** When the admission portal loads, it calls `GET /api/settings/scp-config` and shows only the SCPs the school has enabled. If SPS is unchecked, it does not appear as an option in the applicant's form.
+
+---
+
+### New Database Model — `ScpConfig`
+
+```prisma
+// server/prisma/schema.prisma — NEW (v2.4.0)
+
+model ScpConfig {
+  id             Int          @id @default(autoincrement())
+  academicYearId Int
+  scpType        ApplicantType  // STE, SPA, SPS, SPJ, SPFL, SPTVE
+  isOffered      Boolean      @default(false)
+  cutoffScore    Float?        // for STE, SPA, SPJ (written exam cut-off)
+  examDate       DateTime?     // division/school-set exam/audition/tryout date
+  artFields      String[]      // for SPA: ["Dance", "Visual Arts", "Music", etc.]
+  languages      String[]      // for SPFL: ["Japanese", "Spanish", etc.]
+  sportsList     String[]      // for SPS: ["Basketball", "Volleyball", etc.]
+  notes          String?       // registrar notes (e.g., "SDO Memo No. 157")
+
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  @@unique([academicYearId, scpType])
+}
+```
+
+---
+
+### Updated Click-Count for SY 2026–2027 Setup (Including SCP)
+
+| Step | Action | Clicks |
+|---|---|---|
+| Create Academic Year | Review smart defaults + confirm | 1 |
+| Grade Levels | Cloned from previous year | 0 |
+| SHS Elective Clusters | Checklist (DM 012) | 3–5 |
+| Grade 12 Old Strands | Cloned | 0 |
+| **SCP Config (new)** | Check offered SCPs + enter cut-off + exam date | 5–8 |
+| Sections (STE/SPA named) | Create SCP-specific sections | 4–6 |
+| Activate Year | 1 click | 1 |
+| **Total** | | **~15–22 clicks** (vs. original ~40+) |
+
+---
+
+### Updated Decision Required (§8 Extension)
+
+| # | Decision Point | Options |
+|---|---|---|
+| D-08 | Which SCPs does HNHS currently offer? | Registrar/School Head to confirm — determines which checkboxes are enabled in Panel C |
+| D-09 | For STE: is the cut-off score set by the SDO or by HNHS? | A) SDO-set (registrar inputs after division memo is released) · B) School-set (configurable in Settings) |
+| D-10 | For SPA: does HNHS offer all art fields or only specific ones? | Registrar/School Head to specify which art fields are assessed during the audition |
+| D-11 | Should failed SCP applicants be automatically offered a regular section in the system, or does the registrar handle this manually per case? | A) Automatic offer prompt (recommended) · B) Manual — registrar decides per applicant |
+
+---
+
+*Addendum to School Year Setup Architecture*
+*Based on: DepEd Memorandum No. 149, s. 2011 · PRD v2.4.0*

@@ -1758,3 +1758,273 @@ See `SYSTEM_ADMIN_SPECIFICATION.md §12` for the full list of 16 new acceptance 
 
 *PRD updated to v2.3.0 — System Admin role added*
 *Full specification: SYSTEM_ADMIN_SPECIFICATION.md*
+
+
+---
+
+---
+
+## ADDENDUM — Admission Process Integration (PRD v2.4.0)
+### DepEd Admission Pathways: Open Admission & Special Curricular Program (SCP)
+
+**Research Basis:** DepEd Memorandum No. 149, s. 2011 · Division Memorandum No. 157, s. 2025 · DO 017, s. 2025 · HNHS school-specific admission announcements
+**Document Version Update:** PRD v2.3.0 → v2.4.0
+**Impact:** Extends the Applicant model, ApplicationStatus enum, admission portal, and registrar workflow to handle two distinct admission pathways
+
+---
+
+### Policy Summary
+
+DepEd public secondary schools operate two fundamentally different admission pathways:
+
+| Pathway | Who | Assessment | PRD Impact |
+|---|---|---|---|
+| **Open Admission** | Regular Grade 7 and Grade 11 (non-STEM tracks) | No exam — document verification only | Existing workflow unchanged |
+| **SCP Admission** | Applicants to STE, SPA, SPS, SPJ, SPFL, SPTVE, and Grade 11 STEM | Exam / audition / tryout / screening | New statuses, new fields, new workflow scenes |
+
+---
+
+### B1. Updated Database Schema
+
+#### Updated `ApplicationStatus` Enum
+
+```prisma
+// server/prisma/schema.prisma — UPDATED (v2.4.0)
+
+enum ApplicationStatus {
+  // ── Open Admission Path (existing) ───────────────────────────
+  PENDING               // Submitted; awaiting registrar document review
+  APPROVED              // Verified and assigned to a section
+  REJECTED              // Rejected (data error, SCP failure, or no capacity)
+
+  // ── SCP Admission Path (new) ─────────────────────────────────
+  EXAM_SCHEDULED        // Registrar has set exam / audition / tryout date
+  EXAM_TAKEN            // Applicant appeared and completed the assessment
+  PASSED                // Met SCP cut-off — ready for section assignment
+  FAILED                // Did not meet SCP cut-off — offered alternative or rejected
+}
+```
+
+#### New `ApplicantType` Enum
+
+```prisma
+// server/prisma/schema.prisma — NEW (v2.4.0)
+
+enum ApplicantType {
+  REGULAR               // Open admission — Grade 7 regular, Grade 11 non-STEM
+  STE                   // Science, Technology, Engineering (Grade 7 SCP)
+  SPA                   // Special Program in Arts (Grade 7 SCP)
+  SPS                   // Special Program in Sports (Grade 7 SCP)
+  SPJ                   // Special Program in Journalism (Grade 7 SCP)
+  SPFL                  // Special Program in Foreign Language (Grade 7 SCP)
+  SPTVE                 // Special Program in Tech-Voc Education (Grade 7 SCP)
+  STEM_GRADE11          // Grade 11 STEM — placement exam + interview
+}
+```
+
+#### Updated `Applicant` Model
+
+```prisma
+// server/prisma/schema.prisma — UPDATED Applicant model (v2.4.0)
+
+model Applicant {
+  id                    Int               @id @default(autoincrement())
+  lrn                   String            @unique @db.VarChar(12)
+  lastName              String
+  firstName             String
+  middleName            String?
+  suffix                String?
+  birthDate             DateTime
+  sex                   Sex
+  address               String
+  parentGuardianName    String
+  parentGuardianContact String
+  emailAddress          String
+  trackingNumber        String            @unique
+  status                ApplicationStatus @default(PENDING)
+  rejectionReason       String?
+  gradeLevelId          Int
+  strandId              Int?
+  academicYearId        Int
+
+  // ── v2.4.0 additions ─────────────────────────────────────────
+  applicantType         ApplicantType     @default(REGULAR)
+
+  // SCP Assessment fields (null for REGULAR applicants)
+  examDate              DateTime?         // scheduled exam / audition / tryout date
+  examScore             Float?            // written exam score (STE, SPA, SPJ)
+  examResult            String?           // "PASSED" / "FAILED" / raw notes
+  examNotes             String?           // registrar notes on assessment outcome
+  assessmentType        String?           // "WRITTEN_EXAM" / "AUDITION" / "TRYOUT" / "NAT_SCREENING"
+  interviewDate         DateTime?         // separate interview date (SPA, SPJ, STEM Grade 11)
+  interviewResult       String?           // "CLEARED" / "NOT_CLEARED"
+  natScore              Float?            // NAT English score (SPFL only)
+  grade10ScienceGrade   Float?            // Grade 10 Science final grade (STEM G11 eligibility)
+  grade10MathGrade      Float?            // Grade 10 Math final grade (STEM G11 eligibility)
+  // ─────────────────────────────────────────────────────────────
+
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  gradeLevel   GradeLevel   @relation(fields: [gradeLevelId], references: [id])
+  strand       Strand?      @relation(fields: [strandId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  enrollment   Enrollment?
+
+  @@index([status, academicYearId])
+  @@index([lrn])
+  @@index([applicantType, status])   // ← new index for filtering by type
+}
+```
+
+---
+
+### B2. Updated Online Admission Portal (§6.1 Extension)
+
+The public portal's **Step 3 — Enrollment Preferences** now includes an `applicantType` selector that drives the rest of the form.
+
+#### Updated Step 3 Fields
+
+```
+STEP 3 — ENROLLMENT PREFERENCES
+
+  Grade Level *
+  ● Grade 7    ● Grade 8   ● Grade 9   ● Grade 10   ● Grade 11   ● Grade 12
+
+  ─── If Grade 7 selected ───────────────────────────────────────────────────
+
+  Application Type *
+  ○  Regular Section           (open admission — no exam required)
+  ○  Special Curricular Program (SCP)  (requires qualifying assessment)
+
+  If SCP selected:
+  Which SCP are you applying for? *
+  ○  Science, Technology & Engineering (STE)
+  ○  Special Program in the Arts (SPA)      → Art Field: [ Visual Arts ▾ ]
+  ○  Special Program in Sports (SPS)        → Sport/s: [ Basketball ▾ ]
+  ○  Special Program in Journalism (SPJ)
+  ○  Special Program in Foreign Language (SPFL) → Language: [ Japanese ▾ ]
+  ○  Special Program in Tech-Voc (SPTVE)
+
+  ─── If Grade 11 selected ──────────────────────────────────────────────────
+
+  SHS Track *
+  ○  Academic    ○  Technical-Professional (TechPro)
+
+  Preferred Cluster *  (filtered by track)
+  [ STEM ▾ ]
+
+  If STEM selected, Grade 10 Final Grades are required:
+  Science Grade (Grade 10) *   [ _____ ]   (must be 85 or above)
+  Math Grade (Grade 10) *      [ _____ ]   (must be 85 or above)
+
+  ⚠  STEM applicants will be required to take a placement exam and interview
+     before final enrollment is confirmed. You will be notified of the schedule.
+```
+
+#### Validation Rules (Zod — Backend)
+
+```ts
+// server/src/validators/application.validator.ts — UPDATED (v2.4.0)
+
+// STEM Grade 11 grade check
+if (data.applicantType === 'STEM_GRADE11') {
+  if (!data.grade10ScienceGrade || data.grade10ScienceGrade < 85) {
+    ctx.addIssue({ path: ['grade10ScienceGrade'], message: 'Science grade must be 85 or above for STEM.' });
+  }
+  if (!data.grade10MathGrade || data.grade10MathGrade < 85) {
+    ctx.addIssue({ path: ['grade10MathGrade'], message: 'Math grade must be 85 or above for STEM.' });
+  }
+}
+```
+
+---
+
+### B3. Updated Registrar Workflow — Two-Path Approval
+
+#### Path A — Regular / Open Admission (unchanged)
+
+```
+PENDING → [Registrar: Verify docs → Approve & Assign Section] → APPROVED → ENROLLED
+```
+
+One-step approval. Section dialog opens immediately after "Approve & Assign Section" is clicked.
+
+#### Path B — SCP Admission (new)
+
+```
+PENDING
+  ↓
+[Registrar: Verify docs → Schedule Exam]
+  ↓
+EXAM_SCHEDULED  ← system records exam date; notifies applicant by email
+  ↓
+[Registrar: Record Assessment Result]
+  ↓
+EXAM_TAKEN  ← system records score/result/notes
+  ↓
+  ├── PASSED → [Registrar: Assign Section] → APPROVED → ENROLLED
+  │
+  └── FAILED → [Registrar: Optional — offer regular section]
+                  ├── Accepts regular section → mark as REGULAR type → APPROVED → ENROLLED
+                  └── Declines → REJECTED → email sent with reason
+```
+
+---
+
+### B4. Updated REST API — New SCP Endpoints
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `PATCH` | `/api/applications/:id/schedule-exam` | REGISTRAR, ADMIN | Set `status = EXAM_SCHEDULED`, store `examDate`, `assessmentType` |
+| `PATCH` | `/api/applications/:id/record-result` | REGISTRAR, ADMIN | Set `status = EXAM_TAKEN`, store `examScore`, `examResult`, `examNotes`, `interviewResult` |
+| `PATCH` | `/api/applications/:id/pass` | REGISTRAR, ADMIN | Set `status = PASSED` (triggers email: exam passed notification) |
+| `PATCH` | `/api/applications/:id/fail` | REGISTRAR, ADMIN | Set `status = FAILED` (triggers email: exam failed, alternative offer) |
+| `GET` | `/api/applications?applicantType=STE` | REGISTRAR, ADMIN | Filter applications by applicant type |
+| `GET` | `/api/applications?status=EXAM_SCHEDULED` | REGISTRAR, ADMIN | Filter by SCP status |
+
+---
+
+### B5. Updated Email Trigger Map (§6.7 Extension)
+
+| Trigger | Subject | When |
+|---|---|---|
+| Application submitted | `Your Application Has Been Received — #HNS-XXXX` | On `POST /api/applications` |
+| Exam scheduled | `Your Exam / Assessment Date — Hinigaran NHS` | On `PATCH .../schedule-exam` |
+| Assessment result — passed | `Congratulations! You Passed the Assessment — HNHS` | On `PATCH .../pass` |
+| Assessment result — failed | `Update on Your SCP Application — HNHS` | On `PATCH .../fail` (with alternative offer if applicable) |
+| Enrollment confirmed | `Congratulations! Your Enrollment is Confirmed` | On full approval + section assignment |
+| Application rejected | `Update on Your Application to Hinigaran NHS` | On `PATCH .../reject` |
+
+---
+
+### B6. Updated Audit Log Action Types
+
+| Action Type | Description Template |
+|---|---|
+| `EXAM_SCHEDULED` | `"Registrar {user} scheduled {assessmentType} for {applicant name} on {examDate}"` |
+| `EXAM_RESULT_RECORDED` | `"Registrar {user} recorded result for {applicant name}: {examResult} (Score: {examScore})"` |
+| `APPLICATION_PASSED` | `"Registrar {user} marked {applicant name} as PASSED — ready for section assignment"` |
+| `APPLICATION_FAILED` | `"Registrar {user} marked {applicant name} as FAILED. Notes: {examNotes}"` |
+
+---
+
+### B7. Updated Acceptance Criteria (v2.4.0)
+
+| # | Acceptance Test |
+|---|---|
+| AC-49 | The admission portal shows an `Application Type` selector (Regular / SCP) when Grade 7 is selected. |
+| AC-50 | When `SCP` is selected, a second selector appears listing all 6 SCPs offered by the school. |
+| AC-51 | When Grade 11 STEM is selected, Science and Math grade fields appear. Submitting with grades below 85 returns a validation error. |
+| AC-52 | A regular Grade 7 applicant follows the existing two-step path (PENDING → APPROVED) with no exam steps. |
+| AC-53 | An SCP applicant follows the extended path: PENDING → EXAM_SCHEDULED → EXAM_TAKEN → PASSED/FAILED. |
+| AC-54 | When the registrar schedules an exam, the applicant receives an email with the exam date and venue. |
+| AC-55 | When the registrar marks an applicant as PASSED, the applicant receives an email confirmation and the registrar can immediately assign a section. |
+| AC-56 | When the registrar marks an applicant as FAILED, the applicant receives an email. The registrar may offer the applicant a regular section (changing `applicantType` to `REGULAR`). |
+| AC-57 | The `/applications` inbox can be filtered by `applicantType` (REGULAR, STE, SPA, etc.) and by SCP-specific statuses (EXAM_SCHEDULED, EXAM_TAKEN, PASSED, FAILED). |
+| AC-58 | A FAILED SCP applicant who accepts a regular section placement is re-enrolled under `applicantType: REGULAR` with a new section assignment. |
+
+---
+
+*PRD updated to v2.4.0 — Admission Process (Open Admission + SCP) integrated*
+*Research basis: DepEd Memorandum No. 149, s. 2011 · Division Memorandum No. 157, s. 2025 · HNHS school-specific admission announcements*

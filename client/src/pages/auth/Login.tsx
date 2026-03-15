@@ -220,7 +220,7 @@ export default function Login() {
                   placeholder="name@school.edu.ph"
                   required
                   autoComplete="email"
-                  className="focus-brand w-full h-12 rounded-2xl border border-[#e2e8f0] bg-[#f8fafc] px-4 text-base text-[#1a1a1a] placeholder-[#94a3b8] transition-all"
+                  className="focus-brand w-full h-12 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 text-base text-[#1a1a1a] placeholder-[#94a3b8] transition-all"
                   {...register("email")}
                 />
                 {errors.email && (
@@ -244,7 +244,7 @@ export default function Login() {
                     placeholder="••••••••"
                     required
                     autoComplete="current-password"
-                    className="focus-brand w-full h-12 rounded-2xl border border-[#e2e8f0] bg-[#f8fafc] px-4 pr-12 text-base text-[#1a1a1a] placeholder-[#94a3b8] transition-all"
+                    className="focus-brand w-full h-12 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-4 pr-12 text-base text-[#1a1a1a] placeholder-[#94a3b8] transition-all"
                     {...register("password")}
                   />
                   <button
@@ -283,7 +283,7 @@ export default function Login() {
                 <p className="text-gray-500 font-medium">
                   Don't have an account?{" "}
                   <Link to="/register" className="text-(--brand-link) font-bold hover:underline underline-offset-4">
-                    Create one now
+                    Create one now.
                   </Link>
                 </p>
               </motion.div>

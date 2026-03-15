@@ -8,7 +8,6 @@ import {
   createStrand,
   updateStrand,
   deleteStrand,
-  updateStrandMatrix,
 } from '../controllers/curriculumController.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { authorize } from '../middleware/authorize.js';
@@ -26,8 +25,5 @@ router.get('/:ayId/strands', authenticate, authorize('REGISTRAR'), listStrands);
 router.post('/:ayId/strands', authenticate, authorize('REGISTRAR'), createStrand);
 router.put('/strands/:id', authenticate, authorize('REGISTRAR'), updateStrand);
 router.delete('/strands/:id', authenticate, authorize('REGISTRAR'), deleteStrand);
-
-// Matrix
-router.put('/:ayId/strand-matrix', authenticate, authorize('REGISTRAR'), updateStrandMatrix);
 
 export default router;

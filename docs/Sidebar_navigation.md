@@ -767,11 +767,88 @@ const isTeacher   = user?.role === 'TEACHER';
 
 | Role | Sidebar Footer Badge | Color |
 |---|---|---|
-| `SYSTEM_ADMIN` | `● System Admin` | Accent (school logo color) |
+| `SYSTEM_ADMIN` | `● System Admin` | Purple / violet |
 | `REGISTRAR` | `● Registrar` | Accent (school logo color) |
-| `TEACHER` | `● Teacher` | Accent (school logo color) |
+| `TEACHER` | `● Teacher` | Blue |
 
 ---
 
 *Addendum: v2.3.0 — System Admin sidebar added*
 *Full per-item detail: SYSTEM_ADMIN_SPECIFICATION.md §5*
+
+
+---
+
+---
+
+## ADDENDUM — Sidebar Impact of Two-Path Admission System (v2.4.0)
+
+**PRD Reference:** v2.4.0 — Admission Process (Open Admission + SCP)
+
+---
+
+### What Changes in `/applications` for the Registrar
+
+The `/applications` sidebar item now serves **two distinct workflows** — the open admission path (unchanged) and the new SCP exam path — within the same page. The visible difference is in the filter toolbar and the action buttons inside each application record.
+
+#### Updated Filter Toolbar
+
+```
+APPLICATIONS    [ Search by LRN or name... 🔍 ]    [Filter ▾]
+
+  Year:      [ SY 2026–2027 ▾ ]
+  Grade:     [ All ▾ ]
+  Type:      [ All ▾ ]   ← NEW: Regular | STE | SPA | SPS | SPJ | SPFL | SPTVE | STEM G11
+  Status:    [ All ▾ ]   ← UPDATED: now includes EXAM_SCHEDULED · EXAM_TAKEN · PASSED · FAILED
+```
+
+#### Action Buttons — Two Paths
+
+| If `applicantType = REGULAR` | If `applicantType = SCP / STEM_GRADE11` |
+|---|---|
+| `[ Approve & Assign Section ]` | `[ Verify & Schedule Exam ]` |
+| `[ Reject Application ]` | `[ Record Result ]` (after exam date) |
+| — | `[ Mark as Passed & Assign Section ]` (after result) |
+| — | `[ Mark as Failed ]` (after result) |
+
+The correct action buttons are shown **conditionally based on `applicantType` and current `status`** — the registrar never sees inapplicable buttons for a given applicant's state.
+
+---
+
+### Updated Status Badge Reference
+
+| Status | Badge | Path |
+|---|---|---|
+| `PENDING` | ● amber | Both paths |
+| `APPROVED` | ✓ green | Both paths |
+| `REJECTED` | ✗ red | Both paths |
+| `EXAM_SCHEDULED` | ⏳ amber | SCP path only |
+| `EXAM_TAKEN` | 📋 blue | SCP path only |
+| `PASSED` | ✅ green | SCP path only |
+| `FAILED` | ❌ red | SCP path only |
+
+---
+
+### Updated Applicant Type Badge Reference
+
+| Type | Badge Label | Color |
+|---|---|---|
+| `REGULAR` | Regular | Grey outline |
+| `STE` | STE | Blue outline |
+| `SPA` | SPA — [art field] | Blue outline |
+| `SPS` | SPS | Blue outline |
+| `SPJ` | SPJ | Blue outline |
+| `SPFL` | SPFL | Blue outline |
+| `SPTVE` | SPTVE | Blue outline |
+| `STEM_GRADE11` | STEM G11 | Purple outline |
+
+---
+
+### Settings Sidebar — Panel C Addition
+
+The Settings page (`/settings`) now includes **SCP Configuration** as a new section inside Tab 3: Grade Levels & Strands. No new sidebar item is added — it lives within the existing Settings route. The registrar accesses it by navigating to Settings → Tab 3 and scrolling to the SCP block.
+
+---
+
+*Addendum to Sidebar Navigation Specification*
+*Based on: PRD v2.4.0 — Admission Process Integration*

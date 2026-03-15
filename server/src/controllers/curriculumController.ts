@@ -195,35 +195,4 @@ export async function deleteStrand(req: Request, res: Response): Promise<void> {
   res.json({ message: 'Strand deleted' });
 }
 
-// ─── Strand-to-Grade Matrix (bulk update) ─────────────────
 
-export async function updateStrandMatrix(req: Request, res: Response): Promise<void> {
-  const ayId = parseInt(req.params.ayId as string);
-  const { matrix } = req.body;
-
-  if (!Array.isArray(matrix)) {
-    res.status(400).json({ message: 'matrix must be an array of { strandId, gradeLevelIds }' });
-    return;
-  }
-
-  for (const entry of matrix) {
-    await prisma.strand.update({
-      where: { id: entry.strandId },
-      data: { applicableGradeLevelIds: entry.gradeLevelIds },
-    });
-  }
-
-  await auditLog({
-    userId: req.user!.userId,
-    actionType: 'STRAND_MATRIX_UPDATED',
-    description: `Updated strand-to-grade matrix for AY ${ayId}`,
-    req,
-  });
-
-  const strands = await prisma.strand.findMany({
-    where: { academicYearId: ayId },
-    orderBy: { name: 'asc' },
-  });
-
-  res.json({ strands });
-}

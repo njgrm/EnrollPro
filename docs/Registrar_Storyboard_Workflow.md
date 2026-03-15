@@ -2211,3 +2211,570 @@ The original Appendix D is updated below to reflect the dual-policy SHS landscap
 *Based on: DepEd Memorandum No. 012, s. 2026 — Full Implementation of the Strengthened Senior High School Curriculum in SY 2026–2027*
 *Source: https://www.deped.gov.ph/2026/02/27/february-27-2026-dm-012-s-2026-full-implementation-of-the-strengthened-senior-high-school-curriculum-in-school-year-2026-2027/*
 *All prior storyboard scenes remain valid. These scenes are additive — covering Grade 11 Strengthened SHS and dual-policy Grade 12 workflows.*
+
+
+---
+
+---
+
+# ADDENDUM — Admission Process Workflows (Open Admission & SCP)
+## DepEd Admission Pathways: Regular Sections and Special Curricular Programs
+
+**Research Basis:** DepEd Memorandum No. 149, s. 2011 · Division Memorandum No. 157, s. 2025 · HNHS school-specific announcement research
+**PRD Reference:** v2.4.0
+
+---
+
+## Policy Context
+
+DepEd public high schools operate two distinct admission pathways for incoming Grade 7 and Grade 11 learners. The registrar's workflow differs significantly depending on which pathway the applicant is on.
+
+| Pathway | Applicants | Registrar Steps |
+|---|---|---|
+| **Open Admission** | Regular Grade 7 and Grade 11 non-STEM applicants | Verify docs → Approve → Assign section (1 action) |
+| **SCP Admission** | STE, SPA, SPS, SPJ, SPFL, SPTVE, and Grade 11 STEM applicants | Verify docs → Schedule exam → Record result → Pass/Fail → Assign section (4 actions) |
+
+---
+
+## SCENE B.1 — Identifying Applicant Type in the Inbox
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ WHEN   │ Daily during Early Registration (January–February)     │
+│ WHERE  │ /applications                                           │
+│ WHY    │ The registrar must distinguish REGULAR applicants from │
+│        │ SCP applicants at a glance — they require completely   │
+│        │ different actions and timelines                         │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**What the registrar sees — updated applications table:**
+
+```
+APPLICATIONS           [ Search by LRN or name... 🔍 ]      [Filter ▾]
+
+  Year: SY 2026–2027   Grade: All ▾   Type: All ▾   Status: All ▾
+
+  #   │ Learner Name          │ LRN          │ Grade    │ Type         │ Status         │ Actions
+  ────┼───────────────────────┼──────────────┼──────────┼──────────────┼────────────────┼────────
+  055 │ Dela Cruz, Juan R.    │ 123456789012 │ Grade 7  │ REGULAR      │ ● PENDING      │ [View]
+  054 │ Santos, Maria L.      │ 876543219012 │ Grade 11 │ STEM G11     │ ● PENDING      │ [View]
+  053 │ Reyes, Pedro M.       │ 112233445566 │ Grade 7  │ STE          │ ● PENDING      │ [View]
+  052 │ Garcia, Ana B.        │ 998877665544 │ Grade 7  │ SPA (Dance)  │ ✅ EXAM_SCHED  │ [View]
+  051 │ Torres, Carlo M.      │ 444433332222 │ Grade 7  │ STE          │ ✅ PASSED      │ [View]
+  050 │ Lim, Rosa A.          │ 333322221111 │ Grade 7  │ STE          │ ❌ FAILED      │ [View]
+```
+
+**Type badge colors:**
+- `REGULAR` → grey outline badge
+- `STE`, `SPA`, `SPS`, `SPJ`, `SPFL`, `SPTVE` → blue outline badge
+- `STEM G11` → purple outline badge
+
+**Status badge colors for SCP path:**
+- `EXAM_SCHEDULED` → amber badge
+- `EXAM_TAKEN` → blue badge
+- `PASSED` → green badge
+- `FAILED` → red badge
+
+---
+
+## SCENE B.2 — Processing a Regular Grade 7 Applicant (Open Admission Path — unchanged)
+
+This is the same as the original storyboard scenes 1.3 and 1.4. No changes to the open admission workflow. Registrar opens the applicant → verifies documents → clicks **Approve & Assign Section** → selects section → confirms → done.
+
+The `applicantType` field shows `REGULAR` in the application detail view. No exam-related fields are visible.
+
+---
+
+## SCENE B.3 — Opening an SCP Applicant Record (STE Example)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ WHEN   │ During Early Registration review (January–February)    │
+│ WHERE  │ /applications → click [View] on STE applicant #053     │
+│ WHY    │ STE applicants require an entrance exam before section │
+│        │ assignment. The registrar must verify documents first, │
+│        │ then schedule the exam — not approve immediately.       │
+│ POLICY │ Division Memorandum No. 157, s. 2025 — STE admission  │
+│        │ test is administered division-wide on a set Saturday   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**What the registrar sees — SCP application detail view:**
+
+```
+╔══════════════════════════════════════════════════════════════════════╗
+║  APPLICATION DETAIL                                                  ║
+║  #HNS-2026-00053                              Status: ● PENDING      ║
+╠══════════════════════════════════════════════════════════════════════╣
+║  PERSONAL INFORMATION                                                ║
+║  Full Name    :  REYES, Pedro Manuel                                 ║
+║  Date of Birth:  April 8, 2014  (Age: 11 yrs)                       ║
+║  LRN          :  112233445566                                        ║
+║                                                                      ║
+║  FAMILY & CONTACT                                                    ║
+║  Home Address :  Brgy. Balabag, Hinigaran, Negros Occidental         ║
+║  Guardian     :  Luz Reyes (Mother)   · 0918-555-1234               ║
+║  Email        :  reyes.luz@gmail.com                                 ║
+║                                                                      ║
+║  ENROLLMENT PREFERENCE                                               ║
+║  Grade Level  :  Grade 7                                             ║
+║  Application  :  ⚡ SPECIAL CURRICULAR PROGRAM                      ║
+║  SCP Type     :  Science, Technology & Engineering (STE)             ║
+║                                                                      ║
+║  SCP ASSESSMENT STATUS                                               ║
+║  Exam Date    :  Not yet scheduled                                   ║
+║  Exam Score   :  —                                                   ║
+║  Result       :  —                                                   ║
+╠══════════════════════════════════════════════════════════════════════╣
+║  ⚠  SCP applicant: Document verification required before scheduling ║
+║     the entrance exam. Do NOT use Approve & Assign Section yet.     ║
+║                                                                      ║
+║  [ ✓ Verify & Schedule Exam ]          [ ✗ Reject Application ]     ║
+╚══════════════════════════════════════════════════════════════════════╝
+```
+
+**Registrar checks:**
+- ✓ PSA Birth Certificate (verified in person — PSA# noted)
+- ✓ Grade 6 SF9 (verified — signed by principal)
+- ✓ LRN format: 12 digits ✓
+- ✓ Age appropriate for Grade 7 ✓
+
+Documents are complete. Registrar now schedules the exam.
+
+---
+
+## SCENE B.4 — Scheduling the SCP Entrance Exam
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ WHEN   │ After document verification during Early Registration  │
+│ WHERE  │ /applications → SCP applicant detail → "Verify &       │
+│        │ Schedule Exam"                                          │
+│ WHY    │ The STE exam date is set by the SDO (Division Office). │
+│        │ HNHS announces the date to applicants after Early      │
+│        │ Registration closes. Registrar logs this in the system.│
+│ POLICY │ Division Memorandum No. 157, s. 2025 — STE exam        │
+│        │ conducted on a division-designated Saturday             │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Registrar clicks "Verify & Schedule Exam". Dialog opens:**
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  Schedule Assessment — Reyes, Pedro (STE)                        │
+│  ────────────────────────────────────────────────────────────── │
+│                                                                  │
+│  Assessment Type                                                 │
+│  [ Written Entrance Exam ▾ ]   (auto-filled for STE)            │
+│                                                                  │
+│  Exam / Assessment Date *                                        │
+│  [ February 22, 2027              📅 ]                           │
+│                                                                  │
+│  Exam Venue (optional)                                           │
+│  [ HNHS Main Building — Room 201                           ]     │
+│                                                                  │
+│  ☑  Notify applicant by email with exam details                  │
+│                                                                  │
+│       [ Cancel ]           [ Confirm Schedule ]                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**Registrar fills in the SDO-designated exam date and clicks Confirm.**
+
+**System:**
+- `PATCH /api/applications/53/schedule-exam`
+  `{ examDate: "2027-02-22", assessmentType: "WRITTEN_EXAM", venue: "HNHS Main Building..." }`
+- `Applicant.status` → `EXAM_SCHEDULED`
+- `Applicant.examDate` → `2027-02-22`
+- `AuditLog`: `EXAM_SCHEDULED — "Registrar Cruz scheduled WRITTEN_EXAM for Pedro Reyes on Feb 22, 2027"`
+- Email dispatched to `reyes.luz@gmail.com`:
+  ```
+  Subject: Your STE Entrance Exam — Hinigaran NHS
+  Body:
+    Dear Ms. Reyes,
+    Your child Pedro Manuel Reyes is scheduled to take the STE Entrance Exam.
+
+    Date    :  February 22, 2027 (Saturday)
+    Venue   :  HNHS Main Building — Room 201
+    Bring   :  Two valid IDs (school ID or PSA BC), pencils, ballpen
+
+    Please ensure your child arrives 30 minutes before the exam.
+    Tracking Number: HNS-2027-00053
+  ```
+- Sileo success toast: *"Exam Scheduled — Pedro Reyes notified for February 22, 2027."*
+
+**Updated application row:**
+```
+  053 │ Reyes, Pedro M. │ 112233445566 │ Grade 7 │ STE │ ⏳ EXAM_SCHEDULED │ [View]
+```
+
+---
+
+## SCENE B.5 — Recording the Exam Result (STE Written Exam)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ WHEN   │ After the exam date has passed (e.g., February 23)     │
+│ WHERE  │ /applications → STE applicant with EXAM_SCHEDULED      │
+│ WHY    │ The SDO releases the STE exam results. The registrar   │
+│        │ records each applicant's result in the system.          │
+│ POLICY │ Division Memorandum No. 157, s. 2025 — results         │
+│        │ released by SDO after exam day                          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Registrar opens Pedro Reyes's record. Status is EXAM_SCHEDULED. Registrar clicks "Record Result":**
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  Record Assessment Result — Reyes, Pedro (STE)                   │
+│  ────────────────────────────────────────────────────────────── │
+│                                                                  │
+│  Assessment Type    :  Written Entrance Exam (STE)               │
+│  Exam Date          :  February 22, 2027                         │
+│                                                                  │
+│  Did the applicant appear for the exam?                          │
+│  ●  Yes — appeared     ○  No — absent                            │
+│                                                                  │
+│  Exam Score (if applicable)   [ 87.5                        ]    │
+│                                                                  │
+│  Division Cut-off Score       [ 75.0  ]  (from SDO memo)         │
+│                                                                  │
+│  Result                                                          │
+│  ●  PASSED  (score meets or exceeds cut-off)                     │
+│  ○  FAILED  (score below cut-off)                                │
+│                                                                  │
+│  Notes (optional)                                                │
+│  [ Top 15% of division examinees — recommended for STE-A   ]    │
+│                                                                  │
+│       [ Cancel ]             [ Save Result ]                     │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**Registrar enters score 87.5, marks as PASSED, adds optional notes, clicks Save Result.**
+
+**System:**
+- `PATCH /api/applications/53/record-result`
+  `{ examScore: 87.5, examResult: "PASSED", examNotes: "Top 15%..." }`
+- `Applicant.status` → `EXAM_TAKEN`
+- `Applicant.examScore` → `87.5`
+- `Applicant.examResult` → `"PASSED"`
+- `AuditLog`: `EXAM_RESULT_RECORDED — "Registrar Cruz recorded STE result for Pedro Reyes: PASSED (87.5)"`
+- Sileo success toast: *"Result Recorded — Pedro Reyes: PASSED (87.5)."*
+
+---
+
+## SCENE B.6 — Marking as PASSED and Assigning Section
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ WHEN   │ After recording the exam result as PASSED              │
+│ WHERE  │ /applications → EXAM_TAKEN applicant → "Mark as Passed"│
+│ WHY    │ PASSED status officially clears the applicant for      │
+│        │ section assignment. The registrar confirms and assigns │
+│        │ the STE section.                                        │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Updated application detail after recording result:**
+
+```
+║  SCP ASSESSMENT STATUS                                           ║
+║  Exam Date    :  February 22, 2027                               ║
+║  Exam Score   :  87.5 / 100                                      ║
+║  Result       :  PASSED                                          ║
+║  Notes        :  Top 15% of division examinees                   ║
+╠══════════════════════════════════════════════════════════════════╣
+║  [ ✅ Mark as Passed & Assign Section ]   [ ❌ Mark as Failed ]  ║
+```
+
+**Registrar clicks "Mark as Passed & Assign Section". Section dialog opens (filtered to STE section only):**
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  Assign Section — Reyes, Pedro (Grade 7 STE)                     │
+│  ────────────────────────────────────────────────────────────── │
+│                                                                  │
+│  Grade 7 STE sections:                                           │
+│                                                                  │
+│  ●  Grade 7 – STE-A   Ms. Bautista   28/45  ● 17 slots          │
+│  ○  Grade 7 – STE-B   Mr. Tan        30/45  ● 15 slots          │
+│                                                                  │
+│       [ Cancel ]         [ Confirm Enrollment ]                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**Registrar selects STE-A. Confirms.**
+
+**System:**
+- `PATCH /api/applications/53/pass` + `{ sectionId: [STE-A ID] }`
+- `Applicant.status` → `PASSED` then `APPROVED`
+- Enrollment record created: Pedro → Grade 7 STE-A
+- `AuditLog`: `APPLICATION_PASSED — "Registrar Cruz: Pedro Reyes PASSED STE exam, assigned to Grade 7 STE-A"`
+- Email to parent:
+  ```
+  Subject: Congratulations! Pedro Passed the STE Entrance Exam — HNHS
+  Body:
+    Pedro Manuel Reyes has passed the STE Entrance Exam and is enrolled.
+    Grade Level : Grade 7
+    Program     : Science, Technology & Engineering (STE)
+    Section     : Grade 7 – STE-A
+    Report on the first day of classes, June 16, 2027.
+  ```
+- Sileo success toast: *"Passed & Enrolled — Pedro Reyes assigned to Grade 7 STE-A."*
+
+---
+
+## SCENE B.7 — Marking as FAILED (and Offering Regular Section)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ WHEN   │ After recording an exam result below the cut-off       │
+│ WHERE  │ /applications → EXAM_TAKEN applicant → "Mark as Failed"│
+│ WHY    │ Applicant did not qualify for STE. Per DepEd policy,   │
+│        │ the registrar should offer the applicant a regular     │
+│        │ section rather than leaving them with no placement.    │
+│ POLICY │ DO 017, s. 2025 — no learner may be turned away from   │
+│        │ basic education due to performance on an optional test  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Registrar clicks "Mark as Failed". A two-option dialog opens:**
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  Record Failure — Lim, Rosa (STE)                                │
+│  ────────────────────────────────────────────────────────────── │
+│                                                                  │
+│  Exam Score    :  62.0 / 100                                     │
+│  Cut-off       :  75.0                                           │
+│  Result        :  Did not meet cut-off                           │
+│                                                                  │
+│  What would you like to do?                                      │
+│                                                                  │
+│  ●  Offer a Regular Section                                      │
+│     (Switch applicant to open admission; assign to a             │
+│      regular Grade 7 section. Parent/student must be             │
+│      informed of the change.)                                    │
+│                                                                  │
+│  ○  Reject Application                                           │
+│     (If parent declines regular section placement or             │
+│      applicant is enrolling elsewhere.)                          │
+│                                                                  │
+│  Rejection / Offer Reason (required)                             │
+│  [ Did not meet STE cut-off score. Offering regular section. ]   │
+│                                                                  │
+│       [ Cancel ]               [ Confirm ]                       │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**If "Offer a Regular Section" is selected:**
+- `Applicant.status` → `FAILED` then updated to `PENDING` (open admission path)
+- `Applicant.applicantType` → `REGULAR`
+- `Applicant.examResult` → `"FAILED"` preserved for records
+- Registrar proceeds to the standard open-admission approval flow
+- Email to parent:
+  ```
+  Subject: STE Assessment Result — Hinigaran NHS
+  Body:
+    We regret to inform you that Rosa did not qualify for the STE program
+    (Score: 62.0; Required: 75.0).
+
+    However, we are pleased to offer Rosa a place in a regular Grade 7 section.
+    Please visit the registrar's office or contact us to confirm this placement.
+    Tracking Number: HNS-2027-00050
+  ```
+
+**If "Reject Application" is selected:**
+- `Applicant.status` → `REJECTED`
+- Standard rejection email sent
+- Parent may re-enroll at another school
+
+---
+
+## SCENE B.8 — Grade 11 STEM Placement Exam + Interview Workflow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ WHEN   │ March–April (between Early Registration close and       │
+│        │ Regular Enrollment opening in June)                     │
+│ WHERE  │ /applications → STEM_GRADE11 applicant                 │
+│ WHY    │ HNHS conducts a placement exam AND an interview for    │
+│        │ Grade 11 STEM aspirants. Both are required before      │
+│        │ section assignment.                                     │
+│ POLICY │ DepEd minimum: Science + Math Grade 10 final grade ≥85 │
+│        │ HNHS addition: placement exam + interview (confirmed    │
+│        │ via HNHS Facebook announcements SY 2024–2025)           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Application detail for a Grade 11 STEM applicant:**
+
+```
+║  ENROLLMENT PREFERENCE                                           ║
+║  Grade Level  :  Grade 11                                        ║
+║  Application  :  ⚡ STEM ASPIRANT (Placement Exam + Interview)  ║
+║  Track        :  Academic                                        ║
+║  Cluster      :  STEM                                            ║
+║                                                                  ║
+║  G10 GRADE ELIGIBILITY CHECK                                     ║
+║  Science Grade (G10)  :  88.0  ✅ (≥ 85)                        ║
+║  Math Grade (G10)     :  90.0  ✅ (≥ 85)                        ║
+║                                                                  ║
+║  SCP ASSESSMENT STATUS                                           ║
+║  Placement Exam Date  :  Not yet scheduled                       ║
+║  Interview Date       :  Not yet scheduled                       ║
+║  Exam Score           :  —                                       ║
+║  Interview Result     :  —                                       ║
+```
+
+**Workflow steps (same pattern as STE, with interview added):**
+
+```
+STEP 1 — Schedule Placement Exam
+  Registrar: PATCH /schedule-exam → examDate set → status: EXAM_SCHEDULED
+  Email: "Your STEM Placement Exam is scheduled for [date]"
+
+STEP 2 — Record Exam Result
+  Registrar: PATCH /record-result → examScore + examResult → status: EXAM_TAKEN
+
+STEP 3 — Schedule Interview (if exam passed)
+  Registrar: PATCH /schedule-interview → interviewDate set
+  Email: "You have been invited for a STEM Interview on [date]"
+
+STEP 4 — Record Interview Result
+  Registrar: PATCH /record-interview-result → interviewResult: "CLEARED" / "NOT_CLEARED"
+
+STEP 5 — Mark as PASSED (both exam + interview cleared) → Assign Section
+  OR
+  Mark as FAILED → Offer alternative track (ABM, HUMSS, GAS, TechPro)
+```
+
+**If applicant fails the exam but Grade 10 grades are sufficient for a non-STEM track:**
+- Registrar offers ABM, HUMSS, GAS, or TechPro cluster placement
+- `applicantType` updated to appropriate track
+- No re-examination required for non-STEM tracks
+
+---
+
+## SCENE B.9 — SPA (Arts) Application — Exam + Audition + Interview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ WHEN   │ March–April (SPA audition period)                       │
+│ WHERE  │ /applications → SPA applicant                          │
+│ WHY    │ SPA has the most complex admission process: written     │
+│        │ qualifying exam followed by an audition in a specific  │
+│        │ art field, then an interview — all typically on the     │
+│        │ same day                                                │
+│ POLICY │ DepEd Memorandum No. 149, s. 2011 — SPA admission      │
+│        │ procedure                                               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Application detail for SPA applicant:**
+
+```
+║  Application  :  ⚡ SPECIAL PROGRAM IN THE ARTS (SPA)           ║
+║  Art Field    :  Dance Arts                                      ║
+║                                                                  ║
+║  SCP ASSESSMENT STATUS                                           ║
+║  Qualifying Exam    :  Not yet scheduled                         ║
+║  Audition (Dance)   :  Not yet scheduled                         ║
+║  Interview          :  Not yet scheduled                         ║
+```
+
+**The registrar schedules all three on the same date (SPA audition day):**
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  Schedule SPA Assessment — Garcia, Ana (Dance Arts)             │
+│  ────────────────────────────────────────────────────────────── │
+│                                                                  │
+│  Assessment Type    :  Qualifying Exam + Audition + Interview    │
+│  Assessment Date    :  March 8, 2027                             │
+│  Art Field          :  Dance Arts                                │
+│  Venue              :  HNHS Covered Court / Gymnasium            │
+│                                                                  │
+│       [ Confirm Schedule ]                                       │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**Recording SPA results — registrar records three separate scores/results:**
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  Record SPA Results — Garcia, Ana (Dance Arts)                   │
+│                                                                  │
+│  Qualifying Exam Score    [ 78.0    ]  (out of 100)              │
+│  Audition Result          ○ CLEARED   ● NOT_CLEARED              │
+│  Interview Result         ●  CLEARED  ○ NOT_CLEARED              │
+│                                                                  │
+│  Overall Result:   ○  PASSED   ●  FAILED                         │
+│  Notes: [ Audition: needs improvement in technique. ]            │
+│                                                                  │
+│       [ Save Results ]                                           │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## SCENE B.10 — Dashboard Impact: SCP Monitoring View
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ WHEN   │ Any time during the admission and early registration   │
+│        │ period (January–May)                                    │
+│ WHERE  │ /dashboard                                              │
+│ WHY    │ The registrar needs a quick overview of how many SCP  │
+│        │ applicants are at each stage of the exam process       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Dashboard — SCP tracking panel (new section below the main stat cards):**
+
+```
+SCP ADMISSION PIPELINE                            SY 2026–2027
+
+  STE Program
+  ├─ PENDING (docs review)    :  8
+  ├─ EXAM_SCHEDULED           :  24
+  ├─ EXAM_TAKEN               :  3
+  ├─ PASSED                   :  19
+  └─ FAILED (offered regular) :  2
+
+  SPA (Arts)
+  ├─ PENDING                  :  4
+  ├─ EXAM_SCHEDULED           :  10
+  ├─ PASSED                   :  7
+  └─ FAILED                   :  3
+
+  Grade 11 STEM
+  ├─ PENDING                  :  12
+  ├─ EXAM_SCHEDULED           :  18
+  ├─ EXAM_TAKEN               :  5
+  ├─ PASSED                   :  14
+  └─ FAILED (offered alt)     :  4
+```
+
+---
+
+## APPENDIX F — SCP Admission Quick Reference for Registrar
+
+| SCP | Assessment Day Activity | Registrar Records | Pass/Fail Basis |
+|---|---|---|---|
+| **STE** | Written exam (SDO-administered, one Saturday) | Exam score | Score ≥ division cut-off |
+| **SPA** | Qualifying exam + audition + interview (same day) | Exam score + audition result + interview result | All three must be cleared |
+| **SPS** | Physical skills tryout (coaches assess) | Tryout result + sports background | Coach recommendation + physical fitness |
+| **SPJ** | SPJQE written exam + interview | SPJQE score + interview result | Combined score; top 35 admitted |
+| **SPFL** | NAT score review (no separate exam) | NAT English score from elementary | Sufficient English proficiency |
+| **SPTVE** | Aptitude test / practical demo (school-determined) | Aptitude score / demo result | School-set cut-off |
+| **STEM G11** | Placement exam + interview (separate dates) | Exam score + interview result | Exam pass + interview cleared + G10 grades ≥85 |
+
+---
+
+*Addendum to Registrar Storyboard Workflow*
+*Based on: DepEd Memorandum No. 149, s. 2011 · Division Memorandum No. 157, s. 2025 · HNHS SY 2024–2025 admission announcements*
+*PRD Reference: v2.4.0*

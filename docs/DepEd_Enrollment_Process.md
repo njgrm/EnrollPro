@@ -884,3 +884,369 @@ This document now governs enrollment under **two simultaneously active DepEd pol
 - *Official Source: https://www.deped.gov.ph/2026/02/27/february-27-2026-dm-012-s-2026-full-implementation-of-the-strengthened-senior-high-school-curriculum-in-school-year-2026-2027/*
 - *The Summit Express Report, March 2, 2026 — No more strands: DepEd to fully implement Strengthened SHS Curriculum in SY 2026–2027*
 - *DepEd Strengthened SHS Program Page: https://www.deped.gov.ph/strengthened-shs-program/*
+
+
+---
+
+---
+
+## ADDENDUM — DepEd Admission Process: Grade 7 JHS & Grade 11 SHS
+### Including Special Curricular Programs (SCPs) for Junior High School
+
+**Research Basis:** DepEd Order No. 017, s. 2025 · DepEd Memorandum No. 149, s. 2011 · Division Memorandum No. 157, s. 2025 · TeacherPH SCP Reference · USHAT Guidelines
+**Relevance:** Defines the two distinct admission pathways that the HNHS system must handle — Open Admission and Special Program Admission
+
+---
+
+## A1. The Two Admission Pathways — A Critical Distinction
+
+Before any system design decision is made, it is essential to understand that DepEd public secondary schools operate under **two fundamentally different admission pathways** that coexist within the same school year:
+
+```
+APPLICANT ARRIVES
+        │
+        ▼
+  Is the applicant applying for
+  a Special Curricular Program (SCP)?
+        │
+    YES │                     NO │
+        ▼                        ▼
+ SCP ADMISSION PATH      OPEN ADMISSION PATH
+ (exam / audition /      (submit documents →
+  tryout / screening)     verified → enrolled)
+        │                        │
+        ▼                        ▼
+ PASS → enroll          No exam, no test,
+ FAIL → rejected        no score threshold
+```
+
+These two paths have **completely different workflows, timelines, and document requirements.** A school system that treats them as identical will fail to accurately capture the admission process.
+
+---
+
+## A2. Pathway 1 — Open Admission (Regular Sections)
+
+### Grade 7 Regular Sections — No Exam, No Barrier
+
+For learners enrolling in **regular (non-SCP) Grade 7 sections**, DepEd policy under DO 017, s. 2025 mandates open, barrier-free admission. No school may require an entrance examination, interview, portfolio, or any assessment instrument for regular section placement.
+
+**Who this covers:** All Grade 7 applicants who are NOT applying for a Special Curricular Program.
+
+**Requirements (from DO 017, s. 2025):**
+
+| Document | Status | Notes |
+|---|---|---|
+| PSA Birth Certificate | Required (once-only) | Physical verification; school records PSA number |
+| Grade 6 SF9 (Report Card) | Required | Must be signed by the elementary school head |
+| Basic Education Enrollment Form (BEEF) | Required | Accomplished and submitted by parent/guardian |
+| PEPT / A&E Test Result | Only if no SF9 | For non-traditional learners |
+
+**Process:**
+
+```
+PHASE 1 — Early Registration (Last Sat Jan → Last Fri Feb)
+  Parent presents documents → Registrar verifies → Records in LIS Early Reg
+  Status: PRE-REGISTERED (not yet officially enrolled)
+
+PHASE 2 — Regular Enrollment (~1 week before June class opening)
+  Parent returns to confirm → Registrar assigns section → Records in LIS BOSY
+  Status: OFFICIALLY ENROLLED
+```
+
+**Key rule:** A school **cannot deny enrollment** to a regular Grade 7 applicant for any document-related reason. Missing PSA BC → enroll provisionally, give until October 31. Missing SF9 → accept certification letter. No exceptions based on academic performance for regular sections.
+
+---
+
+### Grade 11 Non-Exam Tracks — Grade Criteria Only
+
+For learners enrolling in **Grade 11 general tracks** (HUMSS, ABM, GAS, TechPro clusters under DM 012, s. 2026), there is no entrance examination. Entry is based on Grade 10 SF9 grades.
+
+**Minimum grade criteria (DepEd guidelines):**
+
+| Track / Strand | Grade Requirement | Assessment |
+|---|---|---|
+| HUMSS | No prescribed cut-off | No exam required |
+| ABM | No prescribed cut-off | No exam required |
+| GAS | No prescribed cut-off | No exam required |
+| TVL / TechPro clusters | No prescribed cut-off | No exam; aptitude/interest may be assessed informally |
+
+**Process:**
+
+```
+PHASE 1 — Early Registration (Last Sat Jan → Last Fri Feb)
+  Parent presents Grade 10 SF9 → Registrar verifies grades
+  Parent declares preferred track/strand
+  Status: PRE-REGISTERED
+
+PHASE 2 — Regular Enrollment (June)
+  Parent confirms → Registrar assigns to track section → LIS BOSY
+  Status: OFFICIALLY ENROLLED
+```
+
+---
+
+## A3. Pathway 2 — Special Curricular Program (SCP) Admission
+
+### Overview
+
+DepEd authorizes public secondary schools to conduct competitive admission assessments for Special Curricular Programs. These programs serve learners with specific gifts, talents, and aptitudes. Unlike regular sections, SCP placement is **not guaranteed** — it requires a qualifying assessment, and only those who meet the prescribed criteria are admitted.
+
+**Legal basis:** DepEd Memorandum No. 149, s. 2011 — Special Curricular Programs in JHS
+**Additional basis:** Division-level memoranda (varies by SDO — HNHS follows DepEd Division of Negros Occidental guidelines)
+
+---
+
+### The 6 Official DepEd Special Curricular Programs for JHS
+
+#### SCP 1 — Science, Technology, and Engineering (STE) Program
+*Formerly known as Engineering and Science Education Program (ESEP)*
+
+| Attribute | Detail |
+|---|---|
+| **Purpose** | Develops learners with interest and aptitude for careers in science, technology, and engineering; prepares them for higher education in STEM fields |
+| **Admission Method** | Written entrance examination — standardized and administered division-wide on a single designated Saturday, typically in January–February |
+| **Exam Scope** | Science, Mathematics, English, Abstract/Logical Reasoning |
+| **Exam Coordinator** | Schools Division Office (SDO) — not individual schools; the division sets the date and releases results collectively |
+| **Cut-off score** | Division-determined; typically top percentile of all examinees qualify for available STE slots |
+| **Section capacity** | One STE class per grade level (maximum 40–45 students) |
+| **Additional screening** | Some divisions may include interview after written exam |
+| **For Grade 11 STEM** | A final grade of **85 and above** in both Science and Mathematics in Grade 10; percentile rank of **86 and above** in the STEM subtest of the career assessment exam |
+| **LRN requirement** | Same LRN carries over; no new LRN issued for SCP enrollment |
+
+**HNHS Context:** Division Memorandum No. 157, s. 2025 specifically governs STE admission testing for incoming Grade 7 in the Negros Occidental SDO. HNHS has confirmed STE sections are offered.
+
+---
+
+#### SCP 2 — Special Program in the Arts (SPA)
+
+| Attribute | Detail |
+|---|---|
+| **Purpose** | Develops young artists with aesthetic potential; preserves and enriches Filipino culture and heritage |
+| **Art Fields Covered** | Visual Arts, Music (Vocal and Instrumental), Theatre Arts, Dance Arts, Media Arts, Creative Writing (English and Filipino) |
+| **Admission Method** | Written qualifying examination + **audition** + interview — all typically conducted on the same day |
+| **Audition Process** | Facilitated per art field by designated audition facilitators; applicant is assessed in their specific area of talent |
+| **Results Timeline** | Released approximately one week after the qualifying assessment day |
+| **Portfolio requirement** | Some schools require a portfolio or sample works submission prior to audition day |
+| **Interview** | Conducted after audition to assess commitment, family support, and background |
+| **Section naming** | SPA sections may be named by art field (e.g., "SPA-Music-A", "SPA-Dance-A") or as a combined SPA section |
+
+---
+
+#### SCP 3 — Special Program in Sports (SPS)
+
+| Attribute | Detail |
+|---|---|
+| **Purpose** | Provides training for athletes to compete in national and international sports competitions |
+| **Sports Required (minimum)** | 5 individual/dual sports: Archery, Arnis, Badminton, Chess, Gymnastics, Table Tennis, Taekwondo, Tennis, Dance Sports; AND 3 team sports: Basketball, Football, Volleyball, Baseball, Softball, or Sepak Takraw |
+| **Admission Method** | Physical skills assessment / tryout conducted by sports coaches or PE teachers |
+| **Requirements** | Must be physically fit for intensive sports training; must have participated in at least one school-level sports competition; parental support required |
+| **Additional documents** | Certificate of Good Moral Character from Grade 6 principal; sports achievement records / certificates of participation |
+| **Medical clearance** | Required in most divisions — applicant must be cleared by a school physician or barangay health center |
+| **No written exam** | Skills-based assessment only — no written test |
+
+---
+
+#### SCP 4 — Special Program in Journalism (SPJ)
+
+| Attribute | Detail |
+|---|---|
+| **Purpose** | Develops learners with talent in writing and broadcasting; strengthens free and responsible journalism |
+| **Fields Covered** | Mass communication, print media, online media, broadcast media |
+| **Admission Method** | Written qualifying examination (SPJQE) + interview |
+| **Exam Content** | Journalism concepts, English proficiency, news writing, grammar, media literacy |
+| **Recommendation letter** | Required — from the Grade 6 school paper adviser or English teacher |
+| **Selection basis** | Combined results of SPJQE score and interview; typically top 35 students are admitted per class |
+| **Retention requirement** | Learner must maintain an average of 85% in Journalism and Advanced English; 83% in core subjects to remain in the program |
+| **Interview focus** | Communication skills, interest in current events, reading habits, writing motivation |
+
+---
+
+#### SCP 5 — Special Program in Foreign Language (SPFL)
+
+| Attribute | Detail |
+|---|---|
+| **Purpose** | Develops learners' listening, reading, writing, speaking, and viewing skills in a foreign language; prepares them for a linguistically diverse workplace |
+| **Languages Offered** | Spanish, Japanese (Nihongo), French, German, Chinese (Mandarin), Korean (school offers at least one) |
+| **Admission Method** | Screening based on **National Achievement Test (NAT)** English competency score from Grade 6 — no separate written exam |
+| **Eligibility** | Must demonstrate competence in English as a baseline; the foreign language is learned on top of English proficiency |
+| **Class size** | Maximum 35 students per class; at least one class per grade level |
+| **No tryout/audition** | Entry is document-based (NAT results) — not a competitive performance assessment |
+
+---
+
+#### SCP 6 — Special Program in Technical-Vocational Education (SPTVE)
+
+| Attribute | Detail |
+|---|---|
+| **Purpose** | Equips learners with technical-vocational and academic competencies; bridges JHS to TVL/TechPro track in SHS |
+| **Admission Method** | Skills aptitude assessment — school-determined; method varies by SDO and school |
+| **Common assessment types** | Aptitude test, manual dexterity test, practical skills demonstration, or interest inventory |
+| **No standardized national exam** | Unlike STE, there is no division-wide standardized test; each school/SDO sets its own assessment |
+| **TESDA link** | SPTVE graduates may pursue TESDA National Certificates (NC) in SHS TVL track |
+| **Specializations common in Visayas** | Dressmaking, Food Technology, Electrical Installation, Computer Hardware Servicing |
+
+---
+
+### Complete SCP Comparison Matrix
+
+| SCP | Assessment Type | Written Exam | Audition / Tryout | Interview | Recommendation Letter | NAT Score |
+|---|---|---|---|---|---|---|
+| **STE** | Written entrance exam | ✅ Standardized, division-wide | ❌ | Sometimes | ❌ | ❌ |
+| **SPA** | Exam + audition + interview | ✅ Qualifying exam | ✅ Per art field | ✅ | ❌ | ❌ |
+| **SPS** | Skills/physical tryout | ❌ | ✅ Sports tryout | ❌ | ✅ Good moral cert. | ❌ |
+| **SPJ** | SPJQE exam + interview | ✅ SPJQE | ❌ | ✅ | ✅ From teacher | ❌ |
+| **SPFL** | NAT score screening | ❌ | ❌ | ❌ | ❌ | ✅ English NAT |
+| **SPTVE** | Aptitude assessment | School-determined | School-determined | ❌ | ❌ | ❌ |
+
+---
+
+## A4. Grade 11 SHS — Special Program Admission
+
+### Grade 11 STEM — Criteria + Placement Exam + Interview (HNHS Specific)
+
+For Grade 11 STEM aspirants at HNHS, research confirms the school conducts **both a placement exam and an interview** — consistent with DepEd's national STEM entry criteria and HNHS's own school-specific admission procedure.
+
+**DepEd national minimum criteria for STEM:**
+
+| Criterion | Minimum Requirement |
+|---|---|
+| Final Grade in Science (Grade 10) | **85 and above** |
+| Final Grade in Mathematics (Grade 10) | **85 and above** |
+| Career Assessment Exam — STEM subtest | Percentile rank of **86 and above** |
+
+**HNHS school-specific additions (confirmed via HNHS Facebook announcements):**
+
+| Addition | Detail |
+|---|---|
+| Placement examination | Administered to all Grade 11 STEM aspirants; tests Science and Math proficiency |
+| Interview | Conducted separately for STEM aspirants; assesses motivation, aptitude, and career plan |
+| Schedule coordination | Registrar announces exam and interview schedule after Early Registration closes |
+
+**Process flow for Grade 11 STEM at HNHS:**
+
+```
+EARLY REGISTRATION (Jan–Feb)
+  Applicant submits BEEF + Grade 10 SF9 + PSA BC
+  Declares track: Academic / Strand preference: STEM
+  Status: PRE-REGISTERED (pending exam)
+        ↓
+REGISTRAR SCHEDULES PLACEMENT EXAM
+  School announces exam date (typically March–April or before June)
+  Applicant is notified via school bulletin / Facebook / SMS
+  Status: EXAM_SCHEDULED
+        ↓
+PLACEMENT EXAM DAY
+  Applicant takes written exam (Science + Mathematics)
+  Registrar records that applicant appeared
+  Status: EXAM_TAKEN
+        ↓
+INTERVIEW (if applicable)
+  Applicant attends interview with panel (school head, subject teachers)
+  Status: INTERVIEWED
+        ↓
+RESULTS RELEASED
+  ├── PASSED (met score threshold + interview cleared)
+  │     Status: APPROVED → proceeds to Phase 2 Regular Enrollment
+  │     Assigned to Grade 11 STEM section in June
+  │
+  └── FAILED (did not meet threshold)
+        Status: REJECTED (from STEM) → may apply to another strand (ABM, HUMSS, GAS)
+        Registrar informs applicant; offers alternative strand placement
+```
+
+---
+
+### Grade 11 Non-STEM Tracks — Open to Grade 10 Completers
+
+For Grade 11 applicants who are NOT applying for STEM, the process is simpler — no exam, no interview. Entry is based on Grade 10 SF9 grades meeting minimum DepEd criteria (which are very low or absent for most tracks):
+
+| Track | Admission | Registrar Action |
+|---|---|---|
+| Academic — HUMSS | Present Grade 10 SF9 | Verify grades; assign to HUMSS section |
+| Academic — ABM | Present Grade 10 SF9 | Verify grades; assign to ABM section |
+| Academic — GAS | Present Grade 10 SF9 | Verify grades; assign to GAS section |
+| TechPro — ICT | Present Grade 10 SF9 | Verify completion; assign to ICT section |
+| TechPro — HospTour | Present Grade 10 SF9 | Verify completion; assign section |
+| *(other TechPro clusters)* | Present Grade 10 SF9 | Verify completion; assign section |
+
+---
+
+## A5. System Design Implications
+
+### Updated ApplicationStatus Enum (Required Change to PRD)
+
+The current three-value enum (`PENDING`, `APPROVED`, `REJECTED`) is insufficient for schools with SCP programs. The following extended enum is required:
+
+```prisma
+enum ApplicationStatus {
+  // ── Open Admission Path ──────────────────
+  PENDING               // Submitted; awaiting registrar review
+  APPROVED              // Verified; assigned to section
+  REJECTED              // Rejected (data integrity issue or SCP failure)
+
+  // ── SCP Admission Path (new) ─────────────
+  EXAM_SCHEDULED        // Registrar has set the exam/audition/tryout date
+  EXAM_TAKEN            // Applicant appeared and completed the assessment
+  PASSED                // Met SCP cut-off; now equivalent to APPROVED; ready for section assignment
+  FAILED                // Did not meet SCP cut-off; may be offered regular section
+}
+```
+
+### New `applicantType` Field Required
+
+The system must distinguish between a regular applicant and an SCP applicant from the moment of submission:
+
+```prisma
+enum ApplicantType {
+  REGULAR               // Open admission — no exam required
+  STE                   // Science, Technology, Engineering exam
+  SPA                   // Special Program in Arts — exam + audition
+  SPS                   // Special Program in Sports — tryout
+  SPJ                   // Special Program in Journalism — SPJQE + interview
+  SPFL                  // Special Program in Foreign Language — NAT screening
+  SPTVE                 // Special Program in Tech-Voc — aptitude assessment
+  STEM_GRADE11          // Grade 11 STEM — placement exam + interview
+}
+```
+
+### Two Workflow Paths in `/applications`
+
+The registrar's `/applications` inbox must visually distinguish the two paths:
+
+| Regular Applicant | SCP Applicant |
+|---|---|
+| Verify documents | Verify documents |
+| Approve & Assign Section (1 step) | Schedule exam → Record result → Approve/Reject (3 steps) |
+| No exam date, no score | Has exam date, has score/result |
+| Immediate | 2–6 weeks between submission and enrollment |
+
+---
+
+## A6. Admission Process Timeline — Full Calendar View
+
+```
+CALENDAR YEAR (during active school year)              NEXT CALENDAR YEAR
+──────────────────────────────────────────────────────────────────────────────
+NOV–DEC         JAN–FEB              MAR–APR         MAY–JUN
+────────────────────────────────────────────────────────────────────────────
+[SCP SCREENING   ] [EARLY REGISTRATION] [SCP EXAMS &   ] [REGULAR ENROLLMENT]
+Announcements      Phase 1 (DO 017):    RESULTS:          Phase 2 (DO 017):
+- STE exam date    G7 + G11 applicants  STE written exam   All grade levels
+- SPA audition     submit BEEF +        SPA audition       confirm enrollment
+- SPS tryout       documents            SPS tryout         Section assignment
+- SPJ SPJQE date   Pre-registration     SPJ interview      Classes open June
+- SPFL NAT check   (not yet enrolled)   Results released
+                                        PASSED → APPROVED
+                                        FAILED → Alt offer
+```
+
+---
+
+*Addendum compiled from:*
+- *DepEd Memorandum No. 149, s. 2011 — Special Curricular Programs in JHS*
+- *Division Memorandum No. 157, s. 2025 — STE Admission Test, Negros Occidental SDO*
+- *DepEd Order No. 017, s. 2025 — Revised Basic Education Enrollment Policy*
+- *DepEd DM 012, s. 2026 — Strengthened Senior High School Curriculum*
+- *TeacherPH — List of DepEd Special Curricular Programs (SCPs)*
+- *USHAT Guidelines — Unified Science High School Admissions Test*
+- *HNHS Facebook Page — SY 2024–2025 Grade 11 Placement Exam and STEM Interview Announcements*
