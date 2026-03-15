@@ -55,6 +55,15 @@ export async function listSections(req: Request, res: Response): Promise<void> {
   res.json({ gradeLevels: result });
 }
 
+export async function listTeachers(req: Request, res: Response): Promise<void> {
+  const teachers = await prisma.user.findMany({
+    where: { role: 'TEACHER', isActive: true },
+    select: { id: true, name: true, email: true },
+    orderBy: { name: 'asc' }
+  });
+  res.json({ teachers });
+}
+
 export async function createSection(req: Request, res: Response): Promise<void> {
   const { name, maxCapacity, gradeLevelId, advisingTeacherId } = req.body;
 

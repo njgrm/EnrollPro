@@ -17,8 +17,12 @@ api.interceptors.response.use(
   (res) => res,
   (error) => {
     if (error.response?.status === 401) {
+      // Only clear auth and redirect if we actually had a token (not a public endpoint 401)
+      const hadToken = !!useAuthStore.getState().token;
       useAuthStore.getState().clearAuth();
-      window.location.href = '/login';
+      if (hadToken && !window.location.pathname.startsWith('/login')) {
+        window.location.replace('/login');
+      }
     }
     return Promise.reject(error);
   }

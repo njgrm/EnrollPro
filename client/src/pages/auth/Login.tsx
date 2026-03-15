@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router";
+import { useState } from "react";
+import { useNavigate, Link, Navigate } from "react-router";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -37,14 +37,12 @@ export default function Login() {
     resolver: zodResolver(loginSchema),
   });
 
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (token && user) {
-      navigate("/dashboard", { replace: true });
-    }
-  }, [token, user, navigate]);
-
-  if (token && user) return null;
+  // Redirect if already authenticated — ProtectedRoute handles the inverse,
+  // but we also need to push away from /login when already logged in.
+  // Use a simple synchronous check; no useEffect needed (avoids the loop).
+  if (token && user) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const onSubmit = async (data: LoginForm) => {
     setLoading(true);

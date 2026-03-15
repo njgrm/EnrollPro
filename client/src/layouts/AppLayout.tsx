@@ -3,15 +3,18 @@ import { useNavigate, useLocation, Link } from 'react-router';
 import { Toaster } from 'sileo';
 import {
   LayoutDashboard,
-  FileText,
+  ClipboardList,
   Users,
-  Grid3X3,
+  School,
   Settings,
   ScrollText,
   LogOut,
   BookOpen,
   ChevronsUpDown,
   Calendar,
+  UserCog,
+  Mail,
+  Monitor,
 } from 'lucide-react';
 
 import {
@@ -32,10 +35,13 @@ import {
 } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 import { useAuthStore } from '@/stores/authStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import api from '@/api/axiosInstance';
+import { ConfirmationModal } from '@/components/ui/confirmation-modal';
+import { motion, AnimatePresence } from 'motion/react';
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001';
 
@@ -45,10 +51,6 @@ interface AcademicYearItem {
   status: string;
   isActive: boolean;
 }
-
-// ...existing code...
-
-// ...existing code...
 
 function AYSwitcher() {
   const { activeAcademicYearId, viewingAcademicYearId, setViewingAY } = useSettingsStore();
@@ -107,21 +109,15 @@ function AYSwitcher() {
   );
 }
 
-const registrarNavItems = [
-  { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { title: 'Applications', href: '/applications', icon: FileText },
-  { title: 'Students', href: '/students', icon: Users },
-  { title: 'Sections', href: '/sections', icon: Grid3X3 },
-  { title: 'Audit Logs', href: '/audit-logs', icon: ScrollText },
-  { title: 'Settings', href: '/settings', icon: Settings },
-];
-
-const teacherNavItems = [
-  { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { title: 'My Sections', href: '/my-sections', icon: BookOpen },
-];
-
-import { ConfirmationModal } from '@/components/ui/confirmation-modal';
+function NavDivider({ label }: { label: string }) {
+  return (
+    <div className="px-3 py-2 mt-2">
+      <span className="text-[10px] font-bold uppercase tracking-wider text-[hsl(var(--muted-foreground))] opacity-60">
+        {label}
+      </span>
+    </div>
+  );
+}
 
 function AppSidebar() {
   const location = useLocation();
@@ -130,11 +126,31 @@ function AppSidebar() {
   const { schoolName, logoUrl } = useSettingsStore();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  const navItems = user?.role === 'TEACHER' ? teacherNavItems : registrarNavItems;
+  const isAdmin = user?.role === 'SYSTEM_ADMIN';
+  const isRegistrar = user?.role === 'REGISTRAR';
+  const isTeacher = user?.role === 'TEACHER';
 
   const handleLogout = () => {
     clearAuth();
     navigate('/login');
+  };
+
+  const NavItem = ({ to, icon: Icon, label }: { to: string; icon: any; label: string }) => {
+    const isActive = location.pathname === to || location.pathname.startsWith(to + '/');
+    return (
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          asChild
+          isActive={isActive}
+          tooltip={label}
+        >
+          <Link to={to}>
+            <Icon className="size-4" />
+            <span>{label}</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
   };
 
   return (
@@ -172,26 +188,47 @@ function AppSidebar() {
         {/* ── Navigation ── */}
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel></SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {navItems.map((item) => {
-                  const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + '/');
-                  return (
-                    <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={isActive}
-                        tooltip={item.title}
-                      >
-                        <Link to={item.href}>
-                          <item.icon />
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
+                {/* ── Always visible ── */}
+                <NavItem to="/dashboard" icon={LayoutDashboard} label="Dashboard" />
+
+                {/* ── Enrollment section (Registrar + Admin) ── */}
+                {(isRegistrar || isAdmin) && (
+                  <>
+                    <NavDivider label="Enrollment" />
+                    <NavItem to="/applications" icon={ClipboardList} label="Applications" />
+                    <NavItem to="/students" icon={Users} label="Students" />
+                    <NavItem to="/sections" icon={School} label="Sections" />
+                  </>
+                )}
+
+                {/* ── Teacher-only ── */}
+                {isTeacher && (
+                  <>
+                    <NavDivider label="Classes" />
+                    <NavItem to="/my-sections" icon={BookOpen} label="My Sections" />
+                  </>
+                )}
+
+                {/* ── System section (Admin only) ── */}
+                {isAdmin && (
+                  <>
+                    <NavDivider label="System" />
+                    <NavItem to="/admin/users" icon={UserCog} label="User Management" />
+                    <NavItem to="/admin/email-logs" icon={Mail} label="Email Logs" />
+                    <NavItem to="/admin/system" icon={Monitor} label="System Health" />
+                  </>
+                )}
+
+                {/* ── Records section (Registrar + Admin) ── */}
+                {(isRegistrar || isAdmin) && (
+                  <>
+                    <NavDivider label="Records" />
+                    <NavItem to="/audit-logs" icon={ScrollText} label="Audit Logs" />
+                    <NavItem to="/settings" icon={Settings} label="Settings" />
+                  </>
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -206,13 +243,30 @@ function AppSidebar() {
                 tooltip={user?.name ?? 'User'}
                 onClick={() => setShowLogoutConfirm(true)}
               >
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-[hsl(var(--muted))] text-[hsl(var(--foreground))]">
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] overflow-hidden">
                   <span className="text-xs font-semibold">
                     {user?.name?.charAt(0).toUpperCase() ?? 'U'}
                   </span>
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">{user?.name}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="truncate font-semibold">{user?.name}</span>
+                    {user?.role === 'SYSTEM_ADMIN' && (
+                      <Badge variant="outline" className="h-4 px-1 text-[9px] font-bold border-purple-200 bg-purple-50 text-purple-700">
+                        ADMIN
+                      </Badge>
+                    )}
+                    {user?.role === 'REGISTRAR' && (
+                      <Badge variant="outline" className="h-4 px-1 text-[9px] font-bold border-blue-200 bg-blue-50 text-blue-700">
+                        REGISTRAR
+                      </Badge>
+                    )}
+                    {user?.role === 'TEACHER' && (
+                      <Badge variant="outline" className="h-4 px-1 text-[9px] font-bold border-emerald-200 bg-emerald-50 text-emerald-700">
+                        TEACHER
+                      </Badge>
+                    )}
+                  </div>
                   <span className="truncate text-xs text-[hsl(var(--muted-foreground))]">{user?.email}</span>
                 </div>
                 <LogOut className="ml-auto size-4 text-[hsl(var(--muted-foreground))]" />
@@ -234,16 +288,11 @@ function AppSidebar() {
   );
 }
 
-import { motion, AnimatePresence } from 'motion/react';
-
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { selectedAccentHsl, colorScheme, accentForeground } = useSettingsStore();
   const accentHsl = selectedAccentHsl ?? (colorScheme as { accent_hsl?: string } | null)?.accent_hsl;
   const location = useLocation();
 
-  // Compute toast theme based on accent foreground
-  // fg === '0 0% 100%' (white) means background is dark -> Sileo theme="light" (white text on dark bg)
-  // fg === '0 0% 0%' (black) means background is light -> Sileo theme="dark" (black text on light bg)
   const toastTheme = accentForeground === '0 0% 100%' ? 'light' : 'dark';
 
   return (

@@ -12,8 +12,15 @@ export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
     return <Navigate to="/login" replace />;
   }
 
+  // Force password change if required
+  if (user.mustChangePassword) {
+    return <Navigate to="/change-password" replace />;
+  }
+
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/login" replace />;
+    // If authenticated but role not allowed, don't go to /login (causes loop)
+    // Go to dashboard or a safe place.
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <Outlet />;

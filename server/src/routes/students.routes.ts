@@ -9,12 +9,12 @@ const router: Router = Router();
 router.use(authenticate);
 
 // Get all students with search and filters
-router.get('/', authorize('REGISTRAR', 'TEACHER'), getStudents);
+router.get('/', authorize('REGISTRAR', 'SYSTEM_ADMIN', 'TEACHER'), getStudents);
 
 // Get single student by ID
-router.get('/:id', authorize('REGISTRAR', 'TEACHER'), getStudentById);
+router.get('/:id', authorize('REGISTRAR', 'SYSTEM_ADMIN', 'TEACHER'), getStudentById);
 
 // Update student information
-router.put('/:id', authorize('REGISTRAR'), updateStudent);
+router.put('/:id', authorize('REGISTRAR', 'SYSTEM_ADMIN'), updateStudent);
 
 export default router;

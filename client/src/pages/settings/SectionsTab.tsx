@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { sileo } from 'sileo';
-import { Plus, Trash2, Grid3X3, X, Check } from 'lucide-react';
+import { Plus, Trash2, Grid3X3, X, Check, Edit2 } from 'lucide-react';
 import api from '@/api/axiosInstance';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { toastApiError } from '@/hooks/useApiToast';
@@ -10,6 +10,14 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+
+interface Teacher {
+  id: number;
+  name: string;
+  email: string;
+}
 
 interface SectionItem {
   id: number;
@@ -46,13 +54,22 @@ export default function SectionsTab() {
   const ayId = viewingAcademicYearId ?? activeAcademicYearId;
 
   const [groups, setGroups] = useState<GradeLevelGroup[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Inline add section state
   const [addGlId, setAddGlId] = useState<number | null>(null);
   const [sectionName, setSectionName] = useState('');
   const [sectionCap, setSectionCap] = useState('40');
+  const [advisingTeacherId, setAdvisingTeacherId] = useState<string>('none');
   const [adding, setAdding] = useState(false);
+
+  // Edit section state
+  const [editSection, setEditSection] = useState<SectionItem | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editCap, setEditCap] = useState('40');
+  const [editAdvisingTeacherId, setEditAdvisingTeacherId] = useState<string>('none');
+  const [editing, setEditing] = useState(false);
 
   // Delete confirmation
   const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -63,8 +80,12 @@ export default function SectionsTab() {
     if (!ayId) { setLoading(false); return; }
     setLoading(true);
     try {
-      const res = await api.get(`/sections/${ayId}`);
+      const [res, teachersRes] = await Promise.all([
+        api.get(`/sections/${ayId}`),
+        api.get('/sections/teachers')
+      ]);
       setGroups(res.data.gradeLevels);
+      setTeachers(teachersRes.data.teachers);
     } catch {
       // silent
     } finally {
@@ -81,6 +102,7 @@ export default function SectionsTab() {
       setAddGlId(glId);
       setSectionName('');
       setSectionCap('40');
+      setAdvisingTeacherId('none');
     }
   };
 
@@ -92,6 +114,7 @@ export default function SectionsTab() {
         name: sectionName.trim(),
         maxCapacity: parseInt(sectionCap) || 40,
         gradeLevelId: addGlId,
+        advisingTeacherId: advisingTeacherId === 'none' ? null : parseInt(advisingTeacherId)
       });
       sileo.success({ title: 'Section Added', description: sectionName.trim() });
       setAddGlId(null);
@@ -100,6 +123,32 @@ export default function SectionsTab() {
       toastApiError(err as never);
     } finally {
       setAdding(false);
+    }
+  };
+
+  const openEdit = (section: SectionItem) => {
+    setEditSection(section);
+    setEditName(section.name);
+    setEditCap(section.maxCapacity.toString());
+    setEditAdvisingTeacherId(section.advisingTeacher ? section.advisingTeacher.id.toString() : 'none');
+  };
+
+  const handleEdit = async () => {
+    if (!editSection || !editName.trim()) return;
+    setEditing(true);
+    try {
+      await api.put(`/sections/${editSection.id}`, {
+        name: editName.trim(),
+        maxCapacity: parseInt(editCap) || 40,
+        advisingTeacherId: editAdvisingTeacherId === 'none' ? null : parseInt(editAdvisingTeacherId)
+      });
+      sileo.success({ title: 'Section Updated', description: editName.trim() });
+      setEditSection(null);
+      fetchData();
+    } catch (err) {
+      toastApiError(err as never);
+    } finally {
+      setEditing(false);
     }
   };
 
@@ -226,6 +275,20 @@ export default function SectionsTab() {
                       className="h-9 text-sm"
                     />
                   </div>
+                  <div className="space-y-2 col-span-2">
+                    <Label className="text-xs">Advising Teacher (Optional)</Label>
+                    <Select value={advisingTeacherId} onValueChange={setAdvisingTeacherId}>
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder="Select teacher" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No Advising Teacher</SelectItem>
+                        {teachers.map(t => (
+                          <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <Button 
                   size="sm" 
@@ -233,7 +296,7 @@ export default function SectionsTab() {
                   onClick={handleAdd} 
                   disabled={adding || !sectionName.trim()}
                 >
-                  {adding ? 'Adding...' : <><Check className="mr-1 h-3 w-3" /> Add Section</>}
+                  {adding ? 'Adding...' : <><Check className="mr-1 h-3 w-3" /> Save Section</>}
                 </Button>
                 <Separator />
               </div>
@@ -251,13 +314,22 @@ export default function SectionsTab() {
                     <span className="text-sm">{fillEmoji(s.fillPercent)}</span>
                     <span className="flex-1 text-sm font-medium">{s.name}</span>
                     {s.advisingTeacher && (
-                      <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                      <span className="text-xs text-[hsl(var(--muted-foreground))] truncate max-w-25" title={s.advisingTeacher.name}>
                         {s.advisingTeacher.name}
                       </span>
                     )}
                     <span className="text-xs font-mono text-[hsl(var(--muted-foreground))]">
                       {s.enrolledCount}/{s.maxCapacity} ({s.fillPercent}%)
                     </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0"
+                      onClick={() => openEdit(s)}
+                      title="Edit section"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                    </Button>
                     <Button
                       size="sm"
                       variant="ghost"
@@ -276,6 +348,45 @@ export default function SectionsTab() {
         </Card>
       ))}
       </div>
+
+      {/* Edit Section Dialog */}
+      <Dialog open={!!editSection} onOpenChange={(open) => !open && setEditSection(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Edit Section</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Section Name</Label>
+              <Input placeholder="e.g. Section A" value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Max Capacity</Label>
+              <Input type="number" min="1" value={editCap} onChange={(e) => setEditCap(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Advising Teacher</Label>
+              <Select value={editAdvisingTeacherId} onValueChange={setEditAdvisingTeacherId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select teacher" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No Advising Teacher</SelectItem>
+                  {teachers.map(t => (
+                    <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditSection(null)}>Cancel</Button>
+            <Button onClick={handleEdit} disabled={editing || !editName.trim()}>
+              {editing ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmationModal
         open={!!deleteId}

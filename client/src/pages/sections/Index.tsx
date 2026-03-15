@@ -57,10 +57,10 @@ export default function Sections() {
     try {
       const [secRes, teaRes] = await Promise.all([
         api.get(`/sections/${ayId}`),
-        api.get('/admin/users?role=TEACHER&isActive=true&limit=100'),
+        api.get('/sections/teachers'),
       ]);
       setData(secRes.data.gradeLevels);
-      setTeachers(teaRes.data.users);
+      setTeachers(teaRes.data.teachers);
     } catch (err) {
       toastApiError(err as never);
     } finally {

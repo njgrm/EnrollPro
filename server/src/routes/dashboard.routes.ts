@@ -5,6 +5,7 @@ import { authorize } from '../middleware/authorize.js';
 
 const router: Router = Router();
 
-router.get('/stats', authenticate, authorize('REGISTRAR'), getStats);
+// Dashboard stats are visible to all staff roles
+router.get('/stats', authenticate, authorize('REGISTRAR', 'SYSTEM_ADMIN', 'TEACHER'), getStats);
 
 export default router;
