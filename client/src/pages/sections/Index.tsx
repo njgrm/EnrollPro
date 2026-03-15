@@ -1,68 +1,93 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Trash2, Edit2, User, LayoutGrid, AlertCircle } from 'lucide-react';
 import { sileo } from 'sileo';
+import { Plus, Trash2, Grid3X3, X, Check, Edit2 } from 'lucide-react';
 import api from '@/api/axiosInstance';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { toastApiError } from '@/hooks/useApiToast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface Teacher {
   id: number;
   name: string;
+  email: string;
 }
 
-interface Section {
+interface SectionItem {
   id: number;
   name: string;
   maxCapacity: number;
   enrolledCount: number;
   fillPercent: number;
-  advisingTeacher: Teacher | null;
+  advisingTeacher: { id: number; name: string } | null;
 }
 
-interface GradeLevelSections {
+interface GradeLevelGroup {
   gradeLevelId: number;
   gradeLevelName: string;
   displayOrder: number;
-  sections: Section[];
+  sections: SectionItem[];
+}
+
+function fillColor(pct: number): string {
+  if (pct >= 90) return 'bg-red-500';
+  if (pct >= 75) return 'bg-orange-400';
+  if (pct >= 50) return 'bg-yellow-400';
+  return 'bg-green-500';
+}
+
+function fillEmoji(pct: number): string {
+  if (pct >= 90) return '🔴';
+  if (pct >= 75) return '🟠';
+  if (pct >= 50) return '🟡';
+  return '🟢';
 }
 
 export default function Sections() {
   const { activeAcademicYearId, viewingAcademicYearId } = useSettingsStore();
   const ayId = viewingAcademicYearId ?? activeAcademicYearId;
 
-  const [data, setData] = useState<GradeLevelSections[]>([]);
+  const [groups, setGroups] = useState<GradeLevelGroup[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Dialog state
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingSection, setEditingSection] = useState<Section | null>(null);
-  const [selectedGlId, setSelectedGlId] = useState<number | null>(null);
-  
-  // Form state
-  const [name, setName] = useState('');
-  const [capacity, setCapacity] = useState('40');
-  const [teacherId, setTeacherId] = useState<string>('NONE');
+  // Inline add section state
+  const [addGlId, setAddGlId] = useState<number | null>(null);
+  const [sectionName, setSectionName] = useState('');
+  const [sectionCap, setSectionCap] = useState('40');
+  const [advisingTeacherId, setAdvisingTeacherId] = useState<string>('none');
+  const [adding, setAdding] = useState(false);
+
+  // Edit section state
+  const [editSection, setEditSection] = useState<SectionItem | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editCap, setEditCap] = useState('40');
+  const [editAdvisingTeacherId, setEditAdvisingTeacherId] = useState<string>('none');
+  const [editing, setEditing] = useState(false);
+
+  // Delete confirmation
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [deleteName, setDeleteName] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!ayId) { setLoading(false); return; }
     setLoading(true);
     try {
-      const [secRes, teaRes] = await Promise.all([
+      const [res, teachersRes] = await Promise.all([
         api.get(`/sections/${ayId}`),
-        api.get('/sections/teachers'),
+        api.get('/sections/teachers')
       ]);
-      setData(secRes.data.gradeLevels);
-      setTeachers(teaRes.data.teachers);
-    } catch (err) {
-      toastApiError(err as never);
+      setGroups(res.data.gradeLevels);
+      setTeachers(teachersRes.data.teachers);
+    } catch {
+      // silent
     } finally {
       setLoading(false);
     }
@@ -70,38 +95,75 @@ export default function Sections() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const handleSave = async () => {
-    if (!name || (!selectedGlId && !editingSection)) return;
-    try {
-      const payload = {
-        name,
-        maxCapacity: parseInt(capacity),
-        advisingTeacherId: teacherId === 'NONE' ? null : parseInt(teacherId),
-        gradeLevelId: selectedGlId,
-      };
-
-      if (editingSection) {
-        await api.put(`/sections/${editingSection.id}`, payload);
-        sileo.success({ title: 'Updated', description: 'Section details updated.' });
-      } else {
-        await api.post('/sections', payload);
-        sileo.success({ title: 'Created', description: 'New section added.' });
-      }
-      setDialogOpen(false);
-      fetchData();
-    } catch (err) {
-      toastApiError(err as never);
+  const toggleAddMode = (glId: number) => {
+    if (addGlId === glId) {
+      setAddGlId(null);
+    } else {
+      setAddGlId(glId);
+      setSectionName('');
+      setSectionCap('40');
+      setAdvisingTeacherId('none');
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this section?')) return;
+  const handleAdd = async () => {
+    if (!addGlId || !sectionName.trim()) return;
+    setAdding(true);
     try {
-      await api.delete(`/sections/${id}`);
-      sileo.success({ title: 'Deleted', description: 'Section removed.' });
+      await api.post('/sections', {
+        name: sectionName.trim(),
+        maxCapacity: parseInt(sectionCap) || 40,
+        gradeLevelId: addGlId,
+        advisingTeacherId: advisingTeacherId === 'none' ? null : parseInt(advisingTeacherId)
+      });
+      sileo.success({ title: 'Section Added', description: sectionName.trim() });
+      setAddGlId(null);
       fetchData();
     } catch (err) {
       toastApiError(err as never);
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const openEdit = (section: SectionItem) => {
+    setEditSection(section);
+    setEditName(section.name);
+    setEditCap(section.maxCapacity.toString());
+    setEditAdvisingTeacherId(section.advisingTeacher ? section.advisingTeacher.id.toString() : 'none');
+  };
+
+  const handleEdit = async () => {
+    if (!editSection || !editName.trim()) return;
+    setEditing(true);
+    try {
+      await api.put(`/sections/${editSection.id}`, {
+        name: editName.trim(),
+        maxCapacity: parseInt(editCap) || 40,
+        advisingTeacherId: editAdvisingTeacherId === 'none' ? null : parseInt(editAdvisingTeacherId)
+      });
+      sileo.success({ title: 'Section Updated', description: editName.trim() });
+      setEditSection(null);
+      fetchData();
+    } catch (err) {
+      toastApiError(err as never);
+    } finally {
+      setEditing(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/sections/${deleteId}`);
+      sileo.success({ title: 'Deleted', description: deleteName });
+      setDeleteId(null);
+      fetchData();
+    } catch (err) {
+      toastApiError(err as never);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -115,6 +177,10 @@ export default function Sections() {
     );
   }
 
+  if (loading) {
+    return <div className="text-center py-12 text-sm text-[hsl(var(--muted-foreground))]">Loading sections…</div>;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -122,157 +188,222 @@ export default function Sections() {
           <h1 className="text-3xl font-bold tracking-tight">Sections</h1>
           <p className="text-sm text-[hsl(var(--muted-foreground))]">Manage grade level sections and advising teachers</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="bg-emerald-50 text-emerald-700">
-            Total Sections: {data.reduce((acc, gl) => acc + gl.sections.length, 0)}
-          </Badge>
-        </div>
       </div>
 
-      {loading ? (
-        <div className="text-center py-12 text-sm text-[hsl(var(--muted-foreground))]">Loading sections...</div>
-      ) : data.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="py-12 text-center">
-            <LayoutGrid className="h-12 w-12 mx-auto text-[hsl(var(--muted-foreground))] opacity-20 mb-4" />
-            <p className="text-sm text-[hsl(var(--muted-foreground))]">No grade levels found for this academic year.</p>
-            <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">Configure grade levels in the Curriculum tab first.</p>
+      {/* Capacity Heatmap overview */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <Grid3X3 className="h-5 w-5" />
+            Capacity Heatmap
+          </CardTitle>
+          <CardDescription>
+            Visual overview of section fill rates. 🟢 &lt;50% · 🟡 50-74% · 🟠 75-89% · 🔴 90%+
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {groups.length === 0 ? (
+            <p className="text-sm text-[hsl(var(--muted-foreground))] text-center py-4">No grade levels found for this academic year.</p>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {groups.flatMap((g) =>
+                g.sections.map((s) => (
+                  <div
+                    key={s.id}
+                    className="flex items-center gap-3 rounded-lg border border-[hsl(var(--border))] p-3"
+                  >
+                    <span className="text-lg">{fillEmoji(s.fillPercent)}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{g.gradeLevelName} — {s.name}</p>
+                      <div className="mt-1 h-2 w-full rounded-full bg-[hsl(var(--muted))]">
+                        <div
+                          className={`h-2 rounded-full transition-all ${fillColor(s.fillPercent)}`}
+                          style={{ width: `${Math.min(s.fillPercent, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                    <span className="text-xs font-mono text-[hsl(var(--muted-foreground))] whitespace-nowrap">
+                      {s.enrolledCount}/{s.maxCapacity}
+                    </span>
+                  </div>
+                ))
+              )}
+              {groups.every((g) => g.sections.length === 0) && (
+                <p className="col-span-full text-sm text-[hsl(var(--muted-foreground))] text-center py-4">
+                  No sections created yet. Add sections to grade levels below.
+                </p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Sections grouped by grade level */}
+      <div className="grid gap-6 md:grid-cols-2">
+      {groups.map((g) => (
+        <Card key={g.gradeLevelId}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">{g.gradeLevelName}</CardTitle>
+              <Button 
+                size="sm" 
+                variant={addGlId === g.gradeLevelId ? "ghost" : "outline"} 
+                onClick={() => toggleAddMode(g.gradeLevelId)}
+              >
+                {addGlId === g.gradeLevelId ? (
+                  <><X className="mr-1 h-3 w-3" /> Cancel</>
+                ) : (
+                  <><Plus className="mr-1 h-3 w-3" /> Add Section</>
+                )}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {addGlId === g.gradeLevelId && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs">Section Name</Label>
+                    <Input 
+                      placeholder="e.g. Section A" 
+                      value={sectionName} 
+                      onChange={(e) => setSectionName(e.target.value)} 
+                      className="h-9 text-sm"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Max Capacity</Label>
+                    <Input 
+                      type="number" 
+                      min="1" 
+                      value={sectionCap} 
+                      onChange={(e) => setSectionCap(e.target.value)} 
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2 col-span-2">
+                    <Label className="text-xs">Advising Teacher (Optional)</Label>
+                    <Select value={advisingTeacherId} onValueChange={setAdvisingTeacherId}>
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder="Select teacher" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No Advising Teacher</SelectItem>
+                        {teachers.map(t => (
+                          <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <Button 
+                  size="sm" 
+                  className="w-full" 
+                  onClick={handleAdd} 
+                  disabled={adding || !sectionName.trim()}
+                >
+                  {adding ? 'Adding...' : <><Check className="mr-1 h-3 w-3" /> Save Section</>}
+                </Button>
+                <Separator />
+              </div>
+            )}
+
+            {g.sections.length === 0 ? (
+              <p className="text-sm text-[hsl(var(--muted-foreground))] text-center py-2">No sections</p>
+            ) : (
+              <div className="space-y-2">
+                {g.sections.map((s) => (
+                  <div
+                    key={s.id}
+                    className="flex items-center gap-3 rounded-lg border border-[hsl(var(--border))] px-3 py-2"
+                  >
+                    <span className="text-sm">{fillEmoji(s.fillPercent)}</span>
+                    <span className="flex-1 text-sm font-medium">{s.name}</span>
+                    {s.advisingTeacher && (
+                      <span className="text-xs text-[hsl(var(--muted-foreground))] truncate max-w-25" title={s.advisingTeacher.name}>
+                        {s.advisingTeacher.name}
+                      </span>
+                    )}
+                    <span className="text-xs font-mono text-[hsl(var(--muted-foreground))]">
+                      {s.enrolledCount}/{s.maxCapacity} ({s.fillPercent}%)
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0"
+                      onClick={() => openEdit(s)}
+                      title="Edit section"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0 text-[hsl(var(--destructive))]"
+                      onClick={() => { setDeleteId(s.id); setDeleteName(s.name); }}
+                      disabled={s.enrolledCount > 0}
+                      title={s.enrolledCount > 0 ? 'Cannot delete — has enrolled students' : 'Delete section'}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
-      ) : (
-        <div className="space-y-8">
-          {data.map((gl) => (
-            <div key={gl.gradeLevelId} className="space-y-4">
-              <div className="flex items-center justify-between border-b pb-2">
-                <h3 className="text-lg font-bold flex items-center gap-2">
-                  <Badge variant="secondary" className="h-6 w-6 rounded-full p-0 flex items-center justify-center font-bold">
-                    {gl.gradeLevelName.match(/\d+/)?.[0] || '•'}
-                  </Badge>
-                  {gl.gradeLevelName}
-                </h3>
-                <Button size="xs" variant="outline" onClick={() => { 
-                  setSelectedGlId(gl.gradeLevelId); 
-                  setEditingSection(null); 
-                  setName(''); 
-                  setCapacity('40'); 
-                  setTeacherId('NONE'); 
-                  setDialogOpen(true); 
-                }}>
-                  <Plus className="h-3 w-3 mr-1" /> Add Section
-                </Button>
-              </div>
+      ))}
+      </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {gl.sections.length === 0 ? (
-                  <div className="col-span-full py-6 text-center rounded-xl border border-dashed border-[hsl(var(--border))] bg-[hsl(var(--muted))/30]">
-                    <p className="text-xs text-[hsl(var(--muted-foreground))]">No sections defined for {gl.gradeLevelName}.</p>
-                  </div>
-                ) : (
-                  gl.sections.map((sec) => (
-                    <Card key={sec.id} className="group overflow-hidden border shadow-sm hover:shadow-md transition-all">
-                      <div className={`h-1.5 w-full ${sec.fillPercent >= 100 ? 'bg-red-500' : sec.fillPercent >= 85 ? 'bg-orange-500' : 'bg-emerald-500'}`} />
-                      <CardHeader className="p-4 pb-2">
-                        <div className="flex items-start justify-between">
-                          <CardTitle className="text-base font-bold">{sec.name}</CardTitle>
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { 
-                              setEditingSection(sec); 
-                              setSelectedGlId(gl.gradeLevelId); 
-                              setName(sec.name); 
-                              setCapacity(String(sec.maxCapacity)); 
-                              setTeacherId(sec.advisingTeacher?.id ? String(sec.advisingTeacher.id) : 'NONE'); 
-                              setDialogOpen(true); 
-                            }}>
-                              <Edit2 className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(sec.id)}>
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </div>
-                        <CardDescription className="text-xs flex items-center gap-1 mt-1">
-                          <User className="h-3 w-3" />
-                          {sec.advisingTeacher ? sec.advisingTeacher.name : 'No Advisor Assigned'}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="p-4 pt-2">
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between text-xs mb-1">
-                            <span className="font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wider">Capacity</span>
-                            <span className={`font-bold ${sec.fillPercent >= 100 ? 'text-red-600' : 'text-[hsl(var(--foreground))]'}`}>
-                              {sec.enrolledCount} / {sec.maxCapacity}
-                            </span>
-                          </div>
-                          <div className="h-2 w-full bg-[hsl(var(--muted))] rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full transition-all duration-500 ${sec.fillPercent >= 100 ? 'bg-red-500' : sec.fillPercent >= 85 ? 'bg-orange-500' : 'bg-emerald-500'}`} 
-                              style={{ width: `${Math.min(100, sec.fillPercent)}%` }} 
-                            />
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <Badge variant="outline" className="text-[10px] font-bold h-5">
-                              {sec.fillPercent}% Full
-                            </Badge>
-                            {sec.fillPercent >= 100 && (
-                              <Badge variant="destructive" className="text-[10px] font-bold h-5 animate-pulse">OVER CAPACITY</Badge>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Add/Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+      {/* Edit Section Dialog */}
+      <Dialog open={!!editSection} onOpenChange={(open) => !open && setEditSection(null)}>
+        <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{editingSection ? 'Edit Section' : 'Create New Section'}</DialogTitle>
-            <DialogDescription>
-              {editingSection ? `Update details for section ${editingSection.name}` : `Add a new section to ${data.find(gl => gl.gradeLevelId === selectedGlId)?.gradeLevelName}`}
-            </DialogDescription>
+            <DialogTitle>Edit Section</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Section Name</Label>
-              <Input placeholder="e.g. Diamond, Archimedes" value={name} onChange={e => setName(e.target.value)} />
+              <Input placeholder="e.g. Section A" value={editName} onChange={(e) => setEditName(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label>Maximum Capacity</Label>
-              <Input type="number" value={capacity} onChange={e => setCapacity(e.target.value)} />
+              <Label>Max Capacity</Label>
+              <Input type="number" min="1" value={editCap} onChange={(e) => setEditCap(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Advising Teacher</Label>
-              <Select value={teacherId} onValueChange={setTeacherId}>
+              <Select value={editAdvisingTeacherId} onValueChange={setEditAdvisingTeacherId}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select teacher" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="NONE">None / Assign Later</SelectItem>
+                  <SelectItem value="none">No Advising Teacher</SelectItem>
                   {teachers.map(t => (
-                    <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                    <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            {editingSection && editingSection.enrolledCount > parseInt(capacity) && (
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-orange-50 text-orange-800 text-xs">
-                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                <p>Warning: New capacity is lower than current enrollment ({editingSection.enrolledCount}). This section will be marked as over-capacity.</p>
-              </div>
-            )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>Save Section</Button>
+            <Button variant="outline" onClick={() => setEditSection(null)}>Cancel</Button>
+            <Button onClick={handleEdit} disabled={editing || !editName.trim()}>
+              {editing ? 'Saving...' : 'Save Changes'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmationModal
+        open={!!deleteId}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        title="Delete Section"
+        description={`Are you sure you want to delete the section "${deleteName}"? This action cannot be undone.`}
+        confirmText="Delete"
+        loading={deleting}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }
