@@ -23,7 +23,14 @@ import SystemHealth from '@/pages/admin/SystemHealth';
 // New Teacher Page
 import MySections from '@/pages/my-sections/Index';
 
+import Apply from '@/pages/apply/Index';
+
 export const router = createBrowserRouter([
+  // Public routes
+  {
+    path: '/apply',
+    element: <Apply />,
+  },
   // Auth routes
   {
     path: '/login',
