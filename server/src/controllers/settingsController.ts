@@ -12,8 +12,8 @@ async function getOrCreateSettings() {
     include: { activeAcademicYear: true }
   });
   if (!settings) {
-    settings = await prisma.schoolSettings.create({ 
-      data: {},
+    settings = await prisma.schoolSettings.create({
+      data: { schoolName: 'My School' },
       include: { activeAcademicYear: true }
     });
   }

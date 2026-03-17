@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { sileo } from 'sileo';
 import { 
   UserCog, 
@@ -75,6 +76,7 @@ function generatePassword() {
 }
 
 export default function AdminUsers() {
+  const { schoolName } = useSettingsStore();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [page] = useState(1);
@@ -201,7 +203,7 @@ export default function AdminUsers() {
             User Management
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Provision and manage staff accounts for Hinigaran National High School
+            Provision and manage staff accounts{schoolName ? ` for ${schoolName}` : ''}
           </p>
         </div>
         <Button onClick={() => {
@@ -379,7 +381,7 @@ export default function AdminUsers() {
               <Label>Email Address *</Label>
               <Input 
                 type="email" 
-                placeholder="registrar@hnhs.edu.ph" 
+                placeholder="registrar@school.edu.ph" 
                 value={formData.email} 
                 onChange={e => setFormData({ ...formData, email: e.target.value })} 
               />

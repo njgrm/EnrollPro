@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
 import { useSettingsStore } from '@/stores/settingsStore';
 
-const CONSENT_KEY = 'hnhs_apply_consent';
+const CONSENT_KEY = 'enrollpro_apply_consent';
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001';
 
 export default function Apply() {

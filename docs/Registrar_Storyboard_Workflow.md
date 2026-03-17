@@ -1,5 +1,5 @@
 # Registrar & Enrollment Clerk — Complete System Storyboard
-## Hinigaran National High School
+## EnrollPro
 ## Web-Based Admission Portal & Enrollment Information Management System
 
 **Document Type:** Full Workflow Storyboard — All Scenarios, All Screens
@@ -165,7 +165,7 @@ The login page renders full-screen, centered. It shows:
 
 ```
 ╔══════════════════════════════════════════════════════════════════╗
-║  HINIGARAN NATIONAL HIGH SCHOOL           SY 2025–2026  ACTIVE  ║
+║  [School Name]           SY 2025–2026  ACTIVE  ║
 ╠══════════════╦══════════════╦══════════════╦════════════════════╣
 ║  1,243       ║  0           ║  0           ║  0                 ║
 ║  ENROLLED    ║  PENDING     ║  APPROVED    ║  SECTIONS          ║
@@ -266,7 +266,7 @@ SETTINGS > Academic Year
 │ WHERE  │ /settings → Tab 3: Grade Levels & Strands              │
 │ WHY    │ Grade levels are the base unit — sections and          │
 │        │ applicant routing depend on them                       │
-│ POLICY │ HNHS offers Grade 7 through Grade 12 (RA 10533)        │
+│ POLICY │ The school offers Grade 7 through Grade 12 (RA 10533)   │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -326,7 +326,7 @@ SETTINGS > Grade Levels & Strands
 │ WHEN   │ April–May — immediately after Scene 0.4               │
 │ WHERE  │ /settings → Tab 3: Grade Levels & Strands (right panel)│
 │ WHY    │ Grade 11 applicants must select a strand on the portal │
-│ POLICY │ HNHS offers Academic track (STEM/ABM/HUMSS/GAS) for   │
+│ POLICY │ The school offers Academic track (STEM/ABM/HUMSS/GAS)  │
 │        │ Grades 11–12 (DO 17, s. 2025; RA 10533 K–12 framework) │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -426,7 +426,7 @@ SECTIONS                      Year: [ SY 2026–2027 ▾ ]       [ + New Section
 3. Registrar fills in all fields and clicks **Create Section**.
 4. Repeats the dialog for each planned section.
 
-**Sections the registrar creates (example for HNHS):**
+**Sections the registrar creates (example for the school):**
 
 *Junior High School — 4 sections per grade level:*
 
@@ -572,7 +572,7 @@ DB transaction:
 SETTINGS > School Profile
 
   School Name
-  [ Hinigaran National High School               ]      [Save Name]
+  [ [School Name]                                ]      [Save Name]
 
   School Logo
   ┌───────────────────────────────┐
@@ -694,7 +694,7 @@ SETTINGS > Enrollment Gate
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│            HINIGARAN NATIONAL HIGH SCHOOL                        │
+│            [School Name]                        │
 │            [school logo]                                         │
 │            Admission Application — SY 2026–2027                  │
 │                                                                  │
@@ -752,7 +752,7 @@ APPLICATIONS           [ Search by LRN or name... 🔍 ]      [Filter ▾]
 4. Switches filter to `Grade: Grade 11` and processes SHS new entrants.
 5. Notes any unusual entries (duplicate LRN, suspiciously young birth dates).
 
-**Tracking number format visible in each record:** `HNS-2026-00042`
+**Tracking number format visible in each record:** `APP-2026-00042`
 
 ---
 
@@ -775,7 +775,7 @@ APPLICATIONS           [ Search by LRN or name... 🔍 ]      [Filter ▾]
 ```
 ╔══════════════════════════════════════════════════════════════════════╗
 ║  APPLICATION DETAIL                                                  ║
-║  #HNS-2026-00042                              Status: ● PENDING      ║
+║  #APP-2026-00042                              Status: ● PENDING      ║
 ╠══════════════════════════════════════════════════════════════════════╣
 ║  PERSONAL INFORMATION                                                ║
 ║  Full Name    :  DELA CRUZ, Juan Reyes                               ║
@@ -784,7 +784,7 @@ APPLICATIONS           [ Search by LRN or name... 🔍 ]      [Filter ▾]
 ║  LRN          :  123456789012                                        ║
 ║                                                                      ║
 ║  FAMILY & CONTACT                                                    ║
-║  Home Address :  123 Brgy. San Antonio, Hinigaran, Negros Occidental ║
+║  Home Address :  123 Brgy. San Antonio, [City/Municipality], [Province] ║
 ║  Guardian     :  Maria Dela Cruz (Mother)                            ║
 ║  Contact No.  :  0917-123-4567                                       ║
 ║  Email        :  delacruz.maria@gmail.com                            ║
@@ -795,7 +795,7 @@ APPLICATIONS           [ Search by LRN or name... 🔍 ]      [Filter ▾]
 ║                                                                      ║
 ║  SUBMISSION                                                          ║
 ║  Submitted    :  February 3, 2026 at 9:14 AM                        ║
-║  Tracking No. :  HNS-2026-00042                                      ║
+║  Tracking No. :  APP-2026-00042                                      ║
 ╠══════════════════════════════════════════════════════════════════════╣
 ║                                                                      ║
 ║  ⚠  PHASE 1: This is a PRE-REGISTRATION. Approval assigns a section ║
@@ -876,7 +876,7 @@ Server:
 
   AuditLog:
     actionType: APPLICATION_APPROVED
-    description: "Registrar Cruz approved #HNS-2026-00042 — assigned to Grade 7 Rizal"
+    description: "Registrar Cruz approved #APP-2026-00042 — assigned to Grade 7 Rizal"
 
   setImmediate(() => {
     sendEmail(to: "delacruz.maria@gmail.com",
@@ -888,12 +888,12 @@ Server:
 **Email sent to parent (non-blocking, fire-and-forget):**
 
 ```
-From: noreply@hnhs.edu.ph
+From: noreply@school.edu.ph
 To:   delacruz.maria@gmail.com
 Subject: Congratulations! Your Enrollment is Confirmed
 
 [SCHOOL LOGO HEADER — accent color band]
-HINIGARAN NATIONAL HIGH SCHOOL
+[School Name]
 
 Dear Ms. Dela Cruz,
 
@@ -903,7 +903,7 @@ has been approved for SY 2026–2027.
   Learner Name  :  DELA CRUZ, Juan Reyes
   Grade Level   :  Grade 7
   Section       :  Grade 7 – Rizal
-  Tracking No.  :  HNS-2026-00042
+  Tracking No.  :  APP-2026-00042
 
 Please report to the school during the regular enrollment
 period (1 week before June class opening) for final
@@ -996,7 +996,7 @@ Documents verified in person:
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│  Reject Application #HNS-2026-00055                              │
+│  Reject Application #APP-2026-00055                              │
 │  ────────────────────────────────────────────────────────────── │
 │                                                                  │
 │  Rejection Reason (optional but strongly recommended):           │
@@ -1021,7 +1021,7 @@ Documents verified in person:
 - `AuditLog`: `APPLICATION_REJECTED — "Registrar Cruz rejected #55. Reason: LRN conflict."`.
 - Email dispatched (non-blocking):
   ```
-  Subject: Update on Your Application — Hinigaran NHS
+  Subject: Update on Your Application — [School Name]
   Body: Rejection reason + clear instructions to resubmit correctly.
   ```
 - Sileo `info` toast: *"Application Rejected — Notification sent to parent."*
@@ -1099,7 +1099,7 @@ SECTIONS              Year: [ SY 2026–2027 ▾ ]   Grade: [ Grade 7 ▾ ]
 - `/apply` now redirects all visitors to `/closed`:
   ```
   ┌────────────────────────────────────────────────────────────┐
-  │         HINIGARAN NATIONAL HIGH SCHOOL                     │
+  │         [School Name]                     │
   │         [logo]                                             │
   │                                                            │
   │  Enrollment is currently CLOSED.                           │
@@ -1109,7 +1109,7 @@ SECTIONS              Year: [ SY 2026–2027 ▾ ]   Grade: [ Grade 7 ▾ ]
   │  classes in June.                                          │
   │                                                            │
   │  Track your existing application:                          │
-  │  [ HNS-2026-_____ ]     [ Track Status ]                   │
+  │  [ APP-2026-_____ ]     [ Track Status ]                   │
   └────────────────────────────────────────────────────────────┘
   ```
 - `AuditLog`: `ENROLLMENT_GATE_TOGGLED — "Admin set enrollment to CLOSED"`.
@@ -1258,7 +1258,7 @@ Same gate-open procedure as Scene 1.1. Registrar toggles `ON` → Confirms → P
 1. Parent arrives at the registrar's window with child (no prior application).
 2. Registrar directs the parent to fill out the online form at a computer in the office — or offers to fill it out on their behalf.
 3. The form at `/apply` is filled out (3-step wizard: Personal Info → Family & Contact → Enrollment Preferences).
-4. On submission, the system generates a tracking number: `HNS-2026-00198`.
+4. On submission, the system generates a tracking number: `APP-2026-00198`.
 5. The application immediately appears in the registrar's `/applications` inbox as **PENDING**.
 6. Since the parent is physically present, the registrar:
    a. Verifies documents immediately.
@@ -1459,14 +1459,14 @@ STUDENTS    [ Dela Cruz                    🔍 ]
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**What the parent sees at `/track/HNS-2026-00042`:**
+**What the parent sees at `/track/APP-2026-00042`:**
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│          HINIGARAN NATIONAL HIGH SCHOOL                          │
+│          [School Name]                          │
 │          Application Status Tracker                              │
 │                                                                  │
-│  Tracking Number:  HNS-2026-00042                                │
+│  Tracking Number:  APP-2026-00042                                │
 │                                                                  │
 │  ✓  APPROVED & ENROLLED                                          │
 │                                                                  │
@@ -1591,7 +1591,7 @@ AUDIT LOGS         [ Action Type: All ▾ ]   [ Date: Feb 1–3, 2026 ▾ ]
 
 ```
 ╔══════════════════════════════════════════════════════════════════╗
-║  HINIGARAN NATIONAL HIGH SCHOOL           SY 2026–2027  ACTIVE  ║
+║  [School Name]           SY 2026–2027  ACTIVE  ║
 ╠══════════════╦══════════════╦══════════════╦════════════════════╣
 ║  1,284       ║  0           ║  0           ║  0                 ║
 ║  ENROLLED    ║  PENDING     ║  APPROVED    ║  AT CAPACITY       ║
@@ -1772,7 +1772,7 @@ The registrar must **never** do the following. The system does not technically b
 *Storyboard prepared by: System Design Team*
 *Sources: DepEd Order No. 017, s. 2025 · PRD v2.2.0 · RA 7797 as amended by RA 11480 · RA 11909*
 *Covers: Full SY Cycle — Act 0 (Setup) through Act 5 (Year Close) + Special Scenarios*
-*School: Hinigaran National High School · System: PERN Stack (PostgreSQL · Express · React · Node.js)*
+*School: [School Name] · System: PERN Stack (PostgreSQL · Express · React · Node.js)*
 
 ---
 
@@ -1796,7 +1796,7 @@ Starting SY 2026–2027, the traditional strand-based SHS system is replaced by 
 │ WHERE  │ /settings → Tab 3: Grade Levels & Strands             │
 │ WHY    │ Under DM 012, s. 2026, Grade 11 no longer uses        │
 │        │ strands. The registrar must configure which elective  │
-│        │ clusters HNHS offers — only those will appear on the  │
+│        │ clusters the school offers — only those will appear on the  │
 │        │ public admission portal's Grade 11 dropdown.          │
 │ POLICY │ DM 012, s. 2026 — schools offer only clusters for    │
 │        │ which they have teachers, equipment, and DepEd        │
@@ -1849,7 +1849,7 @@ SETTINGS > Grade Levels & Strands       Year: [ SY 2026–2027 ▾ ]
 ```
 
 **Steps:**
-1. Registrar checks with the school head and department heads which clusters HNHS is equipped to offer for SY 2026–2027.
+1. Registrar checks with the school head and department heads which clusters the school is equipped to offer for SY 2026–2027.
 2. Checks the appropriate boxes in the Academic and TechPro sections.
 3. Leaves Grade 12 old strands as-is (they were cloned from the previous year or already configured).
 4. Clicks **Save Clusters**.
@@ -1881,7 +1881,7 @@ SETTINGS > Grade Levels & Strands       Year: [ SY 2026–2027 ▾ ]
 
 **Registrar creates the following Grade 11 sections for SY 2026–2027:**
 
-*Option chosen by HNHS: cluster-focused naming (mirrors old strand naming for continuity):*
+*Option chosen by the school: cluster-focused naming (mirrors old strand naming for continuity):*
 
 | Grade | Section Name | Cluster Focus | Adviser |
 |---|---|---|---|
@@ -1939,7 +1939,7 @@ ENROLLMENT PREFERENCE (Step 3 of 3)
 ```
 ╔══════════════════════════════════════════════════════════════════╗
 ║  APPLICATION DETAIL                                              ║
-║  #HNS-2026-00041                          Status: ● PENDING      ║
+║  #APP-2026-00041                          Status: ● PENDING      ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║  PERSONAL INFORMATION                                            ║
 ║  Full Name   :  SANTOS, Maria Luz                                ║
@@ -1969,7 +1969,7 @@ ENROLLMENT PREFERENCE (Step 3 of 3)
 | Grade 10 SF9 | Presented in person | ✓ Signed by JHS school head |
 | PSA Birth Certificate | New to school — once-only | ✓ PSA # noted |
 | Track declared | Academic or TechPro | ✓ Academic |
-| Cluster offered | STEM offered at HNHS | ✓ |
+| Cluster offered | STEM offered at the school | ✓ |
 
 **Registrar clicks Approve & Assign Section. Dialog opens:**
 
@@ -2034,7 +2034,7 @@ SHS Track   :  Technical-Professional (TechPro)
 Elective    :  ICT Support and Computer Programming Technologies
 ```
 
-**Registrar verifies:** ICT cluster is offered at HNHS (confirmed in Scene A.1 setup).
+**Registrar verifies:** ICT cluster is offered at the school (confirmed in Scene A.1 setup).
 
 **Section assignment:** Registrar selects Grade 11 – ICT-A.
 
@@ -2119,7 +2119,7 @@ Note         :  Grade 12 continues under the strand-based curriculum.
 ```
 Grade Level :  Grade 11
 SHS Track   :  TechPro
-Elective    :  Hospitality and Tourism   ⚠ NOT offered at HNHS
+Elective    :  Hospitality and Tourism   ⚠ NOT offered at the school
 ```
 *(System flags this with a warning banner: "Selected cluster is not configured for this school.")*
 
@@ -2127,13 +2127,13 @@ Elective    :  Hospitality and Tourism   ⚠ NOT offered at HNHS
 
 **Option A — Contact parent, offer alternative cluster:**
 1. Registrar calls or emails the parent.
-2. Parent agrees to switch to ICT cluster (also TechPro, but offered at HNHS).
+2. Parent agrees to switch to ICT cluster (also TechPro, but offered at the school).
 3. Registrar edits the application: changes `strandId` to the ICT cluster record.
 4. Approves and assigns to Grade 11 – ICT-A.
 
 **Option B — Reject with guidance to transfer:**
 1. Registrar clicks Reject.
-2. Rejection reason: *"The Hospitality and Tourism cluster is not offered at Hinigaran NHS for SY 2026–2027. We encourage the learner to apply at [nearest school with HospTour] or to select an available cluster: ICT Support and Computer Programming Technologies."*
+2. Rejection reason: *"The Hospitality and Tourism cluster is not offered at [School Name] for SY 2026–2027. We encourage the learner to apply at [nearest school with HospTour] or to select an available cluster: ICT Support and Computer Programming Technologies."*
 3. Parent receives the rejection email with clear instructions.
 
 > **Note:** Per DO 017, s. 2025, rejections must never be punitive. The reason must always be actionable and constructive. Option A (contact and offer alternative) is the preferred approach before resorting to rejection.
@@ -2220,7 +2220,7 @@ The original Appendix D is updated below to reflect the dual-policy SHS landscap
 # ADDENDUM — Admission Process Workflows (Open Admission & SCP)
 ## DepEd Admission Pathways: Regular Sections and Special Curricular Programs
 
-**Research Basis:** DepEd Memorandum No. 149, s. 2011 · Division Memorandum No. 157, s. 2025 · HNHS school-specific announcement research
+**Research Basis:** DepEd Memorandum No. 149, s. 2011 · Division Memorandum No. 157, s. 2025 · school-specific announcement research
 **PRD Reference:** v2.4.0
 
 ---
@@ -2305,7 +2305,7 @@ The `applicantType` field shows `REGULAR` in the application detail view. No exa
 ```
 ╔══════════════════════════════════════════════════════════════════════╗
 ║  APPLICATION DETAIL                                                  ║
-║  #HNS-2026-00053                              Status: ● PENDING      ║
+║  #APP-2026-00053                              Status: ● PENDING      ║
 ╠══════════════════════════════════════════════════════════════════════╣
 ║  PERSONAL INFORMATION                                                ║
 ║  Full Name    :  REYES, Pedro Manuel                                 ║
@@ -2313,7 +2313,7 @@ The `applicantType` field shows `REGULAR` in the application detail view. No exa
 ║  LRN          :  112233445566                                        ║
 ║                                                                      ║
 ║  FAMILY & CONTACT                                                    ║
-║  Home Address :  Brgy. Balabag, Hinigaran, Negros Occidental         ║
+║  Home Address :  Brgy. Balabag, [City/Municipality], [Province]         ║
 ║  Guardian     :  Luz Reyes (Mother)   · 0918-555-1234               ║
 ║  Email        :  reyes.luz@gmail.com                                 ║
 ║                                                                      ║
@@ -2352,7 +2352,7 @@ Documents are complete. Registrar now schedules the exam.
 │ WHERE  │ /applications → SCP applicant detail → "Verify &       │
 │        │ Schedule Exam"                                          │
 │ WHY    │ The STE exam date is set by the SDO (Division Office). │
-│        │ HNHS announces the date to applicants after Early      │
+│        │ The school announces the date to applicants after Early      │
 │        │ Registration closes. Registrar logs this in the system.│
 │ POLICY │ Division Memorandum No. 157, s. 2025 — STE exam        │
 │        │ conducted on a division-designated Saturday             │
@@ -2373,7 +2373,7 @@ Documents are complete. Registrar now schedules the exam.
 │  [ February 22, 2027              📅 ]                           │
 │                                                                  │
 │  Exam Venue (optional)                                           │
-│  [ HNHS Main Building — Room 201                           ]     │
+│  [ [School Building] — Room 201                           ]     │
 │                                                                  │
 │  ☑  Notify applicant by email with exam details                  │
 │                                                                  │
@@ -2385,23 +2385,23 @@ Documents are complete. Registrar now schedules the exam.
 
 **System:**
 - `PATCH /api/applications/53/schedule-exam`
-  `{ examDate: "2027-02-22", assessmentType: "WRITTEN_EXAM", venue: "HNHS Main Building..." }`
+  `{ examDate: "2027-02-22", assessmentType: "WRITTEN_EXAM", venue: "[School Building]..." }`
 - `Applicant.status` → `EXAM_SCHEDULED`
 - `Applicant.examDate` → `2027-02-22`
 - `AuditLog`: `EXAM_SCHEDULED — "Registrar Cruz scheduled WRITTEN_EXAM for Pedro Reyes on Feb 22, 2027"`
 - Email dispatched to `reyes.luz@gmail.com`:
   ```
-  Subject: Your STE Entrance Exam — Hinigaran NHS
+  Subject: Your STE Entrance Exam — [School Name]
   Body:
     Dear Ms. Reyes,
     Your child Pedro Manuel Reyes is scheduled to take the STE Entrance Exam.
 
     Date    :  February 22, 2027 (Saturday)
-    Venue   :  HNHS Main Building — Room 201
+    Venue   :  [School Building] — Room 201
     Bring   :  Two valid IDs (school ID or PSA BC), pencils, ballpen
 
     Please ensure your child arrives 30 minutes before the exam.
-    Tracking Number: HNS-2027-00053
+    Tracking Number: APP-2027-00053
   ```
 - Sileo success toast: *"Exam Scheduled — Pedro Reyes notified for February 22, 2027."*
 
@@ -2515,7 +2515,7 @@ Documents are complete. Registrar now schedules the exam.
 - `AuditLog`: `APPLICATION_PASSED — "Registrar Cruz: Pedro Reyes PASSED STE exam, assigned to Grade 7 STE-A"`
 - Email to parent:
   ```
-  Subject: Congratulations! Pedro Passed the STE Entrance Exam — HNHS
+  Subject: Congratulations! Pedro Passed the STE Entrance Exam — [School Name]
   Body:
     Pedro Manuel Reyes has passed the STE Entrance Exam and is enrolled.
     Grade Level : Grade 7
@@ -2577,14 +2577,14 @@ Documents are complete. Registrar now schedules the exam.
 - Registrar proceeds to the standard open-admission approval flow
 - Email to parent:
   ```
-  Subject: STE Assessment Result — Hinigaran NHS
+  Subject: STE Assessment Result — [School Name]
   Body:
     We regret to inform you that Rosa did not qualify for the STE program
     (Score: 62.0; Required: 75.0).
 
     However, we are pleased to offer Rosa a place in a regular Grade 7 section.
     Please visit the registrar's office or contact us to confirm this placement.
-    Tracking Number: HNS-2027-00050
+    Tracking Number: APP-2027-00050
   ```
 
 **If "Reject Application" is selected:**
@@ -2601,12 +2601,12 @@ Documents are complete. Registrar now schedules the exam.
 │ WHEN   │ March–April (between Early Registration close and       │
 │        │ Regular Enrollment opening in June)                     │
 │ WHERE  │ /applications → STEM_GRADE11 applicant                 │
-│ WHY    │ HNHS conducts a placement exam AND an interview for    │
+│ WHY    │ The school conducts a placement exam AND an interview for    │
 │        │ Grade 11 STEM aspirants. Both are required before      │
 │        │ section assignment.                                     │
 │ POLICY │ DepEd minimum: Science + Math Grade 10 final grade ≥85 │
-│        │ HNHS addition: placement exam + interview (confirmed    │
-│        │ via HNHS Facebook announcements SY 2024–2025)           │
+│        │ School-specific addition: placement exam + interview (confirmed    │
+│        │ via the school's Facebook announcements SY 2024–2025)           │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -2696,7 +2696,7 @@ STEP 5 — Mark as PASSED (both exam + interview cleared) → Assign Section
 │  Assessment Type    :  Qualifying Exam + Audition + Interview    │
 │  Assessment Date    :  March 8, 2027                             │
 │  Art Field          :  Dance Arts                                │
-│  Venue              :  HNHS Covered Court / Gymnasium            │
+│  Venue              :  [School Venue]            │
 │                                                                  │
 │       [ Confirm Schedule ]                                       │
 └──────────────────────────────────────────────────────────────────┘
@@ -2776,5 +2776,5 @@ SCP ADMISSION PIPELINE                            SY 2026–2027
 ---
 
 *Addendum to Registrar Storyboard Workflow*
-*Based on: DepEd Memorandum No. 149, s. 2011 · Division Memorandum No. 157, s. 2025 · HNHS SY 2024–2025 admission announcements*
+*Based on: DepEd Memorandum No. 149, s. 2011 · Division Memorandum No. 157, s. 2025 · school-specific SY 2024–2025 admission announcements*
 *PRD Reference: v2.4.0*

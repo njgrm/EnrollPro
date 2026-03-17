@@ -5,17 +5,22 @@ export async function getStats(req: Request, res: Response): Promise<void> {
   const settings = await prisma.schoolSettings.findFirst();
   const academicYearId = settings?.activeAcademicYearId;
 
-  const [totalPending, totalEnrolled, totalApproved, sectionsAtCapacity] = await Promise.all([
+  const [totalPending, totalEnrolled, totalPreRegistered, sectionsAtCapacity] = await Promise.all([
     prisma.applicant.count({
-      where: { status: 'PENDING', ...(academicYearId ? { academicYearId } : {}) },
+      where: { 
+        status: { in: ['SUBMITTED', 'UNDER_REVIEW'] }, 
+        ...(academicYearId ? { academicYearId } : {}) 
+      },
     }),
-    prisma.enrollment.count({
-      where: academicYearId ? { academicYearId } : {},
+    prisma.applicant.count({
+      where: { 
+        status: 'ENROLLED', 
+        ...(academicYearId ? { academicYearId } : {}) 
+      },
     }),
     prisma.applicant.count({
       where: {
-        status: 'APPROVED',
-        enrollment: null,
+        status: 'PRE_REGISTERED',
         ...(academicYearId ? { academicYearId } : {}),
       },
     }),
@@ -30,7 +35,7 @@ export async function getStats(req: Request, res: Response): Promise<void> {
     stats: {
       totalPending,
       totalEnrolled,
-      totalApproved,
+      totalPreRegistered,
       sectionsAtCapacity: Number(sectionsAtCapacity[0]?.count ?? 0),
     },
   });

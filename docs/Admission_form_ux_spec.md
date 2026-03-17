@@ -1,5 +1,5 @@
 # Online Admission Form — UX/UI Technological Requirements
-## Hinigaran National High School — Admission & Enrollment Information Management System
+## Admission & Enrollment Information Management System
 
 **Document Type:** UX/UI Engineering Specification
 **Author Role:** UX/UI Engineer
@@ -38,7 +38,7 @@
 
 ## 1. Design Principles for This Form
 
-The admission form is the **first touchpoint** a student or parent has with Hinigaran NHS's digital system. It must be trustworthy, clear, and forgiving. The following principles govern every decision in this spec.
+The admission form is the **first touchpoint** a student or parent has with the school's digital system. It must be trustworthy, clear, and forgiving. The following principles govern every decision in this spec.
 
 | Principle | What It Means in This Form |
 |---|---|
@@ -79,7 +79,7 @@ VIEWPORT (any screen size)
     │   └── Navigation Footer             ← Back / Next / Submit
     │
     └── PAGE FOOTER (minimal)
-        └── "Hinigaran NHS · Powered by HNHS Enrollment System"
+        └── "[School Name] · Powered by EnrollPro"
 ```
 
 ### 2.2 Form Card Sizing
@@ -177,7 +177,7 @@ Tablet+ (≥ 768px): numbered dots + step title labels
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│  [School Logo]  Hinigaran National High School                   │
+│  [School Logo]  [School Name]                                   │
 │  Online Admission Application · SY 2026–2027                     │
 ├──────────────────────────────────────────────────────────────────┤
 │                                                                  │
@@ -291,7 +291,7 @@ consentChecked    = true  → "Proceed" button active (accent color)
 │                                                                  │
 │  ┌─────────────────────────┐  ┌─────────────────────────────┐   │
 │  │  Place of Birth *        │  │  Religion                   │   │
-│  │  [ Hinigaran, Neg. Occ.]│  │  [ Roman Catholic          ]│   │
+│  │  [ [City/Municipality]  ]│  │  [ Roman Catholic          ]│   │
 │  └─────────────────────────┘  └─────────────────────────────┘   │
 │                                                                  │
 │  Mother Tongue *                                                 │
@@ -384,7 +384,7 @@ The `Select` component is enhanced with a search input. A parent can type "Hil" 
 │  └────────────────┘  └──────────────────┘  └──────────────┘     │
 │  ┌─────────────────────────┐  ┌─────────────────────────────┐   │
 │  │  Municipality/City *     │  │  Province *                 │   │
-│  │  [ Hinigaran           ] │  │  [ Negros Occidental      ] │   │
+│  │  [ [City/Municipality]  ] │  │  [ Negros Occidental      ] │   │
 │  └─────────────────────────┘  └─────────────────────────────┘   │
 │  ┌─────────────────────────┐  ┌─────────────────────────────┐   │
 │  │  Country                 │  │  ZIP Code                   │   │
@@ -503,7 +503,7 @@ Each sensitive section (IP, 4Ps, Disability) has a small `🔒 Confidential` bad
 │  ─────────────────────────────────────────────────────────────  │
 │                                                                  │
 │  Name of Last School Attended *                                  │
-│  [ Hinigaran Central Elementary School                     ]     │
+│  [ [Previous School Name]                     ]     │
 │                                                                  │
 │  ┌─────────────────────────┐  ┌─────────────────────────────┐   │
 │  │  DepEd School ID         │  │  School Year Last Attended * │   │
@@ -518,7 +518,7 @@ Each sensitive section (IP, 4Ps, Disability) has a small `🔒 Confidential` bad
 │  ○  Public (DepEd)    ○  Private    ○  International    ○  ALS   │
 │                                                                  │
 │  School Address / Division (optional)                            │
-│  [ Hinigaran, Negros Occidental — SDO Neg. Occ.            ]     │
+│  [ [City], [Province] — [SDO]            ]     │
 │                                                                  │
 │  ─────────────────────────────────────────────────────────────  │
 │  ⓘ  If the learner does not have a Report Card (SF9), they may │
@@ -701,7 +701,7 @@ All conditional field groups (SCP type, art field, SHS track, STEM grades) use `
 │  │  Name       :  DELA CRUZ, Juan Reyes                     │   │
 │  │  Birthdate  :  March 12, 2014 (Age: 12)                  │   │
 │  │  Sex        :  Male                                      │   │
-│  │  Place of   :  Hinigaran, Negros Occidental              │   │
+│  │  Place of   :  [City/Municipality], [Province]              │   │
 │  │  Birth                                                   │   │
 │  │  LRN        :  123456789012                              │   │
 │  └──────────────────────────────────────────────────────────┘   │
@@ -711,7 +711,7 @@ All conditional field groups (SCP type, art field, SHS track, STEM grades) use `
 │  │  Mother     :  Maria Dela Cruz · 0917-123-4567           │   │
 │  │  Father     :  Roberto Dela Cruz · 0918-234-5678         │   │
 │  │  Email      :  delacruz.maria@gmail.com                  │   │
-│  │  Address    :  123 Brgy. San Antonio, Hinigaran           │   │
+│  │  Address    :  123 Brgy. San Antonio, [City/Municipality]           │   │
 │  └──────────────────────────────────────────────────────────┘   │
 │                                                                  │
 │  BACKGROUND                                         [Edit Step 3]│
@@ -724,7 +724,7 @@ All conditional field groups (SCP type, art field, SHS track, STEM grades) use `
 │                                                                  │
 │  PREVIOUS SCHOOL                                    [Edit Step 4]│
 │  ┌──────────────────────────────────────────────────────────┐   │
-│  │  Last School   :  Hinigaran Central Elementary School    │   │
+│  │  Last School   :  [Previous School Name]    │   │
 │  │  Grade Completed: Grade 6  ·  SY 2025–2026  ·  Public   │   │
 │  └──────────────────────────────────────────────────────────┘   │
 │                                                                  │
@@ -792,13 +792,13 @@ On successful API response, the entire wizard is replaced by the Success Screen.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  [School Logo]  Hinigaran National High School                  │
+│  [School Logo]  [School Name]                  │
 │  Online Admission Application · SY 2026–2027                    │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │               ✅  Application Submitted!                         │
 │                                                                  │
-│  Your application has been received by Hinigaran NHS.            │
+│  Your application has been received by [School Name].            │
 │  The school registrar will review your documents and             │
 │  contact you regarding the next steps.                           │
 │                                                                  │
@@ -807,7 +807,7 @@ On successful API response, the entire wizard is replaced by the Success Screen.
 │  Your Tracking Number                                            │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │                                                          │   │
-│  │                  HNS-2027-00042                          │   │
+│  │                  APP-2027-00042                          │   │
 │  │             (large, monospace, accent color)             │   │
 │  │                                                          │   │
 │  │  [ 📋 Copy Tracking Number ]                             │   │
@@ -826,7 +826,7 @@ On successful API response, the entire wizard is replaced by the Success Screen.
 │      confirmation before the first day of classes.               │
 │                                                                  │
 │  Track your application status anytime:                          │
-│  [ 🔍 Track My Application ]  → /track/HNS-2027-00042           │
+│  [ 🔍 Track My Application ]  → /track/APP-2027-00042           │
 │                                                                  │
 │  ─────────────────────────────────────────────────────────────  │
 │  [ Submit Another Application ]   (ghost button, small)         │
@@ -872,7 +872,7 @@ When the enrollment gate is OFF, the `/apply` loader redirects all visitors to `
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  [School Logo]  Hinigaran National High School                  │
+│  [School Logo]  [School Name]                  │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │              🔒  Enrollment is Currently Closed                  │
@@ -887,7 +887,7 @@ When the enrollment gate is OFF, the `/apply` loader redirects all visitors to `
 │  ─────────────────────────────────────────────────────────────  │
 │  Already submitted an application?                               │
 │                                                                  │
-│  [ HNS-2027-_____ ]  [ 🔍 Track My Application ]                │
+│  [ APP-2027-_____ ]  [ 🔍 Track My Application ]                │
 │                                                                  │
 │  ─────────────────────────────────────────────────────────────  │
 │  For inquiries, contact the Registrar's Office:                  │
@@ -1111,16 +1111,16 @@ All form data is saved to `sessionStorage` after every step transition. If the b
 
 ```ts
 // Save on every step transition
-sessionStorage.setItem('hnhs_apply_draft', JSON.stringify(form.getValues()));
+sessionStorage.setItem('enrollpro_apply_draft', JSON.stringify(form.getValues()));
 
 // Restore on mount
-const draft = sessionStorage.getItem('hnhs_apply_draft');
+const draft = sessionStorage.getItem('enrollpro_apply_draft');
 if (draft) form.reset(JSON.parse(draft));
 ```
 
 On successful submission or deliberate "Start Over," the draft is cleared:
 ```ts
-sessionStorage.removeItem('hnhs_apply_draft');
+sessionStorage.removeItem('enrollpro_apply_draft');
 ```
 
 ---
@@ -1215,7 +1215,7 @@ client/src/pages/admission/
 ---
 
 *Document prepared by: UX/UI Engineering*
-*System: Hinigaran National High School — Admission & Enrollment Information Management System*
+*System: Admission & Enrollment Information Management System*
 *Design System: Instrument Sans · shadcn/ui · Tailwind CSS v4 · Sileo · Dynamic Accent Color*
 *Policy: RA 10173 · DO 017, s. 2025 · DM 012, s. 2026 · WCAG 2.1 AA*
 *PRD Reference: v2.4.0*

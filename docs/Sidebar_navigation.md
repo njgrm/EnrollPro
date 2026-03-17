@@ -1,5 +1,5 @@
 # Sidebar Navigation Specification
-## Hinigaran National High School — Admission & Enrollment Information Management System
+## Admission & Enrollment Information Management System
 
 **Document Type:** Sidebar Navigation Reference
 **Derived From:** PRD v2.2.1 · Registrar Storyboard Workflow · School Year Setup Architecture
@@ -36,7 +36,7 @@ The sidebar is rendered inside `AppLayout.tsx` and is shared by both roles. Each
 ```
 ┌─────────────────────────────────┐
 │  [School Logo]                  │  ← from SchoolSettings.logoUrl
-│  Hinigaran National High School │  ← from SchoolSettings.schoolName
+│  [School Name]               │  ← from SchoolSettings.schoolName
 │  SY 2026–2027  ● ACTIVE         │  ← from active AcademicYear.yearLabel
 ├─────────────────────────────────┤
 │  [Nav Items — role-filtered]    │
@@ -207,7 +207,7 @@ APPLICATIONS                     [ Search by LRN or name... 🔍 ]  [Filter ▾]
 - `REJECTED` → red `outline` badge
 - `ENROLLED` → blue/accent `outline` badge
 
-**Sub-route — `/applications/:id`:** Not a separate sidebar item. Opens as a full page or as a `Sheet` side panel depending on screen width. The breadcrumb shows `Applications › #HNS-2026-00042`.
+**Sub-route — `/applications/:id`:** Not a separate sidebar item. Opens as a full page or as a `Sheet` side panel depending on screen width. The breadcrumb shows `Applications › #APP-2026-00042`.
 
 ---
 
@@ -346,7 +346,7 @@ AUDIT LOGS          [ Action Type: All ▾ ]   [ Date Range: __ to __ ]
   Feb 1, 2026  8:00 AM   │ Cruz, Regina      │ ENROLLMENT_GATE_TOGGLED    │ Admin set enrollment to OPEN                        │ 192.168.1.10
   Jan 31, 2026 4:15 PM   │ Cruz, Regina      │ SECTION_CREATED            │ Created Grade 7 Rizal (capacity: 45)                │ 192.168.1.10
   Jan 28, 2026 2:00 PM   │ Cruz, Regina      │ SETTINGS_UPDATED           │ Admin updated school identity settings              │ 192.168.1.10
-  Jan 28, 2026 1:55 PM   │ Cruz, Regina      │ USER_LOGIN                 │ User registrar@hnhs.edu.ph logged in from 192.x.x.x │ 192.168.1.10
+  Jan 28, 2026 1:55 PM   │ Cruz, Regina      │ USER_LOGIN                 │ User registrar@school.edu.ph logged in from 192.x.x.x │ 192.168.1.10
 ```
 
 **All logged action types (actionType Badge values):**
@@ -401,7 +401,7 @@ API       : PUT   /api/settings/identity   (school name)
 SETTINGS > School Profile
 
   School Name *
-  [ Hinigaran National High School                    ]   [ Save Name ]
+  [ [School Name]                                     ]   [ Save Name ]
 
   ─────────────────────────────────────────────────────────────────
   School Logo
@@ -677,7 +677,7 @@ client/src/
 
 3. **Accent color on sidebar** — Active nav item background tint uses `bg-[var(--accent-muted)]` and active text/border uses `text-[var(--accent)]` and `border-l-2 border-[var(--accent)]`. This ensures the active highlight always matches the school's extracted logo color.
 
-4. **School logo in sidebar header** — Fetched from `settingsStore.logoUrl`. If null (no logo uploaded), show a default school building icon (`<School className="w-8 h-8" />`). Never hardcode the HNHS logo path.
+4. **School logo in sidebar header** — Fetched from `settingsStore.logoUrl`. If null (no logo uploaded), show a default school building icon (`<School className="w-8 h-8" />`). Never hardcode the school logo path.
 
 5. **Active academic year in sidebar header** — Fetched from `settingsStore.activeYear.yearLabel`. Show a green dot + the year label. If no active year is set (fresh installation), show `"No Active Year"` with an amber warning icon.
 
@@ -691,7 +691,7 @@ client/src/
 
 *Document compiled from: PRD v2.2.1 · Registrar Storyboard Workflow · School Year Setup Architecture*
 *Policy: DepEd Order No. 017, s. 2025 · DepEd Memorandum No. 012, s. 2026*
-*School: Hinigaran National High School*
+*School: [School Name]*
 
 
 ---
@@ -709,7 +709,7 @@ client/src/
 ```
 ┌─────────────────────────────────┐
 │  [School Logo]                  │
-│  Hinigaran National High School │
+│  [School Name]               │
 │  SY 2026–2027  ● ACTIVE         │
 ├─────────────────────────────────┤
 │  📊  Dashboard                  │  ← all roles

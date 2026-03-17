@@ -1,6 +1,6 @@
 # Architecture Proposal
 ## Smart Academic Year Configuration Module
-**For:** Hinigaran National High School — Admission & Enrollment System
+**For:** Admission & Enrollment System
 **Author Role:** System Architect
 **Bases On:** DepEd Order No. 12, s. 2025 · DepEd Order No. 03, s. 2018 (Basic Education Enrollment Policy)
 **Status:** Proposal — Pending Team Approval Before PRD Integration
@@ -47,7 +47,7 @@ DepEd does not have a single enrollment period. It has **two legally distinct ph
 | **Purpose** | Official enrollment of record; students become officially enrolled |
 | **Legal basis** | DepEd Order No. 12, s. 2025, §6.b |
 
-#### Phase Summary for Hinigaran NHS (Grade 7–12 only)
+#### Phase Summary (Grade 7–12 only)
 
 ```
 JANUARY              FEBRUARY             MARCH–MAY     JUNE
@@ -561,8 +561,8 @@ The public admission form uses this to conditionally render:
 
 | # | Decision Point | Options |
 |---|---|---|
-| D-04 | How should Hinigaran NHS name Grade 11 sections for SY 2026–2027? | A) Track-level (Academic-A, TechPro-A) · B) Cluster-focused (STEM-A, ICT-A) |
-| D-05 | Which TechPro elective clusters will HNHS offer in SY 2026–2027? | Registrar/School Head to confirm based on available equipment, teachers, TESDA accreditation |
+| D-04 | How should the school name Grade 11 sections for SY 2026–2027? | A) Track-level (Academic-A, TechPro-A) · B) Cluster-focused (STEM-A, ICT-A) |
+| D-05 | Which TechPro elective clusters will the school offer in SY 2026–2027? | Registrar/School Head to confirm based on available equipment, teachers, TESDA accreditation |
 | D-06 | Should the system expose both "Track" and "Elective Cluster" as separate fields on the BEEF form, or collapse them into a single "Program" selector? | A) Two separate selectors (accurate, mirrors DepEd structure) · B) Single combined selector (simpler UX) |
 | D-07 | For Grade 12 transferees in SY 2026–2027 applying through the portal: should the form show the old strand options or the new cluster options? | A) Old strands only (Grade 12 is on old curriculum) · B) Both, conditionally based on grade level selected |
 
@@ -671,9 +671,9 @@ model ScpConfig {
 
 | # | Decision Point | Options |
 |---|---|---|
-| D-08 | Which SCPs does HNHS currently offer? | Registrar/School Head to confirm — determines which checkboxes are enabled in Panel C |
-| D-09 | For STE: is the cut-off score set by the SDO or by HNHS? | A) SDO-set (registrar inputs after division memo is released) · B) School-set (configurable in Settings) |
-| D-10 | For SPA: does HNHS offer all art fields or only specific ones? | Registrar/School Head to specify which art fields are assessed during the audition |
+| D-08 | Which SCPs does the school currently offer? | Registrar/School Head to confirm — determines which checkboxes are enabled in Panel C |
+| D-09 | For STE: is the cut-off score set by the SDO or by the school? | A) SDO-set (registrar inputs after division memo is released) · B) School-set (configurable in Settings) |
+| D-10 | For SPA: does the school offer all art fields or only specific ones? | Registrar/School Head to specify which art fields are assessed during the audition |
 | D-11 | Should failed SCP applicants be automatically offered a regular section in the system, or does the registrar handle this manually per case? | A) Automatic offer prompt (recommended) · B) Manual — registrar decides per applicant |
 
 ---

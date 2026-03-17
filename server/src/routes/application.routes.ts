@@ -31,9 +31,13 @@ router.get('/track/:trackingNumber', ctrl.track);
 router.get('/', authenticate, authorize('REGISTRAR', 'SYSTEM_ADMIN'), ctrl.index);
 router.get('/:id', authenticate, authorize('REGISTRAR', 'SYSTEM_ADMIN'), ctrl.show);
 router.patch('/:id/approve', authenticate, authorize('REGISTRAR', 'SYSTEM_ADMIN'), validate(approveSchema), ctrl.approve);
+router.patch('/:id/enroll', authenticate, authorize('REGISTRAR', 'SYSTEM_ADMIN'), ctrl.enroll);
 router.patch('/:id/reject', authenticate, authorize('REGISTRAR', 'SYSTEM_ADMIN'), validate(rejectSchema), ctrl.reject);
+router.patch('/:id/revision', authenticate, authorize('REGISTRAR', 'SYSTEM_ADMIN'), ctrl.requestRevision);
+router.patch('/:id/withdraw', authenticate, authorize('REGISTRAR', 'SYSTEM_ADMIN'), ctrl.withdraw);
 
 // SCP routes
+router.patch('/:id/mark-eligible', authenticate, authorize('REGISTRAR', 'SYSTEM_ADMIN'), ctrl.markEligible);
 router.patch('/:id/schedule-exam', authenticate, authorize('REGISTRAR', 'SYSTEM_ADMIN'), validate(scheduleExamSchema), ctrl.scheduleExam);
 router.patch('/:id/record-result', authenticate, authorize('REGISTRAR', 'SYSTEM_ADMIN'), validate(recordResultSchema), ctrl.recordResult);
 router.patch('/:id/pass', authenticate, authorize('REGISTRAR', 'SYSTEM_ADMIN'), ctrl.pass);

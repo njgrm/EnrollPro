@@ -22,7 +22,7 @@ interface Application {
   middleName: string | null;
   suffix: string | null;
   trackingNumber: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXAM_SCHEDULED' | 'EXAM_TAKEN' | 'PASSED' | 'FAILED';
+  status: 'SUBMITTED' | 'UNDER_REVIEW' | 'FOR_REVISION' | 'ELIGIBLE' | 'ASSESSMENT_SCHEDULED' | 'ASSESSMENT_TAKEN' | 'PRE_REGISTERED' | 'NOT_QUALIFIED' | 'ENROLLED' | 'REJECTED' | 'WITHDRAWN';
   applicantType: string;
   gradeLevelId: number;
   gradeLevel: { name: string };
@@ -31,13 +31,17 @@ interface Application {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-  APPROVED: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  SUBMITTED: 'bg-slate-100 text-slate-700 border-slate-200',
+  UNDER_REVIEW: 'bg-blue-100 text-blue-700 border-blue-200',
+  FOR_REVISION: 'bg-orange-100 text-orange-700 border-orange-200',
+  ELIGIBLE: 'bg-cyan-100 text-cyan-700 border-cyan-200',
+  ASSESSMENT_SCHEDULED: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+  ASSESSMENT_TAKEN: 'bg-purple-100 text-purple-700 border-purple-200',
+  PRE_REGISTERED: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  NOT_QUALIFIED: 'bg-amber-100 text-amber-700 border-amber-200',
+  ENROLLED: 'bg-green-100 text-green-700 border-green-200',
   REJECTED: 'bg-red-100 text-red-700 border-red-200',
-  EXAM_SCHEDULED: 'bg-blue-100 text-blue-700 border-blue-200',
-  EXAM_TAKEN: 'bg-purple-100 text-purple-700 border-purple-200',
-  PASSED: 'bg-green-100 text-green-700 border-green-200',
-  FAILED: 'bg-orange-100 text-orange-700 border-orange-200',
+  WITHDRAWN: 'bg-zinc-100 text-zinc-700 border-zinc-200',
 };
 
 const APPLICANT_TYPES = [
@@ -68,7 +72,7 @@ export default function Applications() {
 
   // Detail/Action state
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
-  const [actionType, setActionType] = useState<'APPROVE' | 'REJECT' | 'SCHEDULE' | 'RESULT' | null>(null);
+  const [actionType, setActionType] = useState<'APPROVE' | 'REJECT' | 'SCHEDULE' | 'RESULT' | 'ENROLL' | 'ELIGIBLE' | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [examDate, setExamDate] = useState('');
   const [examScore, setExamScore] = useState('');
@@ -111,8 +115,32 @@ export default function Applications() {
   const handleApprove = async () => {
     if (!selectedApp || !selectedSectionId) return;
     try {
-      await api.post(`/applications/${selectedApp.id}/approve`, { sectionId: parseInt(selectedSectionId) });
-      sileo.success({ title: 'Approved', description: 'Student enrolled successfully.' });
+      await api.patch(`/applications/${selectedApp.id}/approve`, { sectionId: parseInt(selectedSectionId) });
+      sileo.success({ title: 'Pre-registered', description: 'Student pre-registered successfully.' });
+      setActionType(null);
+      fetchData();
+    } catch (err) {
+      toastApiError(err as never);
+    }
+  };
+
+  const handleEnroll = async () => {
+    if (!selectedApp) return;
+    try {
+      await api.patch(`/applications/${selectedApp.id}/enroll`);
+      sileo.success({ title: 'Enrolled', description: 'Official enrollment confirmed.' });
+      setActionType(null);
+      fetchData();
+    } catch (err) {
+      toastApiError(err as never);
+    }
+  };
+
+  const handleMarkEligible = async () => {
+    if (!selectedApp) return;
+    try {
+      await api.patch(`/applications/${selectedApp.id}/mark-eligible`);
+      sileo.success({ title: 'Eligible', description: 'Marked as eligible for assessment.' });
       setActionType(null);
       fetchData();
     } catch (err) {
@@ -123,7 +151,7 @@ export default function Applications() {
   const handleReject = async () => {
     if (!selectedApp) return;
     try {
-      await api.post(`/applications/${selectedApp.id}/reject`, { rejectionReason });
+      await api.patch(`/applications/${selectedApp.id}/reject`, { rejectionReason });
       sileo.success({ title: 'Rejected', description: 'Application has been rejected.' });
       setActionType(null);
       fetchData();
@@ -135,11 +163,11 @@ export default function Applications() {
   const handleSchedule = async () => {
     if (!selectedApp || !examDate) return;
     try {
-      await api.post(`/applications/${selectedApp.id}/schedule-exam`, { 
+      await api.patch(`/applications/${selectedApp.id}/schedule-exam`, { 
         examDate, 
         assessmentType: selectedApp.applicantType === 'SPA' ? 'Audition' : selectedApp.applicantType === 'SPS' ? 'Tryout' : 'Entrance Exam' 
       });
-      sileo.success({ title: 'Scheduled', description: 'Exam/Assessment scheduled.' });
+      sileo.success({ title: 'Scheduled', description: 'Assessment scheduled.' });
       setActionType(null);
       fetchData();
     } catch (err) {
@@ -150,20 +178,20 @@ export default function Applications() {
   const handleRecordResult = async () => {
     if (!selectedApp) return;
     try {
-      await api.post(`/applications/${selectedApp.id}/record-result`, { 
+      await api.patch(`/applications/${selectedApp.id}/record-result`, { 
         examScore: parseFloat(examScore),
         examResult,
         examNotes: 'Recorded from portal'
       });
-      sileo.success({ title: 'Result Recorded', description: 'Applicant assessment result saved.' });
       
-      // Auto-pass/fail if needed
+      // Auto-pass/fail
       if (examResult === 'PASSED') {
-        await api.post(`/applications/${selectedApp.id}/pass`);
+        await api.patch(`/applications/${selectedApp.id}/pass`);
       } else {
-        await api.post(`/applications/${selectedApp.id}/fail`);
+        await api.patch(`/applications/${selectedApp.id}/fail`);
       }
       
+      sileo.success({ title: 'Result Recorded', description: 'Applicant assessment result saved.' });
       setActionType(null);
       fetchData();
     } catch (err) {
@@ -206,13 +234,17 @@ export default function Applications() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">All Statuses</SelectItem>
-                  <SelectItem value="PENDING">Pending</SelectItem>
-                  <SelectItem value="EXAM_SCHEDULED">Exam Scheduled</SelectItem>
-                  <SelectItem value="EXAM_TAKEN">Exam Taken</SelectItem>
-                  <SelectItem value="PASSED">Passed</SelectItem>
-                  <SelectItem value="FAILED">Failed</SelectItem>
-                  <SelectItem value="APPROVED">Enrolled</SelectItem>
+                  <SelectItem value="SUBMITTED">Submitted</SelectItem>
+                  <SelectItem value="UNDER_REVIEW">Under Review</SelectItem>
+                  <SelectItem value="FOR_REVISION">For Revision</SelectItem>
+                  <SelectItem value="ELIGIBLE">Eligible</SelectItem>
+                  <SelectItem value="ASSESSMENT_SCHEDULED">Assessment Scheduled</SelectItem>
+                  <SelectItem value="ASSESSMENT_TAKEN">Assessment Taken</SelectItem>
+                  <SelectItem value="PRE_REGISTERED">Pre-registered</SelectItem>
+                  <SelectItem value="NOT_QUALIFIED">Not Qualified</SelectItem>
+                  <SelectItem value="ENROLLED">Enrolled</SelectItem>
                   <SelectItem value="REJECTED">Rejected</SelectItem>
+                  <SelectItem value="WITHDRAWN">Withdrawn</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -288,28 +320,46 @@ export default function Applications() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          {/* Approve/Enroll Action */}
-                          {(app.status === 'PENDING' || app.status === 'PASSED') && app.applicantType === 'REGULAR' && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-600" onClick={() => { setSelectedApp(app); setActionType('APPROVE'); fetchSections(app.gradeLevelId); }}>
-                              <UserCheck className="h-4 w-4" />
-                            </Button>
-                          )}
-                          
-                          {/* SCP Actions */}
-                          {app.applicantType !== 'REGULAR' && app.status === 'PENDING' && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600" onClick={() => { setSelectedApp(app); setActionType('SCHEDULE'); }}>
-                              <Calendar className="h-4 w-4" />
-                            </Button>
+                          {/* Step 1: Registrar opens record (automatically moves SUBMITTED -> UNDER_REVIEW) */}
+                          {/* Step 2: Registrar marks ELIGIBLE (for SCP) or goes straight to APPROVE (for Regular) */}
+                          {app.status === 'UNDER_REVIEW' && (
+                            <>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-cyan-600" title="Mark Eligible" onClick={() => { setSelectedApp(app); setActionType('ELIGIBLE'); }}>
+                                <ClipboardCheck className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-600" title="Pre-register" onClick={() => { setSelectedApp(app); setActionType('APPROVE'); fetchSections(app.gradeLevelId); }}>
+                                <UserCheck className="h-4 w-4" />
+                              </Button>
+                            </>
                           )}
 
-                          {app.status === 'EXAM_SCHEDULED' && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-purple-600" onClick={() => { setSelectedApp(app); setActionType('RESULT'); }}>
+                          {/* SCP Flow */}
+                          {app.status === 'ELIGIBLE' && (
+                            <>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600" title="Schedule Assessment" onClick={() => { setSelectedApp(app); setActionType('SCHEDULE'); }}>
+                                <Calendar className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-600" title="Pre-register" onClick={() => { setSelectedApp(app); setActionType('APPROVE'); fetchSections(app.gradeLevelId); }}>
+                                <UserCheck className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+
+                          {app.status === 'ASSESSMENT_SCHEDULED' && (
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-purple-600" title="Record Result" onClick={() => { setSelectedApp(app); setActionType('RESULT'); }}>
                               <ClipboardCheck className="h-4 w-4" />
                             </Button>
                           )}
 
-                          {app.status === 'PASSED' && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-600" onClick={() => { setSelectedApp(app); setActionType('APPROVE'); fetchSections(app.gradeLevelId); }}>
+                          {app.status === 'ASSESSMENT_TAKEN' && (
+                             <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-600" title="Pre-register" onClick={() => { setSelectedApp(app); setActionType('APPROVE'); fetchSections(app.gradeLevelId); }}>
+                              <UserCheck className="h-4 w-4" />
+                            </Button>
+                          )}
+
+                          {/* Phase 2: Final Enrollment */}
+                          {app.status === 'PRE_REGISTERED' && (
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600" title="Official Enrollment" onClick={() => { setSelectedApp(app); setActionType('ENROLL'); }}>
                               <UserCheck className="h-4 w-4" />
                             </Button>
                           )}
@@ -318,8 +368,8 @@ export default function Applications() {
                             <Eye className="h-4 w-4" />
                           </Button>
                           
-                          {app.status !== 'APPROVED' && app.status !== 'REJECTED' && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { setSelectedApp(app); setActionType('REJECT'); }}>
+                          {app.status !== 'ENROLLED' && app.status !== 'REJECTED' && app.status !== 'WITHDRAWN' && (
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" title="Reject" onClick={() => { setSelectedApp(app); setActionType('REJECT'); }}>
                               <XCircle className="h-4 w-4" />
                             </Button>
                           )}
@@ -348,7 +398,9 @@ export default function Applications() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {actionType === 'APPROVE' && 'Approve & Enroll Student'}
+              {actionType === 'APPROVE' && 'Approve & Pre-register'}
+              {actionType === 'ENROLL' && 'Official Enrollment Confirmation'}
+              {actionType === 'ELIGIBLE' && 'Mark as Eligible'}
               {actionType === 'REJECT' && 'Reject Application'}
               {actionType === 'SCHEDULE' && 'Schedule Admission Assessment'}
               {actionType === 'RESULT' && 'Record Assessment Result'}
@@ -357,6 +409,19 @@ export default function Applications() {
               Applicant: {selectedApp?.lastName}, {selectedApp?.firstName}
             </DialogDescription>
           </DialogHeader>
+
+          {actionType === 'ELIGIBLE' && (
+            <div className="py-4">
+              <p className="text-sm">Marking this applicant as <span className="font-bold text-cyan-700">ELIGIBLE</span> means their documents are verified and they are cleared for assessment or direct pre-registration.</p>
+            </div>
+          )}
+
+          {actionType === 'ENROLL' && (
+            <div className="py-4">
+              <p className="text-sm">This action confirms the <span className="font-bold text-green-700">OFFICIAL ENROLLMENT</span> for Phase 2. The student is already pre-registered in a section.</p>
+              <p className="text-xs text-[hsl(var(--muted-foreground))] mt-2 italic">Ensure all physical documents (PSA, SF9) have been verified in person.</p>
+            </div>
+          )}
 
           {actionType === 'APPROVE' && (
             <div className="space-y-4 py-4">
@@ -429,7 +494,9 @@ export default function Applications() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setActionType(null)}>Cancel</Button>
-            {actionType === 'APPROVE' && <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleApprove} disabled={!selectedSectionId}>Confirm Enrollment</Button>}
+            {actionType === 'ELIGIBLE' && <Button className="bg-cyan-600 hover:bg-cyan-700" onClick={handleMarkEligible}>Confirm Eligibility</Button>}
+            {actionType === 'ENROLL' && <Button className="bg-green-600 hover:bg-green-700" onClick={handleEnroll}>Confirm Official Enrollment</Button>}
+            {actionType === 'APPROVE' && <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleApprove} disabled={!selectedSectionId}>Confirm Pre-registration</Button>}
             {actionType === 'REJECT' && <Button variant="destructive" onClick={handleReject} disabled={!rejectionReason}>Reject Application</Button>}
             {actionType === 'SCHEDULE' && <Button onClick={handleSchedule} disabled={!examDate}>Confirm Schedule</Button>}
             {actionType === 'RESULT' && <Button onClick={handleRecordResult}>Save Result</Button>}

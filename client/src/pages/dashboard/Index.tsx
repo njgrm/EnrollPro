@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/badge';
 interface Stats {
   totalPending: number;
   totalEnrolled: number;
-  totalApproved: number;
+  totalPreRegistered: number;
   sectionsAtCapacity: number;
 }
 
@@ -61,7 +61,7 @@ export default function Dashboard() {
 
   const statCards = [
     {
-      title: 'Total Pending',
+      title: 'Pending Review',
       value: stats?.totalPending ?? 0,
       icon: ClipboardList,
       color: 'text-yellow-600',
@@ -75,8 +75,8 @@ export default function Dashboard() {
       bg: 'bg-emerald-50',
     },
     {
-      title: 'Approved (Awaiting)',
-      value: stats?.totalApproved ?? 0,
+      title: 'Pre-registered',
+      value: stats?.totalPreRegistered ?? 0,
       icon: CheckCircle,
       color: 'text-blue-600',
       bg: 'bg-blue-50',

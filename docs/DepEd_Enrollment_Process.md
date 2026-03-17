@@ -833,7 +833,7 @@ If TechPro:
 - Maritime Transport
 - Undecided / To be advised by guidance counselor
 
-> **Important:** Not all clusters are available at every school. The admission portal should display only the clusters offered at Hinigaran NHS. The school configures available clusters in the system settings before opening the portal.
+> **Important:** Not all clusters are available at every school. The admission portal should display only the clusters offered at the school. The school configures available clusters in the system settings before opening the portal.
 
 ---
 
@@ -894,7 +894,7 @@ This document now governs enrollment under **two simultaneously active DepEd pol
 ### Including Special Curricular Programs (SCPs) for Junior High School
 
 **Research Basis:** DepEd Order No. 017, s. 2025 · DepEd Memorandum No. 149, s. 2011 · Division Memorandum No. 157, s. 2025 · TeacherPH SCP Reference · USHAT Guidelines
-**Relevance:** Defines the two distinct admission pathways that the HNHS system must handle — Open Admission and Special Program Admission
+**Relevance:** Defines the two distinct admission pathways that the system must handle — Open Admission and Special Program Admission
 
 ---
 
@@ -992,7 +992,7 @@ PHASE 2 — Regular Enrollment (June)
 DepEd authorizes public secondary schools to conduct competitive admission assessments for Special Curricular Programs. These programs serve learners with specific gifts, talents, and aptitudes. Unlike regular sections, SCP placement is **not guaranteed** — it requires a qualifying assessment, and only those who meet the prescribed criteria are admitted.
 
 **Legal basis:** DepEd Memorandum No. 149, s. 2011 — Special Curricular Programs in JHS
-**Additional basis:** Division-level memoranda (varies by SDO — HNHS follows DepEd Division of Negros Occidental guidelines)
+**Additional basis:** Division-level memoranda (varies by SDO — the school follows DepEd Division of Negros Occidental guidelines)
 
 ---
 
@@ -1013,7 +1013,7 @@ DepEd authorizes public secondary schools to conduct competitive admission asses
 | **For Grade 11 STEM** | A final grade of **85 and above** in both Science and Mathematics in Grade 10; percentile rank of **86 and above** in the STEM subtest of the career assessment exam |
 | **LRN requirement** | Same LRN carries over; no new LRN issued for SCP enrollment |
 
-**HNHS Context:** Division Memorandum No. 157, s. 2025 specifically governs STE admission testing for incoming Grade 7 in the Negros Occidental SDO. HNHS has confirmed STE sections are offered.
+**School Context:** Division Memorandum No. 157, s. 2025 specifically governs STE admission testing for incoming Grade 7 in the Negros Occidental SDO. The school has confirmed STE sections are offered.
 
 ---
 
@@ -1102,9 +1102,9 @@ DepEd authorizes public secondary schools to conduct competitive admission asses
 
 ## A4. Grade 11 SHS — Special Program Admission
 
-### Grade 11 STEM — Criteria + Placement Exam + Interview (HNHS Specific)
+### Grade 11 STEM — Criteria + Placement Exam + Interview (School-Specific)
 
-For Grade 11 STEM aspirants at HNHS, research confirms the school conducts **both a placement exam and an interview** — consistent with DepEd's national STEM entry criteria and HNHS's own school-specific admission procedure.
+The school conducts **both a placement exam and an interview** for Grade 11 STEM aspirants — consistent with DepEd's national STEM entry criteria and the school's own admission procedure.
 
 **DepEd national minimum criteria for STEM:**
 
@@ -1114,7 +1114,7 @@ For Grade 11 STEM aspirants at HNHS, research confirms the school conducts **bot
 | Final Grade in Mathematics (Grade 10) | **85 and above** |
 | Career Assessment Exam — STEM subtest | Percentile rank of **86 and above** |
 
-**HNHS school-specific additions (confirmed via HNHS Facebook announcements):**
+**School-specific additions:**
 
 | Addition | Detail |
 |---|---|
@@ -1122,7 +1122,7 @@ For Grade 11 STEM aspirants at HNHS, research confirms the school conducts **bot
 | Interview | Conducted separately for STEM aspirants; assesses motivation, aptitude, and career plan |
 | Schedule coordination | Registrar announces exam and interview schedule after Early Registration closes |
 
-**Process flow for Grade 11 STEM at HNHS:**
+**Process flow for Grade 11 STEM at the school:**
 
 ```
 EARLY REGISTRATION (Jan–Feb)
@@ -1249,4 +1249,4 @@ Announcements      Phase 1 (DO 017):    RESULTS:          Phase 2 (DO 017):
 - *DepEd DM 012, s. 2026 — Strengthened Senior High School Curriculum*
 - *TeacherPH — List of DepEd Special Curricular Programs (SCPs)*
 - *USHAT Guidelines — Unified Science High School Admissions Test*
-- *HNHS Facebook Page — SY 2024–2025 Grade 11 Placement Exam and STEM Interview Announcements*
+- *School Facebook Page — SY 2024–2025 Grade 11 Placement Exam and STEM Interview Announcements*

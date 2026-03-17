@@ -10,9 +10,11 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { InfoIcon } from 'lucide-react';
 import { format } from 'date-fns';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 export default function Step3Preferences() {
   const { register, watch, setValue, formState: { errors } } = useFormContext<AdmissionFormData>();
+  const { schoolName } = useSettingsStore();
 
   const gradeLevel = watch('gradeLevel');
   const shsTrack = watch('shsTrack');
@@ -297,7 +299,7 @@ export default function Step3Preferences() {
         </div>
 
         <p className="text-[10px] text-muted-foreground mt-4 italic">
-          Your Data Privacy consent was recorded at the start of this form. Submission of this form constitutes official application for admission to Hinigaran National High School.
+          Your Data Privacy consent was recorded at the start of this form. Submission of this form constitutes official application for admission{schoolName ? ` to ${schoolName}` : ''}.
         </p>
       </div>
     </div>

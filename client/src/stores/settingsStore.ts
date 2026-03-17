@@ -32,7 +32,7 @@ export interface SettingsState {
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
-      schoolName: 'Hinigaran National High School',
+      schoolName: '',
       logoUrl: null,
       colorScheme: null,
       selectedAccentHsl: null,

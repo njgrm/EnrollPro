@@ -1,7 +1,7 @@
 # Product Requirements Document (PRD)
 
 **Project Name:** Web-Based Admission Portal and Enrollment Information Management System
-**Beneficiary:** Hinigaran National High School
+**Beneficiary:** [School Name]
 **Document Version:** 2.2.0
 **Status:** Ready for Implementation
 **Target Actor:** Claude Code (AI Full-Stack Developer)
@@ -39,7 +39,7 @@
 
 ## 1. Project Overview
 
-Hinigaran National High School requires a centralized digital platform to replace its paper-based student admission and enrollment workflows. This system provides:
+The school requires a centralized digital platform to replace its paper-based student admission and enrollment workflows. This system provides:
 
 - A **public-facing admission portal** for incoming students to register their demographic profiles online.
 - A **secure registrar dashboard** for administrators to review applications, assign sections, manage configurations, and monitor enrollment capacity.
@@ -494,7 +494,7 @@ export default function GuestLayout({ children }) {
 ```tsx
 import { sileo } from 'sileo';
 
-sileo.success({ title: 'Application Submitted', description: 'Your tracking number is HNS-2025-00042.' });
+sileo.success({ title: 'Application Submitted', description: 'Your tracking number is APP-2025-00042.' });
 sileo.error({ title: 'Enrollment Failed', description: 'This section has reached maximum capacity.' });
 sileo.warning({ title: 'Capacity Warning', description: 'Grade 7 - Rizal is at 95% capacity.' });
 sileo.info({ title: 'Enrollment Closed', description: 'The admission period is not accepting applications.' });
@@ -702,7 +702,7 @@ model User {
 
 model SchoolSettings {
   id                   Int           @id @default(autoincrement())
-  schoolName           String        @default("Hinigaran National High School")
+  schoolName           String
   logoPath             String?
   logoUrl              String?
   colorScheme          Json?         // { primary_hsl, secondary_hsl, extracted_at }
@@ -864,7 +864,7 @@ model AuditLog {
 
 - **Route:** `POST /api/applications`
 - **Zod Validator:** `server/src/validators/application.validator.ts`
-- **Tracking Number:** `HNS-${year}-${String(applicant.id).padStart(5, '0')}` — generated in the service layer after DB insert.
+- **Tracking Number:** `APP-${year}-${String(applicant.id).padStart(5, '0')}` — generated in the service layer after DB insert.
 
 ---
 
@@ -1101,9 +1101,9 @@ All HTML email templates must:
 
 | Trigger | Subject |
 |---|---|
-| Application submitted | `Your Application Has Been Received — Tracking #HNS-XXXX` |
+| Application submitted | `Your Application Has Been Received — Tracking #APP-XXXX` |
 | Application approved | `Congratulations! Your Enrollment is Confirmed` |
-| Application rejected | `Update on Your Application to Hinigaran NHS` |
+| Application rejected | `Update on Your Application to [School Name]` |
 
 #### Async Dispatch — Critical
 
@@ -1323,7 +1323,7 @@ export const router = createBrowserRouter([
 *ORM: Prisma 6 · Auth: JWT · Routing: React Router v7 · Build: Vite 7 · Styles: Tailwind CSS v4*
 *Package Manager: pnpm 10.x · All components: .tsx*
 *Prepared for: Claude Code Implementation*
-*School: Hinigaran National High School*
+*School: [School Name]*
 
 ---
 
@@ -1767,7 +1767,7 @@ See `SYSTEM_ADMIN_SPECIFICATION.md §12` for the full list of 16 new acceptance 
 ## ADDENDUM — Admission Process Integration (PRD v2.4.0)
 ### DepEd Admission Pathways: Open Admission & Special Curricular Program (SCP)
 
-**Research Basis:** DepEd Memorandum No. 149, s. 2011 · Division Memorandum No. 157, s. 2025 · DO 017, s. 2025 · HNHS school-specific admission announcements
+**Research Basis:** DepEd Memorandum No. 149, s. 2011 · Division Memorandum No. 157, s. 2025 · DO 017, s. 2025 · school-specific admission announcements
 **Document Version Update:** PRD v2.3.0 → v2.4.0
 **Impact:** Extends the Applicant model, ApplicationStatus enum, admission portal, and registrar workflow to handle two distinct admission pathways
 
@@ -1989,12 +1989,12 @@ EXAM_TAKEN  ← system records score/result/notes
 
 | Trigger | Subject | When |
 |---|---|---|
-| Application submitted | `Your Application Has Been Received — #HNS-XXXX` | On `POST /api/applications` |
-| Exam scheduled | `Your Exam / Assessment Date — Hinigaran NHS` | On `PATCH .../schedule-exam` |
-| Assessment result — passed | `Congratulations! You Passed the Assessment — HNHS` | On `PATCH .../pass` |
-| Assessment result — failed | `Update on Your SCP Application — HNHS` | On `PATCH .../fail` (with alternative offer if applicable) |
+| Application submitted | `Your Application Has Been Received — #APP-XXXX` | On `POST /api/applications` |
+| Exam scheduled | `Your Exam / Assessment Date — [School Name]` | On `PATCH .../schedule-exam` |
+| Assessment result — passed | `Congratulations! You Passed the Assessment — [School Name]` | On `PATCH .../pass` |
+| Assessment result — failed | `Update on Your SCP Application — [School Name]` | On `PATCH .../fail` (with alternative offer if applicable) |
 | Enrollment confirmed | `Congratulations! Your Enrollment is Confirmed` | On full approval + section assignment |
-| Application rejected | `Update on Your Application to Hinigaran NHS` | On `PATCH .../reject` |
+| Application rejected | `Update on Your Application to [School Name]` | On `PATCH .../reject` |
 
 ---
 
@@ -2027,4 +2027,4 @@ EXAM_TAKEN  ← system records score/result/notes
 ---
 
 *PRD updated to v2.4.0 — Admission Process (Open Admission + SCP) integrated*
-*Research basis: DepEd Memorandum No. 149, s. 2011 · Division Memorandum No. 157, s. 2025 · HNHS school-specific admission announcements*
+*Research basis: DepEd Memorandum No. 149, s. 2011 · Division Memorandum No. 157, s. 2025 · school-specific admission announcements*

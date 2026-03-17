@@ -25,7 +25,7 @@ async function main() {
   console.log('🌱 Starting Grade 10 student data seeding...\n');
 
   // Create registrar user if not exists
-  const registrarEmail = 'registrar@hnhs.edu.ph';
+  const registrarEmail = 'registrar@school.edu.ph';
   let registrar = await prisma.user.findUnique({ where: { email: registrarEmail } });
   
   if (!registrar) {
@@ -145,14 +145,14 @@ async function main() {
     const birthDate = new Date(2011, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1);
     const barangays = ['San Antonio', 'San Jose', 'Poblacion', 'San Miguel', 'Santa Cruz'];
     const barangay = barangays[Math.floor(Math.random() * barangays.length)];
-    const address = `${Math.floor(Math.random() * 500) + 1} Brgy. ${barangay}, Hinigaran, Negros Occidental`;
+    const address = `${Math.floor(Math.random() * 500) + 1} Brgy. ${barangay}, Sample City, Sample Province`;
     const parentName = `${student.sex === Sex.MALE ? 'Rosa' : 'Carlos'} ${student.lastName}`;
     const phoneNumber = generatePhoneNumber();
     const email = `${student.lastName.toLowerCase().replace(' ', '')}${Math.floor(Math.random() * 1000)}@gmail.com`;
 
     const trackingYear = academicYear.yearLabel.split('-')[0];
     const trackingSeq = (totalCreated + 1).toString().padStart(5, '0');
-    const trackingNumber = `HNS-${trackingYear}-${trackingSeq}`;
+    const trackingNumber = `APP-${trackingYear}-${trackingSeq}`;
 
     try {
       const applicant = await prisma.applicant.create({
@@ -164,12 +164,12 @@ async function main() {
           suffix: null,
           birthDate,
           sex: student.sex,
-          currentAddress: { barangay, cityMunicipality: 'Hinigaran', province: 'Negros Occidental', country: 'Philippines' },
+          currentAddress: { barangay, cityMunicipality: 'Sample City', province: 'Sample Province', country: 'Philippines' },
           motherName: { firstName: student.sex === Sex.MALE ? 'Rosa' : 'Maria', lastName: student.lastName },
           fatherName: { firstName: student.sex === Sex.MALE ? 'Carlos' : 'Juan', lastName: student.lastName },
           emailAddress: email,
           trackingNumber,
-          status: ApplicationStatus.APPROVED,
+          status: ApplicationStatus.ENROLLED,
           gradeLevelId: gradeLevel.id,
           strandId: null,
           academicYearId: academicYear.id,

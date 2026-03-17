@@ -1,5 +1,5 @@
 # System Administrator Role Specification
-## Hinigaran National High School — Admission & Enrollment Information Management System
+## Admission & Enrollment Information Management System
 
 **Document Type:** Full Role Specification — System Admin
 **Derives From:** PRD v2.2.1 · Sidebar Navigation Spec · Registrar Storyboard
@@ -40,7 +40,7 @@
 
 ### Who is the System Administrator?
 
-The System Administrator is the **technical owner** of the deployed school system. In a single-school public high school context like Hinigaran NHS, this is typically one of the following:
+The System Administrator is the **technical owner** of the deployed school system. In a single-school public high school context like the school, this is typically one of the following:
 
 - The school's designated IT coordinator
 - A DepEd ICT advocate teacher assigned to manage school systems
@@ -197,7 +197,7 @@ enum EmailStatus {
 ```
 ┌─────────────────────────────────┐
 │  [School Logo]                  │
-│  Hinigaran National High School │
+│  [School Name]               │
 │  SY 2026–2027  ● ACTIVE         │
 ├─────────────────────────────────┤
 │                                 │
@@ -370,7 +370,7 @@ AUDIT LOGS
   Feb 3,  2026  9:11 AM  │ (system / guest)        │ —          │ APPLICATION_SUBMITTED  │ Guest submitted #42 (LRN: 123456789012)
   Feb 1,  2026  8:00 AM  │ Cruz, Regina            │ REGISTRAR  │ ENROLLMENT_GATE_TOGGLED│ Admin set enrollment to OPEN
   Jan 28, 2026  2:30 PM  │ Santos, Maria (Admin)   │ ADMIN      │ ADMIN_USER_CREATED     │ Created account: Cruz, Regina (REGISTRAR)
-  Jan 28, 2026  1:55 PM  │ Santos, Maria (Admin)   │ ADMIN      │ USER_LOGIN             │ User admin@hnhs.edu.ph logged in
+  Jan 28, 2026  1:55 PM  │ Santos, Maria (Admin)   │ ADMIN      │ USER_LOGIN             │ User admin@school.edu.ph logged in
 ```
 
 **CSV Export (Admin only):**
@@ -422,11 +422,11 @@ USER MANAGEMENT                                           [ + Create User ]
 
   Name                  │ Email                       │ Role        │ Status   │ Last Login          │ Created By       │ Actions
   ──────────────────────┼─────────────────────────────┼─────────────┼──────────┼─────────────────────┼──────────────────┼───────────────────────────
-  Cruz, Regina          │ registrar@hnhs.edu.ph       │ REGISTRAR   │ ● Active │ Feb 3, 2026 9:14 AM │ Santos, Maria    │ [Edit]  [Reset PW]  [⊘ Deactivate]
-  Reyes, Juan           │ registrar2@hnhs.edu.ph      │ REGISTRAR   │ ● Active │ Feb 2, 2026 8:00 AM │ Santos, Maria    │ [Edit]  [Reset PW]  [⊘ Deactivate]
-  Lim, Benjamin         │ teacher.lim@hnhs.edu.ph     │ TEACHER     │ ● Active │ Jan 30, 2026 7:45 AM│ Santos, Maria    │ [Edit]  [Reset PW]  [⊘ Deactivate]
-  Aquino, Nora          │ teacher.aquino@hnhs.edu.ph  │ TEACHER     │ ● Active │ Jan 29, 2026 8:00 AM│ Santos, Maria    │ [Edit]  [Reset PW]  [⊘ Deactivate]
-  Torres, Carlos        │ teacher.torres@hnhs.edu.ph  │ TEACHER     │ ⊘ Inactive│ Dec 10, 2025 9:00 AM│ Santos, Maria  │ [Edit]              [✓ Reactivate]
+  Cruz, Regina          │ registrar@school.edu.ph       │ REGISTRAR   │ ● Active │ Feb 3, 2026 9:14 AM │ Santos, Maria    │ [Edit]  [Reset PW]  [⊘ Deactivate]
+  Reyes, Juan           │ registrar2@school.edu.ph      │ REGISTRAR   │ ● Active │ Feb 2, 2026 8:00 AM │ Santos, Maria    │ [Edit]  [Reset PW]  [⊘ Deactivate]
+  Lim, Benjamin         │ teacher.lim@school.edu.ph     │ TEACHER     │ ● Active │ Jan 30, 2026 7:45 AM│ Santos, Maria    │ [Edit]  [Reset PW]  [⊘ Deactivate]
+  Aquino, Nora          │ teacher.aquino@school.edu.ph  │ TEACHER     │ ● Active │ Jan 29, 2026 8:00 AM│ Santos, Maria    │ [Edit]  [Reset PW]  [⊘ Deactivate]
+  Torres, Carlos        │ teacher.torres@school.edu.ph  │ TEACHER     │ ⊘ Inactive│ Dec 10, 2025 9:00 AM│ Santos, Maria  │ [Edit]              [✓ Reactivate]
 ```
 
 **Table columns:**
@@ -456,7 +456,7 @@ USER MANAGEMENT                                           [ + Create User ]
 │  [ Cruz, Regina A.                                        ]    │
 │                                                                │
 │  Email Address *                                               │
-│  [ registrar@hnhs.edu.ph                                  ]    │
+│  [ registrar@school.edu.ph                                  ]    │
 │  (This will be the login email)                                │
 │                                                                │
 │  Role *                                                        │
@@ -509,7 +509,7 @@ USER MANAGEMENT                                           [ + Create User ]
 │  [ Cruz, Regina A.                                        ]    │
 │                                                                │
 │  Email Address *                                               │
-│  [ registrar@hnhs.edu.ph                                  ]    │
+│  [ registrar@school.edu.ph                                  ]    │
 │                                                                │
 │  Role *                                                        │
 │  ●  Registrar                                                  │
@@ -623,7 +623,7 @@ EMAIL LOGS
   ────┼────────────────────────────────┼──────────────────────────────────────────┼──────────────────────┼──────────┼───────────────────────────┼────────────
   055 │ delacruz.maria@gmail.com       │ Congratulations! Your Enrollment is...   │ APPLICATION_APPROVED │ ✅ SENT  │ Feb 3, 2026  9:15 AM      │ [View]
   054 │ santos.luz@gmail.com           │ Congratulations! Your Enrollment is...   │ APPLICATION_APPROVED │ ✅ SENT  │ Feb 3, 2026  8:56 AM      │ [View]
-  053 │ fernandez.ana@yahoo.com        │ Update on Your Application — HNHS        │ APPLICATION_REJECTED │ ❌ FAILED│ Feb 2, 2026  4:30 PM      │ [View] [Resend]
+  053 │ fernandez.ana@yahoo.com        │ Update on Your Application — [School Name]        │ APPLICATION_REJECTED │ ❌ FAILED│ Feb 2, 2026  4:30 PM      │ [View] [Resend]
   052 │ reyes.pedro@gmail.com          │ Your Application Has Been Received...    │ APPLICATION_SUBMITTED│ ✅ SENT  │ Feb 2, 2026  7:23 AM      │ [View]
   051 │ torres.miguel@gmail.com        │ Your Application Has Been Received...    │ APPLICATION_SUBMITTED│ ⏳ PENDING│ Feb 2, 2026  7:10 AM     │ [View]
 ```
@@ -651,7 +651,7 @@ EMAIL LOGS
 EMAIL LOG DETAIL — #053
 
   Recipient   :  fernandez.ana@yahoo.com
-  Subject     :  Update on Your Application — Hinigaran NHS
+  Subject     :  Update on Your Application — [School Name]
   Trigger     :  APPLICATION_REJECTED
   Status      :  ❌ FAILED
   Attempted   :  February 2, 2026 at 4:30 PM
@@ -679,7 +679,7 @@ EMAIL LOG DETAIL — #053
 │  Resend Email?                                                 │
 │                                                                │
 │  Recipient  :  fernandez.ana@yahoo.com                        │
-│  Subject    :  Update on Your Application — Hinigaran NHS     │
+│  Subject    :  Update on Your Application — [School Name]     │
 │                                                                │
 │  A new email will be dispatched immediately.                   │
 │                                                                │
@@ -1158,8 +1158,8 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  const email    = process.env.ADMIN_EMAIL    ?? 'admin@hnhs.edu.ph';
-  const password = process.env.ADMIN_PASSWORD ?? 'Admin@HNHS2026!';
+  const email    = process.env.ADMIN_EMAIL    ?? 'admin@school.edu.ph';
+  const password = process.env.ADMIN_PASSWORD ?? 'Admin@School2026!';
   const name     = process.env.ADMIN_NAME     ?? 'System Administrator';
 
   const existing = await prisma.user.findUnique({ where: { email } });
@@ -1198,7 +1198,7 @@ main()
 pnpm prisma db seed
 
 # Or with custom credentials via environment:
-ADMIN_EMAIL=maria.santos@hnhs.edu.ph \
+ADMIN_EMAIL=maria.santos@school.edu.ph \
 ADMIN_PASSWORD=SecureP@ss2026! \
 ADMIN_NAME="Santos, Maria T." \
 pnpm prisma db seed
@@ -1269,5 +1269,5 @@ ADMIN SIDEBAR (9 items across 4 groups)
 *Document prepared by: System Design Team*
 *Version: PRD v2.3.0 (addendum from v2.2.1)*
 *Policy: DepEd Order No. 017, s. 2025 · DM 012, s. 2026 · RA 10173 (Data Privacy Act)*
-*School: Hinigaran National High School*
+*School: [School Name]*
 *Stack: PERN (PostgreSQL · Express · React · Node.js) · Prisma 6 · JWT · shadcn/ui · Tailwind CSS v4*

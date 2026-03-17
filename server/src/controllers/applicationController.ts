@@ -6,11 +6,17 @@ import type { ApplicationStatus } from '@prisma/client';
 
 // ── Valid status transitions ──
 const VALID_TRANSITIONS: Record<string, ApplicationStatus[]> = {
-  PENDING: ['APPROVED', 'REJECTED', 'EXAM_SCHEDULED'],
-  EXAM_SCHEDULED: ['EXAM_TAKEN'],
-  EXAM_TAKEN: ['PASSED', 'FAILED'],
-  PASSED: ['APPROVED', 'REJECTED'],
-  FAILED: ['REJECTED'],
+  SUBMITTED: ['UNDER_REVIEW', 'REJECTED', 'WITHDRAWN'],
+  UNDER_REVIEW: ['FOR_REVISION', 'ELIGIBLE', 'PRE_REGISTERED', 'REJECTED', 'WITHDRAWN'],
+  FOR_REVISION: ['UNDER_REVIEW', 'WITHDRAWN'],
+  ELIGIBLE: ['ASSESSMENT_SCHEDULED', 'PRE_REGISTERED', 'WITHDRAWN'],
+  ASSESSMENT_SCHEDULED: ['ASSESSMENT_TAKEN', 'WITHDRAWN'],
+  ASSESSMENT_TAKEN: ['PRE_REGISTERED', 'NOT_QUALIFIED', 'WITHDRAWN'],
+  PRE_REGISTERED: ['ENROLLED', 'WITHDRAWN'],
+  NOT_QUALIFIED: ['UNDER_REVIEW', 'WITHDRAWN'],
+  ENROLLED: ['WITHDRAWN'],
+  REJECTED: ['UNDER_REVIEW', 'WITHDRAWN'],
+  WITHDRAWN: [],
 };
 
 function canTransition(from: ApplicationStatus, to: ApplicationStatus): boolean {
@@ -80,6 +86,15 @@ export async function show(req: Request, res: Response) {
 
     if (!application) {
       return res.status(404).json({ message: 'Application not found' });
+    }
+
+    // Automatically transition to UNDER_REVIEW when opened by registrar
+    if (application.status === 'SUBMITTED' && req.user?.role === 'REGISTRAR') {
+      await prisma.applicant.update({
+        where: { id: application.id },
+        data: { status: 'UNDER_REVIEW' },
+      });
+      application.status = 'UNDER_REVIEW';
     }
 
     res.json(application);
@@ -179,7 +194,7 @@ export async function store(req: Request, res: Response) {
 
     // 9. Create applicant with a temporary tracking number (will update after ID is known)
     const year = new Date().getFullYear();
-    const tempTracking = `HNS-${year}-TEMP-${Date.now()}`;
+    const tempTracking = `APP-${year}-TEMP-${Date.now()}`;
 
     const applicant = await prisma.applicant.create({
       data: {
@@ -247,7 +262,7 @@ export async function store(req: Request, res: Response) {
     });
 
     // 10. Generate proper tracking number from ID
-    const trackingNumber = `HNS-${year}-${String(applicant.id).padStart(5, '0')}`;
+    const trackingNumber = `APP-${year}-${String(applicant.id).padStart(5, '0')}`;
     await prisma.applicant.update({
       where: { id: applicant.id },
       data: { trackingNumber },
@@ -338,9 +353,9 @@ export async function approve(req: Request, res: Response) {
       return res.status(404).json({ message: 'Applicant not found' });
     }
 
-    if (!canTransition(applicant.status, 'APPROVED')) {
+    if (!canTransition(applicant.status, 'PRE_REGISTERED')) {
       return res.status(422).json({
-        message: `Cannot approve an application with status "${applicant.status}". Only PENDING or PASSED applications can be approved.`,
+        message: `Cannot approve an application with status "${applicant.status}". Only UNDER_REVIEW, ELIGIBLE, or ASSESSMENT_TAKEN applications can be approved (moved to PRE_REGISTERED).`,
       });
     }
 
@@ -367,7 +382,7 @@ export async function approve(req: Request, res: Response) {
 
       await tx.applicant.update({
         where: { id: applicantId },
-        data: { status: 'APPROVED' },
+        data: { status: 'PRE_REGISTERED' },
       });
 
       return enrollment;
@@ -376,7 +391,7 @@ export async function approve(req: Request, res: Response) {
     await auditLog({
       userId: req.user!.userId,
       actionType: 'APPLICATION_APPROVED',
-      description: `Approved application #${applicantId} for ${applicant.firstName} ${applicant.lastName} and enrolled to section ${sectionId}`,
+      description: `Approved application #${applicantId} for ${applicant.firstName} ${applicant.lastName} and pre-registered to section ${sectionId}`,
       subjectType: 'Applicant',
       subjectId: applicantId,
       req,
@@ -401,6 +416,107 @@ export async function approve(req: Request, res: Response) {
   } catch (error: any) {
     const status = error.message?.includes('capacity') ? 422 : 500;
     res.status(status).json({ message: error.message });
+  }
+}
+
+// ── Finalize Enrollment (Phase 2 complete) ──
+export async function enroll(req: Request, res: Response) {
+  try {
+    const applicantId = parseInt(String(req.params.id));
+
+    const applicant = await prisma.applicant.findUnique({ where: { id: applicantId } });
+    if (!applicant) {
+      return res.status(404).json({ message: 'Applicant not found' });
+    }
+
+    if (!canTransition(applicant.status, 'ENROLLED')) {
+      return res.status(422).json({
+        message: `Cannot finalize enrollment. Current status: "${applicant.status}". Only PRE_REGISTERED applications can be enrolled.`,
+      });
+    }
+
+    const updated = await prisma.applicant.update({
+      where: { id: applicantId },
+      data: { status: 'ENROLLED' },
+    });
+
+    await auditLog({
+      userId: req.user!.userId,
+      actionType: 'APPLICATION_ENROLLED',
+      description: `Finalized enrollment for ${applicant.firstName} ${applicant.lastName} (#${applicantId})`,
+      subjectType: 'Applicant',
+      subjectId: applicantId,
+      req,
+    });
+
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
+// ── Request Revision ──
+export async function requestRevision(req: Request, res: Response) {
+  try {
+    const { message } = req.body;
+    const applicantId = parseInt(String(req.params.id));
+
+    const applicant = await prisma.applicant.findUnique({ where: { id: applicantId } });
+    if (!applicant) return res.status(404).json({ message: 'Applicant not found' });
+
+    if (!canTransition(applicant.status, 'FOR_REVISION')) {
+      return res.status(422).json({ message: `Cannot request revision for status "${applicant.status}"` });
+    }
+
+    const updated = await prisma.applicant.update({
+      where: { id: applicantId },
+      data: { status: 'FOR_REVISION' },
+    });
+
+    await auditLog({
+      userId: req.user!.userId,
+      actionType: 'REVISION_REQUESTED',
+      description: `Requested revision for #${applicantId}. Message: ${message || 'N/A'}`,
+      subjectType: 'Applicant',
+      subjectId: applicantId,
+      req,
+    });
+
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
+// ── Withdraw Application ──
+export async function withdraw(req: Request, res: Response) {
+  try {
+    const applicantId = parseInt(String(req.params.id));
+
+    const applicant = await prisma.applicant.findUnique({ where: { id: applicantId } });
+    if (!applicant) return res.status(404).json({ message: 'Applicant not found' });
+
+    if (!canTransition(applicant.status, 'WITHDRAWN')) {
+      return res.status(422).json({ message: `Cannot withdraw application with status "${applicant.status}"` });
+    }
+
+    const updated = await prisma.applicant.update({
+      where: { id: applicantId },
+      data: { status: 'WITHDRAWN' },
+    });
+
+    await auditLog({
+      userId: req.user?.userId || null,
+      actionType: 'APPLICATION_WITHDRAWN',
+      description: `Application #${applicantId} withdrawn`,
+      subjectType: 'Applicant',
+      subjectId: applicantId,
+      req,
+    });
+
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
   }
 }
 
@@ -455,7 +571,43 @@ export async function reject(req: Request, res: Response) {
   }
 }
 
-// ── Schedule exam (SCP flow) ──
+// ── Mark as eligible (cleared for assessment or regular approval) ──
+export async function markEligible(req: Request, res: Response) {
+  try {
+    const applicantId = parseInt(String(req.params.id));
+
+    const applicant = await prisma.applicant.findUnique({ where: { id: applicantId } });
+    if (!applicant) {
+      return res.status(404).json({ message: 'Applicant not found' });
+    }
+
+    if (!canTransition(applicant.status, 'ELIGIBLE')) {
+      return res.status(422).json({
+        message: `Cannot mark as eligible. Current status: "${applicant.status}".`,
+      });
+    }
+
+    const updated = await prisma.applicant.update({
+      where: { id: applicantId },
+      data: { status: 'ELIGIBLE' },
+    });
+
+    await auditLog({
+      userId: req.user!.userId,
+      actionType: 'APPLICATION_ELIGIBLE',
+      description: `Marked ${applicant.firstName} ${applicant.lastName} (#${applicantId}) as ELIGIBLE – docs verified`,
+      subjectType: 'Applicant',
+      subjectId: applicantId,
+      req,
+    });
+
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
+// ── Schedule assessment (SCP flow) ──
 export async function scheduleExam(req: Request, res: Response) {
   try {
     const { examDate, assessmentType } = req.body;
@@ -466,16 +618,16 @@ export async function scheduleExam(req: Request, res: Response) {
       return res.status(404).json({ message: 'Applicant not found' });
     }
 
-    if (!canTransition(applicant.status, 'EXAM_SCHEDULED')) {
+    if (!canTransition(applicant.status, 'ASSESSMENT_SCHEDULED')) {
       return res.status(422).json({
-        message: `Cannot schedule exam for application with status "${applicant.status}". Only PENDING applications can be scheduled.`,
+        message: `Cannot schedule assessment for application with status "${applicant.status}". Only ELIGIBLE applications can be scheduled.`,
       });
     }
 
     const updated = await prisma.applicant.update({
       where: { id: applicantId },
       data: {
-        status: 'EXAM_SCHEDULED',
+        status: 'ASSESSMENT_SCHEDULED',
         examDate: new Date(examDate),
         assessmentType,
       },
@@ -495,7 +647,7 @@ export async function scheduleExam(req: Request, res: Response) {
         await prisma.emailLog.create({
           data: {
             recipient: applicant.emailAddress,
-            subject: `Exam Scheduled – ${applicant.trackingNumber}`,
+            subject: `Assessment Scheduled – ${applicant.trackingNumber}`,
             trigger: 'EXAM_SCHEDULED',
             status: 'PENDING',
             applicantId,
@@ -510,7 +662,7 @@ export async function scheduleExam(req: Request, res: Response) {
   }
 }
 
-// ── Record exam result ──
+// ── Record assessment result ──
 export async function recordResult(req: Request, res: Response) {
   try {
     const { examScore, examResult, examNotes, interviewResult } = req.body;
@@ -521,21 +673,21 @@ export async function recordResult(req: Request, res: Response) {
       return res.status(404).json({ message: 'Applicant not found' });
     }
 
-    if (!canTransition(applicant.status, 'EXAM_TAKEN')) {
+    if (!canTransition(applicant.status, 'ASSESSMENT_TAKEN')) {
       return res.status(422).json({
-        message: `Cannot record result for application with status "${applicant.status}". Only EXAM_SCHEDULED applications can record results.`,
+        message: `Cannot record result for application with status "${applicant.status}". Only ASSESSMENT_SCHEDULED applications can record results.`,
       });
     }
 
     const updated = await prisma.applicant.update({
       where: { id: applicantId },
-      data: { status: 'EXAM_TAKEN', examScore, examResult, examNotes, interviewResult },
+      data: { status: 'ASSESSMENT_TAKEN', examScore, examResult, examNotes, interviewResult },
     });
 
     await auditLog({
       userId: req.user!.userId,
       actionType: 'EXAM_RESULT_RECORDED',
-      description: `Recorded result for ${applicant.firstName} ${applicant.lastName} (#${applicantId}): ${examResult || 'N/A'} (Score: ${examScore ?? 'N/A'})`,
+      description: `Recorded assessment result for ${applicant.firstName} ${applicant.lastName} (#${applicantId}): ${examResult || 'N/A'} (Score: ${examScore ?? 'N/A'})`,
       subjectType: 'Applicant',
       subjectId: applicantId,
       req,
@@ -547,7 +699,7 @@ export async function recordResult(req: Request, res: Response) {
   }
 }
 
-// ── Mark as passed ──
+// ── Mark as passed (Pre-registered) ──
 export async function pass(req: Request, res: Response) {
   try {
     const applicantId = parseInt(String(req.params.id));
@@ -557,21 +709,21 @@ export async function pass(req: Request, res: Response) {
       return res.status(404).json({ message: 'Applicant not found' });
     }
 
-    if (!canTransition(applicant.status, 'PASSED')) {
+    if (!canTransition(applicant.status, 'PRE_REGISTERED')) {
       return res.status(422).json({
-        message: `Cannot mark as passed. Current status: "${applicant.status}". Only EXAM_TAKEN applications can be marked as passed.`,
+        message: `Cannot mark as passed. Current status: "${applicant.status}". Only ASSESSMENT_TAKEN applications can be marked as passed.`,
       });
     }
 
     const updated = await prisma.applicant.update({
       where: { id: applicantId },
-      data: { status: 'PASSED' },
+      data: { status: 'PRE_REGISTERED' },
     });
 
     await auditLog({
       userId: req.user!.userId,
       actionType: 'APPLICATION_PASSED',
-      description: `Marked ${applicant.firstName} ${applicant.lastName} (#${applicantId}) as PASSED – ready for section assignment`,
+      description: `Marked ${applicant.firstName} ${applicant.lastName} (#${applicantId}) as PASSED (PRE_REGISTERED) – ready for section assignment`,
       subjectType: 'Applicant',
       subjectId: applicantId,
       req,
@@ -597,7 +749,7 @@ export async function pass(req: Request, res: Response) {
   }
 }
 
-// ── Mark as failed ──
+// ── Mark as not qualified ──
 export async function fail(req: Request, res: Response) {
   try {
     const { examNotes } = req.body;
@@ -608,21 +760,21 @@ export async function fail(req: Request, res: Response) {
       return res.status(404).json({ message: 'Applicant not found' });
     }
 
-    if (!canTransition(applicant.status, 'FAILED')) {
+    if (!canTransition(applicant.status, 'NOT_QUALIFIED')) {
       return res.status(422).json({
-        message: `Cannot mark as failed. Current status: "${applicant.status}". Only EXAM_TAKEN applications can be marked as failed.`,
+        message: `Cannot mark as not qualified. Current status: "${applicant.status}". Only ASSESSMENT_TAKEN applications can be marked as not qualified.`,
       });
     }
 
     const updated = await prisma.applicant.update({
       where: { id: applicantId },
-      data: { status: 'FAILED', examNotes },
+      data: { status: 'NOT_QUALIFIED', examNotes },
     });
 
     await auditLog({
       userId: req.user!.userId,
       actionType: 'APPLICATION_FAILED',
-      description: `Marked ${applicant.firstName} ${applicant.lastName} (#${applicantId}) as FAILED. Notes: ${examNotes || 'N/A'}`,
+      description: `Marked ${applicant.firstName} ${applicant.lastName} (#${applicantId}) as NOT_QUALIFIED. Notes: ${examNotes || 'N/A'}`,
       subjectType: 'Applicant',
       subjectId: applicantId,
       req,

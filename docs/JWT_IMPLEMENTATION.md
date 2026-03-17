@@ -1,5 +1,5 @@
 # JWT Implementation Guide
-## Hinigaran National High School — Admission & Enrollment Information Management System
+## Admission & Enrollment Information Management System
 
 **System:** PERN Stack (PostgreSQL · Express · React · Node.js)
 **Auth Library:** `jsonwebtoken` (backend) · Zustand + Axios interceptors (frontend)
@@ -160,7 +160,7 @@ openssl rand -hex 64
 # ─────────────────────────────────────────────────────────────────
 
 # ── Database ────────────────────────────────────────────────────
-DATABASE_URL="postgresql://postgres:yourpassword@localhost:5432/hnhs_enrollment"
+DATABASE_URL="postgresql://postgres:yourpassword@localhost:5432/enrollpro_db"
 
 # ── JWT ─────────────────────────────────────────────────────────
 # REQUIRED: Generate with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
@@ -169,7 +169,7 @@ JWT_SECRET="REPLACE_WITH_YOUR_GENERATED_SECRET_DO_NOT_USE_THIS_VALUE"
 
 # ── Email (Resend SMTP) ──────────────────────────────────────────
 RESEND_API_KEY="re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-EMAIL_FROM="noreply@hnhs.edu.ph"
+EMAIL_FROM="noreply@school.edu.ph"
 
 # ── Server ──────────────────────────────────────────────────────
 PORT=3000
@@ -180,8 +180,8 @@ NODE_ENV=development
 ALLOWED_ORIGIN="http://localhost:5173"
 
 # ── Admin Seed (used only during: pnpm prisma db seed) ──────────
-ADMIN_EMAIL="admin@hnhs.edu.ph"
-ADMIN_PASSWORD="Admin@HNHS2026!"
+ADMIN_EMAIL="admin@school.edu.ph"
+ADMIN_PASSWORD="Admin@School2026!"
 ADMIN_NAME="System Administrator"
 ```
 
@@ -1171,6 +1171,6 @@ Work through this list before deploying to production:
 ---
 
 *Document version: v2.3.0*
-*System: Hinigaran National High School — Admission & Enrollment Information Management System*
+*System: Admission & Enrollment Information Management System*
 *Stack: PERN (PostgreSQL 18 · Express.js 5.1 · React 19.x · Node.js 22 LTS)*
 *Auth: jsonwebtoken · bcryptjs · Zustand persist · Axios interceptors*

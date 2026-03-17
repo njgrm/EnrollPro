@@ -2,12 +2,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, FileText, Download, Home } from 'lucide-react';
 import { Link } from 'react-router';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 interface AdmissionSuccessProps {
   trackingNumber: string;
 }
 
 export default function AdmissionSuccess({ trackingNumber }: AdmissionSuccessProps) {
+  const { schoolName } = useSettingsStore();
+
   return (
     <div className="max-w-3xl mx-auto p-4 md:p-8">
       <Card className="shadow-lg border-2 border-primary/20">
@@ -17,7 +20,7 @@ export default function AdmissionSuccess({ trackingNumber }: AdmissionSuccessPro
           </div>
           <CardTitle className="text-2xl font-bold text-primary">Application Submitted Successfully!</CardTitle>
           <CardDescription className="text-lg">
-            Thank you for applying to Hinigaran National High School.
+            Thank you for applying{schoolName ? ` to ${schoolName}` : ''}.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 pt-6">

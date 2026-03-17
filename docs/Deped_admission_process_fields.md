@@ -36,7 +36,7 @@
 7. [Data Privacy Compliance (RA 10173)](#7-data-privacy-compliance-ra-10173)
 8. [Field-by-Field Mapping to LIS](#8-field-by-field-mapping-to-lis)
 9. [Validation Rules for Each Field](#9-validation-rules-for-each-field)
-10. [System Design Notes for the HNHS Admission Portal](#10-system-design-notes-for-the-hnhs-admission-portal)
+10. [System Design Notes for the Admission Portal](#10-system-design-notes-for-the-admission-portal)
 
 ---
 
@@ -67,14 +67,14 @@ The following is the exact privacy notice that must appear at the top of the onl
 │  National Privacy Commission Advisory Opinions                          │
 │  ─────────────────────────────────────────────────────────────────────  │
 │                                                                          │
-│  HINIGARAN NATIONAL HIGH SCHOOL                                          │
+│  [School Name]                                          │
 │  Schools Division of Negros Occidental                                   │
 │  Department of Education — Region VI (Western Visayas)                  │
 │                                                                          │
 │  Why we collect your information                                         │
 │  ─────────────────────────────────────────────────────────────────────  │
-│  The Department of Education (DepEd) and Hinigaran National High         │
-│  School collect the personal information on this form for the            │
+│  The Department of Education (DepEd) and [School Name]                    │
+│  collect the personal information on this form for the            │
 │  following specific and legitimate purposes only:                        │
 │                                                                          │
 │    1. To process your child's admission and enrollment application.      │
@@ -154,9 +154,9 @@ The following is the exact privacy notice that must appear at the top of the onl
 │  For questions, requests to access or correct your data, or to file      │
 │  a complaint, contact:                                                   │
 │                                                                          │
-│    Hinigaran National High School                                        │
+│    [School Name]                                                         │
 │    Registrar's Office                                                    │
-│    Hinigaran, Negros Occidental                                          │
+│    [City/Municipality], [Province]                                          │
 │    Email: [school official email]                                        │
 │    Telephone: [school telephone number]                                  │
 │                                                                          │
@@ -169,7 +169,7 @@ The following is the exact privacy notice that must appear at the top of the onl
 │  By checking the box below and proceeding with this form, I confirm     │
 │  that I have read and understood this Data Privacy Notice, and I        │
 │  freely and voluntarily consent to the collection and processing of     │
-│  my child's personal information by Hinigaran National High School      │
+│  my child's personal information by [School Name]                       │
 │  and the Department of Education for the purposes stated above,         │
 │  in accordance with RA 10173 and its Implementing Rules and             │
 │  Regulations.                                                            │
@@ -863,7 +863,7 @@ Each SCP has unique additional documents and assessment inputs beyond the standa
 | BEEF | Form | Must show Track: Academic and Cluster: STEM |
 | Grade 10 SF9 | Document | Must show Science ≥ 85 and Math ≥ 85 |
 | Grade 10 Certificate of Completion | Document | Recommended |
-| Placement Exam Score | Assessed | HNHS-administered; Science and Mathematics |
+| Placement Exam Score | Assessed | school-administered; Science and Mathematics |
 | Interview Result | Assessed | Panel interview by school faculty |
 
 **Minimum Grade 10 Grade Requirements for STEM (DepEd national standard):**
@@ -907,7 +907,7 @@ This section summarizes the ongoing compliance obligations for the school after 
 
 ### 7.2 — System-Level Enforcement
 
-The HNHS admission system enforces RA 10173 compliance through the following technical controls:
+The admission system enforces RA 10173 compliance through the following technical controls:
 
 | Control | Implementation |
 |---|---|
@@ -916,7 +916,7 @@ The HNHS admission system enforces RA 10173 compliance through the following tec
 | SPI access restriction | Disability, IP, and 4Ps fields are not returned by default in the `GET /api/students` paginated list — only fetched on single-record `GET /api/applications/:id` by authenticated REGISTRAR or SYSTEM_ADMIN |
 | PSA BC in audit logs | `auditLogger.ts` must never include the PSA BC number in the `description` field — use `PSA BC on file` as the log entry instead of the actual number |
 | LRN in audit logs | LRN may be included in the initial `APPLICATION_SUBMITTED` log entry only; all subsequent logs reference the applicant by name and tracking number, not LRN |
-| URL privacy | Applicant tracking uses `trackingNumber` (HNS-YYYY-NNNNN) in public-facing URLs — never the applicant's `id`, `lrn`, or any PII |
+| URL privacy | Applicant tracking uses `trackingNumber` (APP-YYYY-NNNNN) in public-facing URLs — never the applicant's `id`, `lrn`, or any PII |
 
 ---
 
@@ -976,15 +976,15 @@ These rules apply to both the paper BEEF (registrar-enforced) and the digital on
 
 ---
 
-## 10. System Design Notes for the HNHS Admission Portal
+## 10. System Design Notes for the Admission Portal
 
-Based on the complete BEEF field analysis, the following design decisions apply to the Hinigaran NHS online admission portal (`/apply`):
+Based on the complete BEEF field analysis, the following design decisions apply to the school's online admission portal (`/apply`):
 
 ### Fields to Include in the Digital Portal
 
-The portal should capture all BEEF fields. However, some fields that apply to lower grade levels (Kindergarten, Grades 1–6) are not relevant to HNHS (which starts at Grade 7) and should be omitted:
+The portal should capture all BEEF fields. However, some fields that apply to lower grade levels (Kindergarten, Grades 1–6) are not relevant to the school (which starts at Grade 7) and should be omitted:
 
-**Include (HNHS-specific):**
+**Include (school-specific):**
 - All of Section 1 (school year, LRN, PSA BC number)
 - Section 2: Grade Level (7–12 only), SHS Track, Elective Cluster (conditional), SCP selection (conditional)
 - All of Section 3 (personal information — all 11 fields)
@@ -996,9 +996,9 @@ The portal should capture all BEEF fields. However, some fields that apply to lo
 - Section 9 (learner type, modality, SCP type)
 - Section 10 (certification checkbox + date)
 
-**Omit (not applicable to HNHS):**
-- SNEd grade level specification (HNHS handles this offline)
-- ALS-specific fields (HNHS does not offer ALS)
+**Omit (not applicable to the school):**
+- SNEd grade level specification (the school handles this offline)
+- ALS-specific fields (the school does not offer ALS)
 - Kindergarten age validation fields
 
 ### Step-by-Step Wizard Mapping

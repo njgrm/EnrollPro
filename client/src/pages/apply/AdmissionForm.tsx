@@ -56,7 +56,7 @@ export default function AdmissionForm() {
   useEffect(() => {
     if (currentIndex > maxStepReached) {
       setMaxStepReached(currentIndex);
-      sessionStorage.setItem('hnhs_apply_max_step', currentIndex.toString());
+      sessionStorage.setItem('enrollpro_apply_max_step', currentIndex.toString());
     }
   }, [currentIndex, maxStepReached, stepper.state]);
 
@@ -64,13 +64,13 @@ export default function AdmissionForm() {
   useEffect(() => {
     if (stepper.state.current.data.id === 'review') {
       setIsEditing(false);
-      sessionStorage.removeItem('hnhs_apply_editing');
+      sessionStorage.removeItem('enrollpro_apply_editing');
     }
   }, [stepper.state.current.data.id, stepper.state]);
 
   // Initial load of draft, step, and max step
   useEffect(() => {
-    const draft = sessionStorage.getItem('hnhs_apply_draft');
+    const draft = sessionStorage.getItem('enrollpro_apply_draft');
     if (draft) {
       try {
         const parsed = JSON.parse(draft);
@@ -82,17 +82,17 @@ export default function AdmissionForm() {
       }
     }
 
-    const savedMax = sessionStorage.getItem('hnhs_apply_max_step');
+    const savedMax = sessionStorage.getItem('enrollpro_apply_max_step');
     if (savedMax) {
       setMaxStepReached(parseInt(savedMax, 10));
     }
 
-    const savedEditing = sessionStorage.getItem('hnhs_apply_editing');
+    const savedEditing = sessionStorage.getItem('enrollpro_apply_editing');
     if (savedEditing === 'true') {
       setIsEditing(true);
     }
 
-    const savedStep = sessionStorage.getItem('hnhs_apply_step');
+    const savedStep = sessionStorage.getItem('enrollpro_apply_step');
     if (savedStep && steps.some(s => s.id === savedStep)) {
       // Use a slightly longer timeout or requestAnimationFrame to ensure components are ready
       setTimeout(() => {
@@ -108,7 +108,7 @@ export default function AdmissionForm() {
     const timer = setTimeout(() => {
       // Don't save if form is empty/uninitialized
       if (allValues.lastName || allValues.firstName || allValues.lrn) {
-        sessionStorage.setItem('hnhs_apply_draft', JSON.stringify(allValues));
+        sessionStorage.setItem('enrollpro_apply_draft', JSON.stringify(allValues));
       }
     }, 1000);
     return () => clearTimeout(timer);
@@ -117,7 +117,7 @@ export default function AdmissionForm() {
   // Save current step whenever it changes
   useEffect(() => {
     if (stepper.state.current.data.id) {
-      sessionStorage.setItem('hnhs_apply_step', stepper.state.current.data.id);
+      sessionStorage.setItem('enrollpro_apply_step', stepper.state.current.data.id);
     }
   }, [stepper.state.current.data.id, stepper.state]);
 
@@ -153,7 +153,7 @@ export default function AdmissionForm() {
 
   const goToStep = (stepId: number) => {
     setIsEditing(true);
-    sessionStorage.setItem('hnhs_apply_editing', 'true');
+    sessionStorage.setItem('enrollpro_apply_editing', 'true');
     stepper.navigation.goTo(steps[stepId - 1].id);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -172,11 +172,11 @@ export default function AdmissionForm() {
       const response = await api.post('/applications', payload);
       setTrackingNumber(response.data.trackingNumber);
       setIsSubmitted(true);
-      sessionStorage.removeItem('hnhs_apply_draft');
-      sessionStorage.removeItem('hnhs_apply_consent');
-      sessionStorage.removeItem('hnhs_apply_step');
-      sessionStorage.removeItem('hnhs_apply_max_step');
-      sessionStorage.removeItem('hnhs_apply_editing');
+      sessionStorage.removeItem('enrollpro_apply_draft');
+      sessionStorage.removeItem('enrollpro_apply_consent');
+      sessionStorage.removeItem('enrollpro_apply_step');
+      sessionStorage.removeItem('enrollpro_apply_max_step');
+      sessionStorage.removeItem('enrollpro_apply_editing');
     } catch (error: unknown) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to submit application. Please try again.';
       setSubmitError(message);

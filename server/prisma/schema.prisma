@@ -21,13 +21,17 @@ enum Sex {
 }
 
 enum ApplicationStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  EXAM_SCHEDULED
-  EXAM_TAKEN
-  PASSED
-  FAILED
+  SUBMITTED            // replaces: PENDING (on submission)
+  UNDER_REVIEW         // replaces: PENDING (after registrar opens record)
+  FOR_REVISION         // new — fixable issue; parent asked to correct
+  ELIGIBLE             // new — SCP: docs verified, cleared for assessment
+  ASSESSMENT_SCHEDULED // replaces: EXAM_SCHEDULED
+  ASSESSMENT_TAKEN     // replaces: EXAM_TAKEN
+  PRE_REGISTERED       // replaces: APPROVED (Phase 1 complete)
+  NOT_QUALIFIED        // replaces: FAILED (SCP assessment not passed)
+  ENROLLED             // was implied; now explicit (Phase 2 complete)
+  REJECTED             // retained — data integrity issues only
+  WITHDRAWN            // new — voluntary withdrawal by applicant
 }
 
 enum AcademicYearStatus {
@@ -61,7 +65,7 @@ model User {
 
 model SchoolSettings {
   id                   Int           @id @default(autoincrement())
-  schoolName           String        @default("Hinigaran National High School")
+  schoolName           String        
   logoPath             String?
   logoUrl              String?
   colorScheme          Json?
@@ -218,7 +222,7 @@ model Applicant {
 
   // ── Tracking & Status ──
   trackingNumber        String            @unique
-  status                ApplicationStatus @default(PENDING)
+  status                ApplicationStatus @default(SUBMITTED)
   rejectionReason       String?
   gradeLevelId          Int
   strandId              Int?

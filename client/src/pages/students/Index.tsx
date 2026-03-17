@@ -223,14 +223,17 @@ export default function Students() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'APPROVED':
-        return <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Enrolled</Badge>;
-      case 'PENDING':
-        return <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100">Pending</Badge>;
+      case 'ENROLLED':
+        return <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200">Enrolled</Badge>;
+      case 'PRE_REGISTERED':
+        return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200">Pre-registered</Badge>;
+      case 'SUBMITTED':
+      case 'UNDER_REVIEW':
+        return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200">Processing</Badge>;
       case 'REJECTED':
-        return <Badge className="bg-red-100 text-red-700 hover:bg-red-100">Rejected</Badge>;
+        return <Badge className="bg-red-100 text-red-700 hover:bg-red-100 border-red-200">Rejected</Badge>;
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <Badge variant="outline">{status.replace('_', ' ')}</Badge>;
     }
   };
 
@@ -280,23 +283,23 @@ export default function Students() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Total Students</CardDescription>
+            <CardDescription>Total Records</CardDescription>
             <CardTitle className="text-2xl">{total}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Enrolled</CardDescription>
+            <CardDescription>Official Enrollment</CardDescription>
             <CardTitle className="text-2xl text-green-600">
-              {students.filter(s => s.status === 'APPROVED').length}
+              {students.filter(s => s.status === 'ENROLLED').length}
             </CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Pending</CardDescription>
-            <CardTitle className="text-2xl text-yellow-600">
-              {students.filter(s => s.status === 'PENDING').length}
+            <CardDescription>Pre-registered</CardDescription>
+            <CardTitle className="text-2xl text-emerald-600">
+              {students.filter(s => s.status === 'PRE_REGISTERED').length}
             </CardTitle>
           </CardHeader>
         </Card>
@@ -364,8 +367,9 @@ export default function Students() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="APPROVED">Enrolled</SelectItem>
-                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="ENROLLED">Enrolled</SelectItem>
+                  <SelectItem value="PRE_REGISTERED">Pre-registered</SelectItem>
+                  <SelectItem value="UNDER_REVIEW">Processing</SelectItem>
                   <SelectItem value="REJECTED">Rejected</SelectItem>
                 </SelectContent>
               </Select>
