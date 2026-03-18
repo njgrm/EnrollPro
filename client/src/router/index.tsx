@@ -8,7 +8,8 @@ import Login from '@/pages/auth/Login';
 import Register from '@/pages/auth/Register';
 import ChangePassword from '@/pages/auth/ChangePassword';
 import Dashboard from '@/pages/dashboard/Index';
-import Applications from '@/pages/applications/Index';
+import Admission from '@/pages/applications/admission/Index';
+import Enrollment from '@/pages/applications/enrollment/Index';
 import Students from '@/pages/students/Index';
 import Sections from '@/pages/sections/Index';
 import AuditLogs from '@/pages/audit-logs/Index';
@@ -76,9 +77,21 @@ export const router = createBrowserRouter([
       },
       {
         path: '/applications',
+        element: <Navigate to="/applications/admission" replace />,
+      },
+      {
+        path: '/applications/admission',
         element: (
           <AppLayout>
-            <Applications />
+            <Admission />
+          </AppLayout>
+        ),
+      },
+      {
+        path: '/applications/enrollment',
+        element: (
+          <AppLayout>
+            <Enrollment />
           </AppLayout>
         ),
       },

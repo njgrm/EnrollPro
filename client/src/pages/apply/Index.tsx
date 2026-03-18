@@ -106,10 +106,10 @@ export default function Apply() {
             
             {/* 2. School Name & Title - Compact but no truncation */}
             <div className="flex flex-col leading-tight text-center justify-center min-w-0">
-              <span className="text-base sm:text-lg md:text-xl font-black tracking-tight text-foreground leading-none uppercase break-words">
+              <span className="text-base sm:text-lg md:text-xl font-black tracking-tight text-foreground leading-none uppercase wrap-break-word">
                 {schoolName}
               </span>
-              <span className="text-[9px] sm:text-[10px] md:text-xs font-black tracking-[0.1em] sm:tracking-[0.15em] uppercase text-muted-foreground mt-1 break-words">
+              <span className="text-[9px] sm:text-[10px] md:text-xs font-black tracking-widest sm:tracking-[0.15em] uppercase text-muted-foreground mt-1 wrap-break-word">
                 Online Admission Portal
               </span>
             </div>

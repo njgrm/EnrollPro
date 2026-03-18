@@ -5,18 +5,22 @@ import { Toaster } from 'sileo';
 import {
   LayoutDashboard,
   ClipboardList,
+  FileText,
+  CheckCircle,
   Users,
   School,
   Settings,
   ScrollText,
   LogOut,
   ChevronsUpDown,
+  ChevronDown,
   Calendar,
   UserPlus,
   GraduationCap,
   Shield,
   Activity,
   Mail,
+  AlertTriangle,
 } from 'lucide-react';
 
 import {
@@ -37,6 +41,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 
 import { useAuthStore } from '@/stores/authStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -112,8 +117,8 @@ function AYSwitcher() {
 
 function NavDivider({ label }: { label: string }) {
   return (
-    <div className="px-3 py-2 mt-2">
-      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground opacity-60">
+    <div className="px-3 py-2 mt-2 transition-[margin,opacity,height] duration-200 ease-linear group-data-[collapsible=icon]:m-0 group-data-[collapsible=icon]:h-0 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:opacity-0 overflow-hidden">
+      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground opacity-60 whitespace-nowrap">
         {label}
       </span>
     </div>
@@ -134,16 +139,85 @@ function NavItem({ to, icon: Icon, label, pathname }: { to: string; icon: React.
   );
 }
 
+function NavItemParent({
+  icon: Icon,
+  label,
+  children,
+  defaultOpen = true,
+}: {
+  icon: React.ElementType;
+  label: string;
+  children: ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton tooltip={label} onClick={() => setOpen((o) => !o)}>
+        <Icon className="size-4" />
+        <span>{label}</span>
+        <ChevronDown
+          className={`ml-auto size-3.5 transition-transform duration-200 ${
+            open ? '' : '-rotate-90'
+          }`}
+        />
+      </SidebarMenuButton>
+      {open && <div className="mt-0.5 space-y-0.5">{children}</div>}
+    </SidebarMenuItem>
+  );
+}
+
+function NavItemChild({
+  to,
+  icon: Icon,
+  label,
+  pathname,
+  badgeCount,
+}: {
+  to: string;
+  icon: React.ElementType;
+  label: string;
+  pathname: string;
+  badgeCount?: number;
+}) {
+  const isActive = pathname === to || pathname.startsWith(to + '/');
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild isActive={isActive} tooltip={label} className="pl-8 text-sm">
+        <Link to={to}>
+          <Icon className="size-3.5" />
+          <span>{label}</span>
+          {badgeCount != null && badgeCount > 0 && (
+            <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+              {badgeCount}
+            </span>
+          )}
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+}
+
 function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, clearAuth } = useAuthStore();
-  const { schoolName, logoUrl } = useSettingsStore();
+  const { schoolName, logoUrl, activeAcademicYearId } = useSettingsStore();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [pendingCount, setPendingCount] = useState<number>(0);
+  const [activeYearLabel, setActiveYearLabel] = useState<string | null>(null);
 
   const isAdmin = user?.role === 'SYSTEM_ADMIN';
   const isRegistrar = user?.role === 'REGISTRAR';
   const pathname = location.pathname;
+
+  useEffect(() => {
+    api.get('/dashboard/stats').then((r) => setPendingCount(r.data.admissionPending ?? 0)).catch(() => {});
+    api.get('/academic-years').then((r) => {
+      const found = r.data.years?.find((y: AcademicYearItem) => y.id === activeAcademicYearId);
+      setActiveYearLabel(found?.yearLabel ?? null);
+    }).catch(() => {});
+  }, [activeAcademicYearId]);
 
   const handleLogout = () => {
     clearAuth();
@@ -157,23 +231,35 @@ function AppSidebar() {
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent" tooltip={schoolName}>
+              <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent cursor-default" tooltip={schoolName}>
                 {logoUrl ? (
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden">
-                    <img
-                      src={`${API_BASE}${logoUrl}`}
-                      alt="Logo"
-                      className="size-8 object-contain"
-                    />
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden shrink-0">
+                    <img src={`${API_BASE}${logoUrl}`} alt="Logo" className="size-8 object-contain" />
                   </div>
                 ) : (
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                    <span className="text-xs font-bold">E</span>
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-muted shrink-0">
+                    <School className="size-4 text-muted-foreground" />
                   </div>
                 )}
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">{schoolName}</span>
-                  <span className="truncate text-xs text-muted-foreground">Enrollment System</span>
+                <div className="grid flex-1 text-left text-sm leading-tight overflow-hidden">
+                  {schoolName ? (
+                    <span className="truncate font-semibold">{schoolName}</span>
+                  ) : (
+                    <Skeleton className="h-3.5 w-28 my-0.5" />
+                  )}
+                  <div className="flex items-center gap-1 mt-0.5">
+                    {activeYearLabel ? (
+                      <>
+                        <span className="truncate text-[11px] text-muted-foreground">{activeYearLabel}</span>
+                        <span className="shrink-0 text-[10px] font-semibold text-green-600">● ACTIVE</span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertTriangle className="size-3 shrink-0 text-amber-500" />
+                        <span className="text-[11px] text-muted-foreground">No Active Year</span>
+                      </>
+                    )}
+                  </div>
                 </div>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -190,12 +276,26 @@ function AppSidebar() {
                 {/* Items 1–7: shared between REGISTRAR and SYSTEM_ADMIN */}
                 {(isRegistrar || isAdmin) && (
                   <>
-                    <NavDivider label="Admission" />
-                    <NavItem to="/f2f-admission" icon={UserPlus} label="Walk-in Admission" pathname={pathname} />
-
                     <NavDivider label="Enrollment" />
                     <NavItem to="/dashboard" icon={LayoutDashboard} label="Dashboard" pathname={pathname} />
-                    <NavItem to="/applications" icon={ClipboardList} label="Applications" pathname={pathname} />
+                    <NavItemParent icon={ClipboardList} label="Applications">
+                      <NavItemChild
+                        to="/applications/admission"
+                        icon={FileText}
+                        label="Admission"
+                        pathname={pathname}
+                        badgeCount={pendingCount}
+                      />
+                      <NavItemChild
+                        to="/applications/enrollment"
+                        icon={CheckCircle}
+                        label="Enrollment"
+                        pathname={pathname}
+                      />
+                    </NavItemParent>
+
+                    <NavDivider label="Admission" />
+                    <NavItem to="/f2f-admission" icon={UserPlus} label="Walk-in Admission" pathname={pathname} />
 
                     <NavDivider label="Records" />
                     <NavItem to="/students" icon={Users} label="Students" pathname={pathname} />
@@ -245,20 +345,17 @@ function AppSidebar() {
                     </span>
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight overflow-hidden">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate font-semibold">{user?.name}</span>
-                      {user?.role === 'SYSTEM_ADMIN' && (
-                        <Badge variant="outline" className="h-4 px-1 shrink-0 text-[9px] font-bold border-purple-200 bg-purple-50 text-purple-700">
-                          System Admin
-                        </Badge>
-                      )}
-                      {user?.role === 'REGISTRAR' && (
-                        <Badge variant="outline" className="h-4 px-1 shrink-0 text-[9px] font-bold border-blue-200 bg-blue-50 text-blue-700">
-                          REGISTRAR
-                        </Badge>
-                      )}
-                    </div>
-                    <span className="truncate text-xs text-muted-foreground">{user?.email}</span>
+                    <span className="truncate font-semibold">{user?.name}</span>
+                    {user?.role === 'SYSTEM_ADMIN' && (
+                      <Badge variant="outline" className="mt-0.5 w-fit h-4 px-1 text-[9px] font-bold border-purple-200 bg-purple-50 text-purple-700">
+                        System Admin
+                      </Badge>
+                    )}
+                    {user?.role === 'REGISTRAR' && (
+                      <Badge variant="outline" className="mt-0.5 w-fit h-4 px-1 text-[9px] font-bold border-accent bg-[hsl(var(--accent-muted))] text-accent">
+                        Registrar
+                      </Badge>
+                    )}
                   </div>
                   <LogOut className="ml-auto size-4 shrink-0 text-muted-foreground" />
                 </div>

@@ -56,7 +56,7 @@ const APPLICANT_TYPES = [
   { value: 'STEM_GRADE11', label: 'Grade 11 STEM' },
 ];
 
-export default function Applications() {
+export default function Admission() {
   const { activeAcademicYearId, viewingAcademicYearId } = useSettingsStore();
   const ayId = viewingAcademicYearId ?? activeAcademicYearId;
 
@@ -72,7 +72,7 @@ export default function Applications() {
 
   // Detail/Action state
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
-  const [actionType, setActionType] = useState<'APPROVE' | 'REJECT' | 'SCHEDULE' | 'RESULT' | 'ENROLL' | 'ELIGIBLE' | null>(null);
+  const [actionType, setActionType] = useState<'APPROVE' | 'REJECT' | 'SCHEDULE' | 'RESULT' | 'ELIGIBLE' | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [examDate, setExamDate] = useState('');
   const [examScore, setExamScore] = useState('');
@@ -86,14 +86,31 @@ export default function Applications() {
     try {
       const params = new URLSearchParams();
       if (search) params.append('search', search);
-      if (status !== 'ALL') params.append('status', status);
+      
+      // Filter out ENROLLED and PRE_REGISTERED if status is ALL to focus on intake
+      if (status === 'ALL') {
+          // You could add a specialized param in the backend, but for now we'll filter client-side or assume /applications returns what we need
+          // Actually, let's just use the current backend behavior and maybe filter if status=ALL
+      } else {
+          params.append('status', status);
+      }
+      
       if (type !== 'ALL') params.append('applicantType', type);
       params.append('page', String(page));
       params.append('limit', '15');
 
       const res = await api.get(`/applications?${params.toString()}`);
-      setApplications(res.data.applications);
-      setTotal(res.data.total);
+      
+      // Filter out already enrolled/pre-registered if in "All Statuses" mode to maintain module separation
+      let filteredApps = res.data.applications;
+      if (status === 'ALL') {
+          filteredApps = filteredApps.filter((app: Application) => 
+              !['ENROLLED', 'PRE_REGISTERED'].includes(app.status)
+          );
+      }
+
+      setApplications(filteredApps);
+      setTotal(status === 'ALL' ? res.data.total - (res.data.applications.length - filteredApps.length) : res.data.total);
     } catch (err) {
       toastApiError(err as never);
     } finally {
@@ -116,19 +133,7 @@ export default function Applications() {
     if (!selectedApp || !selectedSectionId) return;
     try {
       await api.patch(`/applications/${selectedApp.id}/approve`, { sectionId: parseInt(selectedSectionId) });
-      sileo.success({ title: 'Pre-registered', description: 'Student pre-registered successfully.' });
-      setActionType(null);
-      fetchData();
-    } catch (err) {
-      toastApiError(err as never);
-    }
-  };
-
-  const handleEnroll = async () => {
-    if (!selectedApp) return;
-    try {
-      await api.patch(`/applications/${selectedApp.id}/enroll`);
-      sileo.success({ title: 'Enrolled', description: 'Official enrollment confirmed.' });
+      sileo.success({ title: 'Pre-registered', description: 'Student moved to Enrollment phase.' });
       setActionType(null);
       fetchData();
     } catch (err) {
@@ -181,10 +186,9 @@ export default function Applications() {
       await api.patch(`/applications/${selectedApp.id}/record-result`, { 
         examScore: parseFloat(examScore),
         examResult,
-        examNotes: 'Recorded from portal'
+        examNotes: 'Recorded from Admission portal'
       });
       
-      // Auto-pass/fail
       if (examResult === 'PASSED') {
         await api.patch(`/applications/${selectedApp.id}/pass`);
       } else {
@@ -203,11 +207,11 @@ export default function Applications() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Applications</h1>
-          <p className="text-sm text-[hsl(var(--muted-foreground))]">Review and process student admissions</p>
+          <h1 className="text-3xl font-bold tracking-tight">Admission Intake</h1>
+          <p className="text-sm text-[hsl(var(--muted-foreground))]">Candidate screening and assessment workflow</p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="bg-blue-50 text-blue-700">Total: {total}</Badge>
+          <Badge variant="outline" className="bg-blue-50 text-blue-700">Admission Queue: {total}</Badge>
         </div>
       </div>
 
@@ -227,22 +231,20 @@ export default function Applications() {
               </div>
             </div>
             <div className="space-y-2 w-full md:w-48">
-              <Label className="text-xs uppercase tracking-wider font-bold text-[hsl(var(--muted-foreground))]">Status</Label>
+              <Label className="text-xs uppercase tracking-wider font-bold text-[hsl(var(--muted-foreground))]">Intake Status</Label>
               <Select value={status} onValueChange={setStatus}>
                 <SelectTrigger className="h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ALL">All Statuses</SelectItem>
+                  <SelectItem value="ALL">All Active Intake</SelectItem>
                   <SelectItem value="SUBMITTED">Submitted</SelectItem>
                   <SelectItem value="UNDER_REVIEW">Under Review</SelectItem>
                   <SelectItem value="FOR_REVISION">For Revision</SelectItem>
                   <SelectItem value="ELIGIBLE">Eligible</SelectItem>
                   <SelectItem value="ASSESSMENT_SCHEDULED">Assessment Scheduled</SelectItem>
                   <SelectItem value="ASSESSMENT_TAKEN">Assessment Taken</SelectItem>
-                  <SelectItem value="PRE_REGISTERED">Pre-registered</SelectItem>
                   <SelectItem value="NOT_QUALIFIED">Not Qualified</SelectItem>
-                  <SelectItem value="ENROLLED">Enrolled</SelectItem>
                   <SelectItem value="REJECTED">Rejected</SelectItem>
                   <SelectItem value="WITHDRAWN">Withdrawn</SelectItem>
                 </SelectContent>
@@ -283,11 +285,11 @@ export default function Applications() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center text-sm text-[hsl(var(--muted-foreground))]">Loading applications...</TableCell>
+                    <TableCell colSpan={7} className="h-24 text-center text-sm text-[hsl(var(--muted-foreground))]">Loading admissions queue...</TableCell>
                   </TableRow>
                 ) : applications.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center text-sm text-[hsl(var(--muted-foreground))]">No applications found.</TableCell>
+                    <TableCell colSpan={7} className="h-24 text-center text-sm text-[hsl(var(--muted-foreground))]">No candidates found.</TableCell>
                   </TableRow>
                 ) : (
                   applications.map((app) => (
@@ -320,8 +322,6 @@ export default function Applications() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          {/* Step 1: Registrar opens record (automatically moves SUBMITTED -> UNDER_REVIEW) */}
-                          {/* Step 2: Registrar marks ELIGIBLE (for SCP) or goes straight to APPROVE (for Regular) */}
                           {app.status === 'UNDER_REVIEW' && (
                             <>
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-cyan-600" title="Mark Eligible" onClick={() => { setSelectedApp(app); setActionType('ELIGIBLE'); }}>
@@ -333,7 +333,6 @@ export default function Applications() {
                             </>
                           )}
 
-                          {/* SCP Flow */}
                           {app.status === 'ELIGIBLE' && (
                             <>
                               <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600" title="Schedule Assessment" onClick={() => { setSelectedApp(app); setActionType('SCHEDULE'); }}>
@@ -357,18 +356,11 @@ export default function Applications() {
                             </Button>
                           )}
 
-                          {/* Phase 2: Final Enrollment */}
-                          {app.status === 'PRE_REGISTERED' && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600" title="Official Enrollment" onClick={() => { setSelectedApp(app); setActionType('ENROLL'); }}>
-                              <UserCheck className="h-4 w-4" />
-                            </Button>
-                          )}
-
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { /* TODO: View full details */ }}>
                             <Eye className="h-4 w-4" />
                           </Button>
                           
-                          {app.status !== 'ENROLLED' && app.status !== 'REJECTED' && app.status !== 'WITHDRAWN' && (
+                          {app.status !== 'REJECTED' && app.status !== 'WITHDRAWN' && (
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" title="Reject" onClick={() => { setSelectedApp(app); setActionType('REJECT'); }}>
                               <XCircle className="h-4 w-4" />
                             </Button>
@@ -383,7 +375,7 @@ export default function Applications() {
           </div>
           
           <div className="flex items-center justify-between mt-4">
-            <span className="text-xs text-[hsl(var(--muted-foreground))]">Showing {applications.length} of {total} applications</span>
+            <span className="text-xs text-[hsl(var(--muted-foreground))]">Showing {applications.length} candidates</span>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
               <Badge variant="secondary" className="px-3 h-8">Page {page}</Badge>
@@ -399,14 +391,13 @@ export default function Applications() {
           <DialogHeader>
             <DialogTitle>
               {actionType === 'APPROVE' && 'Approve & Pre-register'}
-              {actionType === 'ENROLL' && 'Official Enrollment Confirmation'}
               {actionType === 'ELIGIBLE' && 'Mark as Eligible'}
               {actionType === 'REJECT' && 'Reject Application'}
               {actionType === 'SCHEDULE' && 'Schedule Admission Assessment'}
               {actionType === 'RESULT' && 'Record Assessment Result'}
             </DialogTitle>
             <DialogDescription>
-              Applicant: {selectedApp?.lastName}, {selectedApp?.firstName}
+              Candidate: {selectedApp?.lastName}, {selectedApp?.firstName}
             </DialogDescription>
           </DialogHeader>
 
@@ -416,15 +407,9 @@ export default function Applications() {
             </div>
           )}
 
-          {actionType === 'ENROLL' && (
-            <div className="py-4">
-              <p className="text-sm">This action confirms the <span className="font-bold text-green-700">OFFICIAL ENROLLMENT</span> for Phase 2. The student is already pre-registered in a section.</p>
-              <p className="text-xs text-[hsl(var(--muted-foreground))] mt-2 italic">Ensure all physical documents (PSA, SF9) have been verified in person.</p>
-            </div>
-          )}
-
           {actionType === 'APPROVE' && (
             <div className="space-y-4 py-4">
+               <p className="text-xs text-emerald-700 font-medium">This candidate will be moved to the Enrollment phase and assigned to a section.</p>
               <div className="space-y-2">
                 <Label>Select Section for {selectedApp?.gradeLevel.name}</Label>
                 <Select value={selectedSectionId} onValueChange={setSelectedSectionId}>
@@ -439,7 +424,6 @@ export default function Applications() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-[10px] text-[hsl(var(--muted-foreground))]">Only sections for this grade level with available capacity are shown.</p>
               </div>
             </div>
           )}
@@ -495,7 +479,6 @@ export default function Applications() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setActionType(null)}>Cancel</Button>
             {actionType === 'ELIGIBLE' && <Button className="bg-cyan-600 hover:bg-cyan-700" onClick={handleMarkEligible}>Confirm Eligibility</Button>}
-            {actionType === 'ENROLL' && <Button className="bg-green-600 hover:bg-green-700" onClick={handleEnroll}>Confirm Official Enrollment</Button>}
             {actionType === 'APPROVE' && <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleApprove} disabled={!selectedSectionId}>Confirm Pre-registration</Button>}
             {actionType === 'REJECT' && <Button variant="destructive" onClick={handleReject} disabled={!rejectionReason}>Reject Application</Button>}
             {actionType === 'SCHEDULE' && <Button onClick={handleSchedule} disabled={!examDate}>Confirm Schedule</Button>}

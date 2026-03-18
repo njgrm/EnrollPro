@@ -1,18 +1,23 @@
 # Sidebar Navigation — SYSTEM_ADMIN Role
 ## School Admission, Enrollment & Information Management System
 
-**Document Version:** 3.0.0
+**Document Version:** 3.1.0
 **Role:** `SYSTEM_ADMIN`
 **Derived From:** PRD v3.0.0 · System Admin Specification v3.0.0 · Sidebar Navigation Spec v3.0.0
 **Stack:** React 19 · React Router v7 · shadcn/ui · Tailwind CSS v4 · Lucide React Icons
+**Changes in v3.1.0:**
+- Teacher removed as system user — Teacher Management moved to SYSTEM group (exclusive)
+- Applications split into two sub-navigation items: Admission and Enrollment
 
 ---
 
 ## Overview
 
-The SYSTEM_ADMIN is the **highest-privilege role** in the system. It inherits every capability of the REGISTRAR and adds three exclusive items: User Management, Email Logs, and System Health. The System Admin manages *who can access the system* and *whether the system is healthy* — not day-to-day enrollment operations (that remains the Registrar's responsibility).
+The SYSTEM_ADMIN is the **highest-privilege role** in the system. It inherits every capability of the REGISTRAR and adds four exclusive items: Teacher Management, User Management, Email Logs, and System Health. The System Admin manages *who can access the system*, *the teacher directory*, and *whether the system is healthy* — not day-to-day enrollment operations (that remains the Registrar's responsibility).
 
-The sidebar contains **11 navigation items** organized into 5 groups.
+The sidebar contains **12 navigation items** (including 2 subnav items under Applications) organized into 5 groups.
+
+> **Teachers are not system users.** They have no login accounts. Teacher records are data entries managed exclusively by the System Admin for section adviser assignment and subject tracking.
 
 ---
 
@@ -20,14 +25,18 @@ The sidebar contains **11 navigation items** organized into 5 groups.
 
 | Feature | REGISTRAR | SYSTEM_ADMIN |
 |---|---|---|
-| All 8 Registrar nav items | ✅ | ✅ (identical access) |
-| User Management (`/admin/users`) | ❌ | ✅ |
-| Email Logs (`/admin/email-logs`) | ❌ | ✅ |
-| System Health (`/admin/system`) | ❌ | ✅ |
-| Dashboard System Panel | ❌ | ✅ |
-| Audit Logs — all users visible | ❌ (own actions only) | ✅ (full cross-user) |
-| Audit Logs — export to CSV | ❌ | ✅ |
-| Audit Logs — user filter dropdown | ❌ | ✅ |
+| Walk-in Admission | ✅ | ✅ |
+| Dashboard | ✅ Full | ✅ Full + System Panel |
+| Applications → Admission | ✅ | ✅ |
+| Applications → Enrollment | ✅ | ✅ |
+| Students (SIMS) | ✅ | ✅ |
+| Audit Logs | ✅ Own actions only | ✅ All users · Export CSV · User filter |
+| Sections | ✅ | ✅ |
+| Settings | ✅ | ✅ |
+| **Teacher Management** (`/teachers`) | ❌ | ✅ **Exclusive** |
+| **User Management** (`/admin/users`) | ❌ | ✅ **Exclusive** |
+| **Email Logs** (`/admin/email-logs`) | ❌ | ✅ **Exclusive** |
+| **System Health** (`/admin/system`) | ❌ | ✅ **Exclusive** |
 | Assign SYSTEM_ADMIN role via UI | ❌ | ❌ (CLI/seed only) |
 | Delete audit logs | ❌ | ❌ (no one can) |
 | Delete enrollment records | ❌ | ❌ (no one can) |
@@ -56,23 +65,25 @@ The seed creates the first admin account with a temporary password and `mustChan
 │  SY 2026–2027  ● ACTIVE              │  ← settingsStore.activeYear.yearLabel
 ├──────────────────────────────────────┤
 │                                      │
-│  ── ADMISSION ──                     │
-│  👤+  Walk-in Admission              │  /f2f-admission
-│                                      │
 │  ── ENROLLMENT ──                    │
 │  📊  Dashboard                       │  /dashboard
-│  📋  Applications                    │  /applications
+│  📋  Applications          [toggle]  │
+│       ├─ 📝  Admission    (14)       │    /applications/admission
+│       └─ ✅  Enrollment              │    /applications/enrollment
+│                                      │
+│  ── ADMISSION ──                     │
+│  👤+  Walk-in Admission              │  /f2f-admission
 │                                      │
 │  ── RECORDS ──                       │
 │  👥  Students                        │  /students
 │  📜  Audit Logs                      │  /audit-logs
 │                                      │
 │  ── MANAGEMENT ──                    │
-│  🎓  Teachers                        │  /teachers
 │  🏫  Sections                        │  /sections
 │  ⚙️   Settings                        │  /settings
 │                                      │
 │  ── SYSTEM ──                        │
+│  🎓  Teachers                        │  /teachers
 │  🛡️   User Management                 │  /admin/users
 │  📧  Email Logs                      │  /admin/email-logs
 │  📡  System Health                   │  /admin/system
@@ -88,7 +99,7 @@ The seed creates the first admin account with a temporary password and `mustChan
 - School logo: `settingsStore.logoUrl`. If null: `<School className="w-8 h-8 text-muted-foreground" />`
 - School name: `settingsStore.schoolName`. Never a string literal. Shows `<Skeleton>` while loading.
 - Active year: `settingsStore.activeYear.yearLabel` + green `● ACTIVE` badge. Shows `"No Active Year"` + amber warning icon if none set.
-- Role badge color: **purple / violet** for `SYSTEM_ADMIN` (distinct from Registrar's accent color and Teacher's blue)
+- Role badge color: **purple / violet** for `SYSTEM_ADMIN`
 
 **Active nav item styling:**
 ```css
@@ -96,6 +107,15 @@ border-l-2 border-[hsl(var(--accent))]
 bg-[hsl(var(--accent-muted))]
 text-[hsl(var(--accent))]
 font-medium
+```
+
+**Active subnav item styling (indented under Applications):**
+```css
+border-l-2 border-[hsl(var(--accent))]
+bg-[hsl(var(--accent-muted))]
+text-[hsl(var(--accent))]
+text-sm font-medium
+pl-8
 ```
 
 **Inactive nav item styling:**
@@ -106,14 +126,27 @@ hover:bg-muted hover:text-foreground
 
 ---
 
-## Navigation Items 1–8 (Inherited from REGISTRAR)
+## Navigation Items 1–8 (Shared with REGISTRAR)
 
-Items 1 through 8 are **identical in content and behavior** to the REGISTRAR sidebar. Full detail for each is in `Sidebar_REGISTRAR.md`. The sections below note only where the System Admin's view **differs** from the Registrar's.
+Items 1 through 8 are shared between REGISTRAR and SYSTEM_ADMIN. The sections below note only where the System Admin's view **differs** from the Registrar's. Full detail for identical behavior is in `Sidebar_REGISTRAR.md`.
+
+---
 
 ### Item 1 — Walk-in Admission (`/f2f-admission`)
-Identical to REGISTRAR. Admin can enter F2F walk-in applications. `admissionChannel: F2F` · `encodedById: req.user.userId`.
+
+Identical to REGISTRAR. Admin can enter F2F walk-in applications.
+`admissionChannel: F2F` · `encodedById: req.user.userId`
+
+---
 
 ### Item 2 — Dashboard (`/dashboard`) — Admin Additions
+
+```
+Icon  : LayoutDashboard
+Route : /dashboard
+Auth  : JWT required — REGISTRAR, SYSTEM_ADMIN
+API   : GET /api/dashboard/stats
+```
 
 The System Admin sees everything the Registrar sees, **plus a System Panel** at the bottom of the page:
 
@@ -122,73 +155,238 @@ SYSTEM PANEL
 
   ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
   │  Total Users     │  │  Emails Sent     │  │  Login Tokens    │
-  │  4               │  │  312 (last 30d)  │  │  3 pending       │
+  │  2               │  │  312 (last 30d)  │  │  3 pending       │
   │  2 Registrars    │  │  3 Failed        │  │  (unexpired)     │
-  │  2 Teachers      │  │                  │  │                  │
   └──────────────────┘  └──────────────────┘  └──────────────────┘
 ```
 
-This panel is never visible to REGISTRAR or TEACHER.
+> Teachers are not system users — they are not counted in the Total Users panel.
 
-### Item 3 — Applications (`/applications`)
-Identical to REGISTRAR. Full enrollment workflow access.
+---
+
+### Item 3 — Applications (Subnav Parent)
+
+```
+Icon  : ClipboardList  (parent — not a clickable link itself)
+Label : Applications
+```
+
+Applications is a **parent nav item** with two clickable sub-items. Clicking the parent label toggles the subnav open or closed. The parent itself is not a route — only the children are navigable.
+
+The subnav is **expanded by default** and auto-expands if any child route is active. In icon-only sidebar mode, hovering the Applications icon shows a popover with both sub-items.
+
+---
+
+#### Subnav A — Admission (`/applications/admission`)
+
+```
+Icon  : FileText
+Label : Admission
+Route : /applications/admission
+Auth  : JWT required — REGISTRAR, SYSTEM_ADMIN
+Page  : client/src/pages/applications/Admission.tsx
+API   : GET /api/applications?status=PENDING,EXAM_SCHEDULED,EXAM_TAKEN,PASSED,FAILED
+        GET /api/applications/:id
+        POST /api/applications/f2f
+        PATCH /api/applications/:id/approve
+        PATCH /api/applications/:id/reject
+        PATCH /api/applications/:id/schedule-exam
+        PATCH /api/applications/:id/record-result
+        PATCH /api/applications/:id/pass
+        PATCH /api/applications/:id/fail
+```
+
+**Purpose:** The active processing queue. All applicants currently in the eligibility-checking and decision stage — being verified, examined (SCP), or awaiting approval.
+
+This corresponds to **Phase 1 — Early Registration** work: the registrar is acting on each application, verifying documents, making pass/fail decisions, and assigning sections.
+
+**Statuses shown:**
+
+| Status | Meaning | Actions Available |
+|---|---|---|
+| `PENDING` | Submitted — awaiting review | Approve & Assign Section · Reject · (SCP) Verify & Schedule Exam |
+| `EXAM_SCHEDULED` | SCP exam date set | Record Assessment Result |
+| `EXAM_TAKEN` | SCP result received | Mark as Passed · Mark as Failed |
+| `PASSED` | SCP passed — section not yet assigned | Assign Section |
+| `FAILED` | SCP failed | Offer Regular Section · Reject |
+
+**What the admin sees:**
+
+```
+ADMISSION APPLICANTS    [ Search by LRN or name... 🔍 ]   [Filter ▾]
+
+  Year: SY 2026–2027   Grade: All ▾   Type: All ▾   Status: All ▾   Channel: All ▾
+
+  #   │ Learner Name       │ LRN          │ Grade   │ Type    │ Channel  │ Status      │ Actions
+  ────┼────────────────────┼──────────────┼─────────┼─────────┼──────────┼─────────────┼────────
+  055 │ Dela Cruz, Juan R. │ 123456789012 │ Grade 7 │ REGULAR │ Online   │ ● PENDING   │ [View]
+  054 │ Santos, Maria L.   │ 876543219012 │ Grade 11│ STEM G11│ Walk-in  │ ⏳EXAM_SCHED│ [View]
+  053 │ Reyes, Pedro M.    │ 112233445566 │ Grade 7 │ STE     │ Online   │ ● PENDING   │ [View]
+```
+
+**Sidebar badge:** Shows the count of `PENDING` applications as a pill on the subnav label:
+```
+├─ 📝  Admission    (14)
+```
+
+---
+
+#### Subnav B — Enrollment (`/applications/enrollment`)
+
+```
+Icon  : CheckCircle
+Label : Enrollment
+Route : /applications/enrollment
+Auth  : JWT required — REGISTRAR, SYSTEM_ADMIN
+Page  : client/src/pages/applications/Enrollment.tsx
+API   : GET /api/applications?status=APPROVED,ENROLLED
+        GET /api/applications/:id
+        PUT /api/students/:id   (for data corrections)
+```
+
+**Purpose:** The Phase 2 confirmation queue. Applicants who have been approved and assigned a section (APPROVED) or who are officially enrolled (ENROLLED). The registrar uses this view during Brigada Eskwela week to confirm Phase 2 documents and make any data corrections.
+
+No approval or exam workflow actions exist here — those decisions have already been made in Admission.
+
+**Statuses shown:**
+
+| Status | Meaning | Actions Available |
+|---|---|---|
+| `APPROVED` | Section assigned in Phase 1 — awaiting Phase 2 doc confirmation | View · Edit record |
+| `ENROLLED` | Officially enrolled and confirmed | View only · Edit record |
+
+**What the admin sees:**
+
+```
+ENROLLED / APPROVED    [ Search by LRN or name... 🔍 ]   [Filter ▾]
+
+  Year: SY 2026–2027   Grade: All ▾   Section: All ▾   Status: All ▾   Channel: All ▾
+
+  LRN            │ Full Name           │ Grade   │ Section   │ Channel  │ Status     │ Actions
+  ───────────────┼─────────────────────┼─────────┼───────────┼──────────┼────────────┼────────
+  123456789012   │ Dela Cruz, Juan R.  │ Grade 7 │ Rizal     │ Online   │ ✓ ENROLLED │ [View]
+  876543219012   │ Santos, Maria L.    │ Grade 11│ STEM-A    │ Walk-in  │ ✓ ENROLLED │ [View]
+  998877665544   │ Garcia, Pedro T.    │ Grade 9 │ Luna      │ Online   │ ◎ APPROVED │ [View]
+```
+
+**Key difference from Admission view:**
+- No Approve / Reject / Exam action buttons
+- Section filter added (not just Grade Level) for Phase 2 section-specific management
+- Channel filter remains — useful for tracking Online vs Walk-in during Phase 2
+
+---
 
 ### Item 4 — Students / SIMS (`/students`)
+
 Identical to REGISTRAR. Full SIMS access including all 4 profile tabs and edit capability.
+
+---
 
 ### Item 5 — Audit Logs (`/audit-logs`) — Admin Additions
 
-The System Admin's audit log view is the **full cross-user view**. Three differences from REGISTRAR:
+```
+Icon  : ScrollText
+Route : /audit-logs
+Auth  : JWT required — REGISTRAR, SYSTEM_ADMIN
+Page  : client/src/pages/audit/Index.tsx
+API   : GET /api/audit-logs?userId=&actionType=&startDate=&endDate=&page=
+```
+
+Three differences from REGISTRAR:
 
 **1. User filter dropdown** (not shown to REGISTRAR):
 ```
   Action Type: [ All ▾ ]   User: [ All ▾ ]   Date Range: [ From ] — [ To ]
                                     ↑
-                            Dropdown lists all active system accounts
-                            Used to filter by a specific registrar or teacher
+                            Lists all active Registrar accounts
 ```
 
 **2. All users' actions visible:**
-The Registrar sees only their own entries. The System Admin sees every action taken by every user — all Registrars, all Teachers, and their own actions.
+Registrar sees only their own entries. System Admin sees every action by every Registrar account and their own.
 
-**3. Export to CSV:**
-An **[Export CSV]** button appears in the top-right of the audit log page for SYSTEM_ADMIN only. The export applies the current filters. Exporting triggers:
-- `AuditLog: AUDIT_LOG_EXPORTED — "Admin [name] exported audit log (filters: [params])"`
-- A CSV file download with all filtered entries
+**3. Export to CSV button:**
+- `AuditLog: AUDIT_LOG_EXPORTED` on every export
+- CSV file downloads with all filtered entries applied
 
-**API:** `GET /api/audit-logs?userId=&actionType=&startDate=&endDate=&page=`
-The `userId` filter parameter is only accepted from SYSTEM_ADMIN JWTs; ignored for REGISTRAR.
+---
 
-### Item 6 — Teachers (`/teachers`) — Admin Additions
+### Item 6 — Sections (`/sections`)
 
-Identical to REGISTRAR **plus** two additional controls on **Tab 3 — System Account** of each teacher profile:
-
-**[Deactivate Account]:**
-- Available for any teacher with an active system account
-- Sets `User.isActive = false`
-- Teacher's very next API call returns 401 — effectively logged out immediately
-- `PATCH /api/teachers/:id/deactivate`
-- `AuditLog: ADMIN_USER_DEACTIVATED`
-
-**[Reset Password]:**
-- Available for any teacher with an active system account
-- Generates a new temporary password
-- Sets `mustChangePassword: true`
-- Sends a password reset email using `SchoolSettings.schoolName`
-- `PATCH /api/admin/users/:id/reset-password`
-- `AuditLog: ADMIN_PASSWORD_RESET`
-
-> Neither of these buttons is visible to REGISTRAR on the teacher profile.
-
-### Item 7 — Sections (`/sections`)
 Identical to REGISTRAR.
 
-### Item 8 — Settings (`/settings`)
+---
+
+### Item 7 — Settings (`/settings`)
+
 Identical to REGISTRAR. Full access to all 4 tabs.
 
 ---
 
-## Navigation Item 9 — User Management (SYSTEM_ADMIN EXCLUSIVE)
+## Navigation Items 9–12 (SYSTEM_ADMIN Exclusive — SYSTEM Group)
+
+---
+
+### Item 9 — Teachers (`/teachers`) — SYSTEM_ADMIN EXCLUSIVE
+
+```
+Group  : SYSTEM
+Icon   : GraduationCap
+Label  : Teachers
+Route  : /teachers
+         /teachers/:id
+Auth   : JWT required — SYSTEM_ADMIN only
+Page   : client/src/pages/teachers/Index.tsx
+         client/src/pages/teachers/Profile.tsx
+API    : GET   /api/teachers
+         POST  /api/teachers
+         GET   /api/teachers/:id
+         PUT   /api/teachers/:id
+         PATCH /api/teachers/:id/deactivate
+```
+
+> **Teachers are not system users.** No login accounts. No JWT. No access to the system. A REGISTRAR JWT on any `/api/teachers` endpoint returns `403 Forbidden`.
+
+**Purpose:** Maintain the school's teacher directory for section adviser assignment and subject tracking.
+
+### Teacher Directory (`/teachers`)
+
+```
+TEACHERS                                            [ + Create Teacher ]
+
+  Employee ID   │ Full Name          │ Specialization │ Subjects              │ Sections │ Actions
+  ──────────────┼────────────────────┼────────────────┼───────────────────────┼──────────┼────────
+  101-458-2021  │ Santos, Caridad M. │ Mathematics    │ Mathematics · Science │ 2        │ [View]
+  101-789-2020  │ Reyes, Miguel A.   │ Science        │ Science · MAPEH       │ 1        │ [View]
+  —             │ Flores, Luisa B.   │ English        │ English · Filipino    │ 0        │ [View]
+```
+
+No "Account Status" column. No "Provision Account" action. Teachers are data records only.
+
+**Create Teacher** dialog: Last Name · First Name · Middle Name · Employee ID · Contact Number · Specialization · Subjects (multi-select from DepEd-defined constants list — no free-text entry).
+
+`POST /api/teachers` → `AuditLog: TEACHER_CREATED`
+
+### Teacher Profile (`/teachers/:id`) — 2 Tabs Only
+
+**Tab 1 — Profile:** Full Name · Employee ID · Contact Number · Specialization · Subjects.
+
+```
+  Subjects Taught
+  [ Mathematics × ]  [ Science × ]  [ + Add Subject ▾ ]
+  (multi-select from DepEd-defined subject list — no custom entry)
+```
+
+`PUT /api/teachers/:id` → `AuditLog: TEACHER_UPDATED`
+
+**Tab 2 — Assigned Sections:** Read-only list of sections this teacher advises in the active AY. [Unassign] removes the adviser from a section.
+
+**No Tab 3 (System Account)** — teachers have no system accounts.
+
+**Deactivating a Teacher:** `PATCH /api/teachers/:id/deactivate` sets `isActive = false`. The teacher disappears from the section adviser dropdown. Existing section assignments are preserved.
+
+---
+
+### Item 10 — User Management (`/admin/users`) — SYSTEM_ADMIN EXCLUSIVE
 
 ```
 Group  : SYSTEM
@@ -205,9 +403,7 @@ API    : GET   /api/admin/users
          PATCH /api/admin/users/:id/reset-password
 ```
 
-### Purpose
-
-The primary tool for managing who can log into the system. The System Admin creates, edits, deactivates, and reactivates REGISTRAR accounts. The SYSTEM_ADMIN role itself cannot be assigned through this interface.
+**Purpose:** Manage who can log into the system. Only **REGISTRAR** accounts are created here. Teachers are not system users — they are managed at `/teachers`.
 
 ### User Management List
 
@@ -215,74 +411,45 @@ The primary tool for managing who can log into the system. The System Admin crea
 USER MANAGEMENT                                    [ + Create User ]
 
   Name               Email                    Role        Status     Last Login     Actions
-  ───────────────────────────────────────────────────────────────────────────────────────────
+  ─────────────────────────────────────────────────────────────────────────────────────────
   Cruz, Regina       rcruz@school.edu.ph      Registrar   ● Active   Feb 3, 2026    [Edit] [Deactivate]
   Santos, Pablo      psantos@school.edu.ph    Registrar   ● Active   Jan 28, 2026   [Edit] [Deactivate]
+  Mora, Liza         lmora@school.edu.ph      Registrar   ○ Inactive —              [Edit] [Reactivate]
 ```
-
-- Shows all REGISTRAR accounts (not the SYSTEM_ADMIN's own account)
-- Last login timestamp from `User.lastLoginAt`
-- Status badge: ● Active (green) · ○ Inactive (grey)
 
 ### Create User
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
 │  Create User Account                                           │
-│  ─────────────────────────────────────────────────────────── │
-│  Full Name *                                                   │
-│  [ ______________________________ ]                            │
-│                                                               │
-│  Email Address *                                              │
-│  [ ______________________________ ]                            │
-│                                                               │
-│  Role *                                                        │
-│  ●  Registrar                                                 │
-│  (SYSTEM_ADMIN cannot be selected — only via CLI seed)        │
-│                                                               │
-│  A temporary password will be auto-generated and emailed.     │
-│  The user must change it on first login.                      │
+│  Full Name *     [ __________________________ ]               │
+│  Email Address * [ __________________________ ]               │
+│  Role *          ●  Registrar                                  │
+│  (SYSTEM_ADMIN — CLI/seed only)                               │
+│  (Teachers are not system users — manage via /teachers)       │
 │                                                               │
 │          [ Cancel ]         [ Create Account ]               │
 └───────────────────────────────────────────────────────────────┘
 ```
 
-On confirm:
 - `POST /api/admin/users` with `{ name, email, role: 'REGISTRAR' }`
-- Server rejects `role === 'SYSTEM_ADMIN'` with `403 Forbidden`
-- Temporary password auto-generated (`crypto.randomBytes`, 12+ chars, mixed case + digits)
-- Welcome email sent using `SchoolSettings.schoolName` in the subject
-- `mustChangePassword: true`
+- Server rejects `role === 'SYSTEM_ADMIN'` with `403`
+- Temporary password auto-generated · `mustChangePassword: true`
+- Welcome email sent using `SchoolSettings.schoolName`
 - `AuditLog: ADMIN_USER_CREATED`
 
-### Edit User
+### Edit / Deactivate / Reactivate / Reset Password
 
-Changes name or email. Cannot promote to or demote from SYSTEM_ADMIN.
-`PUT /api/admin/users/:id`
-
-### Deactivate / Reactivate
-
-**Deactivate:**
-- Sets `User.isActive = false`
-- User's very next API call returns 401 → Axios interceptor → clears auth → redirects to login
-- Effective within one API request — no logout forced immediately
-- `PATCH /api/admin/users/:id/deactivate` → `AuditLog: ADMIN_USER_DEACTIVATED`
-
-**Reactivate:**
-- Sets `User.isActive = true`
-- User can log in again immediately
-- `PATCH /api/admin/users/:id/reactivate` → `AuditLog: ADMIN_USER_REACTIVATED`
-
-### Reset Password
-
-- Generates new temporary password
-- Sets `mustChangePassword: true`
-- Sends email using `SchoolSettings.schoolName`
-- `PATCH /api/admin/users/:id/reset-password` → `AuditLog: ADMIN_PASSWORD_RESET`
+| Action | API | Audit Log |
+|---|---|---|
+| Edit name/email | `PUT /api/admin/users/:id` | — |
+| Deactivate | `PATCH .../deactivate` → `isActive = false` | `ADMIN_USER_DEACTIVATED` |
+| Reactivate | `PATCH .../reactivate` → `isActive = true` | `ADMIN_USER_REACTIVATED` |
+| Reset password | `PATCH .../reset-password` → new temp password + email | `ADMIN_PASSWORD_RESET` |
 
 ---
 
-## Navigation Item 10 — Email Logs (SYSTEM_ADMIN EXCLUSIVE)
+### Item 11 — Email Logs (`/admin/email-logs`) — SYSTEM_ADMIN EXCLUSIVE
 
 ```
 Group  : SYSTEM
@@ -295,43 +462,28 @@ API    : GET  /api/admin/email-logs
          POST /api/admin/email-logs/:id/retry
 ```
 
-### Purpose
-
-A read-only log of every email the system has attempted to send, with delivery status. Allows the admin to identify failed emails and retry them.
-
-### Email Log List
+**Purpose:** Read-only log of every email the system attempted to send. All emails dispatch asynchronously via `setImmediate()` — failed emails do not surface as errors anywhere else. This is the only place failed emails are visible.
 
 ```
 EMAIL LOGS                                               [Filter ▾]
 
   Status: [ All ▾ ]   Date: [ From ] — [ To ]   Type: [ All ▾ ]
 
-  Recipient             Subject                                   Status   Sent At
-  ──────────────────────────────────────────────────────────────────────────────────
+  Recipient             Subject                                    Status   Sent At
+  ───────────────────────────────────────────────────────────────────────────────────
   delacruz@gmail.com    Your Application Received — #055 · [School]  ● Sent   Feb 3, 9:14
-  msantos@gmail.com     Enrollment Confirmed — [School], SY 2026-2027  ● Sent   Feb 3, 8:55
-  preyes@gmail.com      Your STE Entrance Exam — [School]           ✗ Failed  Feb 2, 3:00
-  csantos@school.edu.ph Welcome to [School] — Your System Account   ● Sent   Jan 15, 10:00
+  msantos@gmail.com     Your Enrollment is Confirmed — [School]    ● Sent   Feb 3, 8:55
+  preyes@gmail.com      Your STE Entrance Exam — [School]          ✗ Failed  Feb 2, 3:00
+  rcruz@school.edu.ph   Welcome to [School] — Your Account Details ● Sent   Jan 15, 10:00
 ```
 
-**Columns:** Recipient email · Subject (truncated) · Status (Sent/Failed) · Sent At timestamp · Trigger action type · [Retry] button (failed only)
+**[Retry]** on failed entries: `POST /api/admin/email-logs/:id/retry` → `AuditLog: EMAIL_RETRY_TRIGGERED`
 
-**Filterable by:** status (Sent / Failed) · date range · email trigger type (application submitted, exam scheduled, account provisioned, etc.)
-
-**[Retry] button** on failed emails:
-- Triggers re-send of the exact same email template
-- `POST /api/admin/email-logs/:id/retry`
-- `AuditLog: EMAIL_RETRY_TRIGGERED`
-
-> **Note:** Email subjects always contain `SchoolSettings.schoolName` substituted at send time. The log entry shows the actual sent subject, including the real school name.
-
-### Why This Matters
-
-All system emails are dispatched **asynchronously** via `setImmediate()` — the HTTP response returns before the email is sent. This means failed emails do not block the API. The Email Logs page is the only place the admin can see which emails silently failed and manually retry them.
+> All email subjects use `SchoolSettings.schoolName` at send time — never a hardcoded school name.
 
 ---
 
-## Navigation Item 11 — System Health (SYSTEM_ADMIN EXCLUSIVE)
+### Item 12 — System Health (`/admin/system`) — SYSTEM_ADMIN EXCLUSIVE
 
 ```
 Group  : SYSTEM
@@ -343,59 +495,41 @@ Page   : client/src/pages/admin/SystemHealth.tsx
 API    : GET /api/admin/system
 ```
 
-### Purpose
-
-A read-only diagnostic dashboard showing the system's operational status. No actions are available — this page is purely informational.
-
-### What the Admin Sees
+Read-only diagnostic dashboard. No actions — purely informational.
 
 ```
 SYSTEM HEALTH                             Last checked: just now    [ Refresh ]
 
   ┌──────────────────────────────────────────────────────────────────┐
-  │  DATABASE              ● Connected                               │
-  │  Response time         12ms                                      │
+  │  DATABASE              ● Connected        Response time: 12ms    │
   ├──────────────────────────────────────────────────────────────────┤
   │  SERVER UPTIME         14d 3h 22m                                │
   ├──────────────────────────────────────────────────────────────────┤
   │  LOGIN TOKENS          3 pending (unexpired, unused)             │
-  │  Last cleanup          1 hour ago                                │
-  │  (Tokens older than 24h are purged hourly)                       │
+  │  Last cleanup          1 hour ago  (tokens > 24h purged hourly)  │
   ├──────────────────────────────────────────────────────────────────┤
-  │  EMAIL SERVICE         ● Connected (Resend SMTP)                 │
-  │  Emails sent today     4    Failed today    0                    │
+  │  EMAIL SERVICE         ● Connected        Failed today: 0        │
   └──────────────────────────────────────────────────────────────────┘
 ```
 
-**Panels:**
-
-| Panel | Data Shown |
-|---|---|
-| Database | Connection status · Query response time |
-| Server Uptime | Time since last restart |
-| Login Tokens | Count of unexpired unused `LoginToken` records (Layer 2) · Last cleanup timestamp |
-| Email Service | SMTP connectivity status · Today's sent/failed email counts |
-
-**[Refresh]** button re-fetches `GET /api/admin/system` to update the status.
-
-**Login Tokens panel** directly exposes the health of the Layer 2 security mechanism. If the token count grows unusually large, it may indicate the cleanup cron task is not running.
+The **Login Tokens panel** exposes Layer 2 health. An unusually large count means the cleanup cron is not running.
 
 ---
 
 ## Complete Route Table for SYSTEM_ADMIN
 
-### Inherited from REGISTRAR
+### Shared with REGISTRAR
 
-| Route | Page Component | Notes |
+| Route | Page Component | Admin Notes |
 |---|---|---|
 | `/dashboard` | `Dashboard.tsx` | + System Panel at bottom |
 | `/f2f-admission` | `F2FAdmission.tsx` | Identical |
-| `/applications` | `Applications.tsx` | Identical |
-| `/applications/:id` | `ApplicationDetail.tsx` | Identical |
+| `/applications/admission` | `Admission.tsx` | PENDING · EXAM_* · PASSED · FAILED statuses |
+| `/applications/admission/:id` | `ApplicationDetail.tsx` | Identical |
+| `/applications/enrollment` | `Enrollment.tsx` | APPROVED · ENROLLED statuses |
+| `/applications/enrollment/:id` | `EnrollmentDetail.tsx` | Identical |
 | `/students` | `Students.tsx` | Identical |
 | `/students/:id` | `StudentProfile.tsx` | Identical |
-| `/teachers` | `Teachers.tsx` | Identical |
-| `/teachers/:id` | `TeacherProfile.tsx` | + Deactivate + Reset Password on Tab 3 |
 | `/sections` | `Sections.tsx` | Identical |
 | `/audit-logs` | `AuditLogs.tsx` | + All users · + User filter · + Export CSV |
 | `/settings` | `Settings.tsx` | Identical |
@@ -405,6 +539,8 @@ SYSTEM HEALTH                             Last checked: just now    [ Refresh ]
 
 | Route | Page Component | API Endpoints |
 |---|---|---|
+| `/teachers` | `Teachers.tsx` | `GET/POST /api/teachers` |
+| `/teachers/:id` | `TeacherProfile.tsx` | `GET/PUT/PATCH /api/teachers/:id` |
 | `/admin/users` | `UserManagement.tsx` | `GET/POST/PUT/PATCH /api/admin/users/*` |
 | `/admin/email-logs` | `EmailLogs.tsx` | `GET /api/admin/email-logs` · `POST /api/admin/email-logs/:id/retry` |
 | `/admin/system` | `SystemHealth.tsx` | `GET /api/admin/system` |
@@ -413,59 +549,81 @@ SYSTEM HEALTH                             Last checked: just now    [ Refresh ]
 
 ## Security Enforced at API Level
 
-Layer 1 and Layer 2 apply to the System Admin **equally**:
-- The `/login` route requires `{ state: { loginAccess: true } }` navigation state — the admin cannot bypass this by typing `/login` directly
-- `POST /api/auth/login` requires a valid `loginToken` from `GET /api/auth/login-token` — the admin cannot bypass this with Postman or curl without a valid token
+- `/login` requires `{ state: { loginAccess: true } }` — direct URL visits bounce to `/`
+- `POST /api/auth/login` requires a valid `loginToken` from `GET /api/auth/login-token`
 - Rate limiting: 20 req/min on both auth endpoints
-
-Additional constraints that apply specifically to the SYSTEM_ADMIN:
-- `POST /api/admin/users` with `role: 'SYSTEM_ADMIN'` → `403 Forbidden` — the admin cannot escalate another account to SYSTEM_ADMIN
-- Audit logs cannot be deleted — `AuditLog` has no delete endpoint in the entire API
-- Enrollment records cannot be deleted — `Enrollment` and `Applicant` have no delete endpoint
-- The admin's own actions are logged in `AuditLog` just like any other user's
+- `POST /api/admin/users` with `role: 'SYSTEM_ADMIN'` → `403 Forbidden`
+- `GET/POST/PUT/PATCH /api/teachers/*` with REGISTRAR JWT → `403 Forbidden`
+- Audit logs: no delete endpoint — entries are permanent
+- Enrollment records: no delete endpoint — records are permanent
+- Admin's own actions are logged in `AuditLog` identically to any other user
 
 ---
 
 ## SidebarContent.tsx — Rendering Logic for SYSTEM_ADMIN
 
 ```tsx
+// client/src/components/layout/SidebarContent.tsx
+const { user }    = useAuthStore();
 const isAdmin     = user?.role === 'SYSTEM_ADMIN';
 const isRegistrar = user?.role === 'REGISTRAR';
 
-// Items 1–8: shared between REGISTRAR and SYSTEM_ADMIN
+// Shared — REGISTRAR + SYSTEM_ADMIN
 {(isRegistrar || isAdmin) && (
   <>
     <SidebarSection label="Admission">
-      <NavItem href="/f2f-admission"      icon={UserPlus}        label="Walk-in Admission" />
+      <NavItem href="/f2f-admission" icon={UserPlus} label="Walk-in Admission" />
     </SidebarSection>
 
     <SidebarSection label="Enrollment">
-      <NavItem href="/dashboard"          icon={LayoutDashboard} label="Dashboard" />
-      <NavItem href="/applications"       icon={ClipboardList}   label="Applications" />
+      <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" />
+
+      {/* Applications — collapsible parent, not itself a route */}
+      <NavItemParent icon={ClipboardList} label="Applications">
+        <NavItemChild
+          href="/applications/admission"
+          icon={FileText}
+          label="Admission"
+          badgeCount={pendingCount}   // from dashboardStatsStore
+        />
+        <NavItemChild
+          href="/applications/enrollment"
+          icon={CheckCircle}
+          label="Enrollment"
+        />
+      </NavItemParent>
     </SidebarSection>
 
     <SidebarSection label="Records">
-      <NavItem href="/students"           icon={Users}           label="Students" />
-      <NavItem href="/audit-logs"         icon={ScrollText}      label="Audit Logs" />
+      <NavItem href="/students"   icon={Users}      label="Students" />
+      <NavItem href="/audit-logs" icon={ScrollText} label="Audit Logs" />
     </SidebarSection>
 
     <SidebarSection label="Management">
-      <NavItem href="/teachers"           icon={GraduationCap}   label="Teachers" />
-      <NavItem href="/sections"           icon={School}          label="Sections" />
-      <NavItem href="/settings"           icon={Settings}        label="Settings" />
+      <NavItem href="/sections" icon={School}    label="Sections" />
+      <NavItem href="/settings" icon={Settings}  label="Settings" />
     </SidebarSection>
   </>
 )}
 
-// Items 9–11: SYSTEM_ADMIN only
+// SYSTEM_ADMIN exclusive
 {isAdmin && (
   <SidebarSection label="System">
-    <NavItem href="/admin/users"          icon={Shield}          label="User Management" />
-    <NavItem href="/admin/email-logs"     icon={Mail}            label="Email Logs" />
-    <NavItem href="/admin/system"         icon={Activity}        label="System Health" />
+    <NavItem href="/teachers"         icon={GraduationCap} label="Teachers" />
+    <NavItem href="/admin/users"      icon={Shield}        label="User Management" />
+    <NavItem href="/admin/email-logs" icon={Mail}          label="Email Logs" />
+    <NavItem href="/admin/system"     icon={Activity}      label="System Health" />
   </SidebarSection>
 )}
 ```
+
+**`NavItemParent` component behavior:**
+- Renders a non-link toggle that shows/hides its children
+- Auto-expands when any child route is currently active
+- Defaults to expanded
+- In icon-only sidebar mode: hovering shows a popover with sub-items
+
+**`pendingCount`:** Sourced from `dashboardStatsStore.admissionPending` — count of `PENDING` status applications for the active AY. Updates on dashboard load.
 
 ---
 
@@ -474,20 +632,20 @@ const isRegistrar = user?.role === 'REGISTRAR';
 | Role | Badge Text | Color |
 |---|---|---|
 | `SYSTEM_ADMIN` | System Admin | Purple / violet |
-| `REGISTRAR` | Registrar | Accent (extracted from school logo, via `var(--accent)`) |
+| `REGISTRAR` | Registrar | Accent (school logo color via `var(--accent)`) |
 
 ---
 
 ## Log Out Behavior
 
-Same as all roles:
 1. `authStore.clearAuth()` → `{ token: null, user: null }`
 2. `localStorage['auth-storage']` cleared
-3. Navigate to `/` → redirects to `/apply` or `/closed`
+3. Navigate to `/` → redirects to `/apply` or `/closed` based on `enrollmentOpen`
 4. "Staff Login" link in the public portal footer is the re-entry point to `/login`
 
 ---
 
-*Document v3.0.0 — SYSTEM_ADMIN Role Sidebar*
+*Document v3.1.0 — SYSTEM_ADMIN Role Sidebar*
 *System: School Admission, Enrollment & Information Management System*
-*Derived from: PRD v3.0.0 §4 · §6 · §7 · §8 · System Admin Specification v3.0.0*
+*Derived from: PRD v3.0.0 · System Admin Specification v3.0.0*
+*Changes in v3.1.0: Teacher removed as system user · Applications split into Admission + Enrollment subnav*
