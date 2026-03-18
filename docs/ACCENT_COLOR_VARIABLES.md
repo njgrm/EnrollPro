@@ -350,14 +350,8 @@ Result:  All accent elements revert to default blue
 </NavLink>
 ```
 
-### Teacher Management (`/teachers`) — Provision Account Button
-
-```tsx
-<Button className="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
-  onClick={handleProvisionAccount}>
-  Provision System Account
-</Button>
-```
+### Teacher Management (`/teachers`) — Profile View
+The teacher profile views (`/teachers/:id`) use the accent color for active tabs and buttons.
 
 ### Sections (`/sections`) — Capacity Bar
 

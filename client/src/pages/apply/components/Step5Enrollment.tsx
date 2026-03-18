@@ -1,6 +1,6 @@
 import { useFormContext } from 'react-hook-form';
 import type { AdmissionFormData } from '../types';
-import { ACADEMIC_CLUSTERS, TECHPRO_CLUSTERS, SPA_ART_FIELDS, SPS_SPORTS, SPFL_LANGUAGES } from '../types';
+import { ACADEMIC_CLUSTERS, TECHPRO_CLUSTERS, SPA_ART_FIELDS, SPS_SPORTS, SPFL_LANGUAGES, LEARNING_MODALITIES } from '../types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -279,7 +279,7 @@ export default function Step5Enrollment() {
                       className="overflow-hidden"
                     >
                       <div className="space-y-6 pt-4">
-                        <div className="space-y-2">
+                        <div className="space-y-2 px-1">
                           <Label className="text-sm font-bold uppercase tracking-widest text-[#061E29]/60">Preferred Elective Cluster *</Label>
                           <Select value={electiveCluster} onValueChange={(val) => setValue('electiveCluster', val)}>
                             <SelectTrigger className="h-12 bg-white border-2 font-bold">
@@ -348,22 +348,49 @@ export default function Step5Enrollment() {
       <div className="space-y-10 pt-6 border-t border-border/40">
         <div className="space-y-4">
           <Label className="text-sm font-bold uppercase tracking-widest text-[#061E29]">Type of Learner *</Label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {(['Regular', 'Transferee', 'Returning Learner', 'OSCYA', 'ALS'] as const).map((t) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+            {([
+              { value: 'Regular', label: 'Regular' },
+              { value: 'Transferee', label: 'Transferee' },
+              { value: 'Returning Learner', label: 'Returning Learner' },
+              { value: 'OSCYA', label: 'Out-of-School Children, Youth, and Adults (OSCYA)' },
+              { value: 'ALS', label: 'ALS' },
+            ] as const).map((t) => (
               <button
-                key={t}
+                key={t.value}
                 type="button"
-                onClick={() => setValue('learnerType', t)}
+                onClick={() => setValue('learnerType', t.value)}
                 className={cn(
                   "flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left",
-                  watch('learnerType') === t ? "border-[#061E29] bg-[#061E29] text-white pointer-events-none" : "border-border bg-white hover:bg-[#061E29]/5"
+                  watch('learnerType') === t.value ? "border-[#061E29] bg-[#061E29] text-white pointer-events-none" : "border-border bg-white hover:bg-[#061E29]/5"
                 )}
               >
-                <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0", watch('learnerType') === t ? "border-white" : "border-muted-foreground")}>
-                  {watch('learnerType') === t && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
+                <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0", watch('learnerType') === t.value ? "border-white" : "border-muted-foreground")}>
+                  {watch('learnerType') === t.value && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
                 </div>
-                <span className="font-bold">{t}</span>
+                <span className="font-bold">{t.label}</span>
               </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Learning Modality Preference */}
+        <div className="space-y-4">
+          <Label className="text-sm font-bold uppercase tracking-widest text-[#061E29]">If the school implements other distance learning modalities aside from face-to-face instruction, which would the learner prefer? Check all that applies: </Label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+            {LEARNING_MODALITIES.map((m) => (
+              <div key={m} className="flex items-center space-x-3">
+                <Checkbox
+                  id={`modality-${m}`}
+                  checked={watch('learningModalities')?.includes(m)}
+                  onCheckedChange={(checked) => {
+                    const curr = watch('learningModalities') || [];
+                    setValue('learningModalities', checked ? [...curr, m] : curr.filter((i) => i !== m));
+                  }}
+                  className="w-5 h-5 data-[state=checked]:bg-[#061E29] data-[state=checked]:text-white border-[#061E29]"
+                />
+                <Label htmlFor={`modality-${m}`} className="text-sm font-medium cursor-pointer">{m}</Label>
+              </div>
             ))}
           </div>
         </div>

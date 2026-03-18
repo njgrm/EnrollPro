@@ -28,8 +28,6 @@ The sidebar contains **11 navigation items** organized into 5 groups.
 | Audit Logs — all users visible | ❌ (own actions only) | ✅ (full cross-user) |
 | Audit Logs — export to CSV | ❌ | ✅ |
 | Audit Logs — user filter dropdown | ❌ | ✅ |
-| Teacher Profile — Deactivate Account | ❌ | ✅ |
-| Teacher Profile — Reset Password | ❌ | ✅ |
 | Assign SYSTEM_ADMIN role via UI | ❌ | ❌ (CLI/seed only) |
 | Delete audit logs | ❌ | ❌ (no one can) |
 | Delete enrollment records | ❌ | ❌ (no one can) |
@@ -209,7 +207,7 @@ API    : GET   /api/admin/users
 
 ### Purpose
 
-The primary tool for managing who can log into the system. The System Admin creates, edits, deactivates, and reactivates REGISTRAR and TEACHER accounts. The SYSTEM_ADMIN role itself cannot be assigned through this interface.
+The primary tool for managing who can log into the system. The System Admin creates, edits, deactivates, and reactivates REGISTRAR accounts. The SYSTEM_ADMIN role itself cannot be assigned through this interface.
 
 ### User Management List
 
@@ -220,11 +218,9 @@ USER MANAGEMENT                                    [ + Create User ]
   ───────────────────────────────────────────────────────────────────────────────────────────
   Cruz, Regina       rcruz@school.edu.ph      Registrar   ● Active   Feb 3, 2026    [Edit] [Deactivate]
   Santos, Pablo      psantos@school.edu.ph    Registrar   ● Active   Jan 28, 2026   [Edit] [Deactivate]
-  Reyes, Ana         areyes@school.edu.ph     Teacher     ● Active   Feb 1, 2026    [Edit] [Deactivate]
-  Dela Cruz, Jose    jdelacruz@school.edu.ph  Teacher     ○ Inactive —              [Edit] [Reactivate]
 ```
 
-- Shows all REGISTRAR and TEACHER accounts (not the SYSTEM_ADMIN's own account)
+- Shows all REGISTRAR accounts (not the SYSTEM_ADMIN's own account)
 - Last login timestamp from `User.lastLoginAt`
 - Status badge: ● Active (green) · ○ Inactive (grey)
 
@@ -241,7 +237,7 @@ USER MANAGEMENT                                    [ + Create User ]
 │  [ ______________________________ ]                            │
 │                                                               │
 │  Role *                                                        │
-│  ●  Registrar     ○  Teacher                                  │
+│  ●  Registrar                                                 │
 │  (SYSTEM_ADMIN cannot be selected — only via CLI seed)        │
 │                                                               │
 │  A temporary password will be auto-generated and emailed.     │
@@ -252,7 +248,7 @@ USER MANAGEMENT                                    [ + Create User ]
 ```
 
 On confirm:
-- `POST /api/admin/users` with `{ name, email, role: 'REGISTRAR' | 'TEACHER' }`
+- `POST /api/admin/users` with `{ name, email, role: 'REGISTRAR' }`
 - Server rejects `role === 'SYSTEM_ADMIN'` with `403 Forbidden`
 - Temporary password auto-generated (`crypto.randomBytes`, 12+ chars, mixed case + digits)
 - Welcome email sent using `SchoolSettings.schoolName` in the subject
@@ -261,7 +257,7 @@ On confirm:
 
 ### Edit User
 
-Changes name, email, or role (between REGISTRAR ↔ TEACHER only). Cannot promote to or demote from SYSTEM_ADMIN.
+Changes name or email. Cannot promote to or demote from SYSTEM_ADMIN.
 `PUT /api/admin/users/:id`
 
 ### Deactivate / Reactivate
@@ -473,13 +469,12 @@ const isRegistrar = user?.role === 'REGISTRAR';
 
 ---
 
-## Role Badge Reference (All Three Roles)
+## Role Badge Reference
 
 | Role | Badge Text | Color |
 |---|---|---|
 | `SYSTEM_ADMIN` | System Admin | Purple / violet |
 | `REGISTRAR` | Registrar | Accent (extracted from school logo, via `var(--accent)`) |
-| `TEACHER` | Teacher | Blue |
 
 ---
 

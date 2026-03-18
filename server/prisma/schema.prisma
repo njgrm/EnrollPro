@@ -11,7 +11,6 @@ datasource db {
 
 enum Role {
   REGISTRAR
-  TEACHER
   SYSTEM_ADMIN
 }
 
@@ -48,7 +47,7 @@ model User {
   name               String
   email              String    @unique
   password           String
-  role               Role
+  role               Role      // role is REGISTRAR or SYSTEM_ADMIN only
   isActive           Boolean   @default(true)
   lastLoginAt        DateTime?
   mustChangePassword Boolean   @default(false)
@@ -56,11 +55,29 @@ model User {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  sections     Section[]
   enrollments  Enrollment[]
   auditLogs    AuditLog[]
+  encodedApplicants Applicant[] @relation("ApplicantEncodedBy")
   createdBy    User?  @relation("UserCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   createdUsers User[] @relation("UserCreatedBy")
+}
+
+// Teachers are NOT system users — no login account, no userId link.
+// This model exists for section adviser assignment and subject tracking only.
+model Teacher {
+  id              Int       @id @default(autoincrement())
+  employeeId      String?   @unique
+  firstName       String
+  lastName        String
+  middleName      String?
+  contactNumber   String?
+  specialization  String?
+  subjects        String[]  @default([])
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  sections        Section[]
 }
 
 model SchoolSettings {
@@ -154,7 +171,7 @@ model Section {
   updatedAt         DateTime @updatedAt
 
   gradeLevel      GradeLevel   @relation(fields: [gradeLevelId], references: [id], onDelete: Cascade)
-  advisingTeacher User?        @relation(fields: [advisingTeacherId], references: [id], onDelete: SetNull)
+  advisingTeacher Teacher?     @relation(fields: [advisingTeacherId], references: [id], onDelete: SetNull)
   enrollments     Enrollment[]
 }
 
@@ -167,6 +184,11 @@ enum ApplicantType {
   SPFL
   SPTVE
   STEM_GRADE11
+}
+
+enum AdmissionChannel {
+  ONLINE
+  F2F
 }
 
 model Applicant {
@@ -201,6 +223,8 @@ model Applicant {
   isBalikAral           Boolean           @default(false)
   lastYearEnrolled      String?
   isLearnerWithDisability Boolean         @default(false)
+  snedCategory          String?
+  hasPwdId              Boolean           @default(false)
   disabilityType        String[]
 
   // ── Previous School ──
@@ -213,6 +237,7 @@ model Applicant {
 
   // ── Enrollment Preferences ──
   learnerType           String?
+  learningModalities    String[]
   electiveCluster       String?
   scpApplication        Boolean           @default(false)
   scpType               String?
@@ -242,6 +267,10 @@ model Applicant {
   grade10ScienceGrade   Float?
   grade10MathGrade      Float?
 
+  // ── Admission Tracking ──
+  admissionChannel      AdmissionChannel  @default(ONLINE)
+  encodedById           Int?
+
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
 
@@ -250,6 +279,7 @@ model Applicant {
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
   enrollment   Enrollment?
   emailLogs    EmailLog[]
+  encodedBy    User?        @relation("ApplicantEncodedBy", fields: [encodedById], references: [id], onDelete: SetNull)
 
   @@index([status, academicYearId])
   @@index([lrn])

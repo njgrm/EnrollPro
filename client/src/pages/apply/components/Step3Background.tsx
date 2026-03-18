@@ -1,6 +1,6 @@
 import { useFormContext } from 'react-hook-form';
 import type { AdmissionFormData } from '../types';
-import { DISABILITY_TYPES } from '../types';
+import { DISABILITY_TYPES_A1, DISABILITY_TYPES_A2 } from '../types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -16,6 +16,8 @@ export default function Step3Background() {
   const isIpCommunity = watch('isIpCommunity');
   const is4PsBeneficiary = watch('is4PsBeneficiary');
   const isLearnerWithDisability = watch('isLearnerWithDisability');
+  const snedCategory = watch('snedCategory');
+  const hasPwdId = watch('hasPwdId');
 
   return (
     <div className="space-y-12">
@@ -75,7 +77,7 @@ export default function Step3Background() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <Label className="text-sm font-bold">
-              Is your family a beneficiary of the 4Ps? *
+              Does the learner's household currently receive benefits under the Pantawid Pamilyang Pilipino Program (4Ps)? *
             </Label>
             <Badge variant="outline" className="text-[10px] uppercase border-[#061E29]/20 text-[#061E29] gap-1">
               <Lock className="w-2.5 h-2.5" /> Confidential
@@ -133,19 +135,26 @@ export default function Step3Background() {
           </RadioGroup>
         </div>
 
-        {/* Disability */}
+        {/* SNED / Disability */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <Label className="text-sm font-bold">
-              Does the learner have a disability? *
+              Is the learner under the Special Needs Education Program? *
             </Label>
             <Badge variant="outline" className="text-[10px] uppercase border-[#061E29]/20 text-[#061E29] gap-1">
               <Lock className="w-2.5 h-2.5" /> Confidential
             </Badge>
           </div>
-          <RadioGroup 
-            value={isLearnerWithDisability ? 'Yes' : 'No'} 
-            onValueChange={(val) => setValue('isLearnerWithDisability', val === 'Yes')}
+          <RadioGroup
+            value={isLearnerWithDisability ? 'Yes' : 'No'}
+            onValueChange={(val) => {
+              setValue('isLearnerWithDisability', val === 'Yes');
+              if (val === 'No') {
+                setValue('snedCategory', undefined);
+                setValue('disabilityType', []);
+                setValue('hasPwdId', false);
+              }
+            }}
             className="flex gap-8"
           >
             <div className="flex items-center space-x-2">
@@ -157,37 +166,121 @@ export default function Step3Background() {
               <Label htmlFor="lwd-yes" className="font-semibold cursor-pointer">Yes</Label>
             </div>
           </RadioGroup>
+
           <AnimatePresence>
             {isLearnerWithDisability && (
-              <motion.div 
+              <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 className="overflow-hidden p-1"
               >
-                <div className="pt-6">
-                  <div className="p-6 border border-border/60 bg-muted/10 rounded-xl space-y-6">
-                    <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Type of Disability (Select all that apply)</Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {DISABILITY_TYPES.map((type) => (
-                        <div key={type} className="flex items-center space-x-3">
-                          <Checkbox 
-                            id={`disability-${type}`}
-                            checked={watch('disabilityType')?.includes(type)}
-                            onCheckedChange={(checked) => {
-                              const current = watch('disabilityType') || [];
-                              if (checked) {
-                                setValue('disabilityType', [...current, type]);
-                              } else {
-                                setValue('disabilityType', current.filter((t) => t !== type));
-                              }
-                            }}
-                            className="w-5 h-5 data-[state=checked]:bg-[#061E29] data-[state=checked]:text-white border-[#061E29]"
-                          />
-                          <Label htmlFor={`disability-${type}`} className="text-sm font-medium cursor-pointer">{type}</Label>
-                        </div>
-                      ))}
+                <div className="pt-4 space-y-6">
+                  <p className="text-xs font-bold uppercase text-muted-foreground tracking-widest">If Yes, check only 1, either from a1 or a2</p>
+
+                  {/* a1 */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="sned-a1"
+                        checked={snedCategory === 'a1'}
+                        onCheckedChange={(checked) => {
+                          setValue('snedCategory', checked ? 'a1' : undefined);
+                          setValue('disabilityType', []);
+                        }}
+                        className="w-5 h-5 data-[state=checked]:bg-[#061E29] data-[state=checked]:text-white border-[#061E29]"
+                      />
+                      <Label htmlFor="sned-a1" className="text-sm font-bold cursor-pointer">a1. With Diagnosis from Licensed Medical Specialist</Label>
                     </div>
+                    <AnimatePresence>
+                      {snedCategory === 'a1' && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="ml-7 mt-2 p-4 border border-border/60 bg-muted/10 rounded-xl grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {DISABILITY_TYPES_A1.map((type) => (
+                              <div key={type} className="flex items-center space-x-3">
+                                <Checkbox
+                                  id={`disability-${type}`}
+                                  checked={watch('disabilityType')?.includes(type)}
+                                  onCheckedChange={(checked) => {
+                                    const current = watch('disabilityType') || [];
+                                    setValue('disabilityType', checked ? [...current, type] : current.filter((t) => t !== type));
+                                  }}
+                                  className="w-4 h-4 data-[state=checked]:bg-[#061E29] data-[state=checked]:text-white border-[#061E29]"
+                                />
+                                <Label htmlFor={`disability-${type}`} className="text-sm font-medium cursor-pointer">{type}</Label>
+                              </div>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* a2 */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="sned-a2"
+                        checked={snedCategory === 'a2'}
+                        onCheckedChange={(checked) => {
+                          setValue('snedCategory', checked ? 'a2' : undefined);
+                          setValue('disabilityType', []);
+                        }}
+                        className="w-5 h-5 data-[state=checked]:bg-[#061E29] data-[state=checked]:text-white border-[#061E29]"
+                      />
+                      <Label htmlFor="sned-a2" className="text-sm font-bold cursor-pointer">a2. With Manifestations</Label>
+                    </div>
+                    <AnimatePresence>
+                      {snedCategory === 'a2' && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="ml-7 mt-2 p-4 border border-border/60 bg-muted/10 rounded-xl grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {DISABILITY_TYPES_A2.map((type) => (
+                              <div key={type} className="flex items-center space-x-3">
+                                <Checkbox
+                                  id={`disability-${type}`}
+                                  checked={watch('disabilityType')?.includes(type)}
+                                  onCheckedChange={(checked) => {
+                                    const current = watch('disabilityType') || [];
+                                    setValue('disabilityType', checked ? [...current, type] : current.filter((t) => t !== type));
+                                  }}
+                                  className="w-4 h-4 data-[state=checked]:bg-[#061E29] data-[state=checked]:text-white border-[#061E29]"
+                                />
+                                <Label htmlFor={`disability-${type}`} className="text-sm font-medium cursor-pointer">{type}</Label>
+                              </div>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* b. PWD ID */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-bold">b. Does the Learner have a PWD ID?</Label>
+                    <RadioGroup
+                      value={hasPwdId ? 'Yes' : 'No'}
+                      onValueChange={(val) => setValue('hasPwdId', val === 'Yes')}
+                      className="flex gap-8"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="No" id="pwd-no" className="w-5 h-5 border-[#061E29] text-[#061E29]" />
+                        <Label htmlFor="pwd-no" className="font-semibold cursor-pointer">No</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Yes" id="pwd-yes" className="w-5 h-5 border-[#061E29] text-[#061E29]" />
+                        <Label htmlFor="pwd-yes" className="font-semibold cursor-pointer">Yes</Label>
+                      </div>
+                    </RadioGroup>
                   </div>
                 </div>
               </motion.div>

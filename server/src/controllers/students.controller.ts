@@ -183,8 +183,9 @@ export const getStudentById = async (req: Request, res: Response) => {
                 advisingTeacher: {
                   select: {
                     id: true,
-                    name: true,
-                    email: true,
+                    firstName: true,
+                    lastName: true,
+                    middleName: true,
                   },
                 },
               },
@@ -251,7 +252,9 @@ export const getStudentById = async (req: Request, res: Response) => {
         id: applicant.enrollment.id,
         section: applicant.enrollment.section.name,
         sectionId: applicant.enrollment.sectionId,
-        advisingTeacher: applicant.enrollment.section.advisingTeacher?.name || null,
+        advisingTeacher: applicant.enrollment.section.advisingTeacher
+          ? `${applicant.enrollment.section.advisingTeacher.lastName}, ${applicant.enrollment.section.advisingTeacher.firstName}${applicant.enrollment.section.advisingTeacher.middleName ? ` ${applicant.enrollment.section.advisingTeacher.middleName.charAt(0)}.` : ''}`
+          : null,
         enrolledAt: applicant.enrollment.enrolledAt,
         enrolledBy: applicant.enrollment.enrolledBy.name,
       } : null,

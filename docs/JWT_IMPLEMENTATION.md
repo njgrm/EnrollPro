@@ -1141,7 +1141,6 @@ const { user } = useAuthStore();
 
 const isAdmin     = user?.role === 'SYSTEM_ADMIN';
 const isRegistrar = user?.role === 'REGISTRAR';
-const isTeacher   = user?.role === 'TEACHER';
 
 // Admission
 {(isRegistrar || isAdmin) && <NavItem href="/f2f-admission"  icon={UserPlus}        label="Walk-in Admission" />}
@@ -1157,9 +1156,6 @@ const isTeacher   = user?.role === 'TEACHER';
 
 // Sections
 {(isRegistrar || isAdmin) && <NavItem href="/sections"       icon={School}          label="Sections" />}
-
-// Teacher's own view
-{isTeacher                && <NavItem href="/my-sections"    icon={BookOpen}        label="My Sections" />}
 
 // System Admin only
 {isAdmin                  && <NavItem href="/admin/users"    icon={Shield}          label="User Management" />}
@@ -1285,7 +1281,7 @@ The account was deactivated by a System Admin. The `isActive` DB check in `authe
 
 ### `403 Forbidden` — correct credentials, wrong route
 
-The user's role does not match what `authorize()` requires for that route. Example: a TEACHER navigating to `/api/applications`. Check `SidebarContent.tsx` role guards to prevent the UI from surfacing this link to unauthorized roles.
+The user's role does not match what `authorize()` requires for that route. Example: a REGISTRAR attempting to access `/api/teachers`, which is SYSTEM_ADMIN exclusive. Check `SidebarContent.tsx` role guards to prevent the UI from surfacing this link to unauthorized roles.
 
 ---
 

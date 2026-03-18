@@ -15,13 +15,14 @@ import AuditLogs from '@/pages/audit-logs/Index';
 import Settings from '@/pages/settings/Index';
 import NotFound from '@/pages/NotFound';
 
-// New Admin Pages
+// Admin Pages
 import AdminUsers from '@/pages/admin/Users';
 import EmailLogs from '@/pages/admin/EmailLogs';
 import SystemHealth from '@/pages/admin/SystemHealth';
+import Teachers from '@/pages/teachers/Index';
 
-// New Teacher Page
-import MySections from '@/pages/my-sections/Index';
+// F2F Admission Page
+import F2FAdmission from '@/pages/f2f-admission/Index';
 
 import Apply from '@/pages/apply/Index';
 
@@ -53,9 +54,9 @@ export const router = createBrowserRouter([
     element: <ChangePassword />,
   },
 
-  // Protected routes for Registrar, Teacher, and System Admin
+  // Protected routes for Registrar and System Admin
   {
-    element: <ProtectedRoute allowedRoles={['REGISTRAR', 'TEACHER', 'SYSTEM_ADMIN']} />,
+    element: <ProtectedRoute allowedRoles={['REGISTRAR', 'SYSTEM_ADMIN']} />,
     children: [
       {
         path: '/dashboard',
@@ -65,13 +66,14 @@ export const router = createBrowserRouter([
           </AppLayout>
         ),
       },
-    ],
-  },
-
-  // Protected routes for Registrar and System Admin
-  {
-    element: <ProtectedRoute allowedRoles={['REGISTRAR', 'SYSTEM_ADMIN']} />,
-    children: [
+      {
+        path: '/f2f-admission',
+        element: (
+          <AppLayout>
+            <F2FAdmission />
+          </AppLayout>
+        ),
+      },
       {
         path: '/applications',
         element: (
@@ -96,6 +98,22 @@ export const router = createBrowserRouter([
           </AppLayout>
         ),
       },
+      {
+        path: '/audit-logs',
+        element: (
+          <AppLayout>
+            <AuditLogs />
+          </AppLayout>
+        ),
+      },
+      {
+        path: '/settings',
+        element: (
+          <AppLayout>
+            <Settings />
+          </AppLayout>
+        ),
+      },
     ],
   },
 
@@ -103,6 +121,14 @@ export const router = createBrowserRouter([
   {
     element: <ProtectedRoute allowedRoles={['SYSTEM_ADMIN']} />,
     children: [
+      {
+        path: '/teachers',
+        element: (
+          <AppLayout>
+            <Teachers />
+          </AppLayout>
+        ),
+      },
       {
         path: '/admin/users',
         element: (
@@ -124,37 +150,6 @@ export const router = createBrowserRouter([
         element: (
           <AppLayout>
             <SystemHealth />
-          </AppLayout>
-        ),
-      },
-      {
-        path: '/audit-logs',
-        element: (
-          <AppLayout>
-            <AuditLogs />
-          </AppLayout>
-        ),
-      },
-      {
-        path: '/settings',
-        element: (
-          <AppLayout>
-            <Settings />
-          </AppLayout>
-        ),
-      },
-    ],
-  },
-
-  // Protected routes for Teacher Only
-  {
-    element: <ProtectedRoute allowedRoles={['TEACHER']} />,
-    children: [
-      {
-        path: '/my-sections',
-        element: (
-          <AppLayout>
-            <MySections />
           </AppLayout>
         ),
       },

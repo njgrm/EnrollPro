@@ -44,7 +44,7 @@ interface User {
   id: number;
   name: string;
   email: string;
-  role: 'REGISTRAR' | 'TEACHER' | 'SYSTEM_ADMIN';
+  role: 'REGISTRAR' | 'SYSTEM_ADMIN';
   isActive: boolean;
   lastLoginAt: string | null;
   createdAt: string;
@@ -96,14 +96,14 @@ export default function AdminUsers() {
   const [editFormData, setEditFormData] = useState({
     name: '',
     email: '',
-    role: 'TEACHER' as 'REGISTRAR' | 'TEACHER' | 'SYSTEM_ADMIN'
+    role: 'REGISTRAR' as 'REGISTRAR' | 'SYSTEM_ADMIN'
   });
 
   // Create Form State
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    role: 'TEACHER' as 'REGISTRAR' | 'TEACHER' | 'SYSTEM_ADMIN',
+    role: 'REGISTRAR' as 'REGISTRAR' | 'SYSTEM_ADMIN',
     password: '',
     mustChangePassword: true
   });
@@ -224,11 +224,11 @@ export default function AdminUsers() {
           </p>
         </div>
         <div className="flex justify-end">
-          <Button 
+          <Button
             onClick={() => {
-              setFormData({ name: '', email: '', role: 'TEACHER', password: generatePassword(), mustChangePassword: true });
+              setFormData({ name: '', email: '', role: 'REGISTRAR', password: generatePassword(), mustChangePassword: true });
               setCreateOpen(true);
-            }} 
+            }}
             className="w-fit shadow-sm"
           >
             <Plus className="h-4 w-4 mr-2" />
@@ -252,7 +252,6 @@ export default function AdminUsers() {
                     <SelectItem value="all">All Roles</SelectItem>
                     <SelectItem value="SYSTEM_ADMIN">Admins</SelectItem>
                     <SelectItem value="REGISTRAR">Registrars</SelectItem>
-                    <SelectItem value="TEACHER">Teachers</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -332,9 +331,9 @@ export default function AdminUsers() {
                           <td className="px-4 py-4 text-center border-r last:border-r-0">
                             <div className="flex justify-center">
                               {editingId === user.id ? (
-                                <Select 
-                                  value={editFormData.role} 
-                                  onValueChange={(v: 'REGISTRAR' | 'TEACHER' | 'SYSTEM_ADMIN') => setEditFormData({ ...editFormData, role: v })}
+                                <Select
+                                  value={editFormData.role}
+                                  onValueChange={(v: 'REGISTRAR' | 'SYSTEM_ADMIN') => setEditFormData({ ...editFormData, role: v })}
                                 >
                                   <SelectTrigger className="h-8 w-28 text-[10px] font-bold uppercase">
                                     <SelectValue />
@@ -342,13 +341,11 @@ export default function AdminUsers() {
                                   <SelectContent>
                                     <SelectItem value="SYSTEM_ADMIN">ADMIN</SelectItem>
                                     <SelectItem value="REGISTRAR">REGISTRAR</SelectItem>
-                                    <SelectItem value="TEACHER">TEACHER</SelectItem>
                                   </SelectContent>
                                 </Select>
                               ) : (
                                 <Badge variant="outline" className={`px-2 py-0.5 text-[10px] uppercase font-bold tracking-tight ${
                                   user.role === 'REGISTRAR' ? 'border-blue-200 bg-blue-50 text-blue-700' :
-                                  user.role === 'TEACHER' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' :
                                   'border-purple-200 bg-purple-50 text-purple-700'
                                 }`}>
                                   {user.role}
@@ -458,31 +455,31 @@ export default function AdminUsers() {
         <DialogContent className="w-[95vw] max-w-lg sm:w-full overflow-y-auto max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Add User Account</DialogTitle>
-            <DialogDescription>Add a new Registrar or Teacher to the system.</DialogDescription>
+            <DialogDescription>Add a new Registrar to the system. Teachers are managed separately via Teacher Management.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Full Name *</Label>
-                <Input 
-                  placeholder="e.g. Cruz, Regina A." 
-                  value={formData.name} 
-                  onChange={e => setFormData({ ...formData, name: e.target.value })} 
+                <Input
+                  placeholder="e.g. Cruz, Regina A."
+                  value={formData.name}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
                 <Label>Email Address *</Label>
-                <Input 
-                  type="email" 
-                  placeholder="registrar@school.edu.ph" 
-                  value={formData.email} 
-                  onChange={e => setFormData({ ...formData, email: e.target.value })} 
+                <Input
+                  type="email"
+                  placeholder="registrar@school.edu.ph"
+                  value={formData.email}
+                  onChange={e => setFormData({ ...formData, email: e.target.value })}
                 />
               </div>
             </div>
             <div className="space-y-2">
               <Label>Role *</Label>
-              <RadioGroup value={formData.role} onValueChange={(v: 'REGISTRAR' | 'TEACHER' | 'SYSTEM_ADMIN') => setFormData({ ...formData, role: v })} className="grid gap-2">
+              <RadioGroup value={formData.role} onValueChange={(v: 'REGISTRAR' | 'SYSTEM_ADMIN') => setFormData({ ...formData, role: v })} className="grid gap-2">
                 <div className="flex items-start gap-3 rounded-lg border p-2.5 hover:bg-muted/50 cursor-pointer transition-colors relative">
                   <RadioGroupItem value="SYSTEM_ADMIN" id="role-admin" className="mt-1" />
                   <Label htmlFor="role-admin" className="flex flex-col gap-0.5 cursor-pointer flex-1">
@@ -494,14 +491,7 @@ export default function AdminUsers() {
                   <RadioGroupItem value="REGISTRAR" id="role-reg" className="mt-1" />
                   <Label htmlFor="role-reg" className="flex flex-col gap-0.5 cursor-pointer flex-1">
                     <span className="font-bold text-sm">Registrar</span>
-                    <span className="text-[10px] text-muted-foreground leading-tight">Access to enrollment and sections.</span>
-                  </Label>
-                </div>
-                <div className="flex items-start gap-3 rounded-lg border p-2.5 hover:bg-muted/50 cursor-pointer transition-colors relative">
-                  <RadioGroupItem value="TEACHER" id="role-tea" className="mt-1" />
-                  <Label htmlFor="role-tea" className="flex flex-col gap-0.5 cursor-pointer flex-1">
-                    <span className="font-bold text-sm">Teacher</span>
-                    <span className="text-[10px] text-muted-foreground leading-tight">Read-only access to class lists.</span>
+                    <span className="text-[10px] text-muted-foreground leading-tight">Access to enrollment, applications, and sections.</span>
                   </Label>
                 </div>
               </RadioGroup>

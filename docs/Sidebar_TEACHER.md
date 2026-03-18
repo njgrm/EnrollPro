@@ -1,3 +1,11 @@
+> ⚠️ **SUPERSEDED — v3.1.0**
+> This document is no longer valid. The TEACHER role has been removed from the system.
+> Teachers are not system users and do not have login accounts.
+> Teacher records are managed by the SYSTEM_ADMIN via `/teachers`.
+> This file is retained for historical reference only.
+
+---
+
 # Sidebar Navigation — TEACHER Role
 ## School Admission, Enrollment & Information Management System
 

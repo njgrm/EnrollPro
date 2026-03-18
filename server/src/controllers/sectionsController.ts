@@ -10,12 +10,20 @@ export async function listSections(req: Request, res: Response): Promise<void> {
     const sections = await prisma.section.findMany({
       where: { gradeLevelId: parseInt(gradeLevelId as string) },
       include: {
-        advisingTeacher: { select: { id: true, name: true } },
+        advisingTeacher: { select: { id: true, firstName: true, lastName: true, middleName: true } },
         _count: { select: { enrollments: true } },
       },
       orderBy: { name: 'asc' },
     });
-    res.json({ sections });
+    // Format teacher names
+    const formatted = sections.map(s => ({
+      ...s,
+      advisingTeacher: s.advisingTeacher ? {
+        id: s.advisingTeacher.id,
+        name: `${s.advisingTeacher.lastName}, ${s.advisingTeacher.firstName}${s.advisingTeacher.middleName ? ` ${s.advisingTeacher.middleName.charAt(0)}.` : ''}`
+      } : null
+    }));
+    res.json({ sections: formatted });
     return;
   }
 
@@ -39,7 +47,7 @@ export async function listSections(req: Request, res: Response): Promise<void> {
       sections: {
         orderBy: { name: 'asc' },
         include: {
-          advisingTeacher: { select: { id: true, name: true } },
+          advisingTeacher: { select: { id: true, firstName: true, lastName: true, middleName: true } },
           _count: { select: { enrollments: true } },
         },
       },
@@ -56,7 +64,10 @@ export async function listSections(req: Request, res: Response): Promise<void> {
       maxCapacity: s.maxCapacity,
       enrolledCount: s._count.enrollments,
       fillPercent: s.maxCapacity > 0 ? Math.round((s._count.enrollments / s.maxCapacity) * 100) : 0,
-      advisingTeacher: s.advisingTeacher,
+      advisingTeacher: s.advisingTeacher ? {
+        id: s.advisingTeacher.id,
+        name: `${s.advisingTeacher.lastName}, ${s.advisingTeacher.firstName}${s.advisingTeacher.middleName ? ` ${s.advisingTeacher.middleName.charAt(0)}.` : ''}`
+      } : null,
     })),
   }));
 
@@ -64,12 +75,18 @@ export async function listSections(req: Request, res: Response): Promise<void> {
 }
 
 export async function listTeachers(req: Request, res: Response): Promise<void> {
-  const teachers = await prisma.user.findMany({
-    where: { role: 'TEACHER', isActive: true },
-    select: { id: true, name: true, email: true },
-    orderBy: { name: 'asc' }
+  const teachers = await prisma.teacher.findMany({
+    where: { isActive: true },
+    select: { id: true, firstName: true, lastName: true, middleName: true, employeeId: true },
+    orderBy: { lastName: 'asc' }
   });
-  res.json({ teachers });
+  // Format the name for display in dropdowns
+  const formatted = teachers.map(t => ({
+    id: t.id,
+    name: `${t.lastName}, ${t.firstName}${t.middleName ? ` ${t.middleName.charAt(0)}.` : ''}`,
+    employeeId: t.employeeId
+  }));
+  res.json({ teachers: formatted });
 }
 
 export async function createSection(req: Request, res: Response): Promise<void> {

@@ -117,18 +117,18 @@ export default function Step1Personal() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Label htmlFor="lrn" className="text-sm font-semibold">Learner Reference Number (LRN) <span className="text-destructive">*</span></Label>
+              <Label htmlFor="lrn" className="text-sm font-semibold">Learner Reference Number (LRN), if applicable</Label>
               <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
             </div>
             <Input id="lrn" {...register('lrn')} autoComplete="off" placeholder="000000000000" maxLength={12} className={cn("h-11 font-mono tracking-widest font-bold", errors.lrn && "border-destructive")} />
-            <p className="text-[10px] text-muted-foreground italic">12 digits — found on your Grade 6 Report Card (SF9).</p>
+            <p className="text-[10px] text-muted-foreground italic">12 digits — found on the learner's Grade 6 Report Card (SF9).</p>
             {errors.lrn && <p className="text-[11px] text-destructive font-medium flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.lrn.message}</p>}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="psaBcNumber" className="text-sm font-semibold">PSA Birth Certificate Number</Label>
             <Input id="psaBcNumber" {...register('psaBcNumber')} autoComplete="off" placeholder="PSA BC Number" className="h-11 font-bold" />
-            <p className="text-[10px] text-muted-foreground italic">Found on the birth certificate (optional — submit by Oct 31).</p>
+            <p className="text-[10px] text-muted-foreground italic">Found on the birth certificate (While this field is optional, the physical document must be submitted for verification.).</p>
           </div>
         </div>
       </div>

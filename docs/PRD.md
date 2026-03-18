@@ -221,7 +221,7 @@ Apply `font-sans` as a base class on `<body>` globally.
 ```
 SYSTEM_ADMIN
   └─ Inherits all REGISTRAR capabilities
-     + User & Teacher account management
+     + User management
      + Email delivery logs
      + System health diagnostics
      + Full cross-user audit log access
@@ -231,36 +231,30 @@ REGISTRAR
      Online/F2F Admission · Enrollment Management
      SIMS · Teacher Management
      Sections · Settings · Audit Logs
-
-TEACHER
-  └─ Read-only, scoped to own sections
-     My Sections · Limited Dashboard
 ```
 
-| Capability | TEACHER | REGISTRAR | SYSTEM_ADMIN |
-|---|---|---|---|
-| Submit online admission (public portal) | N/A | N/A | N/A |
-| Enter F2F (walk-in) admission | ❌ | ✅ | ✅ |
-| View & process applications | ❌ | ✅ | ✅ |
-| Approve / Reject applications | ❌ | ✅ | ✅ |
-| Manage enrollments | ❌ | ✅ | ✅ |
-| View full SIMS student profiles | ❌ | ✅ | ✅ |
-| Edit student information | ❌ | ✅ | ✅ |
-| Manage grade levels & strands | ❌ | ✅ | ✅ |
-| Manage SCP program configurations | ❌ | ✅ | ✅ |
-| Manage sections (CRUD) | ❌ | ✅ | ✅ |
-| View own assigned sections | ✅ | ✅ | ✅ |
-| Manage teacher records | ❌ | ✅ | ✅ |
-| Provision teacher system accounts | ❌ | ✅ | ✅ |
-| Manage system settings | ❌ | ✅ | ✅ |
-| View audit logs | ❌ | ✅ (partial) | ✅ (full) |
-| Create / deactivate user accounts | ❌ | ❌ | ✅ |
-| Reset user passwords | ❌ | ❌ | ✅ |
-| View email delivery logs | ❌ | ❌ | ✅ |
-| View system health | ❌ | ❌ | ✅ |
-| Assign SYSTEM_ADMIN role | ❌ | ❌ | ❌ (CLI/seed only) |
-| Delete audit logs | ❌ | ❌ | ❌ (no one can) |
-| Delete enrollment records | ❌ | ❌ | ❌ (no one can) |
+| Capability | REGISTRAR | SYSTEM_ADMIN |
+|---|---|---|
+| Submit online admission (public portal) | N/A | N/A |
+| Enter F2F (walk-in) admission | ✅ | ✅ |
+| View & process applications | ✅ | ✅ |
+| Approve / Reject applications | ✅ | ✅ |
+| Manage enrollments | ✅ | ✅ |
+| View full SIMS student profiles | ✅ | ✅ |
+| Edit student information | ✅ | ✅ |
+| Manage grade levels & strands | ✅ | ✅ |
+| Manage SCP program configurations | ✅ | ✅ |
+| Manage sections (CRUD) | ✅ | ✅ |
+| Manage teacher records | ✅ | ✅ |
+| Manage system settings | ✅ | ✅ |
+| View audit logs | ✅ (partial) | ✅ (full) |
+| Create / deactivate user accounts | ❌ | ✅ |
+| Reset user passwords | ❌ | ✅ |
+| View email delivery logs | ❌ | ✅ |
+| View system health | ❌ | ✅ |
+| Assign SYSTEM_ADMIN role | ❌ | ❌ (CLI/seed only) |
+| Delete audit logs | ❌ | ❌ (no one can) |
+| Delete enrollment records | ❌ | ❌ (no one can) |
 
 ---
 
@@ -281,7 +275,6 @@ datasource db {
 // ─── Enums ────────────────────────────────────────────────────────────
 
 enum Role {
-  TEACHER
   REGISTRAR
   SYSTEM_ADMIN
 }
@@ -329,8 +322,6 @@ model User {
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
 
-  teacherProfile     Teacher?
-  sections           Section[]  // sections advised (legacy join, use Teacher relation primarily)
   enrollments        Enrollment[]
   auditLogs          AuditLog[]
   createdBy          User?      @relation("UserCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
@@ -433,7 +424,6 @@ model ScpProgram {
 
 model Teacher {
   id              Int       @id @default(autoincrement())
-  userId          Int       @unique  // links to a User with role: TEACHER
   employeeId      String?   @unique  // DepEd Employee ID (optional but recommended)
   firstName       String
   lastName        String
@@ -444,7 +434,6 @@ model Teacher {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   sections        Section[]
 }
 
@@ -679,10 +668,6 @@ Shown only when the school has configured and activated SCP programs. Displays P
 
 Last 10 `AuditLog` entries in a timeline-style `Card` (reverse chronological).
 
-#### Teacher View
-
-When the authenticated user is a TEACHER, the dashboard shows only: section enrollment counts for their own sections. No stat cards for Pending/Approved/Capacity. No action buttons.
-
 ---
 
 ### 6.4 Enrollment Management
@@ -785,17 +770,11 @@ Chronological list of all enrollments across academic years:
 
 #### Teacher Directory (`/teachers`)
 
-**Columns:** Employee ID · Full Name · Specialization · Assigned Sections (count) · Account Status · Actions (View · Edit · Provision Account)
+**Columns:** Employee ID · Full Name · Specialization · Assigned Sections (count) · Actions (View · Edit)
 
 **Create Teacher:** Opens a modal/sheet with fields: Last Name, First Name, Middle Name, Employee ID (optional), Contact Number, Specialization.
 
-**Provision System Account:** If a teacher profile exists but has no system login, a "Provision Account" action opens a dialog asking for an email address. The system:
-1. Creates a `User` record with `role: TEACHER`, `mustChangePassword: true`, a system-generated temporary password
-2. Links the `Teacher.userId` to the new user
-3. Sends a welcome email with the school name (`SchoolSettings.schoolName`), temporary password, and login instructions
-4. Writes `TEACHER_ACCOUNT_PROVISIONED` to the audit log
-
-#### Teacher Profile (`/teachers/:id`) — 3 tabs
+#### Teacher Profile (`/teachers/:id`) — 2 tabs
 
 **Tab 1 — Profile**
 Fields: Full name, Employee ID, Contact Number, Specialization. Editable by REGISTRAR and SYSTEM_ADMIN.
@@ -805,10 +784,6 @@ All sections currently assigned to this teacher for the active academic year:
 - Grade Level · Section Name · Enrolled Count / Max · Academic Year
 
 "Unassign" removes the teacher from that section (confirmation dialog; audit logged as `SECTION_UPDATED`).
-
-**Tab 3 — System Account**
-Account status badge (Active / Inactive / Not Provisioned). If active: last login timestamp, account creation date, role.
-SYSTEM_ADMIN additionally sees: Deactivate Account button, Reset Password button.
 
 ---
 
@@ -1023,10 +998,8 @@ All endpoints prefixed with `/api`. All responses `Content-Type: application/jso
 |---|---|---|
 | `GET` | `/teachers` | Paginated teacher directory |
 | `POST` | `/teachers` | Create teacher profile |
-| `GET` | `/teachers/:id` | Profile + sections + account info |
+| `GET` | `/teachers/:id` | Profile + sections |
 | `PUT` | `/teachers/:id` | Update teacher profile |
-| `POST` | `/teachers/:id/provision-account` | Create system login for teacher |
-| `PATCH` | `/teachers/:id/deactivate` | Soft-deactivate teacher (isActive = false) |
 
 **Sections:**
 | Method | Endpoint | Description |
@@ -1061,19 +1034,12 @@ All endpoints prefixed with `/api`. All responses `Content-Type: application/jso
 **Audit:**
 `GET /audit-logs` — paginated, filterable
 
-### Teacher (JWT + role: TEACHER)
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/teacher/sections` | Sections assigned to logged-in teacher |
-| `GET` | `/teacher/sections/:id` | Students enrolled in a section |
-
 ### System Admin Only (JWT + role: SYSTEM_ADMIN)
 
 | Method | Endpoint | Description |
 |---|---|---|
 | `GET` | `/admin/users` | All system accounts |
-| `POST` | `/admin/users` | Create REGISTRAR or TEACHER account |
+| `POST` | `/admin/users` | Create REGISTRAR account |
 | `PUT` | `/admin/users/:id` | Update user details |
 | `PATCH` | `/admin/users/:id/deactivate` | Deactivate account |
 | `PATCH` | `/admin/users/:id/reset-password` | Admin password reset |
@@ -1152,16 +1118,6 @@ export const router = createBrowserRouter([
       { path: '/sections',           element: <AppLayout><Sections /></AppLayout> },
       { path: '/audit-logs',         element: <AppLayout><AuditLogs /></AppLayout> },
       { path: '/settings',           element: <AppLayout><Settings /></AppLayout> },
-    ],
-  },
-
-  // ── Protected — Teacher only ─────────────────────────────────────────
-  {
-    element: <ProtectedRoute allowedRoles={['TEACHER']} />,
-    children: [
-      { path: '/dashboard',          element: <AppLayout><Dashboard /></AppLayout> },
-      { path: '/my-sections',        element: <AppLayout><MySections /></AppLayout> },
-      { path: '/my-sections/:id',    element: <AppLayout><SectionRoster /></AppLayout> },
     ],
   },
 
@@ -1398,15 +1354,10 @@ This system must deploy at any Philippine public secondary school with **zero co
 | AC-09 | A `loginToken` older than 5 minutes is rejected — returns `400`. |
 | AC-10 | A registrar logs in and receives a valid JWT. Redirected to `/dashboard`. |
 | AC-11 | A request to any protected route without a JWT returns `401`. |
-| AC-12 | A TEACHER JWT cannot access registrar-only endpoints — returns `403`. |
 | AC-13 | A new user with `mustChangePassword: true` is redirected to `/change-password` after first login. |
 | AC-14 | The registrar views a full student profile at `/students/:id` with all tabs populated. |
 | AC-15 | Editing a student record creates an `AuditLog` entry with `STUDENT_RECORD_UPDATED` listing changed fields. |
 | AC-16 | The LRN field is displayed as read-only in the student profile edit form. |
-| AC-17 | The registrar creates a teacher profile and provisions a system login from `/teachers`. |
-| AC-18 | A provisioned teacher receives a welcome email using `SchoolSettings.schoolName` — no hardcoded school name. |
-| AC-19 | The provisioned teacher must change their password on first login. |
-| AC-20 | The teacher sees only their own assigned sections at `/my-sections`. |
 | AC-21 | SCP options shown in the online and F2F admission form match only active SCP programs in the database. |
 | AC-22 | A school with no SCP programs configured sees no SCP fields in the admission form. |
 | AC-23 | Section creation allows selecting an advising teacher from the Teacher directory. |

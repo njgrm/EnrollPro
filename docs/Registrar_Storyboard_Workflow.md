@@ -4,7 +4,7 @@
 **Document Version:** 3.0.0
 **Document Type:** Full Workflow Storyboard — All Scenarios, All Screens
 **Primary Actor:** School Registrar (role: `REGISTRAR`)
-**Supporting Actor:** Advising Teacher (role: `TEACHER`) · System Administrator (role: `SYSTEM_ADMIN`)
+**Supporting Actor:** System Administrator (role: `SYSTEM_ADMIN`)
 **Policy Basis:** DepEd Order No. 017, s. 2025 — Revised Basic Education Enrollment Policy
 **System Reference:** PRD v3.0.0 (PERN Stack — PostgreSQL · Express · React · Node.js)
 **Modules Covered:** Admission (Online + F2F) · Enrollment Management · SIMS · Teacher Management · Grade Level & Sectioning Management
@@ -40,8 +40,7 @@ Scenes are organized into **six acts** that map to the real DepEd school year, p
 | **Act 2** | Phase 2 — Regular Enrollment | ~1 week before class opening in June |
 | **Act 3** | Active School Year — Ongoing Operations | June → March |
 | **Act 4** | SHS Second Semester | December–January |
-| **Act 5** | End of Year & Archival | March–April |
-| **Special T** | Advising Teacher Login & My Sections | Any time during school year |
+| Act 5 | End of Year & Archival | March–April |
 
 ---
 
@@ -1294,73 +1293,6 @@ Grade 12 learners submit Confirmation Slips. Registrar confirms their continued 
 - Next SY → `ACTIVE`. Dashboard, sections, and portal operate under it.
 
 **System loop returns to Act 0.** The cycle repeats.
-
----
-
----
-
-# ═══════════════════════════════════════════
-# SPECIAL SCENARIO T — ADVISING TEACHER LOGIN
-# ═══════════════════════════════════════════
-
-## SCENE T.1 — Teacher Logs In for the First Time (Forced Password Change)
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ WHEN   │ After the registrar provisions the teacher account     │
-│ WHERE  │ /login → /change-password → /dashboard                 │
-│ WHY    │ mustChangePassword = true on all provisioned accounts  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-**Steps:**
-1. Teacher receives the welcome email with a temporary password.
-2. Clicks "Staff Login" on `/closed` or `/apply` footer → navigates to `/login` (Layer 1 gate passed via navigation state).
-3. Enters email + temporary password → clicks Sign In.
-4. System detects `mustChangePassword = true` → redirects to `/change-password`.
-5. Teacher sets a new password (min 8 chars).
-6. System issues a fresh JWT with `mustChangePassword = false` → redirects to `/dashboard`.
-
----
-
-## SCENE T.2 — Teacher Views Their Section Class List
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ WHEN   │ Any time during the school year                        │
-│ WHERE  │ /my-sections → /my-sections/:id                        │
-│ WHY    │ Advising teachers need the class roster to take        │
-│        │ attendance, update records, etc.                       │
-│ POLICY │ PRD §4 — TEACHER role: READ-ONLY access to own        │
-│        │ sections only. No access to any other module.          │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-**Sidebar shown to TEACHER:**
-```
-  Dashboard         ← limited view (own section stats only)
-  My Sections       ← /my-sections
-```
-
-All other routes (`/applications`, `/students`, `/teachers`, `/sections`, `/settings`, `/audit-logs`) return `HTTP 403 Forbidden` if a teacher attempts to navigate to them.
-
-**What the teacher sees:**
-
-```
-MY SECTIONS
-
-  Grade 7 – Rizal  │  43 enrolled  │  [View Class List]
-
-[View Class List] →
-
-  #   │  LRN             │  Full Name           │  Status
-  ────┼──────────────────┼──────────────────────┼──────────
-  1   │  123456789012    │  DELA CRUZ, Juan R.  │  ENROLLED
-  2   │  234567890123    │  GARCIA, Ana M.       │  ENROLLED
-  ...
-```
-
-**What the teacher cannot see:** SPI fields (IP status, 4Ps, disability), SCP assessment records, application history, other teachers' sections, settings, or audit logs.
 
 ---
 

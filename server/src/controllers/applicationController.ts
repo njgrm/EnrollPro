@@ -245,6 +245,8 @@ export async function store(req: Request, res: Response) {
         isBalikAral: body.isBalikAral ?? false,
         lastYearEnrolled: body.isBalikAral ? body.lastYearEnrolled : null,
         isLearnerWithDisability: body.isLearnerWithDisability ?? false,
+        snedCategory: body.isLearnerWithDisability ? (body.snedCategory || null) : null,
+        hasPwdId: body.isLearnerWithDisability ? (body.hasPwdId ?? false) : false,
         disabilityType: body.isLearnerWithDisability ? (body.disabilityType || []) : [],
 
         // Previous school
@@ -257,6 +259,7 @@ export async function store(req: Request, res: Response) {
 
         // Enrollment preferences
         learnerType: body.learnerType || null,
+        learningModalities: body.learningModalities || [],
         electiveCluster: body.electiveCluster || null,
         scpApplication: body.scpApplication ?? false,
         scpType: body.scpApplication ? body.scpType : null,
@@ -326,6 +329,218 @@ export async function store(req: Request, res: Response) {
     }
 
     res.status(500).json({ message: 'Failed to submit application. Please try again.' });
+  }
+}
+
+// ── Submit F2F walk-in application (authenticated - REGISTRAR/SYSTEM_ADMIN) ──
+export async function storeF2F(req: Request, res: Response) {
+  try {
+    // 1. Find active academic year
+    const settings = await prisma.schoolSettings.findFirst({
+      include: { activeAcademicYear: true },
+    });
+
+    if (!settings?.activeAcademicYear) {
+      return res.status(400).json({ message: 'No active academic year configured. Enrollment is not available.' });
+    }
+
+    const activeYear = settings.activeAcademicYear;
+
+    // 2. Check enrollment gate
+    if (!isEnrollmentOpen(activeYear)) {
+      return res.status(400).json({ message: 'Enrollment is currently closed. Please check back during the enrollment period.' });
+    }
+
+    const body = toUpperCaseRecursive(req.body);
+
+    // 3. Resolve grade level
+    const gradeLevel = await prisma.gradeLevel.findFirst({
+      where: {
+        academicYearId: activeYear.id,
+        name: { contains: body.gradeLevel, mode: 'insensitive' },
+      },
+    });
+
+    if (!gradeLevel) {
+      return res.status(400).json({ message: `Grade ${body.gradeLevel} is not available for the current academic year.` });
+    }
+
+    // 4. Check duplicate LRN in same academic year (if LRN provided)
+    if (body.lrn) {
+      const existingByLrn = await prisma.applicant.findFirst({
+        where: {
+          lrn: body.lrn,
+          academicYearId: activeYear.id,
+        },
+      });
+
+      if (existingByLrn) {
+        return res.status(409).json({
+          message: `An application with LRN ${body.lrn} already exists for this academic year. Tracking number: ${existingByLrn.trackingNumber}.`,
+        });
+      }
+    }
+
+    // 5. Resolve SHS track and strand (for G11)
+    let strandId: number | null = null;
+    let shsTrack: 'ACADEMIC' | 'TECHPRO' | null = null;
+
+    if (body.gradeLevel === '11' && body.shsTrack) {
+      shsTrack = body.shsTrack === 'ACADEMIC' ? 'ACADEMIC' : 'TECHPRO';
+
+      if (body.electiveCluster) {
+        const strand = await prisma.strand.findFirst({
+          where: {
+            academicYearId: activeYear.id,
+            name: { contains: body.electiveCluster, mode: 'insensitive' },
+          },
+        });
+        if (strand) {
+          strandId = strand.id;
+        }
+      }
+    }
+
+    // 6. Determine applicant type
+    let applicantType: string = 'REGULAR';
+    if (body.scpApplication && body.scpType) {
+      applicantType = body.scpType;
+    } else if (body.gradeLevel === '11' && body.electiveCluster === 'AC-STEM') {
+      applicantType = 'STEM_GRADE11';
+    }
+
+    // 7. Build parent contact info (primary contact for quick access)
+    const emailAddress = body.email || null;
+
+    // 8. Parse birthdate
+    const birthDate = new Date(body.birthdate);
+    if (isNaN(birthDate.getTime())) {
+      return res.status(400).json({ message: 'Invalid birthdate format.' });
+    }
+
+    // 9. Create applicant with a temporary tracking number (will update after ID is known)
+    const year = new Date().getFullYear();
+    const tempTracking = `F2F-${year}-TEMP-${Date.now()}`;
+
+    const applicant = await prisma.applicant.create({
+      data: {
+        lrn: body.lrn || null,
+        psaBcNumber: body.psaBcNumber || null,
+        lastName: body.lastName,
+        firstName: body.firstName,
+        middleName: body.middleName || null,
+        suffix: body.extensionName || null,
+        birthDate,
+        sex: body.sex === 'MALE' ? 'MALE' : 'FEMALE',
+        placeOfBirth: body.placeOfBirth || null,
+        religion: body.religion || null,
+
+        // Address as JSON
+        currentAddress: body.currentAddress,
+        permanentAddress: body.permanentAddress || null,
+
+        // Parent/guardian as JSON
+        motherName: body.mother,
+        fatherName: body.father,
+        guardianInfo: body.guardian || null,
+        emailAddress,
+
+        // Background classifications
+        isIpCommunity: body.isIpCommunity ?? false,
+        ipGroupName: body.isIpCommunity ? body.ipGroupName : null,
+        is4PsBeneficiary: body.is4PsBeneficiary ?? false,
+        householdId4Ps: body.is4PsBeneficiary ? body.householdId4Ps : null,
+        isBalikAral: body.isBalikAral ?? false,
+        lastYearEnrolled: body.isBalikAral ? body.lastYearEnrolled : null,
+        isLearnerWithDisability: body.isLearnerWithDisability ?? false,
+        snedCategory: body.isLearnerWithDisability ? (body.snedCategory || null) : null,
+        hasPwdId: body.isLearnerWithDisability ? (body.hasPwdId ?? false) : false,
+        disabilityType: body.isLearnerWithDisability ? (body.disabilityType || []) : [],
+
+        // Previous school
+        lastSchoolName: body.lastSchoolName?.trim() || null,
+        lastSchoolId: body.lastSchoolId?.trim() || null,
+        lastGradeCompleted: body.lastGradeCompleted || null,
+        syLastAttended: body.syLastAttended || null,
+        lastSchoolAddress: body.lastSchoolAddress?.trim() || null,
+        lastSchoolType: body.lastSchoolType || null,
+
+        // Enrollment preferences
+        learnerType: body.learnerType || null,
+        learningModalities: body.learningModalities || [],
+        electiveCluster: body.electiveCluster || null,
+        scpApplication: body.scpApplication ?? false,
+        scpType: body.scpApplication ? body.scpType : null,
+        spaArtField: body.scpType === 'SPA' ? body.spaArtField : null,
+        spsSports: body.scpType === 'SPS' ? (body.spsSports || []) : [],
+        spflLanguage: body.scpType === 'SPFL' ? body.spflLanguage : null,
+
+        // Grades (STEM G11)
+        grade10ScienceGrade: body.g10ScienceGrade ?? null,
+        grade10MathGrade: body.g10MathGrade ?? null,
+
+        // Relations
+        gradeLevelId: gradeLevel.id,
+        strandId,
+        academicYearId: activeYear.id,
+        applicantType: applicantType as any,
+        shsTrack: shsTrack as any,
+        trackingNumber: tempTracking,
+
+        // F2F admission tracking
+        admissionChannel: 'F2F',
+        encodedById: req.user!.userId,
+      },
+    });
+
+    // 10. Generate proper tracking number from ID (F2F prefix)
+    const trackingNumber = `F2F-${year}-${String(applicant.id).padStart(5, '0')}`;
+    await prisma.applicant.update({
+      where: { id: applicant.id },
+      data: { trackingNumber },
+    });
+
+    // 11. Audit log with user info
+    await auditLog({
+      userId: req.user!.userId,
+      actionType: 'F2F_APPLICATION_SUBMITTED',
+      description: `${req.user!.role} encoded F2F walk-in application for ${applicant.firstName} ${applicant.lastName}${body.lrn ? ` (LRN: ${body.lrn})` : ''}. Tracking: ${trackingNumber}`,
+      subjectType: 'Applicant',
+      subjectId: applicant.id,
+      req,
+    });
+
+    // 12. Create email log entry (email sending is async / background)
+    if (emailAddress) {
+      try {
+        await prisma.emailLog.create({
+          data: {
+            recipient: emailAddress,
+            subject: `Application Received – ${trackingNumber}`,
+            trigger: 'APPLICATION_SUBMITTED',
+            status: 'PENDING',
+            applicantId: applicant.id,
+          },
+        });
+      } catch {
+        // Non-critical – don't fail the submission
+      }
+    }
+
+    res.status(201).json({ trackingNumber });
+  } catch (error: any) {
+    console.error('[F2FApplicationStore]', error);
+
+    // Handle Prisma unique constraint violations
+    if (error.code === 'P2002') {
+      const target = error.meta?.target;
+      if (target?.includes('lrn')) {
+        return res.status(409).json({ message: 'An application with this LRN already exists.' });
+      }
+      return res.status(409).json({ message: 'A duplicate application was detected.' });
+    }
+
+    res.status(500).json({ message: 'Failed to submit F2F application. Please try again.' });
   }
 }
 

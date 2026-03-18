@@ -10,12 +10,13 @@ import {
   Settings,
   ScrollText,
   LogOut,
-  BookOpen,
   ChevronsUpDown,
   Calendar,
-  UserCog,
+  UserPlus,
+  GraduationCap,
+  Shield,
+  Activity,
   Mail,
-  Monitor,
 } from 'lucide-react';
 
 import {
@@ -142,7 +143,6 @@ function AppSidebar() {
 
   const isAdmin = user?.role === 'SYSTEM_ADMIN';
   const isRegistrar = user?.role === 'REGISTRAR';
-  const isTeacher = user?.role === 'TEACHER';
   const pathname = location.pathname;
 
   const handleLogout = () => {
@@ -187,36 +187,34 @@ function AppSidebar() {
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                {/* ── Always visible ── */}
-                <NavItem to="/dashboard" icon={LayoutDashboard} label="Dashboard" pathname={pathname} />
-
-                {/* ── Enrollment section (Registrar + Admin) ── */}
+                {/* Items 1–7: shared between REGISTRAR and SYSTEM_ADMIN */}
                 {(isRegistrar || isAdmin) && (
                   <>
+                    <NavDivider label="Admission" />
+                    <NavItem to="/f2f-admission" icon={UserPlus} label="Walk-in Admission" pathname={pathname} />
+
                     <NavDivider label="Enrollment" />
+                    <NavItem to="/dashboard" icon={LayoutDashboard} label="Dashboard" pathname={pathname} />
                     <NavItem to="/applications" icon={ClipboardList} label="Applications" pathname={pathname} />
+
+                    <NavDivider label="Records" />
                     <NavItem to="/students" icon={Users} label="Students" pathname={pathname} />
+                    <NavItem to="/audit-logs" icon={ScrollText} label="Audit Logs" pathname={pathname} />
+
+                    <NavDivider label="Management" />
                     <NavItem to="/sections" icon={School} label="Sections" pathname={pathname} />
+                    <NavItem to="/settings" icon={Settings} label="Settings" pathname={pathname} />
                   </>
                 )}
 
-                {/* ── Teacher-only ── */}
-                {isTeacher && (
-                  <>
-                    <NavDivider label="Classes" />
-                    <NavItem to="/my-sections" icon={BookOpen} label="My Sections" pathname={pathname} />
-                  </>
-                )}
-
-                {/* ── System section (Admin only) ── */}
+                {/* SYSTEM_ADMIN exclusive */}
                 {isAdmin && (
                   <>
                     <NavDivider label="System" />
-                    <NavItem to="/admin/users" icon={UserCog} label="User Management" pathname={pathname} />
+                    <NavItem to="/teachers" icon={GraduationCap} label="Teachers" pathname={pathname} />
+                    <NavItem to="/admin/users" icon={Shield} label="User Management" pathname={pathname} />
                     <NavItem to="/admin/email-logs" icon={Mail} label="Email Logs" pathname={pathname} />
-                    <NavItem to="/admin/system" icon={Monitor} label="System Health" pathname={pathname} />
-                    <NavItem to="/audit-logs" icon={ScrollText} label="Audit Logs" pathname={pathname} />
-                    <NavItem to="/settings" icon={Settings} label="Settings" pathname={pathname} />
+                    <NavItem to="/admin/system" icon={Activity} label="System Health" pathname={pathname} />
                   </>
                 )}
               </SidebarMenu>
@@ -251,17 +249,12 @@ function AppSidebar() {
                       <span className="truncate font-semibold">{user?.name}</span>
                       {user?.role === 'SYSTEM_ADMIN' && (
                         <Badge variant="outline" className="h-4 px-1 shrink-0 text-[9px] font-bold border-purple-200 bg-purple-50 text-purple-700">
-                          ADMIN
+                          System Admin
                         </Badge>
                       )}
                       {user?.role === 'REGISTRAR' && (
                         <Badge variant="outline" className="h-4 px-1 shrink-0 text-[9px] font-bold border-blue-200 bg-blue-50 text-blue-700">
                           REGISTRAR
-                        </Badge>
-                      )}
-                      {user?.role === 'TEACHER' && (
-                        <Badge variant="outline" className="h-4 px-1 shrink-0 text-[9px] font-bold border-emerald-200 bg-emerald-50 text-emerald-700">
-                          TEACHER
                         </Badge>
                       )}
                     </div>

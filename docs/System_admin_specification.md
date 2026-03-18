@@ -80,36 +80,31 @@ The System Admin is **not** involved in day-to-day enrollment operations — tha
 │       │  Settings · Audit Logs (own + system)                    │  │   │
 │       │  Dashboard (full)                                         │  │   │
 │       │                                                          │  │   │
-│   TEACHER  ──── read-only, scoped ──────────────────────────┐   │  │   │
-│                                                             │   │  │   │
-│       My Sections (own sections only) · Dashboard (limited)│   │  │   │
-│                                                             │   │  │   │
-└─────────────────────────────────────────────────────────────┴───┴──┴───┘
+└──────────────────────────────────────────────────────────────────┴──┴───┘
 ```
 
 **Updated Role Comparison Table:**
 
-| Capability | TEACHER | REGISTRAR | SYSTEM_ADMIN |
-|---|---|---|---|
-| View own sections + class lists | ✅ | ✅ | ✅ |
-| View all applications | ❌ | ✅ | ✅ |
-| Approve / Reject applications | ❌ | ✅ | ✅ |
-| Manage SCP assessment workflow | ❌ | ✅ | ✅ |
-| Enter F2F walk-in applications | ❌ | ✅ | ✅ |
-| Manage sections (CRUD) | ❌ | ✅ | ✅ |
-| Search all students | ❌ | ✅ | ✅ |
-| Edit student records (4-tab profile) | ❌ | ✅ | ✅ |
-| Manage teachers (CRUD) | ❌ | ✅ | ✅ |
-| Provision teacher system accounts | ❌ | ✅ | ✅ |
-| Manage settings (school profile, AY, strands, SCP, gate) | ❌ | ✅ | ✅ |
-| View audit logs | ❌ | ✅ (own + system) | ✅ (all users) |
-| Create / Edit / Deactivate user accounts | ❌ | ❌ | ✅ |
-| Reset another user's password | ❌ | ❌ | ✅ |
-| View email delivery logs | ❌ | ❌ | ✅ |
-| View system health & diagnostics | ❌ | ❌ | ✅ |
-| Assign the ADMIN role to a user | ❌ | ❌ | ❌ (CLI/seed only) |
-| Delete audit logs | ❌ | ❌ | ❌ (no one can) |
-| Delete enrollment records | ❌ | ❌ | ❌ (no one can) |
+| Capability | REGISTRAR | SYSTEM_ADMIN |
+|---|---|---|
+| View sections + class lists | ✅ | ✅ |
+| View all applications | ✅ | ✅ |
+| Approve / Reject applications | ✅ | ✅ |
+| Manage SCP assessment workflow | ✅ | ✅ |
+| Enter F2F walk-in applications | ✅ | ✅ |
+| Manage sections (CRUD) | ✅ | ✅ |
+| Search all students | ✅ | ✅ |
+| Edit student records (4-tab profile) | ✅ | ✅ |
+| Manage teachers (CRUD) | ✅ | ✅ |
+| Manage settings (school profile, AY, strands, SCP, gate) | ✅ | ✅ |
+| View audit logs | ✅ (own + system) | ✅ (all users) |
+| Create / Edit / Deactivate user accounts | ❌ | ✅ |
+| Reset another user's password | ❌ | ✅ |
+| View email delivery logs | ❌ | ✅ |
+| View system health & diagnostics | ❌ | ✅ |
+| Assign the ADMIN role to a user | ❌ | ❌ (CLI/seed only) |
+| Delete audit logs | ❌ | ❌ (no one can) |
+| Delete enrollment records | ❌ | ❌ (no one can) |
 
 ---
 
@@ -971,7 +966,6 @@ export function SidebarContent() {
   const { user } = useAuthStore();
   const isAdmin     = user?.role === 'SYSTEM_ADMIN';
   const isRegistrar = user?.role === 'REGISTRAR';
-  const isTeacher   = user?.role === 'TEACHER';
 
   return (
     <nav className="flex flex-col gap-1 px-3 py-4">
@@ -986,11 +980,6 @@ export function SidebarContent() {
           <NavItem to="/students"     icon={Users}         label="Students" />
           <NavItem to="/sections"     icon={School}        label="Sections" />
         </>
-      )}
-
-      {/* ── Teacher-only ─────────────────────────────────── */}
-      {isTeacher && (
-        <NavItem to="/my-sections" icon={BookOpen} label="My Sections" />
       )}
 
       {/* ── System section (Admin only) ──────────────────── */}

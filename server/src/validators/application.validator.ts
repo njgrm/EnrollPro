@@ -22,7 +22,7 @@ const optionalAddressSchema = z.object({
 
 export const applicationSubmitSchema = z.object({
   // Reference numbers
-  lrn: z.string().min(1, 'LRN is required').regex(/^\d{12}$/, 'LRN must be exactly 12 numeric digits'),
+  lrn: z.string().regex(/^\d{12}$/, 'LRN must be exactly 12 numeric digits').optional().nullable(),
   psaBcNumber: z.string().optional().nullable(),
 
   // Grade level & program
@@ -50,6 +50,8 @@ export const applicationSubmitSchema = z.object({
   isBalikAral: z.boolean().default(false),
   lastYearEnrolled: z.string().optional().nullable(),
   isLearnerWithDisability: z.boolean().default(false),
+  snedCategory: z.enum(['a1', 'a2']).optional().nullable(),
+  hasPwdId: z.boolean().default(false),
   disabilityType: z.array(z.string()).default([]),
 
   // Address
@@ -98,6 +100,7 @@ export const applicationSubmitSchema = z.object({
 
   // Learner type
   learnerType: z.enum(['REGULAR', 'TRANSFEREE', 'RETURNING LEARNER', 'OSCYA', 'ALS']),
+  learningModalities: z.array(z.string()).default([]),
 });
 
 export const approveSchema = z.object({

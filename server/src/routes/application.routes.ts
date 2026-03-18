@@ -27,6 +27,9 @@ const submitLimiter = rateLimit({
 router.post('/', submitLimiter, validate(applicationSubmitSchema), ctrl.store);
 router.get('/track/:trackingNumber', ctrl.track);
 
+// F2F Walk-in Admission - REGISTRAR + SYSTEM_ADMIN (authenticated)
+router.post('/f2f', authenticate, authorize('REGISTRAR', 'SYSTEM_ADMIN'), validate(applicationSubmitSchema), ctrl.storeF2F);
+
 // Protected routes - REGISTRAR + SYSTEM_ADMIN
 router.get('/', authenticate, authorize('REGISTRAR', 'SYSTEM_ADMIN'), ctrl.index);
 router.get('/:id', authenticate, authorize('REGISTRAR', 'SYSTEM_ADMIN'), ctrl.show);

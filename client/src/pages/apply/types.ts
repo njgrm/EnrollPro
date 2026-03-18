@@ -8,7 +8,7 @@ export const admissionSchema = z.object({
 
   // Section 1: Reference Numbers
   schoolYear: z.string().min(1, 'School year is required'),
-  lrn: z.string().min(1, 'LRN is required').regex(/^\d{12}$/, 'LRN must be exactly 12 numeric digits'),
+  lrn: z.string().regex(/^\d{12}$/, 'LRN must be exactly 12 numeric digits').optional().or(z.literal('')),
   psaBcNumber: z.string().optional(),
 
   // Section 2: Grade Level & Program
@@ -38,7 +38,9 @@ export const admissionSchema = z.object({
   lastYearEnrolled: z.string().optional(),
   lastGradeLevel: z.string().optional(),
   isLearnerWithDisability: z.boolean().default(false),
+  snedCategory: z.enum(['a1', 'a2']).optional(),
   disabilityType: z.array(z.string()).default([]),
+  hasPwdId: z.boolean().default(false),
   snedPlacement: z.enum(['Inclusive Education', 'Special Education Center']).optional(),
 
   // Section 5: Address Information
@@ -104,6 +106,7 @@ export const admissionSchema = z.object({
 
   // Section 9.2: Learner Type
   learnerType: z.enum(['Regular', 'Transferee', 'Returning Learner', 'OSCYA', 'ALS']),
+  learningModalities: z.array(z.string()).default([]),
 
   // Section 10: Certification
   isCertifiedTrue: z.boolean().refine((val) => val === true, {
@@ -148,15 +151,47 @@ export const OLD_STRANDS = [
   { value: 'OS-TVLIA', label: 'TVL - Industrial Arts' },
 ];
 
-export const DISABILITY_TYPES = [
-  'Visual Impairment', 'Hearing Impairment', 'Physical/Motor Disability',
-  'Intellectual Disability', 'Learning Disability', 'Speech/Language Disorder',
-  'Emotional/Behavioral Disorder', 'Autism Spectrum Disorder', 'Multiple Disabilities', 'Other'
+export const DISABILITY_TYPES_A1 = [
+  'Attention Deficit Hyperactivity Disorder',
+  'Autism Spectrum Disorder',
+  'Cerebral Palsy',
+  'Emotional-Behavior Disorder',
+  'Hearing Impairment',
 ];
+
+export const DISABILITY_TYPES_A2 = [
+  'Difficulty in Applying Knowledge',
+  'Difficulty in Communicating',
+  'Intellectual Disability',
+  'Learning Disability',
+  'Multiple Disabilities',
+  'Orthopedic/Physical Handicap',
+  'Speech/Language Disorder',
+  'Special Health Problem/Chronic Disease',
+  'Visual Impairment',
+  'Difficulty in Displaying Interpersonal Behavior (Emotional and Behavioral)',
+  'Difficulty in Hearing',
+  'Difficulty in Mobility (Walking, Climbing and Grasping)',
+  'Difficulty in Performing Adaptive Skills (Self-Care)',
+  'Difficulty in Remembering, Concentrating, Paying Attention and Understanding',
+  'Difficulty in Seeing',
+];
+
+export const DISABILITY_TYPES = [...DISABILITY_TYPES_A1, ...DISABILITY_TYPES_A2];
 
 export const SPA_ART_FIELDS = [
   'Visual Arts', 'Music (Vocal)', 'Music (Instrumental)', 'Theatre Arts',
   'Dance Arts', 'Media Arts', 'Creative Writing (English)', 'Creative Writing (Filipino)'
+];
+
+export const LEARNING_MODALITIES = [
+  'Blended (Combination)',
+  'Educational Television',
+  'Homeschooling',
+  'Modular (Digital)',
+  'Modular (Print)',
+  'Online',
+  'Radio-Based Instruction',
 ];
 
 export const SPS_SPORTS = [

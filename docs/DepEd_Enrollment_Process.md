@@ -686,19 +686,13 @@ PENDING → REJECTED                                                       (eith
 
 ### Module 4 — Teacher Management
 
-**Key policy facts that drive design:**
-- Teachers in this system are both staff members (with login accounts) and section advisers (assigned to sections).
-- A teacher may not have a system account initially — the registrar creates their profile first, then optionally provisions an account.
-- Teacher accounts have `role: TEACHER` — they have read-only access to their own sections and no access to enrollment, SIMS, or settings.
-- Teachers are identified by their DepEd Employee ID (`Teacher.employeeId`) — this is the canonical identifier in DepEd HR records.
-- When a teacher account is provisioned, a welcome email is sent using `SchoolSettings.schoolName` in the subject. No hardcoded school name.
-- A deactivated teacher account (`isActive = false`) takes effect on the teacher's very next API call — they are not manually logged out but are rejected on the next request.
+Teachers in this system are NOT system users. They do not have login accounts and cannot access the system. Teacher profiles are created and managed by the Registrar and System Admin primarily for the purpose of assigning them as advisers to sections.
 
-**Teacher ↔ Section relationship:**
-```
-Teacher     1────* Section    (advising teacher assignment)
-User        1────1 Teacher    (optional; teacher may have no login account)
-```
+- **Teacher Profile:** Includes name, employee ID, contact number, and specialization.
+- **Section Assignment:** Each section in Module 5 must be assigned an advising teacher from the teacher directory.
+- **No System Access:** All enrollment-related actions, student record management, and sectioning are performed by the REGISTRAR or SYSTEM_ADMIN.
+
+---
 
 ### Module 5 — Grade Level & Sectioning Management
 

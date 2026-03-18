@@ -770,23 +770,17 @@ After a learner is enrolled (`status = ENROLLED`), their `Applicant` record beco
 
 ### Module 4 — Teacher Management
 
-Teacher records are independent of the `Applicant` / BEEF data, but they are connected through the section assignment that links enrolled students to teacher-advised sections.
+Teacher profiles are managed by the REGISTRAR and SYSTEM_ADMIN. They are used primarily for section assignment as advisers.
 
-**How admission data connects to Teacher Management:**
+**Teacher profiles connect to sections:**
 
 ```
-Applicant (lrn, name, gradeLevelId)
-    ↓ enrolled into
-Enrollment (sectionId, enrolledById)
-    ↓ section is advised by
-Section (advisingTeacherId → Teacher.id → User.id)
-    ↓ teacher views via
-/my-sections → GET /api/teacher/sections → filtered by req.user → Teacher.id
+Section (advisingTeacherId → Teacher.id)
 ```
 
-**What teachers see about BEEF data:** Teachers can view the **roster** of their assigned sections at `/my-sections/:id` — this shows learner names, LRNs, and grade levels only. SPI fields (disability, IP, 4Ps status), SCP assessment records, and application history are **not shown to teachers**. These remain restricted to REGISTRAR and SYSTEM_ADMIN.
+**What the registrar sees:** The teacher directory (`/teachers`) allows creating and editing teacher profiles (name, employee ID, specialization). These profiles then appear in the **Advising Teacher** dropdown when creating or editing sections in Module 5.
 
-**Teacher account provisioning:** When the registrar provisions a system account for a teacher from `/teachers/:id`, a welcome email is sent. The email subject and body use `SchoolSettings.schoolName` at send time — never a hardcoded school name.
+**Role of teachers in the system:** Teachers are NOT system users. They do not have login accounts and cannot access the system. All section management, student record updates, and enrollment actions are performed by the REGISTRAR or SYSTEM_ADMIN.
 
 ---
 

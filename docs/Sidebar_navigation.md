@@ -15,7 +15,7 @@ The application has two distinct navigation contexts:
 | Context | Who Sees It | Layout |
 |---|---|---|
 | **Public** | Unauthenticated visitors | No sidebar — full-page guest layout |
-| **Authenticated Dashboard** | REGISTRAR · SYSTEM_ADMIN · TEACHER | Left sidebar with role-filtered nav items |
+| **Authenticated Dashboard** | REGISTRAR · SYSTEM_ADMIN | Left sidebar with role-filtered nav items |
 
 The sidebar is rendered inside `AppLayout.tsx` and is shared by both roles. Each nav item is conditionally rendered based on the JWT role decoded from the Zustand `authStore`.
 
@@ -77,17 +77,6 @@ The sidebar is rendered inside `AppLayout.tsx` and is shared by both roles. Each
 | 6 | Sections | `School` | `/sections` | REGISTRAR, SYSTEM_ADMIN | §6.7 |
 | 7 | Audit Logs | `ScrollText` | `/audit-logs` | REGISTRAR, SYSTEM_ADMIN | §6.9 |
 | 8 | Settings | `Settings` | `/settings` | REGISTRAR, SYSTEM_ADMIN | §6.8 |
-
----
-
-### TEACHER Role — Reduced Sidebar
-
-| # | Label | Icon (Lucide React) | Route | Role Access | PRD Section |
-|---|---|---|---|---|---|
-| 1 | Dashboard | `LayoutDashboard` | `/dashboard` | TEACHER (limited view) | §6.2 |
-| 2 | My Sections | `BookOpen` | `/my-sections` | TEACHER only | Teacher API |
-
-> **All other nav items are hidden from TEACHER role.** Navigating to a REGISTRAR-only route while authenticated as TEACHER returns `HTTP 403 Forbidden`.
 
 ---
 
@@ -168,11 +157,6 @@ API   : GET /api/dashboard/stats
 - Last 10 `AuditLog` entries in chronological reverse order
 - Each entry shows: timestamp, user, `actionType` badge, description
 - Rendered inside a shadcn/ui `Card` with a vertical timeline line
-
-**What the TEACHER sees on `/dashboard`:**
-- A simplified read-only view showing only their section stats (e.g., count of enrolled students in their sections)
-- No stat cards for Pending/Approved/Full Sections
-- No enrollment action buttons
 
 ---
 
@@ -742,69 +726,29 @@ SETTINGS > Enrollment Gate
 
 ---
 
-### 9. My Sections — `/my-sections` (TEACHER ONLY)
-
-```
-Icon  : BookOpen
-Route : /my-sections
-Auth  : JWT required — TEACHER only
-Page  : client/src/pages/my-sections/Index.tsx
-API   : GET /api/teacher/sections
-        GET /api/teacher/sections/:id
-```
-
-> **This item is NOT visible to the REGISTRAR role.** It appears only in the TEACHER sidebar.
-
-**What the teacher sees:**
-
-```
-MY SECTIONS
-
-  Section         │ Grade Level │ Enrolled │ Actions
-  ────────────────┼─────────────┼──────────┼──────────────────
-  Grade 7 – Rizal │ Grade 7     │ 43       │ [View Class List]
-
-
-[View Class List] → shows enrolled students in this section:
-
-  LRN             │ Full Name            │ Status
-  ────────────────┼──────────────────────┼──────────────
-  123456789012    │ DELA CRUZ, Juan R.   │ ✓ ENROLLED
-  234567890123    │ GARCIA, Ana M.       │ ✓ ENROLLED
-  ...
-```
-
-**Restrictions:**
-- Teacher sees **only sections where `advisingTeacherId = their user ID`**
-- All other routes (`/applications`, `/sections`, `/students`, `/audit-logs`, `/settings`) return `HTTP 403 Forbidden` for the TEACHER role
-- No approve, reject, edit, or create actions available to teachers — entirely read-only
-
----
-
 ## Route Access Matrix
 
-| Route | TEACHER | REGISTRAR | SYSTEM_ADMIN | Unauthenticated |
-|---|---|---|---|---|
-| `/dashboard` | ✅ Limited (section stats only) | ✅ Full | ✅ Full + System Panel | → `/login` |
-| `/f2f-admission` | ❌ 403 | ✅ Full | ✅ Full | → `/login` |
-| `/applications` | ❌ 403 | ✅ Full | ✅ Full | → `/login` |
-| `/applications/:id` | ❌ 403 | ✅ Full | ✅ Full | → `/login` |
-| `/students` | ❌ 403 | ✅ Full | ✅ Full | → `/login` |
-| `/students/:id` | ❌ 403 | ✅ Full (4-tab profile) | ✅ Full (4-tab profile) | → `/login` |
-| `/teachers` | ❌ 403 | ✅ Full CRUD | ✅ Full CRUD | → `/login` |
-| `/teachers/:id` | ❌ 403 | ✅ Full (3-tab profile) | ✅ Full (3-tab profile + admin actions) | → `/login` |
-| `/sections` | ❌ 403 | ✅ Full CRUD | ✅ Full CRUD | → `/login` |
-| `/audit-logs` | ❌ 403 | ✅ Own + system events (no ADMIN_ types, no user filter, no export) | ✅ Full (all users, ADMIN_ types, user filter, CSV export) | → `/login` |
-| `/settings` | ❌ 403 | ✅ Full (all 4 tabs) | ✅ Full (all 4 tabs) | → `/login` |
-| `/my-sections` | ✅ Read-only (own sections) | ❌ Hidden | ❌ Hidden | → `/login` |
-| `/admin/users` | ❌ 403 | ❌ 403 | ✅ Full CRUD | → `/login` |
-| `/admin/email-logs` | ❌ 403 | ❌ 403 | ✅ Full + Resend | → `/login` |
-| `/admin/system` | ❌ 403 | ❌ 403 | ✅ Read-only | → `/login` |
-| `/change-password` | ✅ (when required) | ✅ (when required) | ✅ (when required) | → `/login` |
-| `/apply` | N/A (public) | N/A (public) | N/A (public) | ✅ if gate OPEN; → `/closed` if gate OFF |
-| `/closed` | N/A (public) | N/A (public) | N/A (public) | ✅ Always accessible |
-| `/track/:trackingNumber` | N/A (public) | N/A (public) | N/A (public) | ✅ Always accessible |
-| `/login` | → `/dashboard` | → `/dashboard` | → `/dashboard` | ✅ Login form |
+| Route | REGISTRAR | SYSTEM_ADMIN | Unauthenticated |
+|---|---|---|---|
+| `/dashboard` | ✅ Full | ✅ Full + System Panel | → `/login` |
+| `/f2f-admission` | ✅ Full | ✅ Full | → `/login` |
+| `/applications` | ✅ Full | ✅ Full | → `/login` |
+| `/applications/:id` | ✅ Full | ✅ Full | → `/login` |
+| `/students` | ✅ Full | ✅ Full | → `/login` |
+| `/students/:id` | ✅ Full (4-tab profile) | ✅ Full (4-tab profile) | → `/login` |
+| `/teachers` | ✅ Full CRUD | ✅ Full CRUD | → `/login` |
+| `/teachers/:id` | ✅ Full (3-tab profile) | ✅ Full (3-tab profile + admin actions) | → `/login` |
+| `/sections` | ✅ Full CRUD | ✅ Full CRUD | → `/login` |
+| `/audit-logs` | ✅ Own + system events (no ADMIN_ types, no user filter, no export) | ✅ Full (all users, ADMIN_ types, user filter, CSV export) | → `/login` |
+| `/settings` | ✅ Full (all 4 tabs) | ✅ Full (all 4 tabs) | → `/login` |
+| `/admin/users` | ❌ 403 | ✅ Full CRUD | → `/login` |
+| `/admin/email-logs` | ❌ 403 | ✅ Full + Resend | → `/login` |
+| `/admin/system` | ❌ 403 | ✅ Read-only | → `/login` |
+| `/change-password` | ✅ (when required) | ✅ (when required) | → `/login` |
+| `/apply` | N/A (public) | N/A (public) | ✅ if gate OPEN; → `/closed` if gate OFF |
+| `/closed` | N/A (public) | N/A (public) | ✅ Always accessible |
+| `/track/:trackingNumber` | N/A (public) | N/A (public) | ✅ Always accessible |
+| `/login` | → `/dashboard` | → `/dashboard` | ✅ Login form |
 
 ---
 
@@ -841,7 +785,6 @@ client/src/
 │   ├── sections/Index.tsx      ← /sections
 │   ├── audit-logs/Index.tsx    ← /audit-logs
 │   ├── settings/Index.tsx      ← /settings (4 tabs)
-│   ├── my-sections/Index.tsx   ← /my-sections (teacher only)
 │   ├── auth/
 │   │   ├── Login.tsx           ← /login
 │   │   └── ChangePassword.tsx  ← /change-password
@@ -863,7 +806,6 @@ client/src/
 1. **Role filtering** — The sidebar renders three conditional sections based on role:
    - **Always visible:** Dashboard
    - **Admission section** (REGISTRAR + SYSTEM_ADMIN): Walk-in Admission, Applications, Students, Teachers, Sections
-   - **Teacher-only:** My Sections
    - **System section** (SYSTEM_ADMIN only): User Management, Email Logs, System Health
    - **Records section** (REGISTRAR + SYSTEM_ADMIN): Audit Logs, Settings
 
@@ -924,33 +866,30 @@ The SYSTEM_ADMIN role sees the full sidebar including admin-only items. The side
 └─────────────────────────────────┘
 ```
 
-### Three-Role Sidebar Comparison
+### Two-Role Sidebar Comparison
 
-| Nav Item | Route | TEACHER | REGISTRAR | SYSTEM_ADMIN |
-|---|---|---|---|---|
-| Dashboard | `/dashboard` | ✅ Limited | ✅ Full | ✅ Full + System Panel |
-| Walk-in Admission | `/f2f-admission` | ❌ | ✅ | ✅ |
-| Applications | `/applications` | ❌ | ✅ | ✅ |
-| Students | `/students` | ❌ | ✅ | ✅ |
-| Teachers | `/teachers` | ❌ | ✅ | ✅ |
-| Sections | `/sections` | ❌ | ✅ | ✅ |
-| My Sections | `/my-sections` | ✅ | ❌ | ❌ |
-| User Management | `/admin/users` | ❌ | ❌ | ✅ |
-| Email Logs | `/admin/email-logs` | ❌ | ❌ | ✅ |
-| System Health | `/admin/system` | ❌ | ❌ | ✅ |
-| Audit Logs | `/audit-logs` | ❌ | ✅ (partial) | ✅ (full + export) |
-| Settings | `/settings` | ❌ | ✅ | ✅ |
+| Nav Item | Route | REGISTRAR | SYSTEM_ADMIN |
+|---|---|---|---|
+| Dashboard | `/dashboard` | ✅ Full | ✅ Full + System Panel |
+| Walk-in Admission | `/f2f-admission` | ✅ | ✅ |
+| Applications | `/applications` | ✅ | ✅ |
+| Students | `/students` | ✅ | ✅ |
+| Teachers | `/teachers` | ✅ | ✅ |
+| Sections | `/sections` | ✅ | ✅ |
+| User Management | `/admin/users` | ❌ | ✅ |
+| Email Logs | `/admin/email-logs` | ❌ | ✅ |
+| System Health | `/admin/system` | ❌ | ✅ |
+| Audit Logs | `/audit-logs` | ✅ (partial) | ✅ (full + export) |
+| Settings | `/settings` | ✅ | ✅ |
 
 ### `SidebarContent.tsx` Rendering Logic
 
 ```tsx
 const isAdmin     = user?.role === 'SYSTEM_ADMIN';
 const isRegistrar = user?.role === 'REGISTRAR';
-const isTeacher   = user?.role === 'TEACHER';
 
 // Dashboard:         always shown
 // Walk-in/Applications/Students/Teachers/Sections: isRegistrar || isAdmin
-// My Sections:       isTeacher only
 // User Mgmt/Email Logs/System Health: isAdmin only
 // Audit Logs/Settings: isRegistrar || isAdmin
 ```
@@ -961,7 +900,6 @@ const isTeacher   = user?.role === 'TEACHER';
 |---|---|---|
 | `SYSTEM_ADMIN` | `● System Admin` | Purple / violet |
 | `REGISTRAR` | `● Registrar` | Accent (school logo color) |
-| `TEACHER` | `● Teacher` | Blue |
 
 ---
 
