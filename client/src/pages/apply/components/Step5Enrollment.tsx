@@ -27,7 +27,7 @@ export default function Step5Enrollment() {
     <div className="space-y-12">
       {/* Grade Level Selector */}
       <div className="space-y-6">
-        <Label className="text-sm font-bold uppercase tracking-widest text-[#061E29]">Grade Level to Enroll *</Label>
+        <Label className="text-sm font-bold uppercase tracking-widest text-primary">Grade Level to Enroll *</Label>
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mt-2">
           {grades.map((g) => (
             <button
@@ -47,8 +47,8 @@ export default function Step5Enrollment() {
               className={cn(
                 "h-16 rounded-xl border-2 font-bold text-lg transition-all flex items-center justify-center shadow-sm",
                 gradeLevel === g
-                  ? "border-[#061E29] bg-[#061E29] text-white pointer-events-none"
-                  : "border-border bg-white text-muted-foreground hover:bg-[#061E29]/5"
+                  ? "border-primary bg-primary text-primary-foreground pointer-events-none"
+                  : "border-border bg-white text-muted-foreground hover:bg-primary/5"
               )}
             >
               G{g}
@@ -67,18 +67,18 @@ export default function Step5Enrollment() {
             className="overflow-hidden"
           >
             <div className="space-y-8 pb-8">
-              <div className="p-6 border bg-[#061E29]/5 border-[#061E29]/20 rounded-2xl space-y-6 shadow-sm">
+              <div className="p-6 border bg-primary/5 border-primary/20 rounded-2xl space-y-6 shadow-sm">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
-                    <BookOpen className="w-5 h-5 text-[#061E29]" />
+                    <BookOpen className="w-5 h-5 text-primary" />
                   </div>
-                  <Label className="text-base font-bold text-[#061E29]">Application Type *</Label>
+                  <Label className="text-base font-bold text-primary">Application Type *</Label>
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <button type="button" className={cn(
                     "flex flex-col p-4 rounded-xl border-2 transition-all cursor-pointer text-left",
-                    !scpApplication ? "border-[#061E29] bg-[#061E29] text-white pointer-events-none" : "border-border bg-white hover:bg-[#061E29]/5"
+                    !scpApplication ? "border-primary bg-primary text-primary-foreground pointer-events-none" : "border-border bg-white hover:bg-primary/5"
                   )} onClick={() => { setValue('scpApplication', false); setValue('scpType', undefined); }}>
                     <div className="flex items-center gap-3 mb-1">
                       <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center", !scpApplication ? "border-white" : "border-muted-foreground")}>
@@ -86,12 +86,12 @@ export default function Step5Enrollment() {
                       </div>
                       <span className="font-bold">Regular Section</span>
                     </div>
-                    <p className={cn("text-[11px] pl-8", !scpApplication ? "text-white/80" : "text-muted-foreground")}>Open admission — no entrance exam required.</p>
+                    <p className={cn("text-[11px] pl-8", !scpApplication ? "text-primary-foreground/80" : "text-muted-foreground")}>Open admission — no entrance exam required.</p>
                   </button>
 
                   <button type="button" className={cn(
                     "flex flex-col p-4 rounded-xl border-2 transition-all cursor-pointer text-left",
-                    scpApplication ? "border-[#061E29] bg-[#061E29] text-white pointer-events-none" : "border-border bg-white hover:bg-[#061E29]/5"
+                    scpApplication ? "border-primary bg-primary text-primary-foreground pointer-events-none" : "border-border bg-white hover:bg-primary/5"
                   )} onClick={() => setValue('scpApplication', true)}>
                     <div className="flex items-center gap-3 mb-1">
                       <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center", scpApplication ? "border-white" : "border-muted-foreground")}>
@@ -99,7 +99,7 @@ export default function Step5Enrollment() {
                       </div>
                       <span className="font-bold">Special Curricular Program (SCP)</span>
                     </div>
-                    <p className={cn("text-[11px] pl-8", scpApplication ? "text-white/80" : "text-muted-foreground")}>Requires qualifying assessment or audition.</p>
+                    <p className={cn("text-[11px] pl-8", scpApplication ? "text-primary-foreground/80" : "text-muted-foreground")}>Requires qualifying assessment or audition.</p>
                   </button>
                 </div>
 
@@ -112,7 +112,7 @@ export default function Step5Enrollment() {
                       className="overflow-hidden"
                     >
                       <div className="pt-6 space-y-6">
-                        <Label className="text-sm font-bold uppercase tracking-widest text-[#061E29]">Select SCP Program *</Label>
+                        <Label className="text-sm font-bold uppercase tracking-widest text-primary">Select SCP Program *</Label>
                         <div className="grid grid-cols-1 gap-3">
                           {[
                             { id: 'STE', label: 'Science, Technology & Engineering (STE)', desc: 'Written entrance exam administered by the SDO.' },
@@ -128,8 +128,8 @@ export default function Step5Enrollment() {
                                 className={cn(
                                   "w-full flex flex-col p-4 rounded-xl border-2 transition-all cursor-pointer text-left",
                                   scpType === p.id 
-                                    ? "border-[#061E29] bg-[#061E29] text-white pointer-events-none shadow-md" 
-                                    : "border-border bg-white text-foreground hover:bg-[#061E29]/5"
+                                    ? "border-primary bg-primary text-primary-foreground pointer-events-none shadow-md" 
+                                    : "border-border bg-white text-foreground hover:bg-primary/5"
                                 )} 
                                 onClick={() => setValue('scpType', p.id as 'STE' | 'SPA' | 'SPS' | 'SPJ' | 'SPFL' | 'SPTVE')}
                               >
@@ -142,7 +142,7 @@ export default function Step5Enrollment() {
                                   </div>
                                   <span className="font-bold">{p.label}</span>
                                 </div>
-                                <p className={cn("text-[11px] pl-8 italic", scpType === p.id ? "text-white/80" : "text-muted-foreground")}>{p.desc}</p>
+                                <p className={cn("text-[11px] pl-8 italic", scpType === p.id ? "text-primary-foreground/80" : "text-muted-foreground")}>{p.desc}</p>
                               </button>
                               
                               {/* Sub-fields rendered outside button to avoid nesting issues */}
@@ -157,7 +157,7 @@ export default function Step5Enrollment() {
                                     <div className="pl-8 pb-4 pt-4 space-y-4">
                                       {p.id === 'SPA' && (
                                         <div className="space-y-2">
-                                          <Label className="text-[10px] font-bold uppercase text-[#061E29]">Preferred Art Field *</Label>
+                                          <Label className="text-[10px] font-bold uppercase text-primary">Preferred Art Field *</Label>
                                           <Select onValueChange={(val) => setValue('spaArtField', val)} defaultValue={watch('spaArtField')}>
                                             <SelectTrigger className="h-10 bg-white border-2 font-bold">
                                               <SelectValue placeholder="Select Art Field" />
@@ -171,7 +171,7 @@ export default function Step5Enrollment() {
 
                                       {p.id === 'SPS' && (
                                         <div className="space-y-2">
-                                          <Label className="text-[10px] font-bold uppercase text-[#061E29]">Primary Sport *</Label>
+                                          <Label className="text-[10px] font-bold uppercase text-primary">Primary Sport *</Label>
                                           <div className="grid grid-cols-2 gap-2">
                                             {SPS_SPORTS.map(s => (
                                               <div key={s} className="flex items-center space-x-2">
@@ -183,7 +183,7 @@ export default function Step5Enrollment() {
                                                     if (checked) setValue('spsSports', [...curr, s]);
                                                     else setValue('spsSports', curr.filter(i => i !== s));
                                                   }}
-                                                  className="data-[state=checked]:bg-[#061E29] data-[state=checked]:text-white border-[#061E29]"
+                                                  className="data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground border-primary"
                                                 />
                                                 <Label htmlFor={`sport-${s}`} className="text-xs font-medium cursor-pointer">{s}</Label>
                                               </div>
@@ -194,7 +194,7 @@ export default function Step5Enrollment() {
 
                                       {p.id === 'SPFL' && (
                                         <div className="space-y-2">
-                                          <Label className="text-[10px] font-bold uppercase text-[#061E29]">Preferred Language *</Label>
+                                          <Label className="text-[10px] font-bold uppercase text-primary">Preferred Language *</Label>
                                           <Select onValueChange={(val) => setValue('spflLanguage', val)} defaultValue={watch('spflLanguage')}>
                                             <SelectTrigger className="h-10 bg-white border-2 font-bold">
                                               <SelectValue placeholder="Select Language" />
@@ -232,16 +232,16 @@ export default function Step5Enrollment() {
             className="overflow-hidden"
           >
             <div className="space-y-8 pb-8">
-              <div className="p-6 border border-[#061E29]/20 bg-[#061E29]/5 rounded-2xl space-y-8 shadow-sm">
+              <div className="p-6 border border-primary/20 bg-primary/5 rounded-2xl space-y-8 shadow-sm">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
-                    <GraduationCap className="w-5 h-5 text-[#061E29]" />
+                    <GraduationCap className="w-5 h-5 text-primary" />
                   </div>
-                  <Label className="text-base font-bold text-[#061E29]">SHS Program Selection *</Label>
+                  <Label className="text-base font-bold text-primary">SHS Program Selection *</Label>
                 </div>
 
                 <div className="space-y-4">
-                  <Label className="text-sm font-bold uppercase tracking-widest text-[#061E29] opacity-70">Choose Track</Label>
+                  <Label className="text-sm font-bold uppercase tracking-widest text-primary opacity-70">Choose Track</Label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {(['Academic', 'TechPro'] as const).map((t) => (
                       <button 
@@ -250,8 +250,8 @@ export default function Step5Enrollment() {
                         className={cn(
                           "flex items-center space-x-3 p-4 rounded-xl border-2 transition-all cursor-pointer bg-white text-left",
                           shsTrack === t 
-                            ? "border-[#061E29] bg-[#061E29] text-white pointer-events-none shadow-md" 
-                            : "border-border bg-white text-foreground hover:bg-[#061E29]/5"
+                            ? "border-primary bg-primary text-primary-foreground pointer-events-none shadow-md" 
+                            : "border-border bg-white text-foreground hover:bg-primary/5"
                         )} 
                         onClick={() => {
                           setValue('shsTrack', t);
@@ -280,7 +280,7 @@ export default function Step5Enrollment() {
                     >
                       <div className="space-y-6 pt-4">
                         <div className="space-y-2 px-1">
-                          <Label className="text-sm font-bold uppercase tracking-widest text-[#061E29]/60">Preferred Elective Cluster *</Label>
+                          <Label className="text-sm font-bold uppercase tracking-widest text-primary/60">Preferred Elective Cluster *</Label>
                           <Select value={electiveCluster} onValueChange={(val) => setValue('electiveCluster', val)}>
                             <SelectTrigger className="h-12 bg-white border-2 font-bold">
                               <SelectValue placeholder="Select Elective Cluster" />
@@ -347,7 +347,7 @@ export default function Step5Enrollment() {
       {/* General Preferences (All applicants) */}
       <div className="space-y-10 pt-6 border-t border-border/40">
         <div className="space-y-4">
-          <Label className="text-sm font-bold uppercase tracking-widest text-[#061E29]">Type of Learner *</Label>
+          <Label className="text-sm font-bold uppercase tracking-widest text-primary">Type of Learner *</Label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
             {([
               { value: 'Regular', label: 'Regular' },
@@ -362,7 +362,7 @@ export default function Step5Enrollment() {
                 onClick={() => setValue('learnerType', t.value)}
                 className={cn(
                   "flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left",
-                  watch('learnerType') === t.value ? "border-[#061E29] bg-[#061E29] text-white pointer-events-none" : "border-border bg-white hover:bg-[#061E29]/5"
+                  watch('learnerType') === t.value ? "border-primary bg-primary text-primary-foreground pointer-events-none" : "border-border bg-white hover:bg-primary/5"
                 )}
               >
                 <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0", watch('learnerType') === t.value ? "border-white" : "border-muted-foreground")}>
@@ -376,7 +376,7 @@ export default function Step5Enrollment() {
 
         {/* Learning Modality Preference */}
         <div className="space-y-4">
-          <Label className="text-sm font-bold uppercase tracking-widest text-[#061E29]">If the school implements other distance learning modalities aside from face-to-face instruction, which would the learner prefer? Check all that applies: </Label>
+          <Label className="text-sm font-bold uppercase tracking-widest text-primary">If the school implements other distance learning modalities aside from face-to-face instruction, which would the learner prefer? Check all that applies: </Label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
             {LEARNING_MODALITIES.map((m) => (
               <div key={m} className="flex items-center space-x-3">
@@ -387,7 +387,7 @@ export default function Step5Enrollment() {
                     const curr = watch('learningModalities') || [];
                     setValue('learningModalities', checked ? [...curr, m] : curr.filter((i) => i !== m));
                   }}
-                  className="w-5 h-5 data-[state=checked]:bg-[#061E29] data-[state=checked]:text-white border-[#061E29]"
+                  className="w-5 h-5 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground border-primary"
                 />
                 <Label htmlFor={`modality-${m}`} className="text-sm font-medium cursor-pointer">{m}</Label>
               </div>

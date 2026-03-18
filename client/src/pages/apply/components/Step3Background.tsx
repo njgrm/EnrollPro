@@ -21,13 +21,13 @@ export default function Step3Background() {
 
   return (
     <div className="space-y-12">
-      <div className="flex items-center gap-3 p-4 bg-[#061E29]/5 border border-[#061E29]/20  rounded-xl">
+      <div className="flex items-center gap-3 p-4 bg-primary/5 border border-primary/20  rounded-xl">
         <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm border border-border">
-          <Lock className="w-5 h-5 text-[#061E29]" />
+          <Lock className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <p className="text-sm font-bold text-[#061E29]">Sensitive Information</p>
-          <p className="text-[11px] text-[#061E29] font-medium uppercase tracking-wider">All details are kept strictly confidential.</p>
+          <p className="text-sm font-bold text-primary">Sensitive Information</p>
+          <p className="text-[11px] text-primary font-medium uppercase tracking-wider">All details are kept strictly confidential.</p>
         </div>
       </div>
 
@@ -38,7 +38,7 @@ export default function Step3Background() {
             <Label className="text-sm font-bold flex items-center gap-2">
               Is the learner a member of an IP cultural community? *
             </Label>
-            <Badge variant="outline" className="text-[10px] uppercase border-[#061E29]/20 text-[#061E29] gap-1">
+            <Badge variant="outline" className="text-[10px] uppercase border-primary/20 text-primary gap-1">
               <Lock className="w-2.5 h-2.5" /> Confidential
             </Badge>
           </div>
@@ -48,11 +48,11 @@ export default function Step3Background() {
             className="flex gap-8"
           >
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="No" id="ip-no" className="w-5 h-5 border-[#061E29] text-[#061E29]" />
+              <RadioGroupItem value="No" id="ip-no" className="w-5 h-5 border-primary text-primary" />
               <Label htmlFor="ip-no" className="font-semibold cursor-pointer">No</Label>
             </div>
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="Yes" id="ip-yes" className="w-5 h-5 border-[#061E29] text-[#061E29]" />
+              <RadioGroupItem value="Yes" id="ip-yes" className="w-5 h-5 border-primary text-primary" />
               <Label htmlFor="ip-yes" className="font-semibold cursor-pointer">Yes</Label>
             </div>
           </RadioGroup>
@@ -79,7 +79,7 @@ export default function Step3Background() {
             <Label className="text-sm font-bold">
               Does the learner's household currently receive benefits under the Pantawid Pamilyang Pilipino Program (4Ps)? *
             </Label>
-            <Badge variant="outline" className="text-[10px] uppercase border-[#061E29]/20 text-[#061E29] gap-1">
+            <Badge variant="outline" className="text-[10px] uppercase border-primary/20 text-primary gap-1">
               <Lock className="w-2.5 h-2.5" /> Confidential
             </Badge>
           </div>
@@ -89,11 +89,11 @@ export default function Step3Background() {
             className="flex gap-8"
           >
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="No" id="4ps-no" className="w-5 h-5 border-[#061E29] text-[#061E29]" />
+              <RadioGroupItem value="No" id="4ps-no" className="w-5 h-5 border-primary text-primary" />
               <Label htmlFor="4ps-no" className="font-semibold cursor-pointer">No</Label>
             </div>
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="Yes" id="4ps-yes" className="w-5 h-5 border-[#061E29] text-[#061E29]" />
+              <RadioGroupItem value="Yes" id="4ps-yes" className="w-5 h-5 border-primary text-primary" />
               <Label htmlFor="4ps-yes" className="font-semibold cursor-pointer">Yes</Label>
             </div>
           </RadioGroup>
@@ -125,11 +125,11 @@ export default function Step3Background() {
             className="flex gap-8"
           >
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="No" id="ba-no" className="w-5 h-5 border-[#061E29] text-[#061E29]" />
+              <RadioGroupItem value="No" id="ba-no" className="w-5 h-5 border-primary text-primary" />
               <Label htmlFor="ba-no" className="font-semibold cursor-pointer">No</Label>
             </div>
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="Yes" id="ba-yes" className="w-5 h-5 border-[#061E29] text-[#061E29]" />
+              <RadioGroupItem value="Yes" id="ba-yes" className="w-5 h-5 border-primary text-primary" />
               <Label htmlFor="ba-yes" className="font-semibold cursor-pointer">Yes</Label>
             </div>
           </RadioGroup>
@@ -141,7 +141,7 @@ export default function Step3Background() {
             <Label className="text-sm font-bold">
               Is the learner under the Special Needs Education Program? *
             </Label>
-            <Badge variant="outline" className="text-[10px] uppercase border-[#061E29]/20 text-[#061E29] gap-1">
+            <Badge variant="outline" className="text-[10px] uppercase border-primary/20 text-primary gap-1">
               <Lock className="w-2.5 h-2.5" /> Confidential
             </Badge>
           </div>
@@ -158,11 +158,11 @@ export default function Step3Background() {
             className="flex gap-8"
           >
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="No" id="lwd-no" className="w-5 h-5 border-[#061E29] text-[#061E29]" />
+              <RadioGroupItem value="No" id="lwd-no" className="w-5 h-5 border-primary text-primary" />
               <Label htmlFor="lwd-no" className="font-semibold cursor-pointer">No</Label>
             </div>
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="Yes" id="lwd-yes" className="w-5 h-5 border-[#061E29] text-[#061E29]" />
+              <RadioGroupItem value="Yes" id="lwd-yes" className="w-5 h-5 border-primary text-primary" />
               <Label htmlFor="lwd-yes" className="font-semibold cursor-pointer">Yes</Label>
             </div>
           </RadioGroup>
@@ -188,7 +188,7 @@ export default function Step3Background() {
                           setValue('snedCategory', checked ? 'a1' : undefined);
                           setValue('disabilityType', []);
                         }}
-                        className="w-5 h-5 data-[state=checked]:bg-[#061E29] data-[state=checked]:text-white border-[#061E29]"
+                        className="w-5 h-5 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground border-primary"
                       />
                       <Label htmlFor="sned-a1" className="text-sm font-bold cursor-pointer">a1. With Diagnosis from Licensed Medical Specialist</Label>
                     </div>
@@ -210,7 +210,7 @@ export default function Step3Background() {
                                     const current = watch('disabilityType') || [];
                                     setValue('disabilityType', checked ? [...current, type] : current.filter((t) => t !== type));
                                   }}
-                                  className="w-4 h-4 data-[state=checked]:bg-[#061E29] data-[state=checked]:text-white border-[#061E29]"
+                                  className="w-4 h-4 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground border-primary"
                                 />
                                 <Label htmlFor={`disability-${type}`} className="text-sm font-medium cursor-pointer">{type}</Label>
                               </div>
@@ -231,7 +231,7 @@ export default function Step3Background() {
                           setValue('snedCategory', checked ? 'a2' : undefined);
                           setValue('disabilityType', []);
                         }}
-                        className="w-5 h-5 data-[state=checked]:bg-[#061E29] data-[state=checked]:text-white border-[#061E29]"
+                        className="w-5 h-5 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground border-primary"
                       />
                       <Label htmlFor="sned-a2" className="text-sm font-bold cursor-pointer">a2. With Manifestations</Label>
                     </div>
@@ -253,7 +253,7 @@ export default function Step3Background() {
                                     const current = watch('disabilityType') || [];
                                     setValue('disabilityType', checked ? [...current, type] : current.filter((t) => t !== type));
                                   }}
-                                  className="w-4 h-4 data-[state=checked]:bg-[#061E29] data-[state=checked]:text-white border-[#061E29]"
+                                  className="w-4 h-4 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground border-primary"
                                 />
                                 <Label htmlFor={`disability-${type}`} className="text-sm font-medium cursor-pointer">{type}</Label>
                               </div>
@@ -273,11 +273,11 @@ export default function Step3Background() {
                       className="flex gap-8"
                     >
                       <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="No" id="pwd-no" className="w-5 h-5 border-[#061E29] text-[#061E29]" />
+                        <RadioGroupItem value="No" id="pwd-no" className="w-5 h-5 border-primary text-primary" />
                         <Label htmlFor="pwd-no" className="font-semibold cursor-pointer">No</Label>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="Yes" id="pwd-yes" className="w-5 h-5 border-[#061E29] text-[#061E29]" />
+                        <RadioGroupItem value="Yes" id="pwd-yes" className="w-5 h-5 border-primary text-primary" />
                         <Label htmlFor="pwd-yes" className="font-semibold cursor-pointer">Yes</Label>
                       </div>
                     </RadioGroup>
@@ -289,9 +289,9 @@ export default function Step3Background() {
         </div>
       </div>
 
-      <Alert className="bg-[#061E29]/5 border-[#061E29]/10 mt-12">
-        <Info className="h-4 w-4 text-[#061E29]" />
-        <AlertDescription className="font-bold text-[#061E29]/80">
+      <Alert className="bg-primary/5 border-primary/10 mt-12">
+        <Info className="h-4 w-4 text-primary" />
+        <AlertDescription className="font-bold text-primary/80">
           This information is used exclusively to connect the learner to appropriate support services. It will not affect their eligibility for enrollment in any way.
         </AlertDescription>
       </Alert>

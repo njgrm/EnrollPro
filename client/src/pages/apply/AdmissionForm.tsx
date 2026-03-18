@@ -276,7 +276,7 @@ export default function AdmissionForm({ onReset }: { onReset: () => void }) {
           <div className="mb-8 pb-6 border-b border-border/50">
             <div className="flex items-center gap-3">
               <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 bg-[#061E29] text-white"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 bg-primary text-primary-foreground"
               >
                 {currentIndex}
               </div>
@@ -356,7 +356,7 @@ export default function AdmissionForm({ onReset }: { onReset: () => void }) {
                     type="button"
                     size="lg"
                     onClick={nextStep}
-                    className="h-12 px-8 font-semibold sm:w-auto w-full bg-[#061E29] text-white hover:bg-[#061E29]/90"
+                    className="h-12 px-8 font-semibold sm:w-auto w-full bg-primary text-primary-foreground hover:bg-primary/90"
                   >
                     {isEditing ? 'Update & Review' : 'Next Step'}
                     <ArrowRight className="ml-2 h-4 w-4" />
@@ -376,7 +376,7 @@ export default function AdmissionForm({ onReset }: { onReset: () => void }) {
         confirmText="Confirm Submission"
         onConfirm={() => handleSubmit(onSubmit)()}
         loading={isSubmitting}
-        confirmClassName="bg-[#061E29] text-white hover:bg-[#061E29]/90"
+        confirmClassName="bg-primary text-primary-foreground hover:bg-primary/90"
       />
     </div>
   );

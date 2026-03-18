@@ -108,6 +108,18 @@ useLayoutEffect(() => {
 
 ---
 
+### 1.3 Special Case — DepEd Yellow Override
+
+If the extracted or selected accent color is **DepEd Yellow (#fefe01)**, the system applies a special readability override for the primary background. This ensures that text (which would otherwise be black on yellow) can be white on a high-contrast dark blue background, maintaining a professional aesthetic for the Online Admission Portal and other modules.
+
+- **Trigger Color:** `#fefe01` (HSL: `60 99% 50%`)
+- **Override Background:** `#061E29` (HSL: `200 68% 9%`)
+- **Override Foreground:** White (HSL: `0 0% 100%`)
+
+This override is applied to `--primary`, `--primary-foreground`, and `--sidebar-primary` tokens while leaving the original accent color available for other elements.
+
+---
+
 ## 2. JavaScript / TypeScript Variables
 
 ### 2.1 Constant — `client/src/layouts/RootLayout.tsx`

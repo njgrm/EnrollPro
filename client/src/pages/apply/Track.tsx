@@ -144,10 +144,10 @@ export default function TrackApplication() {
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
-      <Card className="shadow-xl border-2 border-[#061E29]/5 rounded-3xl overflow-hidden">
-        <CardHeader className="bg-[#061E29] text-white p-8 text-center">
+      <Card className="shadow-xl border-2 border-primary/5 rounded-3xl overflow-hidden">
+        <CardHeader className="bg-primary text-primary-foreground p-8 text-center">
           <CardTitle className="text-2xl font-black uppercase tracking-tight">Application Monitor</CardTitle>
-          <CardDescription className="text-white/60 font-medium">
+          <CardDescription className="text-primary-foreground/60 font-medium">
             Enter your tracking number to check your status
           </CardDescription>
         </CardHeader>
@@ -162,7 +162,7 @@ export default function TrackApplication() {
                   placeholder="APP-2026-XXXXX"
                   className={cn(
                     "h-14 pl-12 text-lg font-mono font-black border-2 transition-all",
-                    errors.trackingNumber ? "border-destructive focus-visible:ring-destructive" : "border-[#061E29]/10 focus-visible:border-[#061E29] focus-visible:ring-[#061E29]/5"
+                    errors.trackingNumber ? "border-destructive focus-visible:ring-destructive" : "border-primary/10 focus-visible:border-primary focus-visible:ring-primary/5"
                   )}
                   autoComplete="off"
                 />
@@ -173,7 +173,7 @@ export default function TrackApplication() {
 
             <Button 
               type="submit" 
-              className="w-full h-14 text-lg font-black uppercase tracking-widest bg-[#061E29] hover:bg-[#061E29]/90 transition-all text-white"
+              className="w-full h-14 text-lg font-black uppercase tracking-widest bg-primary hover:bg-primary/90 transition-all text-primary-foreground"
               disabled={isLoading}
             >
               {isLoading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Search className="w-5 h-5 mr-2" />}
@@ -223,23 +223,23 @@ export default function TrackApplication() {
                     <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest flex items-center justify-center gap-1.5">
                       <User className="w-3 h-3" /> Applicant Name
                     </p>
-                    <p className="font-black text-[#061E29] uppercase">{status.lastName}, {status.firstName}</p>
+                    <p className="font-black text-primary uppercase">{status.lastName}, {status.firstName}</p>
                   </div>
                   <div className="p-5 bg-muted/50 border border-border/50 rounded-2xl space-y-1">
                     <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest flex items-center justify-center gap-1.5">
                       <FileText className="w-3 h-3" /> Grade Level
                     </p>
-                    <p className="font-black text-[#061E29] uppercase">
+                    <p className="font-black text-primary uppercase">
                       {status.gradeLevel.name}
                     </p>
                   </div>
 
                   {status.scpApplication && (
-                    <div className="p-5 bg-[#061E29]/5 border border-[#061E29]/10 rounded-2xl space-y-1">
-                      <p className="text-[10px] font-black uppercase text-[#061E29]/60 tracking-widest flex items-center justify-center gap-1.5">
+                    <div className="p-5 bg-primary/5 border border-primary/10 rounded-2xl space-y-1">
+                      <p className="text-[10px] font-black uppercase text-primary/60 tracking-widest flex items-center justify-center gap-1.5">
                         <BookOpen className="w-3 h-3" /> SCP Program
                       </p>
-                      <p className="font-black text-[#061E29] uppercase">
+                      <p className="font-black text-primary uppercase">
                         {status.scpType ? (SCP_LABELS[status.scpType] || status.scpType) : 'Special Program'}
                       </p>
                     </div>

@@ -79,6 +79,20 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     const mutedAccent = parts.length >= 2 ? `${parts[0]} ${parts[1]} 94%` : accent;
     const mutedFg = contrastForeground(mutedAccent);
 
+    // Special logic for #fefe01 (yellow) accent
+    // #fefe01 is approximately HSL: 60 99% 50%
+    const h = parseInt(parts[0]) || 0;
+    const s = parseInt(parts[1]?.replace('%', '')) || 0;
+    const l = parseInt(parts[2]?.replace('%', '')) || 0;
+    
+    // Robust check: matches exact hex from palette OR HSL range
+    const currentHex = (colorScheme as any)?.palette?.find((p: any) => p.hsl === accent)?.hex;
+    const isFefe01 = currentHex?.toLowerCase() === '#fefe01' || 
+                    (h === 60 && s >= 98 && s <= 100 && l >= 48 && l <= 52);
+
+    const primaryColor = isFefe01 ? '200 68% 9%' : accent; // 200 68% 9% is #061E29
+    const primaryFg = isFefe01 ? '0 0% 100%' : fg;
+
     // High-contrast version of the accent for links on white background
     // If accent is too light (meaning its contrast foreground is black), we set the link color to black
     let linkAccent = accent;
@@ -90,12 +104,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     root.style.setProperty('--accent-foreground', fg);
     root.style.setProperty('--accent-link', linkAccent);
     root.style.setProperty('--accent-ring', accent);
-    root.style.setProperty('--primary', accent);
-    root.style.setProperty('--primary-foreground', fg);
+    root.style.setProperty('--primary', primaryColor);
+    root.style.setProperty('--primary-foreground', primaryFg);
     root.style.setProperty('--ring', accent);
 
-    root.style.setProperty('--sidebar-primary', accent);
-    root.style.setProperty('--sidebar-primary-foreground', fg);
+    root.style.setProperty('--sidebar-primary', primaryColor);
+    root.style.setProperty('--sidebar-primary-foreground', primaryFg);
     root.style.setProperty('--sidebar-ring', accent);
     root.style.setProperty('--sidebar-accent', mutedAccent);
     root.style.setProperty('--sidebar-accent-foreground', mutedFg);

@@ -170,7 +170,7 @@ export default function Step3Preferences() {
                               if (checked) setValue('spsSports', [...current, s]);
                               else setValue('spsSports', current.filter((i) => i !== s));
                             }}
-                            className="data-[state=checked]:bg-[#061E29] data-[state=checked]:text-white border-[#061E29]"
+                            className="data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground border-primary"
                           />
                           <Label htmlFor={`sport-${s}`} className="text-sm">{s}</Label>
                         </div>
@@ -266,13 +266,13 @@ export default function Step3Preferences() {
       <Separator />
 
       {/* Section 10: Certification */}
-      <div className="space-y-4 bg-[#061E29]/5 p-6 rounded-lg border border-[#061E29]/20">
+      <div className="space-y-4 bg-primary/5 p-6 rounded-lg border border-primary/20">
         <h3 className="text-lg font-semibold flex items-center gap-2">
-          <InfoIcon className="w-5 h-5 text-[#061E29]" />
+          <InfoIcon className="w-5 h-5 text-primary" />
           Section 10: Certification & Consent
         </h3>
         
-        <div className="bg-background border border-[#061E29]/10 rounded-md p-4 text-sm">
+        <div className="bg-background border border-primary/10 rounded-md p-4 text-sm">
           I certify that all information I have provided on this form is true, correct, and complete to the best of my knowledge and belief.
         </div>
 
@@ -281,7 +281,7 @@ export default function Step3Preferences() {
             id="certify" 
             checked={watch('isCertifiedTrue')} 
             onCheckedChange={(checked) => setValue('isCertifiedTrue', checked === true)} 
-            className="data-[state=checked]:bg-[#061E29] data-[state=checked]:text-white border-[#061E29]"
+            className="data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground border-primary"
           />
           <Label htmlFor="certify" className="text-sm font-medium leading-tight">
             I certify the accuracy of the information provided above. <span className="text-destructive">*</span>
