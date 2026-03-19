@@ -1,8 +1,8 @@
 -- CreateEnum
-CREATE TYPE "AdmissionChannel" AS ENUM ('ONLINE', 'F2F');
+CREATE TYPE "EarlyRegistrationChannel" AS ENUM ('ONLINE', 'F2F');
 
 -- AlterTable
-ALTER TABLE "Applicant" ADD COLUMN     "admissionChannel" "AdmissionChannel" NOT NULL DEFAULT 'ONLINE',
+ALTER TABLE "Applicant" ADD COLUMN     "EarlyRegistrationChannel" "EarlyRegistrationChannel" NOT NULL DEFAULT 'ONLINE',
 ADD COLUMN     "encodedById" INTEGER;
 
 -- AddForeignKey

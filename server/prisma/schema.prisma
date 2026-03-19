@@ -7,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─── Enums ────────────────────────────────────────────────
+// ──â”€ Enums ────────────────────────────────────────────────
 
 enum Role {
   REGISTRAR
@@ -22,15 +22,15 @@ enum Sex {
 enum ApplicationStatus {
   SUBMITTED            // replaces: PENDING (on submission)
   UNDER_REVIEW         // replaces: PENDING (after registrar opens record)
-  FOR_REVISION         // new — fixable issue; parent asked to correct
-  ELIGIBLE             // new — SCP: docs verified, cleared for assessment
+  FOR_REVISION         // new â€” fixable issue; parent asked to correct
+  ELIGIBLE             // new â€” SCP: docs verified, cleared for assessment
   ASSESSMENT_SCHEDULED // replaces: EXAM_SCHEDULED
   ASSESSMENT_TAKEN     // replaces: EXAM_TAKEN
   PRE_REGISTERED       // replaces: APPROVED (Phase 1 complete)
   NOT_QUALIFIED        // replaces: FAILED (SCP assessment not passed)
   ENROLLED             // was implied; now explicit (Phase 2 complete)
-  REJECTED             // retained — data integrity issues only
-  WITHDRAWN            // new — voluntary withdrawal by applicant
+  REJECTED             // retained â€” data integrity issues only
+  WITHDRAWN            // new â€” voluntary withdrawal by applicant
 }
 
 enum AcademicYearStatus {
@@ -40,7 +40,7 @@ enum AcademicYearStatus {
   ARCHIVED
 }
 
-// ─── Models ───────────────────────────────────────────────
+// ──â”€ Models ──────────────────────────────────────────────â”€
 
 model User {
   id                 Int       @id @default(autoincrement())
@@ -62,7 +62,7 @@ model User {
   createdUsers User[] @relation("UserCreatedBy")
 }
 
-// Teachers are NOT system users — no login account, no userId link.
+// Teachers are NOT system users â€” no login account, no userId link.
 // This model exists for section adviser assignment and subject tracking only.
 model Teacher {
   id              Int       @id @default(autoincrement())
@@ -186,7 +186,7 @@ enum ApplicantType {
   STEM_GRADE11
 }
 
-enum AdmissionChannel {
+enum EarlyRegistrationChannel {
   ONLINE
   F2F
 }
@@ -267,8 +267,8 @@ model Applicant {
   grade10ScienceGrade   Float?
   grade10MathGrade      Float?
 
-  // ── Admission Tracking ──
-  admissionChannel      AdmissionChannel  @default(ONLINE)
+  // ── EARLY REGISTRATION Tracking ──
+  earlyRegistrationChannel  EarlyRegistrationChannel  @default(ONLINE)
   encodedById           Int?
 
   createdAt             DateTime          @default(now())

@@ -1,5 +1,7 @@
 import { useEffect, useLayoutEffect, type ReactNode } from 'react';
+import { Outlet } from 'react-router';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { usePageTitle } from '@/hooks/usePageTitle';
 import api from '@/api/axiosInstance';
 
 const DEFAULT_ACCENT_HSL = '221 83% 53%';
@@ -35,8 +37,11 @@ function contrastForeground(hsl: string): string {
   return contrastWhite >= contrastBlack ? '0 0% 100%' : '0 0% 0%';
 }
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({ children }: { children?: ReactNode }) {
   const { colorScheme, selectedAccentHsl, logoUrl, setSettings } = useSettingsStore();
+
+  // Dynamically update document.title on every route change
+  usePageTitle();
 
   // Fetch public settings on mount
   useEffect(() => {
@@ -127,5 +132,5 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     root.style.setProperty('--card', '0 0% 100%');
   }, [colorScheme, selectedAccentHsl, setSettings]);
 
-  return <>{children}</>;
+  return children ? <>{children}</> : <Outlet />;
 }

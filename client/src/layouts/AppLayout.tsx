@@ -49,6 +49,8 @@ import api from '@/api/axiosInstance';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { motion, AnimatePresence } from 'motion/react';
 
+import { useWindowSize } from 'react-use';
+
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3001';
 
 interface AcademicYearItem {
@@ -144,16 +146,18 @@ function NavItemParent({
   label,
   children,
   defaultOpen = true,
+  isActive = false,
 }: {
   icon: React.ElementType;
   label: string;
   children: ReactNode;
   defaultOpen?: boolean;
+  isActive?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton tooltip={label} onClick={() => setOpen((o) => !o)}>
+      <SidebarMenuButton tooltip={label} onClick={() => setOpen((o) => !o)} isActive={isActive}>
         <Icon className="size-4" />
         <span>{label}</span>
         <ChevronDown
@@ -212,7 +216,7 @@ function AppSidebar() {
   const pathname = location.pathname;
 
   useEffect(() => {
-    api.get('/dashboard/stats').then((r) => setPendingCount(r.data.admissionPending ?? 0)).catch(() => {});
+    api.get('/dashboard/stats').then((r) => setPendingCount(r.data.earlyRegistrationPending ?? 0)).catch(() => {});
     api.get('/academic-years').then((r) => {
       const found = r.data.years?.find((y: AcademicYearItem) => y.id === activeAcademicYearId);
       setActiveYearLabel(found?.yearLabel ?? null);
@@ -276,13 +280,17 @@ function AppSidebar() {
                 {/* Items 1–7: shared between REGISTRAR and SYSTEM_ADMIN */}
                 {(isRegistrar || isAdmin) && (
                   <>
-                    <NavDivider label="Enrollment" />
+                    <NavDivider label="Operations" />
                     <NavItem to="/dashboard" icon={LayoutDashboard} label="Dashboard" pathname={pathname} />
-                    <NavItemParent icon={ClipboardList} label="Applications">
+                    <NavItemParent 
+                      icon={ClipboardList} 
+                      label="Applications" 
+                      isActive={pathname.startsWith('/applications')}
+                    >
                       <NavItemChild
-                        to="/applications/admission"
+                        to="/applications/early-registration"
                         icon={FileText}
-                        label="Admission"
+                        label="Early Registration"
                         pathname={pathname}
                         badgeCount={pendingCount}
                       />
@@ -294,8 +302,8 @@ function AppSidebar() {
                       />
                     </NavItemParent>
 
-                    <NavDivider label="Admission" />
-                    <NavItem to="/f2f-admission" icon={UserPlus} label="Walk-in Admission" pathname={pathname} />
+                    <NavDivider label="Early Registration" />
+                    <NavItem to="/f2f-early-registration" icon={UserPlus} label="Walk-in Early Registration" pathname={pathname} />
 
                     <NavDivider label="Records" />
                     <NavItem to="/students" icon={Users} label="Students" pathname={pathname} />
@@ -379,17 +387,19 @@ function AppSidebar() {
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { selectedAccentHsl, colorScheme, accentForeground } = useSettingsStore();
+  const { width } = useWindowSize();
   const accentHsl = selectedAccentHsl ?? (colorScheme as { accent_hsl?: string } | null)?.accent_hsl;
   const location = useLocation();
 
   const toastTheme = accentForeground === '0 0% 100%' ? 'light' : 'dark';
+  const toastPosition = width < 768 ? 'top-center' : 'top-right';
 
   return (
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
         <Toaster
-          position="top-right"
+          position={toastPosition}
           theme={toastTheme}
           options={accentHsl ? { fill: `hsl(${accentHsl})` } : undefined}
         />

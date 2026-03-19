@@ -4,7 +4,7 @@ import { auditLog } from '../services/auditLogger.js';
 import { isEnrollmentOpen } from '../services/enrollmentGateService.js';
 import type { ApplicationStatus } from '@prisma/client';
 
-// ── Valid status transitions ──
+// â”€â”€ Valid status transitions â”€â”€
 const VALID_TRANSITIONS: Record<string, ApplicationStatus[]> = {
   SUBMITTED: ['UNDER_REVIEW', 'REJECTED', 'WITHDRAWN'],
   UNDER_REVIEW: ['FOR_REVISION', 'ELIGIBLE', 'PRE_REGISTERED', 'REJECTED', 'WITHDRAWN'],
@@ -41,7 +41,7 @@ function canTransition(from: ApplicationStatus, to: ApplicationStatus): boolean 
   return VALID_TRANSITIONS[from]?.includes(to) ?? false;
 }
 
-// ── List all applications (paginated, filterable) ──
+// â”€â”€ List all applications (paginated, filterable) â”€â”€
 export async function index(req: Request, res: Response) {
   try {
     const { search, gradeLevelId, status, applicantType, page = '1', limit = '15' } = req.query;
@@ -89,7 +89,7 @@ export async function index(req: Request, res: Response) {
   }
 }
 
-// ── Show single application ──
+// â”€â”€ Show single application â”€â”€
 export async function show(req: Request, res: Response) {
   try {
     const application = await prisma.applicant.findUnique({
@@ -121,7 +121,7 @@ export async function show(req: Request, res: Response) {
   }
 }
 
-// ── Submit new application (public) ──
+// â”€â”€ Submit new application (public) â”€â”€
 export async function store(req: Request, res: Response) {
   try {
     // 1. Find active academic year
@@ -304,14 +304,14 @@ export async function store(req: Request, res: Response) {
         await prisma.emailLog.create({
           data: {
             recipient: emailAddress,
-            subject: `Application Received – ${trackingNumber}`,
+            subject: `Application Received â€“ ${trackingNumber}`,
             trigger: 'APPLICATION_SUBMITTED',
             status: 'PENDING',
             applicantId: applicant.id,
           },
         });
       } catch {
-        // Non-critical – don't fail the submission
+        // Non-critical â€“ don't fail the submission
       }
     }
 
@@ -332,7 +332,7 @@ export async function store(req: Request, res: Response) {
   }
 }
 
-// ── Submit F2F walk-in application (authenticated - REGISTRAR/SYSTEM_ADMIN) ──
+// â”€â”€ Submit F2F walk-in application (authenticated - REGISTRAR/SYSTEM_ADMIN) â”€â”€
 export async function storeF2F(req: Request, res: Response) {
   try {
     // 1. Find active academic year
@@ -487,8 +487,8 @@ export async function storeF2F(req: Request, res: Response) {
         shsTrack: shsTrack as any,
         trackingNumber: tempTracking,
 
-        // F2F admission tracking
-        admissionChannel: 'F2F',
+        // F2F EARLY REGISTRATION tracking
+        EarlyRegistrationChannel: 'F2F',
         encodedById: req.user!.userId,
       },
     });
@@ -516,14 +516,14 @@ export async function storeF2F(req: Request, res: Response) {
         await prisma.emailLog.create({
           data: {
             recipient: emailAddress,
-            subject: `Application Received – ${trackingNumber}`,
+            subject: `Application Received â€“ ${trackingNumber}`,
             trigger: 'APPLICATION_SUBMITTED',
             status: 'PENDING',
             applicantId: applicant.id,
           },
         });
       } catch {
-        // Non-critical – don't fail the submission
+        // Non-critical â€“ don't fail the submission
       }
     }
 
@@ -544,7 +544,7 @@ export async function storeF2F(req: Request, res: Response) {
   }
 }
 
-// ── Track application by tracking number (public) ──
+// â”€â”€ Track application by tracking number (public) â”€â”€
 export async function track(req: Request, res: Response) {
   try {
     const application = await prisma.applicant.findUnique({
@@ -576,7 +576,7 @@ export async function track(req: Request, res: Response) {
   }
 }
 
-// ── Approve + Enroll ──
+// â”€â”€ Approve + Enroll â”€â”€
 export async function approve(req: Request, res: Response) {
   try {
     const { sectionId } = req.body;
@@ -637,7 +637,7 @@ export async function approve(req: Request, res: Response) {
         await prisma.emailLog.create({
           data: {
             recipient: applicant.emailAddress,
-            subject: `Application Approved – ${applicant.trackingNumber}`,
+            subject: `Application Approved â€“ ${applicant.trackingNumber}`,
             trigger: 'APPLICATION_APPROVED',
             status: 'PENDING',
             applicantId,
@@ -653,7 +653,7 @@ export async function approve(req: Request, res: Response) {
   }
 }
 
-// ── Finalize Enrollment (Phase 2 complete) ──
+// â”€â”€ Finalize Enrollment (Phase 2 complete) â”€â”€
 export async function enroll(req: Request, res: Response) {
   try {
     const applicantId = parseInt(String(req.params.id));
@@ -689,7 +689,7 @@ export async function enroll(req: Request, res: Response) {
   }
 }
 
-// ── Request Revision ──
+// â”€â”€ Request Revision â”€â”€
 export async function requestRevision(req: Request, res: Response) {
   try {
     const { message } = toUpperCaseRecursive(req.body);
@@ -722,7 +722,7 @@ export async function requestRevision(req: Request, res: Response) {
   }
 }
 
-// ── Withdraw Application ──
+// â”€â”€ Withdraw Application â”€â”€
 export async function withdraw(req: Request, res: Response) {
   try {
     const applicantId = parseInt(String(req.params.id));
@@ -754,7 +754,7 @@ export async function withdraw(req: Request, res: Response) {
   }
 }
 
-// ── Reject ──
+// â”€â”€ Reject â”€â”€
 export async function reject(req: Request, res: Response) {
   try {
     const { rejectionReason } = toUpperCaseRecursive(req.body);
@@ -790,7 +790,7 @@ export async function reject(req: Request, res: Response) {
         await prisma.emailLog.create({
           data: {
             recipient: applicant.emailAddress,
-            subject: `Application Update – ${applicant.trackingNumber}`,
+            subject: `Application Update â€“ ${applicant.trackingNumber}`,
             trigger: 'APPLICATION_REJECTED',
             status: 'PENDING',
             applicantId,
@@ -805,7 +805,7 @@ export async function reject(req: Request, res: Response) {
   }
 }
 
-// ── Mark as eligible (cleared for assessment or regular approval) ──
+// â”€â”€ Mark as eligible (cleared for assessment or regular approval) â”€â”€
 export async function markEligible(req: Request, res: Response) {
   try {
     const applicantId = parseInt(String(req.params.id));
@@ -829,7 +829,7 @@ export async function markEligible(req: Request, res: Response) {
     await auditLog({
       userId: req.user!.userId,
       actionType: 'APPLICATION_ELIGIBLE',
-      description: `Marked ${applicant.firstName} ${applicant.lastName} (#${applicantId}) as ELIGIBLE – docs verified`,
+      description: `Marked ${applicant.firstName} ${applicant.lastName} (#${applicantId}) as ELIGIBLE â€“ docs verified`,
       subjectType: 'Applicant',
       subjectId: applicantId,
       req,
@@ -841,7 +841,7 @@ export async function markEligible(req: Request, res: Response) {
   }
 }
 
-// ── Schedule assessment (SCP flow) ──
+// â”€â”€ Schedule assessment (SCP flow) â”€â”€
 export async function scheduleExam(req: Request, res: Response) {
   try {
     const { examDate, assessmentType } = toUpperCaseRecursive(req.body);
@@ -881,7 +881,7 @@ export async function scheduleExam(req: Request, res: Response) {
         await prisma.emailLog.create({
           data: {
             recipient: applicant.emailAddress,
-            subject: `Assessment Scheduled – ${applicant.trackingNumber}`,
+            subject: `Assessment Scheduled â€“ ${applicant.trackingNumber}`,
             trigger: 'EXAM_SCHEDULED',
             status: 'PENDING',
             applicantId,
@@ -896,7 +896,7 @@ export async function scheduleExam(req: Request, res: Response) {
   }
 }
 
-// ── Record assessment result ──
+// â”€â”€ Record assessment result â”€â”€
 export async function recordResult(req: Request, res: Response) {
   try {
     const { examScore, examResult, examNotes, interviewResult } = toUpperCaseRecursive(req.body);
@@ -933,7 +933,7 @@ export async function recordResult(req: Request, res: Response) {
   }
 }
 
-// ── Mark as passed (Pre-registered) ──
+// â”€â”€ Mark as passed (Pre-registered) â”€â”€
 export async function pass(req: Request, res: Response) {
   try {
     const applicantId = parseInt(String(req.params.id));
@@ -957,7 +957,7 @@ export async function pass(req: Request, res: Response) {
     await auditLog({
       userId: req.user!.userId,
       actionType: 'APPLICATION_PASSED',
-      description: `Marked ${applicant.firstName} ${applicant.lastName} (#${applicantId}) as PASSED (PRE_REGISTERED) – ready for section assignment`,
+      description: `Marked ${applicant.firstName} ${applicant.lastName} (#${applicantId}) as PASSED (PRE_REGISTERED) â€“ ready for section assignment`,
       subjectType: 'Applicant',
       subjectId: applicantId,
       req,
@@ -968,7 +968,7 @@ export async function pass(req: Request, res: Response) {
         await prisma.emailLog.create({
           data: {
             recipient: applicant.emailAddress,
-            subject: `Assessment Passed – ${applicant.trackingNumber}`,
+            subject: `Assessment Passed â€“ ${applicant.trackingNumber}`,
             trigger: 'ASSESSMENT_PASSED',
             status: 'PENDING',
             applicantId,
@@ -983,7 +983,7 @@ export async function pass(req: Request, res: Response) {
   }
 }
 
-// ── Mark as not qualified ──
+// â”€â”€ Mark as not qualified â”€â”€
 export async function fail(req: Request, res: Response) {
   try {
     const { examNotes } = req.body;
@@ -1019,7 +1019,7 @@ export async function fail(req: Request, res: Response) {
         await prisma.emailLog.create({
           data: {
             recipient: applicant.emailAddress,
-            subject: `Assessment Result – ${applicant.trackingNumber}`,
+            subject: `Assessment Result â€“ ${applicant.trackingNumber}`,
             trigger: 'ASSESSMENT_FAILED',
             status: 'PENDING',
             applicantId,

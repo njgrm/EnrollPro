@@ -11,11 +11,7 @@ const MANILA_TIME_ZONE = 'Asia/Manila';
 
 const DEFAULT_GRADES = [
   { name: 'Grade 7', displayOrder: 7 },
-  { name: 'Grade 8', displayOrder: 8 },
-  { name: 'Grade 9', displayOrder: 9 },
-  { name: 'Grade 10', displayOrder: 10 },
   { name: 'Grade 11', displayOrder: 11 },
-  { name: 'Grade 12', displayOrder: 12 },
 ];
 
 async function ensureDefaultGradeLevels(academicYearId: number) {
@@ -224,7 +220,7 @@ export async function createAcademicYear(req: Request, res: Response): Promise<v
     }
   }
 
-  // Ensure Grades 7-12 are available (baseline)
+  // Ensure baseline grades are available
   // This fills in standard grades if not cloned or if cloning was partial
   await ensureDefaultGradeLevels(year.id);
 
@@ -358,7 +354,7 @@ export async function transitionAcademicYear(req: Request, res: Response): Promi
       data: { status: 'ACTIVE', isActive: true },
     });
 
-    // Ensure Grades 7-12 are available immediately
+    // Ensure baseline grades are available immediately
     await ensureDefaultGradeLevels(id);
 
     // Also update SchoolSettings

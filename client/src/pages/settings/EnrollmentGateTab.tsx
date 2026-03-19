@@ -123,7 +123,7 @@ export default function EnrollmentGateTab() {
       setSettings({ enrollmentPhase: pubRes.data.enrollmentPhase });
 
       if (checked) {
-        sileo.warning({ title: 'Manual Override Active', description: 'The admission portal is now forced OPEN.' });
+        sileo.warning({ title: 'Manual Override Active', description: 'The early registration portal is now forced OPEN.' });
       } else {
         sileo.success({ title: 'Override Disabled', description: 'Enrollment gate is back on schedule.' });
       }

@@ -4,43 +4,6 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/prisma.js';
 import { auditLog } from '../services/auditLogger.js';
 
-export async function register(req: Request, res: Response): Promise<void> {
-  const { name, email, password } = req.body;
-
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
-    res.status(400).json({ message: 'Email already registered' });
-    return;
-  }
-
-  const hashedPassword = await bcrypt.hash(password, 12);
-
-  const user = await prisma.user.create({
-    data: {
-      name,
-      email,
-      password: hashedPassword,
-      role: 'REGISTRAR',
-    },
-    select: { id: true, name: true, email: true, role: true },
-  });
-
-  const token = jwt.sign(
-    { userId: user.id, role: user.role },
-    process.env.JWT_SECRET!,
-    { expiresIn: '8h' }
-  );
-
-  await auditLog({
-    userId: user.id,
-    actionType: 'USER_REGISTERED',
-    description: `User ${user.email} registered as ${user.role}`,
-    req,
-  });
-
-  res.status(201).json({ token, user });
-}
-
 export async function login(req: Request, res: Response): Promise<void> {
   const { email, password } = req.body;
 

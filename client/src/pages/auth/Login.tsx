@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link, Navigate } from "react-router";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -24,6 +24,22 @@ export default function Login() {
   const { schoolName, logoUrl, accentForeground } = useSettingsStore();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const { sessionExpired, setSessionExpired } = useAuthStore();
+
+  // Show a session-expired toast once when the user lands here after expiry
+  useEffect(() => {
+    if (sessionExpired) {
+      setSessionExpired(false);
+      // Small delay so the Toaster has time to mount inside AuthLayout
+      const t = setTimeout(() => {
+        sileo.warning({
+          title: 'Session Expired',
+          description: 'Your session has expired. Please sign in again to continue.',
+        });
+      }, 100);
+      return () => clearTimeout(t);
+    }
+  }, [sessionExpired, setSessionExpired]);
 
   const API_BASE = import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:3001";
 
@@ -273,18 +289,6 @@ export default function Login() {
                 ) : "Sign In"}
               </motion.button>
 
-              {/* Register Link */}
-              <motion.div 
-                className="text-center pt-4"
-                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.5 }}
-              >
-                <p className="text-gray-500 font-medium">
-                  Don't have an account?{" "}
-                  <Link to="/register" className="text-(--brand-link) font-bold hover:underline underline-offset-4">
-                    Create one now.
-                  </Link>
-                </p>
-              </motion.div>
             </form>
           </div>
         </div>

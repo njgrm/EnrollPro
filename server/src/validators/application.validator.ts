@@ -26,7 +26,7 @@ export const applicationSubmitSchema = z.object({
   psaBcNumber: z.string().optional().nullable(),
 
   // Grade level & program
-  gradeLevel: z.enum(['7', '8', '9', '10', '11', '12']),
+  gradeLevel: z.enum(['7', '11']),
   shsTrack: z.enum(['ACADEMIC', 'TECHPRO']).optional().nullable(),
   electiveCluster: z.string().optional().nullable(),
   scpApplication: z.boolean().default(false),

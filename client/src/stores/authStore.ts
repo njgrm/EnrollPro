@@ -12,8 +12,10 @@ interface User {
 interface AuthState {
   token: string | null;
   user: User | null;
+  sessionExpired: boolean;
   setAuth: (token: string, user: User) => void;
   clearAuth: () => void;
+  setSessionExpired: (expired: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -21,9 +23,15 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       token: null,
       user: null,
-      setAuth: (token, user) => set({ token, user }),
+      sessionExpired: false,
+      setAuth: (token, user) => set({ token, user, sessionExpired: false }),
       clearAuth: () => set({ token: null, user: null }),
+      setSessionExpired: (expired) => set({ sessionExpired: expired }),
     }),
-    { name: 'auth-storage' }
+    {
+      name: 'auth-storage',
+      // Do not persist sessionExpired — it's a transient UI flag
+      partialize: (state) => ({ token: state.token, user: state.user }),
+    }
   )
 );

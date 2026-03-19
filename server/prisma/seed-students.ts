@@ -22,7 +22,7 @@ function generatePhoneNumber(): string {
 }
 
 async function main() {
-  console.log('🌱 Starting Grade 10 student data seeding...\n');
+  console.log('🌱 Starting Grade 7 student data seeding...\n');
 
   // Create registrar user if not exists
   const registrarEmail = 'registrar@school.edu.ph';
@@ -63,10 +63,10 @@ async function main() {
     console.log('✓ Created academic year 2026-2027');
   }
 
-  // Create Grade 10 only
+  // Create Grade 7 only
   let gradeLevel = await prisma.gradeLevel.findFirst({
     where: {
-      name: 'Grade 10',
+      name: 'Grade 7',
       academicYearId: academicYear.id,
     },
   });
@@ -74,13 +74,13 @@ async function main() {
   if (!gradeLevel) {
     gradeLevel = await prisma.gradeLevel.create({
       data: {
-        name: 'Grade 10',
-        displayOrder: 4,
+        name: 'Grade 7',
+        displayOrder: 7,
         academicYearId: academicYear.id,
       },
     });
   }
-  console.log('✓ Created/verified Grade 10');
+  console.log('✓ Created/verified Grade 7');
 
   // Create sections named after Philippine National Heroes
   const heroSectionNames = ['Rizal', 'Bonifacio', 'Mabini'];
@@ -107,7 +107,7 @@ async function main() {
   }
   console.log('✓ Created/verified 3 sections (Rizal, Bonifacio, Mabini)');
 
-  // Generate 3 Grade 10 students (1 per section)
+  // Generate 3 Grade 7 students (1 per section)
   const studentData = [
     {
       firstName: 'Juan',
@@ -142,7 +142,7 @@ async function main() {
     }
     usedLRNs.add(lrn);
 
-    const birthDate = new Date(2011, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1);
+    const birthDate = new Date(2014, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1);
     const barangays = ['San Antonio', 'San Jose', 'Poblacion', 'San Miguel', 'Santa Cruz'];
     const barangay = barangays[Math.floor(Math.random() * barangays.length)];
     const address = `${Math.floor(Math.random() * 500) + 1} Brgy. ${barangay}, Sample City, Sample Province`;
@@ -192,7 +192,7 @@ async function main() {
     }
   }
 
-  console.log(`\n✅ Successfully seeded ${totalCreated} Grade 10 students`);
+  console.log(`\n✅ Successfully seeded ${totalCreated} Grade 7 students`);
   console.log(`📊 Distribution: 1 student per section (Rizal, Bonifacio, Mabini)`);
   console.log(`🏫 Sections: ${sections.length} total sections`);
 }
