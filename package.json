@@ -4,6 +4,6 @@
   "scripts": {
     "dev:server": "pnpm --filter server dev",
     "dev:client": "pnpm --filter client dev",
-    "dev": "pnpm run dev:server & pnpm run dev:client"
+    "dev": "pnpm --filter server --filter client --parallel dev"
   }
 }
