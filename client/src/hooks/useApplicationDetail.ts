@@ -1,5 +1,66 @@
 import { useState, useEffect, useCallback } from "react";
+import { isAxiosError } from "axios";
 import api from "@/api/axiosInstance";
+
+export interface Address {
+  houseNo?: string;
+  street?: string;
+  barangay: string;
+  cityMunicipality: string;
+  province: string;
+  country: string;
+  zipCode?: string;
+}
+
+export interface ParentInfo {
+  lastName: string;
+  firstName: string;
+  middleName?: string | null;
+  contactNumber?: string | null;
+  maidenName?: string | null;
+}
+
+export interface GuardianInfo {
+  lastName?: string | null;
+  firstName?: string | null;
+  middleName?: string | null;
+  contactNumber?: string | null;
+  relationship?: string | null;
+}
+
+export interface EnrollmentDetail {
+  id: number;
+  applicantId: number;
+  sectionId: number;
+  academicYearId: number;
+  enrolledAt: string;
+  enrolledById: number;
+  section: {
+    id: number;
+    name: string;
+    advisingTeacher: {
+      id: number;
+      firstName: string;
+      lastName: string;
+    } | null;
+  };
+  enrolledBy: {
+    id: number;
+    name: string;
+  };
+}
+
+export interface EmailLog {
+  id: number;
+  recipient: string;
+  subject: string;
+  trigger: string;
+  status: string;
+  applicantId: number | null;
+  errorMessage: string | null;
+  attemptedAt: string;
+  sentAt: string | null;
+}
 
 export interface ApplicantDetail {
   id: number;
@@ -14,11 +75,11 @@ export interface ApplicantDetail {
   placeOfBirth: string | null;
   religion: string | null;
   motherTongue: string | null;
-  currentAddress: any;
-  permanentAddress: any;
-  motherName: any;
-  fatherName: any;
-  guardianInfo: any;
+  currentAddress: Address;
+  permanentAddress: Address | null;
+  motherName: ParentInfo;
+  fatherName: ParentInfo;
+  guardianInfo: GuardianInfo | null;
   emailAddress: string | null;
   isIpCommunity: boolean;
   ipGroupName: string | null;
@@ -74,8 +135,8 @@ export interface ApplicantDetail {
   strand: { id: number; name: string } | null;
   academicYear: { id: number; yearLabel: string };
   encodedBy: { id: number; name: string; role: string } | null;
-  enrollment: any;
-  emailLogs?: any[];
+  enrollment: EnrollmentDetail | null;
+  emailLogs?: EmailLog[];
 }
 
 export function useApplicationDetail(id: number | null, isDetailed: boolean = false) {
@@ -94,8 +155,14 @@ export function useApplicationDetail(id: number | null, isDetailed: boolean = fa
       const endpoint = isDetailed ? `/applications/${id}/detailed` : `/applications/${id}`;
       const res = await api.get(endpoint);
       setData(res.data);
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.message || "Failed to load application detail");
+    } catch (err: unknown) {
+      if (isAxiosError(err)) {
+        setError(err.response?.data?.message || err.message || "Failed to load application detail");
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Failed to load application detail");
+      }
     } finally {
       setLoading(false);
     }

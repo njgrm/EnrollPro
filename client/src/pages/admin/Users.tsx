@@ -141,7 +141,7 @@ export default function AdminUsers() {
       await api.post("/admin/users", formData);
       sileo.success({
         title: "Account Created",
-        description: `${formData.name} has been added as a ${formData.role.toLowerCase()}.`,
+        description: `${formData.name} has been added as a ${formData.role?.toLowerCase() ?? "user"}.`,
       });
       setCreateOpen(false);
       fetchUsers();

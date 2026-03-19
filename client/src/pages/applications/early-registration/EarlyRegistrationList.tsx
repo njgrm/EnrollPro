@@ -1,13 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import {
-  Search,
-  Eye,
-  XCircle,
-  Calendar,
-  ClipboardCheck,
-  UserCheck,
-  Info,
-} from "lucide-react";
+import { Search, Eye, Info } from "lucide-react";
 import { sileo } from "sileo";
 import api from "@/api/axiosInstance";
 import { useSettingsStore } from "@/stores/settingsStore";
@@ -287,27 +279,10 @@ export default function EarlyRegistration() {
     }
   };
 
-  const handleOfferRegular = async () => {
-    if (!selectedApp || !selectedSectionId) return;
-    try {
-      await api.patch(`/applications/${selectedApp.id}/offer-regular`, {
-        sectionId: parseInt(selectedSectionId),
-      });
-      sileo.success({
-        title: "Regular Section Offered",
-        description: "Student moved to Enrollment phase under Regular program.",
-      });
-      setActionType(null);
-      setSelectedId(null);
-      fetchData();
-    } catch (err) {
-      toastApiError(err as never);
-    }
-  };
-
   return (
     <div className='flex h-[calc(100vh-2rem)] overflow-hidden space-x-4'>
-      <div className={`flex-1 flex flex-col space-y-6 overflow-auto transition-all duration-200 ${selectedId ? "md:mr-[45%] lg:mr-[40%]" : ""}`}>
+      <div
+        className="flex-1 flex flex-col space-y-6 overflow-auto">
         <div className='flex flex-col md:flex-row md:items-center justify-between gap-4'>
           <div>
             <h1 className='text-3xl font-bold tracking-tight'>
@@ -399,27 +374,27 @@ export default function EarlyRegistration() {
           <CardContent>
             <div className='rounded-xl border border-[hsl(var(--border))] overflow-hidden'>
               <Table>
-                <TableHeader className='bg-[hsl(var(--accent))]'>
+                <TableHeader className='bg-[hsl(var(--primary))]'>
                   <TableRow>
-                    <TableHead className='text-center font-bold text-accent-foreground'>
+                    <TableHead className='text-center font-bold text-primary-foreground'>
                       Applicant
                     </TableHead>
-                    <TableHead className='text-center font-bold text-accent-foreground hidden md:table-cell'>
+                    <TableHead className='text-center font-bold text-primary-foreground hidden md:table-cell'>
                       LRN
                     </TableHead>
-                    <TableHead className='text-center font-bold text-accent-foreground'>
+                    <TableHead className='text-center font-bold text-primary-foreground'>
                       Grade
                     </TableHead>
-                    <TableHead className='text-center font-bold text-accent-foreground hidden lg:table-cell'>
+                    <TableHead className='text-center font-bold text-primary-foreground hidden lg:table-cell'>
                       Type
                     </TableHead>
-                    <TableHead className='text-center font-bold text-accent-foreground'>
+                    <TableHead className='text-center font-bold text-primary-foreground'>
                       Status
                     </TableHead>
-                    <TableHead className='text-center font-bold text-accent-foreground hidden xl:table-cell'>
+                    <TableHead className='text-center font-bold text-primary-foreground hidden xl:table-cell'>
                       Date
                     </TableHead>
-                    <TableHead className='text-center font-bold text-accent-foreground'>
+                    <TableHead className='text-center font-bold text-primary-foreground'>
                       Actions
                     </TableHead>
                   </TableRow>
@@ -446,8 +421,7 @@ export default function EarlyRegistration() {
                       <TableRow
                         key={app.id}
                         className={`hover:bg-[hsl(var(--muted))] transition-colors text-center cursor-pointer ${selectedId === app.id ? "bg-[hsl(var(--muted))] shadow-inner border-l-4 border-l-[hsl(var(--primary))]" : ""}`}
-                        onClick={() => setSelectedId(app.id)}
-                      >
+                        onClick={() => setSelectedId(app.id)}>
                         <TableCell>
                           <div className='flex flex-col text-left'>
                             <span className='font-bold text-sm uppercase'>
@@ -458,7 +432,9 @@ export default function EarlyRegistration() {
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell className='text-xs hidden md:table-cell'>{app.lrn}</TableCell>
+                        <TableCell className='text-xs hidden md:table-cell'>
+                          {app.lrn}
+                        </TableCell>
                         <TableCell>
                           <div className='flex flex-col'>
                             <span className='text-xs font-medium'>
@@ -492,7 +468,7 @@ export default function EarlyRegistration() {
                           <Button
                             variant='secondary'
                             size='sm'
-                            className='h-8 text-xs font-medium'
+                            className='h-8 text-xs font-medium bg-primary/10 hover:bg-primary border-2 border-primary/20 hover:text-primary-foreground'
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedId(app.id);
@@ -536,18 +512,20 @@ export default function EarlyRegistration() {
       </div>
 
       {/* TIER 1 - SLIDE-OVER PANEL */}
-      <Sheet open={selectedId !== null} onOpenChange={(open) => { if (!open) setSelectedId(null); }}>
+      <Sheet
+        open={selectedId !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedId(null);
+        }}>
         <SheetContent
-          side="right"
-          className="w-[90%] md:w-[45%] min-w-[480px] max-w-[640px] p-0 flex flex-col border-l"
-          style={{ position: 'absolute', top: 0, right: 0, height: '100%', zIndex: 50 }}
-        >
+          side='right'
+          className='w-[90%] md:w-[45%] min-w-[480px] max-w-[640px] p-0 flex flex-col border-l'>
           {selectedId && (
             <ApplicationDetailPanel
               id={selectedId}
               onClose={() => setSelectedId(null)}
               onApprove={() => {
-                const app = applications.find(a => a.id === selectedId);
+                const app = applications.find((a) => a.id === selectedId);
                 if (app) {
                   setSelectedApp(app);
                   setActionType("APPROVE");
@@ -555,21 +533,21 @@ export default function EarlyRegistration() {
                 }
               }}
               onReject={() => {
-                const app = applications.find(a => a.id === selectedId);
+                const app = applications.find((a) => a.id === selectedId);
                 if (app) {
                   setSelectedApp(app);
                   setActionType("REJECT");
                 }
               }}
               onScheduleExam={() => {
-                const app = applications.find(a => a.id === selectedId);
+                const app = applications.find((a) => a.id === selectedId);
                 if (app) {
                   setSelectedApp(app);
                   setActionType("SCHEDULE");
                 }
               }}
               onRecordResult={() => {
-                const app = applications.find(a => a.id === selectedId);
+                const app = applications.find((a) => a.id === selectedId);
                 if (app) {
                   setSelectedApp(app);
                   setActionType("RESULT");
@@ -578,21 +556,31 @@ export default function EarlyRegistration() {
               onPass={async () => {
                 try {
                   await api.patch(`/applications/${selectedId}/pass`);
-                  sileo.success({ title: 'Passed', description: 'Applicant marked as PASSED.' });
+                  sileo.success({
+                    title: "Passed",
+                    description: "Applicant marked as PASSED.",
+                  });
                   fetchData();
-                  // Re-fetch detail panel content implicitly by state updates or let the user close/re-open. 
+                  // Re-fetch detail panel content implicitly by state updates or let the user close/re-open.
                   // But usually useApplicationDetail will refetch or we can just trigger a list refetch which is fine.
-                } catch(e) { toastApiError(e as never); }
+                } catch (e) {
+                  toastApiError(e as never);
+                }
               }}
               onFail={async () => {
                 try {
                   await api.patch(`/applications/${selectedId}/fail`);
-                  sileo.success({ title: 'Failed', description: 'Applicant marked as FAILED.' });
+                  sileo.success({
+                    title: "Failed",
+                    description: "Applicant marked as FAILED.",
+                  });
                   fetchData();
-                } catch(e) { toastApiError(e as never); }
+                } catch (e) {
+                  toastApiError(e as never);
+                }
               }}
               onOfferRegular={() => {
-                const app = applications.find(a => a.id === selectedId);
+                const app = applications.find((a) => a.id === selectedId);
                 if (app) {
                   setSelectedApp(app);
                   setActionType("APPROVE"); // reuse APPROVE dialog for section selection
