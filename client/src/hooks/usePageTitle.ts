@@ -29,6 +29,7 @@ function resolvePageTitle(pathname: string): string | null {
     '/admin/users':         'User Management',
     '/admin/email-logs':    'Email Logs',
     '/admin/system':        'System Health',
+    '/enrollment/requirements': 'Documentary Requirements',
   };
 
   if (exact[pathname]) return exact[pathname];

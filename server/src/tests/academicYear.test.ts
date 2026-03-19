@@ -30,7 +30,7 @@ function createMockSchoolYear(overrides: Partial<any> = {}): any {
     earlyRegCloseDate: new Date("2026-02-27T12:00:00.000Z"),
     enrollOpenDate: new Date("2026-05-25T12:00:00.000Z"),
     enrollCloseDate: new Date("2026-05-31T12:00:00.000Z"),
-    manualOverrideOpen: false,
+    isManualOverrideOpen: false,
     clonedFromId: null,
     createdAt: new Date(),
     ...overrides,
@@ -161,7 +161,7 @@ console.log("\n🧪 TEST SUITE 3: Enrollment Gate Logic\n");
 
 // Test 3.1: Manual Override
 console.log("Test 3.1: Manual Override - Should always be open");
-const overrideYear = createMockSchoolYear({ manualOverrideOpen: true });
+const overrideYear = createMockSchoolYear({ isManualOverrideOpen: true });
 console.assert(
   isEnrollmentOpen(overrideYear) === true,
   "❌ Should be open with override",

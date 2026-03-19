@@ -168,7 +168,7 @@ export default function Step6Review({
             label='Disability'
             value={
               data.isLearnerWithDisability
-                ? data.disabilityType?.join(", ")
+                ? data.disabilityTypes?.join(", ")
                 : "None"
             }
           />
@@ -181,7 +181,7 @@ export default function Step6Review({
           onEdit={onEdit}>
           <DataItem label='Last School' value={data.lastSchoolName} />
           <DataItem label='Last Grade' value={data.lastGradeCompleted} />
-          <DataItem label='School Year' value={data.syLastAttended} />
+          <DataItem label='School Year' value={data.schoolYearLastAttended} />
           <DataItem label='School Type' value={data.lastSchoolType} />
         </SummaryCard>
 
@@ -194,7 +194,7 @@ export default function Step6Review({
           <DataItem
             label='Program'
             value={
-              data.scpApplication ? `SCP (${data.scpType})` : "Regular Section"
+              data.isScpApplication ? `SCP (${data.scpType})` : "Regular Section"
             }
           />
           <DataItem label='Learner Type' value={data.learnerType} />

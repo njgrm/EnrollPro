@@ -50,7 +50,7 @@ export async function createGradeLevel(
     actionType: "GRADE_LEVEL_CREATED",
     description: `Created grade level "${name}"`,
     subjectType: "GradeLevel",
-    subjectId: gl.id,
+    recordId: gl.id,
     req,
   });
 
@@ -113,7 +113,7 @@ export async function deleteGradeLevel(
     actionType: "GRADE_LEVEL_DELETED",
     description: `Deleted grade level "${gl.name}"`,
     subjectType: "GradeLevel",
-    subjectId: id,
+    recordId: id,
     req,
   });
 
@@ -155,7 +155,7 @@ export async function createStrand(req: Request, res: Response): Promise<void> {
     actionType: "STRAND_CREATED",
     description: `Created strand "${name}"`,
     subjectType: "Strand",
-    subjectId: strand.id,
+    recordId: strand.id,
     req,
   });
 
@@ -214,7 +214,7 @@ export async function deleteStrand(req: Request, res: Response): Promise<void> {
     actionType: "STRAND_DELETED",
     description: `Deleted strand "${strand.name}"`,
     subjectType: "Strand",
-    subjectId: id,
+    recordId: id,
     req,
   });
 
@@ -296,7 +296,7 @@ export async function syncStrands(req: Request, res: Response): Promise<void> {
       actionType: "STRANDS_SYNCED",
       description: `Synchronized SHS curriculum strands for school year ${ayId}`,
       subjectType: "SchoolYear",
-      subjectId: ayId,
+      recordId: ayId,
       req,
     });
 
@@ -344,7 +344,7 @@ export async function updateStrandMatrix(
       actionType: "STRAND_MATRIX_UPDATED",
       description: `Updated strand-to-grade matrix for school year ${ayId}`,
       subjectType: "SchoolYear",
-      subjectId: ayId,
+      recordId: ayId,
       req,
     });
 
@@ -430,7 +430,7 @@ export async function updateScpConfigs(
       actionType: "SCP_CONFIG_UPDATED",
       description: `Updated SCP configurations for school year ${ayId}`,
       subjectType: "SchoolYear",
-      subjectId: ayId,
+      recordId: ayId,
       req,
     });
 

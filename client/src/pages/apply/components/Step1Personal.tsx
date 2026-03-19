@@ -270,12 +270,12 @@ export default function Step1Personal() {
           </div>
 
           <div className='space-y-2'>
-            <Label htmlFor='psaBcNumber' className='text-sm font-semibold'>
+            <Label htmlFor='psaBirthCertNumber' className='text-sm font-semibold'>
               PSA Birth Certificate Number
             </Label>
             <Input
-              id='psaBcNumber'
-              {...register("psaBcNumber")}
+              id='psaBirthCertNumber'
+              {...register("psaBirthCertNumber")}
               autoComplete='off'
               placeholder='PSA BC Number'
               className='h-11 font-bold'

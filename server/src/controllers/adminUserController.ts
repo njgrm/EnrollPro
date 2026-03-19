@@ -74,7 +74,7 @@ export async function store(req: Request, res: Response) {
       actionType: 'ADMIN_USER_CREATED',
       description: `Admin created account: ${name} (${role})`,
       subjectType: 'User',
-      subjectId: user.id,
+      recordId: user.id,
       req,
     });
 
@@ -117,7 +117,7 @@ export async function update(req: Request, res: Response) {
       actionType: 'ADMIN_USER_UPDATED',
       description: `Admin updated account: ${name}`,
       subjectType: 'User',
-      subjectId: userId,
+      recordId: userId,
       req,
     });
 
@@ -149,7 +149,7 @@ export async function deactivate(req: Request, res: Response) {
       actionType: 'ADMIN_USER_DEACTIVATED',
       description: `Admin deactivated account: ${user.name} (${user.role})`,
       subjectType: 'User',
-      subjectId: userId,
+      recordId: userId,
       req,
     });
 
@@ -174,7 +174,7 @@ export async function reactivate(req: Request, res: Response) {
       actionType: 'ADMIN_USER_REACTIVATED',
       description: `Admin reactivated account: ${user.name} (${user.role})`,
       subjectType: 'User',
-      subjectId: userId,
+      recordId: userId,
       req,
     });
 
@@ -202,7 +202,7 @@ export async function resetPassword(req: Request, res: Response) {
       actionType: 'ADMIN_PASSWORD_RESET',
       description: `Admin reset password for: ${user.name}`,
       subjectType: 'User',
-      subjectId: userId,
+      recordId: userId,
       req,
     });
 

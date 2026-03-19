@@ -59,7 +59,7 @@ interface ApplicationStatus {
   enrollment?: { section: { name: string }; enrolledAt: string };
   examDate?: string;
   rejectionReason?: string;
-  scpApplication?: boolean;
+  isScpApplication?: boolean;
   scpType?: string;
 }
 
@@ -350,7 +350,7 @@ export default function TrackApplication() {
                 <div
                   className={cn(
                     "grid gap-4 text-center",
-                    status.scpApplication
+                    status.isScpApplication
                       ? "grid-cols-1 md:grid-cols-3"
                       : "grid-cols-1 md:grid-cols-2",
                   )}>
@@ -371,7 +371,7 @@ export default function TrackApplication() {
                     </p>
                   </div>
 
-                  {status.scpApplication && (
+                  {status.isScpApplication && (
                     <div className='p-5 bg-primary/5 border border-primary/10 rounded-2xl space-y-1'>
                       <p className='text-[10px] font-black uppercase text-primary/60 tracking-widest flex items-center justify-center gap-1.5'>
                         <BookOpen className='w-3 h-3' /> SCP Program
@@ -389,7 +389,7 @@ export default function TrackApplication() {
                       <div
                         className={cn(
                           "p-5 bg-purple-50 border border-purple-200 rounded-2xl space-y-1",
-                          status.scpApplication
+                          status.isScpApplication
                             ? "md:col-span-3"
                             : "md:col-span-2",
                         )}>
@@ -410,7 +410,7 @@ export default function TrackApplication() {
                       <div
                         className={cn(
                           "p-5 bg-destructive/5 border border-destructive/20 rounded-2xl space-y-1",
-                          status.scpApplication
+                          status.isScpApplication
                             ? "md:col-span-3"
                             : "md:col-span-2",
                         )}>
@@ -426,7 +426,7 @@ export default function TrackApplication() {
                   <div
                     className={cn(
                       "p-5 bg-white border border-border rounded-2xl space-y-1 text-center",
-                      status.scpApplication ? "md:col-span-3" : "md:col-span-2",
+                      status.isScpApplication ? "md:col-span-3" : "md:col-span-2",
                     )}>
                     <p className='text-[10px] font-black uppercase text-muted-foreground tracking-widest'>
                       Date Submitted

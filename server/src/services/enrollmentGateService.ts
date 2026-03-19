@@ -1,7 +1,7 @@
 import type { SchoolYear } from "@prisma/client";
 
 export function isEnrollmentOpen(year: SchoolYear): boolean {
-  if (year.manualOverrideOpen) return true;
+  if (year.isManualOverrideOpen) return true;
   const now = new Date();
 
   const inPhase1 =
@@ -22,7 +22,7 @@ export function isEnrollmentOpen(year: SchoolYear): boolean {
 export function getEnrollmentPhase(
   year: SchoolYear,
 ): "EARLY_REGISTRATION" | "REGULAR_ENROLLMENT" | "CLOSED" | "OVERRIDE" {
-  if (year.manualOverrideOpen) return "OVERRIDE";
+  if (year.isManualOverrideOpen) return "OVERRIDE";
   const now = new Date();
 
   if (

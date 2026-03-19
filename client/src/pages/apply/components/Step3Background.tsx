@@ -17,7 +17,7 @@ export default function Step3Background() {
   const isIpCommunity = watch("isIpCommunity");
   const is4PsBeneficiary = watch("is4PsBeneficiary");
   const isLearnerWithDisability = watch("isLearnerWithDisability");
-  const snedCategory = watch("snedCategory");
+  const specialNeedsCategory = watch("specialNeedsCategory");
   const hasPwdId = watch("hasPwdId");
 
   return (
@@ -223,8 +223,8 @@ export default function Step3Background() {
             onValueChange={(val) => {
               setValue("isLearnerWithDisability", val === "Yes");
               if (val === "No") {
-                setValue("snedCategory", undefined);
-                setValue("disabilityType", []);
+                setValue("specialNeedsCategory", undefined);
+                setValue("disabilityTypes", []);
                 setValue("hasPwdId", false);
               }
             }}
@@ -268,10 +268,10 @@ export default function Step3Background() {
                     <div className='flex items-center gap-2'>
                       <Checkbox
                         id='sned-a1'
-                        checked={snedCategory === "a1"}
+                        checked={specialNeedsCategory === "a1"}
                         onCheckedChange={(checked) => {
-                          setValue("snedCategory", checked ? "a1" : undefined);
-                          setValue("disabilityType", []);
+                          setValue("specialNeedsCategory", checked ? "a1" : undefined);
+                          setValue("disabilityTypes", []);
                         }}
                         className='w-5 h-5 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground border-primary'
                       />
@@ -282,7 +282,7 @@ export default function Step3Background() {
                       </Label>
                     </div>
                     <AnimatePresence>
-                      {snedCategory === "a1" && (
+                      {specialNeedsCategory === "a1" && (
                         <motion.div
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: "auto", opacity: 1 }}
@@ -295,14 +295,14 @@ export default function Step3Background() {
                                 className='flex items-center space-x-3'>
                                 <Checkbox
                                   id={`disability-${type}`}
-                                  checked={watch("disabilityType")?.includes(
+                                  checked={watch("disabilityTypes")?.includes(
                                     type,
                                   )}
                                   onCheckedChange={(checked) => {
                                     const current =
-                                      watch("disabilityType") || [];
+                                      watch("disabilityTypes") || [];
                                     setValue(
-                                      "disabilityType",
+                                      "disabilityTypes",
                                       checked
                                         ? [...current, type]
                                         : current.filter((t) => t !== type),
@@ -328,10 +328,10 @@ export default function Step3Background() {
                     <div className='flex items-center gap-2'>
                       <Checkbox
                         id='sned-a2'
-                        checked={snedCategory === "a2"}
+                        checked={specialNeedsCategory === "a2"}
                         onCheckedChange={(checked) => {
-                          setValue("snedCategory", checked ? "a2" : undefined);
-                          setValue("disabilityType", []);
+                          setValue("specialNeedsCategory", checked ? "a2" : undefined);
+                          setValue("disabilityTypes", []);
                         }}
                         className='w-5 h-5 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground border-primary'
                       />
@@ -342,7 +342,7 @@ export default function Step3Background() {
                       </Label>
                     </div>
                     <AnimatePresence>
-                      {snedCategory === "a2" && (
+                      {specialNeedsCategory === "a2" && (
                         <motion.div
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: "auto", opacity: 1 }}
@@ -355,14 +355,14 @@ export default function Step3Background() {
                                 className='flex items-center space-x-3'>
                                 <Checkbox
                                   id={`disability-${type}`}
-                                  checked={watch("disabilityType")?.includes(
+                                  checked={watch("disabilityTypes")?.includes(
                                     type,
                                   )}
                                   onCheckedChange={(checked) => {
                                     const current =
-                                      watch("disabilityType") || [];
+                                      watch("disabilityTypes") || [];
                                     setValue(
-                                      "disabilityType",
+                                      "disabilityTypes",
                                       checked
                                         ? [...current, type]
                                         : current.filter((t) => t !== type),

@@ -1,11 +1,8 @@
-import { useState } from "react";
 import { 
   FileText, 
-  Info, 
   AlertCircle, 
   CheckCircle2, 
   BookOpen, 
-  Users, 
   UserPlus, 
   RefreshCw, 
   Stethoscope,
@@ -28,7 +25,7 @@ import {
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function DocumentaryRequirements() {
-  usePageTitle("Documentary Requirements Guide");
+  usePageTitle();
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-10">

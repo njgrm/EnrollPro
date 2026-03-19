@@ -21,7 +21,7 @@ interface Props {
 }
 
 interface RequirementItem {
-  key: keyof Omit<ChecklistData, "id" | "applicantId" | "lastUpdated">;
+  key: keyof Omit<ChecklistData, "id" | "applicantId" | "updatedAt">;
   label: string;
   description: string;
   isMandatory: boolean;
@@ -39,61 +39,61 @@ export function RequirementChecklist({ applicantId, learnerType, checklist, onRe
 
   const requirements: RequirementItem[] = [
     {
-      key: "psaBirthCertStatus",
+      key: "isPsaBirthCertPresented",
       label: "PSA Birth Certificate",
       description: "Submitted once per school stay. Mandatory for new enrollees and transferees if not already on file.",
-      isMandatory: learnerType !== "CONTINUING" && !localChecklist.psaBcOnFile,
+      isMandatory: learnerType !== "CONTINUING" && !localChecklist.isPsaBcOnFile,
     },
     {
-      key: "psaBcOnFile",
+      key: "isPsaBcOnFile",
       label: "PSA BC Already on File",
       description: "Mark if the PSA Birth Certificate was already submitted in previous years at this school. If checked, new PSA BC is not required.",
       isMandatory: false,
     },
     {
-      key: "secondaryBirthProofStatus",
+      key: "isSecondaryBirthProofSubmitted",
       label: "Secondary Proof of Birth",
       description: "Accepted if PSA Birth Certificate is unavailable (e.g., Brgy Cert, Baptismal). Required for temporary enrollment.",
       isMandatory: false,
     },
     {
-      key: "originalPsaBcCollected",
+      key: "isOriginalPsaBcCollected",
       label: "Original PSA BC Collected",
       description: "Phase 2: The actual physical original document has been received and filed in the student's folder.",
       isMandatory: false,
     },
     {
-      key: "sf9ReportCardStatus",
+      key: "isSf9Submitted",
       label: "SF9 / Report Card",
       description: "Proof of last grade level completed. Mandatory for new enrollees and transferees.",
       isMandatory: learnerType !== "CONTINUING",
     },
     {
-      key: "confirmationSlipStatus",
+      key: "isConfirmationSlipReceived",
       label: "Confirmation Slip",
       description: "Mandatory for Grade 8-10 and Grade 12 continuing learners to confirm intent to enroll.",
       isMandatory: learnerType === "CONTINUING",
     },
     {
-      key: "sf10PermanentStatus",
+      key: "isSf10Requested",
       label: "SF10 (Permanent Record)",
       description: "NOT an initial requirement. Transmitted school-to-school via LIS tracking after enrollment.",
       isMandatory: false,
     },
     {
-      key: "goodMoralStatus",
+      key: "isGoodMoralPresented",
       label: "Good Moral Certificate",
       description: "Not required for public schools per DO 017, s. 2025.",
       isMandatory: false,
     },
     {
-      key: "medicalEvaluationStatus",
+      key: "isMedicalEvalSubmitted",
       label: "Medical Evaluation",
       description: "Not required unless for specific health-related program requirements or LWD.",
       isMandatory: false,
     },
     {
-      key: "undertakingStatus",
+      key: "isUndertakingSigned",
       label: "Affidavit of Undertaking",
       description: "Required for transferees with unpaid private school fees or missing documents (Temporary Enrollment).",
       isMandatory: learnerType === "TRANSFEREE",
@@ -194,9 +194,9 @@ export function RequirementChecklist({ applicantId, learnerType, checklist, onRe
           ))}
         </div>
 
-        {checklist?.lastUpdated && (
+        {checklist?.updatedAt && (
           <p className="text-[9px] text-right text-muted-foreground pt-2 border-t">
-            Last updated: {format(new Date(checklist.lastUpdated), "MMM dd, yyyy hh:mm a")}
+            Last updated: {format(new Date(checklist.updatedAt), "MMM dd, yyyy hh:mm a")}
           </p>
         )}
 

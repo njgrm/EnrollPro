@@ -65,20 +65,20 @@ export interface EmailLog {
 export interface ChecklistData {
   id: number;
   applicantId: number;
-  psaBirthCertStatus: boolean;
-  psaBcOnFile: boolean;
-  originalPsaBcCollected: boolean;
-  secondaryBirthProofStatus: boolean;
-  sf9ReportCardStatus: boolean;
-  sf10PermanentStatus: boolean;
-  goodMoralStatus: boolean;
-  peptAeCertificateStatus: boolean;
-  pwdIdStatus: boolean;
-  medicalEvaluationStatus: boolean;
-  undertakingStatus: boolean;
-  confirmationSlipStatus: boolean;
-  otherStatus: boolean;
-  lastUpdated: string;
+  isPsaBirthCertPresented: boolean;
+  isPsaBcOnFile: boolean;
+  isOriginalPsaBcCollected: boolean;
+  isSecondaryBirthProofSubmitted: boolean;
+  isSf9Submitted: boolean;
+  isSf10Requested: boolean;
+  isGoodMoralPresented: boolean;
+  isPeptAeSubmitted: boolean;
+  isPwdIdPresented: boolean;
+  isMedicalEvalSubmitted: boolean;
+  isUndertakingSigned: boolean;
+  isConfirmationSlipReceived: boolean;
+  isOtherDocSubmitted: boolean;
+  updatedAt: string;
 }
 
 export type LearnerType =
@@ -90,7 +90,7 @@ export type LearnerType =
 export interface ApplicantDetail {
   id: number;
   lrn: string | null;
-  psaBcNumber: string | null;
+  psaBirthCertNumber: string | null;
   lastName: string;
   firstName: string;
   middleName: string | null;
@@ -113,20 +113,20 @@ export interface ApplicantDetail {
   isBalikAral: boolean;
   lastYearEnrolled: string | null;
   isLearnerWithDisability: boolean;
-  disabilityType: string[];
+  disabilityTypes: string[];
   lastSchoolName: string | null;
   lastSchoolId: string | null;
   lastGradeCompleted: string | null;
-  syLastAttended: string | null;
+  schoolYearLastAttended: string | null;
   lastSchoolAddress: string | null;
   lastSchoolType: string | null;
   learnerType: LearnerType;
   electiveCluster: string | null;
-  scpApplication: boolean;
+  isScpApplication: boolean;
   scpType: string | null;
-  spaArtField: string | null;
-  spsSports: string[];
-  spflLanguage: string | null;
+  artField: string | null;
+  sportsList: string[];
+  foreignLanguage: string | null;
   trackingNumber: string;
   status: string;
   rejectionReason: string | null;
@@ -153,7 +153,7 @@ export interface ApplicantDetail {
   updatedAt: string;
   admissionChannel: string;
   encodedById: number | null;
-  snedCategory: string | null;
+  specialNeedsCategory: string | null;
   hasPwdId: boolean;
   learningModalities: string[];
   isTemporarilyEnrolled: boolean;

@@ -30,13 +30,13 @@ export const applicationSubmitSchema = z.object({
     .regex(/^\d{12}$/, "LRN must be exactly 12 numeric digits")
     .optional()
     .nullable(),
-  psaBcNumber: z.string().optional().nullable(),
+  psaBirthCertNumber: z.string().optional().nullable(),
 
   // Grade level & program
   gradeLevel: z.enum(["7", "11"]),
   shsTrack: z.enum(["ACADEMIC", "TECHPRO"]).optional().nullable(),
   electiveCluster: z.string().optional().nullable(),
-  scpApplication: z.boolean().default(false),
+  isScpApplication: z.boolean().default(false),
   scpType: z
     .enum(["STE", "SPA", "SPS", "SPJ", "SPFL", "SPTVE"])
     .optional()
@@ -60,9 +60,9 @@ export const applicationSubmitSchema = z.object({
   isBalikAral: z.boolean().default(false),
   lastYearEnrolled: z.string().optional().nullable(),
   isLearnerWithDisability: z.boolean().default(false),
-  snedCategory: z.enum(["a1", "a2"]).optional().nullable(),
+  specialNeedsCategory: z.enum(["a1", "a2"]).optional().nullable(),
   hasPwdId: z.boolean().default(false),
-  disabilityType: z.array(z.string()).default([]),
+  disabilityTypes: z.array(z.string()).default([]),
 
   // Address
   currentAddress: addressSchema,
@@ -101,18 +101,24 @@ export const applicationSubmitSchema = z.object({
   lastSchoolName: z.string().min(1, "Last school name is required"),
   lastSchoolId: z.string().optional().nullable(),
   lastGradeCompleted: z.string().min(1, "Last grade completed is required"),
-  syLastAttended: z.string().min(1, "School year last attended is required"),
+  schoolYearLastAttended: z.string().min(1, "School year last attended is required"),
   lastSchoolAddress: z.string().optional().nullable(),
   lastSchoolType: z.enum(["PUBLIC", "PRIVATE", "INTERNATIONAL", "ALS"]),
 
   // STEM grades (G11 STEM only)
   g10ScienceGrade: z.number().optional().nullable(),
-  g10MathGrade: z.number().optional().nullable(),
+  grade10MathGrade: z.number().optional().nullable(),
+  generalAverage: z.number().optional().nullable(),
 
   // SCP specifics
-  spaArtField: z.string().optional().nullable(),
-  spsSports: z.array(z.string()).default([]),
-  spflLanguage: z.string().optional().nullable(),
+  artField: z.string().optional().nullable(),
+  sportsList: z.array(z.string()).default([]),
+  foreignLanguage: z.string().optional().nullable(),
+
+  // Consent
+  isPrivacyConsentGiven: z.boolean().refine((val) => val === true, {
+    message: "Consent is required",
+  }),
 
   // Learner type
   learnerType: z.enum([

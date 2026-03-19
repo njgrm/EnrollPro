@@ -199,7 +199,7 @@ export async function show(req: Request, res: Response) {
         actionType: "APPLICATION_REVIEWED",
         description: `Started reviewing application for ${application.firstName} ${application.lastName}`,
         subjectType: "Applicant",
-        subjectId: application.id,
+        recordId: application.id,
         req,
       });
     }
@@ -289,7 +289,7 @@ export async function store(req: Request, res: Response) {
 
     // 6. Determine applicant type
     let applicantType: string = "REGULAR";
-    if (body.scpApplication && body.scpType) {
+    if (body.isScpApplication && body.scpType) {
       applicantType = body.scpType;
     } else if (body.gradeLevel === "11" && body.electiveCluster === "AC-STEM") {
       applicantType = "STEM_GRADE11";
@@ -320,7 +320,7 @@ export async function store(req: Request, res: Response) {
     const applicant = await prisma.applicant.create({
       data: {
         lrn: body.lrn || null,
-        psaBcNumber: body.psaBcNumber || null,
+        psaBirthCertNumber: body.psaBirthCertNumber || null,
         lastName: body.lastName,
         firstName: body.firstName,
         middleName: body.middleName || null,
@@ -348,21 +348,21 @@ export async function store(req: Request, res: Response) {
         isBalikAral: body.isBalikAral ?? false,
         lastYearEnrolled: body.isBalikAral ? body.lastYearEnrolled : null,
         isLearnerWithDisability: body.isLearnerWithDisability ?? false,
-        snedCategory: body.isLearnerWithDisability
-          ? body.snedCategory || null
+        specialNeedsCategory: body.isLearnerWithDisability
+          ? body.specialNeedsCategory || null
           : null,
         hasPwdId: body.isLearnerWithDisability
           ? (body.hasPwdId ?? false)
           : false,
-        disabilityType: body.isLearnerWithDisability
-          ? body.disabilityType || []
+        disabilityTypes: body.isLearnerWithDisability
+          ? body.disabilityTypes || []
           : [],
 
         // Previous school
         lastSchoolName: body.lastSchoolName?.trim() || null,
         lastSchoolId: body.lastSchoolId?.trim() || null,
         lastGradeCompleted: body.lastGradeCompleted || null,
-        syLastAttended: body.syLastAttended || null,
+        schoolYearLastAttended: body.schoolYearLastAttended || null,
         lastSchoolAddress: body.lastSchoolAddress?.trim() || null,
         lastSchoolType: body.lastSchoolType || null,
 
@@ -370,15 +370,17 @@ export async function store(req: Request, res: Response) {
         learnerType: lType,
         learningModalities: body.learningModalities || [],
         electiveCluster: body.electiveCluster || null,
-        scpApplication: body.scpApplication ?? false,
-        scpType: body.scpApplication ? body.scpType : null,
-        spaArtField: body.scpType === "SPA" ? body.spaArtField : null,
-        spsSports: body.scpType === "SPS" ? body.spsSports || [] : [],
-        spflLanguage: body.scpType === "SPFL" ? body.spflLanguage : null,
+        isScpApplication: body.isScpApplication ?? false,
+        scpType: body.isScpApplication ? body.scpType : null,
+        artField: body.scpType === "SPA" ? body.artField : null,
+        sportsList: body.scpType === "SPS" ? body.sportsList || [] : [],
+        foreignLanguage: body.scpType === "SPFL" ? body.foreignLanguage : null,
 
         // Grades (STEM G11)
         grade10ScienceGrade: body.g10ScienceGrade ?? null,
-        grade10MathGrade: body.g10MathGrade ?? null,
+        grade10MathGrade: body.grade10MathGrade ?? null,
+        generalAverage: body.generalAverage ?? null,
+        isPrivacyConsentGiven: body.isPrivacyConsentGiven ?? false,
 
         // Relations
         gradeLevelId: gradeLevel.id,
@@ -406,7 +408,7 @@ export async function store(req: Request, res: Response) {
       actionType: "APPLICATION_SUBMITTED",
       description: `Guest submitted application for ${applicant.firstName} ${applicant.lastName}${body.lrn ? ` (LRN: ${body.lrn})` : ""}. Tracking: ${trackingNumber}`,
       subjectType: "Applicant",
-      subjectId: applicant.id,
+      recordId: applicant.id,
       req,
     });
 
@@ -529,7 +531,7 @@ export async function storeF2F(req: Request, res: Response) {
 
     // 6. Determine applicant type
     let applicantType: string = "REGULAR";
-    if (body.scpApplication && body.scpType) {
+    if (body.isScpApplication && body.scpType) {
       applicantType = body.scpType;
     } else if (body.gradeLevel === "11" && body.electiveCluster === "AC-STEM") {
       applicantType = "STEM_GRADE11";
@@ -560,7 +562,7 @@ export async function storeF2F(req: Request, res: Response) {
     const applicant = await prisma.applicant.create({
       data: {
         lrn: body.lrn || null,
-        psaBcNumber: body.psaBcNumber || null,
+        psaBirthCertNumber: body.psaBirthCertNumber || null,
         lastName: body.lastName,
         firstName: body.firstName,
         middleName: body.middleName || null,
@@ -588,21 +590,21 @@ export async function storeF2F(req: Request, res: Response) {
         isBalikAral: body.isBalikAral ?? false,
         lastYearEnrolled: body.isBalikAral ? body.lastYearEnrolled : null,
         isLearnerWithDisability: body.isLearnerWithDisability ?? false,
-        snedCategory: body.isLearnerWithDisability
-          ? body.snedCategory || null
+        specialNeedsCategory: body.isLearnerWithDisability
+          ? body.specialNeedsCategory || null
           : null,
         hasPwdId: body.isLearnerWithDisability
           ? (body.hasPwdId ?? false)
           : false,
-        disabilityType: body.isLearnerWithDisability
-          ? body.disabilityType || []
+        disabilityTypes: body.isLearnerWithDisability
+          ? body.disabilityTypes || []
           : [],
 
         // Previous school
         lastSchoolName: body.lastSchoolName?.trim() || null,
         lastSchoolId: body.lastSchoolId?.trim() || null,
         lastGradeCompleted: body.lastGradeCompleted || null,
-        syLastAttended: body.syLastAttended || null,
+        schoolYearLastAttended: body.schoolYearLastAttended || null,
         lastSchoolAddress: body.lastSchoolAddress?.trim() || null,
         lastSchoolType: body.lastSchoolType || null,
 
@@ -610,15 +612,17 @@ export async function storeF2F(req: Request, res: Response) {
         learnerType: lType,
         learningModalities: body.learningModalities || [],
         electiveCluster: body.electiveCluster || null,
-        scpApplication: body.scpApplication ?? false,
-        scpType: body.scpApplication ? body.scpType : null,
-        spaArtField: body.scpType === "SPA" ? body.spaArtField : null,
-        spsSports: body.scpType === "SPS" ? body.spsSports || [] : [],
-        spflLanguage: body.scpType === "SPFL" ? body.spflLanguage : null,
+        isScpApplication: body.isScpApplication ?? false,
+        scpType: body.isScpApplication ? body.scpType : null,
+        artField: body.scpType === "SPA" ? body.artField : null,
+        sportsList: body.scpType === "SPS" ? body.sportsList || [] : [],
+        foreignLanguage: body.scpType === "SPFL" ? body.foreignLanguage : null,
 
         // Grades (STEM G11)
         grade10ScienceGrade: body.g10ScienceGrade ?? null,
-        grade10MathGrade: body.g10MathGrade ?? null,
+        grade10MathGrade: body.grade10MathGrade ?? null,
+        generalAverage: body.generalAverage ?? null,
+        isPrivacyConsentGiven: body.isPrivacyConsentGiven ?? false,
 
         // Relations
         gradeLevelId: gradeLevel.id,
@@ -650,7 +654,7 @@ export async function storeF2F(req: Request, res: Response) {
       actionType: "F2F_APPLICATION_SUBMITTED",
       description: `${req.user!.role} encoded F2F walk-in application for ${applicant.firstName} ${applicant.lastName}${body.lrn ? ` (LRN: ${body.lrn})` : ""}. Tracking: ${trackingNumber}`,
       subjectType: "Applicant",
-      subjectId: applicant.id,
+      recordId: applicant.id,
       req,
     });
 
@@ -713,7 +717,7 @@ export async function track(req: Request, res: Response) {
         },
         examDate: true,
         rejectionReason: true,
-        scpApplication: true,
+        isScpApplication: true,
         scpType: true,
       },
     });
@@ -783,7 +787,7 @@ export async function approve(req: Request, res: Response) {
       actionType: "APPLICATION_APPROVED",
       description: `Approved application #${applicantId} for ${applicant.firstName} ${applicant.lastName} and pre-registered to section ${sectionId}`,
       subjectType: "Applicant",
-      subjectId: applicantId,
+      recordId: applicantId,
       req,
     });
 
@@ -862,19 +866,19 @@ export async function enroll(req: Request, res: Response) {
             isMet = true;
             break;
           case "CONFIRMATION_SLIP":
-            isMet = checklist.confirmationSlipStatus;
+            isMet = checklist.isConfirmationSlipReceived;
             break;
           case "PSA_BIRTH_CERTIFICATE":
             // Official enrollment REQUIRES PSA BC (presented now or already on file).
             // Secondary proof only allows TEMPORARY enrollment.
-            isMet = checklist.psaBirthCertStatus || checklist.psaBcOnFile;
+            isMet = checklist.isPsaBirthCertPresented || checklist.isPsaBcOnFile;
             break;
           case "SF9_REPORT_CARD":
           case "ACADEMIC_RECORD":
-            isMet = checklist.sf9ReportCardStatus;
+            isMet = checklist.isSf9Submitted;
             break;
           case "PEPT_AE_CERTIFICATE":
-            isMet = checklist.peptAeCertificateStatus;
+            isMet = checklist.isPeptAeSubmitted;
             break;
           // PWD_ID and MEDICAL_EVALUATION are marked as isRequired: false in our service for now
         }
@@ -906,7 +910,7 @@ export async function enroll(req: Request, res: Response) {
       actionType: "APPLICATION_ENROLLED",
       description: `Finalized official enrollment for ${applicant.firstName} ${applicant.lastName} (#${applicantId}) - All mandatory docs verified`,
       subjectType: "Applicant",
-      subjectId: applicantId,
+      recordId: applicantId,
       req,
     });
 
@@ -947,7 +951,7 @@ export async function markTemporarilyEnrolled(req: Request, res: Response) {
       actionType: "APPLICATION_TEMPORARILY_ENROLLED",
       description: `Marked ${applicant.firstName} ${applicant.lastName} (#${applicantId}) as TEMPORARILY ENROLLED (awaiting docs)`,
       subjectType: "Applicant",
-      subjectId: applicantId,
+      recordId: applicantId,
       req,
     });
 
@@ -974,7 +978,7 @@ export async function updateChecklist(req: Request, res: Response) {
       actionType: "CHECKLIST_UPDATED",
       description: `Updated requirement checklist for applicant #${applicantId}`,
       subjectType: "Applicant",
-      subjectId: applicantId,
+      recordId: applicantId,
       req,
     });
 
@@ -1012,7 +1016,7 @@ export async function requestRevision(req: Request, res: Response) {
       actionType: "REVISION_REQUESTED",
       description: `Requested revision for #${applicantId}. Message: ${message || "N/A"}`,
       subjectType: "Applicant",
-      subjectId: applicantId,
+      recordId: applicantId,
       req,
     });
 
@@ -1049,7 +1053,7 @@ export async function withdraw(req: Request, res: Response) {
       actionType: "APPLICATION_WITHDRAWN",
       description: `Application #${applicantId} withdrawn`,
       subjectType: "Applicant",
-      subjectId: applicantId,
+      recordId: applicantId,
       req,
     });
 
@@ -1096,7 +1100,7 @@ export async function reject(req: Request, res: Response) {
       actionType: "APPLICATION_REJECTED",
       description: `Rejected application #${applicantId} for ${applicant.firstName} ${applicant.lastName}. Reason: ${rejectionReason || "N/A"}`,
       subjectType: "Applicant",
-      subjectId: applicantId,
+      recordId: applicantId,
       req,
     });
 
@@ -1150,7 +1154,7 @@ export async function markEligible(req: Request, res: Response) {
       actionType: "APPLICATION_ELIGIBLE",
       description: `Marked ${applicant.firstName} ${applicant.lastName} (#${applicantId}) as ELIGIBLE - docs verified`,
       subjectType: "Applicant",
-      subjectId: applicantId,
+      recordId: applicantId,
       req,
     });
 
@@ -1197,7 +1201,7 @@ export async function scheduleExam(req: Request, res: Response) {
       actionType: "EXAM_SCHEDULED",
       description: `Scheduled ${assessmentType} for ${applicant.firstName} ${applicant.lastName} (#${applicantId}) on ${examDate}${examVenue ? ` at ${examVenue}` : ""}`,
       subjectType: "Applicant",
-      subjectId: applicantId,
+      recordId: applicantId,
       req,
     });
 
@@ -1277,7 +1281,7 @@ export async function recordResult(req: Request, res: Response) {
       actionType: "EXAM_RESULT_RECORDED",
       description: `Recorded assessment result for ${applicant.firstName} ${applicant.lastName} (#${applicantId}): ${examResult || "N/A"} (Score: ${examScore ?? natScore ?? "N/A"})`,
       subjectType: "Applicant",
-      subjectId: applicantId,
+      recordId: applicantId,
       req,
     });
 
@@ -1315,7 +1319,7 @@ export async function pass(req: Request, res: Response) {
       actionType: "APPLICATION_PASSED",
       description: `Marked ${applicant.firstName} ${applicant.lastName} (#${applicantId}) as PASSED - ready for section assignment`,
       subjectType: "Applicant",
-      subjectId: applicantId,
+      recordId: applicantId,
       req,
     });
 
@@ -1370,7 +1374,7 @@ export async function fail(req: Request, res: Response) {
       actionType: "APPLICATION_FAILED",
       description: `Marked ${applicant.firstName} ${applicant.lastName} (#${applicantId}) as NOT_QUALIFIED. Notes: ${examNotes || "N/A"}`,
       subjectType: "Applicant",
-      subjectId: applicantId,
+      recordId: applicantId,
       req,
     });
 
@@ -1412,7 +1416,7 @@ export async function getTimeline(req: Request, res: Response) {
     const timeline = await prisma.auditLog.findMany({
       where: {
         subjectType: "Applicant",
-        subjectId: applicantId,
+        recordId: applicantId,
       },
       include: {
         user: { select: { id: true, name: true, role: true } },
@@ -1493,7 +1497,7 @@ export async function offerRegular(req: Request, res: Response) {
       actionType: "OFFER_REGULAR_SECTION",
       description: `Converted ${applicant.firstName} ${applicant.lastName} (#${applicantId}) from ${originalType} to REGULAR and assigned to section ${sectionId}`,
       subjectType: "Applicant",
-      subjectId: applicantId,
+      recordId: applicantId,
       req,
     });
 
@@ -1682,7 +1686,7 @@ export async function update(req: Request, res: Response) {
       actionType: "APPLICATION_UPDATED",
       description: `Updated application info for ${updated.firstName} ${updated.lastName} (#${applicantId})`,
       subjectType: "Applicant",
-      subjectId: applicantId,
+      recordId: applicantId,
       req,
     });
 
@@ -1760,7 +1764,7 @@ export async function rescheduleExam(req: Request, res: Response) {
       actionType: "EXAM_RESCHEDULED",
       description: `Rescheduled assessment for ${applicant.firstName} ${applicant.lastName} (#${applicantId}) to ${examDate}${examVenue ? ` at ${examVenue}` : ""}`,
       subjectType: "Applicant",
-      subjectId: applicantId,
+      recordId: applicantId,
       req,
     });
 

@@ -348,7 +348,7 @@ export const updateStudent = async (req: Request, res: Response) => {
         actionType: "STUDENT_UPDATED",
         description: `Updated student record for ${updated.firstName} ${updated.lastName} (LRN: ${updated.lrn})`,
         subjectType: "Applicant",
-        subjectId: updated.id,
+        recordId: updated.id,
         ipAddress: req.ip || "unknown",
         userAgent: req.headers["user-agent"] || null,
       },

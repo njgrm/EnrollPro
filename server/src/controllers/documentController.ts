@@ -51,7 +51,7 @@ export async function upload(req: Request, res: Response) {
       actionType: "DOCUMENT_UPLOADED",
       description: `Uploaded ${documentType} for ${applicant.firstName} ${applicant.lastName} (#${applicantId})`,
       subjectType: "Applicant",
-      subjectId: applicantId,
+      recordId: applicantId,
       req,
     });
 
@@ -96,7 +96,7 @@ export async function remove(req: Request, res: Response) {
       actionType: "DOCUMENT_DELETED",
       description: `Deleted document ${document.documentType} for ${document.applicant.firstName} ${document.applicant.lastName} (#${document.applicantId})`,
       subjectType: "Applicant",
-      subjectId: document.applicantId,
+      recordId: document.applicantId,
       req,
     });
 

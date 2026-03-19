@@ -5,14 +5,14 @@ export async function auditLog({
   actionType,
   description,
   subjectType,
-  subjectId,
+  recordId,
   req,
 }: {
   userId?: number | null;
   actionType: string;
   description: string;
   subjectType?: string | null;
-  subjectId?: number | null;
+  recordId?: number | null;
   req: { ip?: string; headers: Record<string, string | string[] | undefined> };
 }) {
   await prisma.auditLog.create({
@@ -21,7 +21,7 @@ export async function auditLog({
       actionType,
       description,
       subjectType: subjectType ?? null,
-      subjectId: subjectId ?? null,
+      recordId: recordId ?? null,
       ipAddress: req.ip ?? '0.0.0.0',
       userAgent: (req.headers['user-agent'] as string) ?? null,
     },

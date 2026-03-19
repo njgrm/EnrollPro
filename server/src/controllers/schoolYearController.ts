@@ -11,7 +11,11 @@ const MANILA_TIME_ZONE = 'Asia/Manila';
 
 const DEFAULT_GRADES = [
   { name: 'Grade 7', displayOrder: 7 },
+  { name: 'Grade 8', displayOrder: 8 },
+  { name: 'Grade 9', displayOrder: 9 },
+  { name: 'Grade 10', displayOrder: 10 },
   { name: 'Grade 11', displayOrder: 11 },
+  { name: 'Grade 12', displayOrder: 12 },
 ];
 
 async function ensureDefaultGradeLevels(schoolYearId: number) {
@@ -229,7 +233,7 @@ export async function createSchoolYear(req: Request, res: Response): Promise<voi
     actionType: 'SY_CREATED',
     description: `Created and activated school year "${schedule.yearLabel}"${cloneFromId ? ` (cloned from ID ${cloneFromId})` : ''}`,
     subjectType: 'SchoolYear',
-    subjectId: year.id,
+    recordId: year.id,
     req,
   });
 
@@ -247,19 +251,19 @@ export async function createSchoolYear(req: Request, res: Response): Promise<voi
 
 export async function toggleOverride(req: Request, res: Response): Promise<void> {
   const id = parseInt(req.params.id as string);
-  const { manualOverrideOpen } = req.body;
+  const { isManualOverrideOpen } = req.body;
 
-  const updated = await prisma.schoolYear.update({
-    where: { id },
-    data: { manualOverrideOpen },
-  });
+    const updated = await prisma.schoolYear.update({
+      where: { id },
+      data: { isManualOverrideOpen },
+    });
 
-  await auditLog({
-    userId: req.user!.userId,
-    actionType: 'ENROLLMENT_OVERRIDE_TOGGLED',
-    description: `Manual override set to ${manualOverrideOpen ? 'OPEN' : 'OFF'} for year "${updated.yearLabel}"`,
+    await auditLog({
+      userId: req.user!.userId,
+      actionType: 'SCHOOL_YEAR_OVERRIDE_TOGGLED',
+      description: `Manual override set to ${isManualOverrideOpen ? 'OPEN' : 'OFF'} for year "${updated.yearLabel}"`,
     subjectType: 'SchoolYear',
-    subjectId: id,
+    recordId: id,
     req,
   });
 
@@ -285,7 +289,7 @@ export async function updateDates(req: Request, res: Response): Promise<void> {
     actionType: 'ENROLLMENT_DATES_UPDATED',
     description: `Updated enrollment dates for "${updated.yearLabel}"`,
     subjectType: 'SchoolYear',
-    subjectId: id,
+    recordId: id,
     req,
   });
 
@@ -319,7 +323,7 @@ export async function updateSchoolYear(req: Request, res: Response): Promise<voi
     actionType: 'SY_UPDATED',
     description: `Updated school year "${updated.yearLabel}"`,
     subjectType: 'SchoolYear',
-    subjectId: id,
+    recordId: id,
     req,
   });
 
@@ -391,7 +395,7 @@ export async function transitionSchoolYear(req: Request, res: Response): Promise
     actionType: 'SY_STATUS_CHANGED',
     description: `School year "${year.yearLabel}" status changed to ${status}`,
     subjectType: 'SchoolYear',
-    subjectId: id,
+    recordId: id,
     req,
   });
 
@@ -436,7 +440,7 @@ export async function deleteSchoolYear(req: Request, res: Response): Promise<voi
     actionType: 'SY_DELETED',
     description: `Deleted school year "${year.yearLabel}"`,
     subjectType: 'SchoolYear',
-    subjectId: id,
+    recordId: id,
     req,
   });
 

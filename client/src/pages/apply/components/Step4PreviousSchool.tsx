@@ -83,12 +83,12 @@ export default function Step4PreviousSchool() {
               School Year Last Attended *
             </Label>
             <Select
-              onValueChange={(val) => setValue("syLastAttended", val)}
-              defaultValue={watch("syLastAttended")}>
+              onValueChange={(val) => setValue("schoolYearLastAttended", val)}
+              defaultValue={watch("schoolYearLastAttended")}>
               <SelectTrigger
                 className={cn(
                   "h-11 font-bold",
-                  errors.syLastAttended && "border-destructive",
+                  errors.schoolYearLastAttended && "border-destructive",
                 )}>
                 <SelectValue placeholder='Select School Year' />
               </SelectTrigger>

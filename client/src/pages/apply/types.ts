@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const EarlyRegistrationSchema = z.object({
   // Phase 0: Data Privacy
-  privacyConsentGiven: z.boolean().refine((val) => val === true, {
+  isPrivacyConsentGiven: z.boolean().refine((val) => val === true, {
     message: "You must agree to the Data Privacy Notice.",
   }),
 
@@ -13,13 +13,13 @@ export const EarlyRegistrationSchema = z.object({
     .regex(/^\d{12}$/, "LRN must be exactly 12 numeric digits")
     .optional()
     .or(z.literal("")),
-  psaBcNumber: z.string().optional(),
+  psaBirthCertNumber: z.string().optional(),
 
   // Section 2: Grade Level & Program
   gradeLevel: z.enum(["7", "11"]),
   shsTrack: z.enum(["Academic", "TechPro"]).optional(),
   electiveCluster: z.string().optional(),
-  scpApplication: z.boolean().default(false),
+  isScpApplication: z.boolean().default(false),
   scpType: z.enum(["STE", "SPA", "SPS", "SPJ", "SPFL", "SPTVE"]).optional(),
 
   // Section 3: Personal Information
@@ -42,8 +42,8 @@ export const EarlyRegistrationSchema = z.object({
   lastYearEnrolled: z.string().optional(),
   lastGradeLevel: z.string().optional(),
   isLearnerWithDisability: z.boolean().default(false),
-  snedCategory: z.enum(["a1", "a2"]).optional(),
-  disabilityType: z.array(z.string()).default([]),
+  specialNeedsCategory: z.enum(["a1", "a2"]).optional(),
+  disabilityTypes: z.array(z.string()).default([]),
   hasPwdId: z.boolean().default(false),
   snedPlacement: z
     .enum(["Inclusive Education", "Special Education Center"])
@@ -105,7 +105,7 @@ export const EarlyRegistrationSchema = z.object({
   lastSchoolName: z.string().min(1, "Last school name is required"),
   lastSchoolId: z.string().optional(),
   lastGradeCompleted: z.string().min(1, "Last grade completed is required"),
-  syLastAttended: z.string().min(1, "School year last attended is required"),
+  schoolYearLastAttended: z.string().min(1, "School year last attended is required"),
   lastSchoolAddress: z.string().optional(),
   lastSchoolType: z.enum(["Public", "Private", "International", "ALS"]),
 
@@ -114,9 +114,9 @@ export const EarlyRegistrationSchema = z.object({
   g10MathGrade: z.number().optional(),
 
   // Section 9: SCP Specifics
-  spaArtField: z.string().optional(),
-  spsSports: z.array(z.string()).default([]),
-  spflLanguage: z.string().optional(),
+  artField: z.string().optional(),
+  sportsList: z.array(z.string()).default([]),
+  foreignLanguage: z.string().optional(),
 
   // Section 9.2: Learner Type
   learnerType: z.enum([

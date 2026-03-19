@@ -134,7 +134,7 @@ export async function resend(req: Request, res: Response) {
       actionType: 'ADMIN_EMAIL_RESENT',
       description: `Admin manually resent email #${logId} to ${originalLog.recipient}`,
       subjectType: 'EmailLog',
-      subjectId: newLog.id,
+      recordId: newLog.id,
       req,
     });
 

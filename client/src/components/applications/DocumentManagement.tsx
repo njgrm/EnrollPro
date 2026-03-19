@@ -214,11 +214,11 @@ export function DocumentManagement({ applicantId, documents, onRefresh }: Props)
                     <TableCell className='max-w-[200px] truncate text-xs'>
                       <div className='flex items-center gap-2'>
                         <FileText className='h-3 w-3 text-blue-500' />
-                        <span title={doc.originalName}>{doc.originalName}</span>
+                        <span title={doc.originalName || ""}>{doc.originalName || "Unnamed"}</span>
                       </div>
                     </TableCell>
                     <TableCell className='text-xs'>
-                      {formatSize(doc.size)}
+                      {formatSize(doc.size || 0)}
                     </TableCell>
                     <TableCell className='text-xs'>
                       {format(new Date(doc.uploadedAt), "MM/dd/yyyy")}

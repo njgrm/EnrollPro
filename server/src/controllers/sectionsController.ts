@@ -143,7 +143,7 @@ export async function createSection(
     actionType: "SECTION_CREATED",
     description: `Created section "${name}"`,
     subjectType: "Section",
-    subjectId: section.id,
+    recordId: section.id,
     req,
   });
 
@@ -179,7 +179,7 @@ export async function updateSection(
     actionType: "SECTION_UPDATED",
     description: `Updated section "${updated.name}"`,
     subjectType: "Section",
-    subjectId: id,
+    recordId: id,
     req,
   });
 
@@ -216,7 +216,7 @@ export async function deleteSection(
     actionType: "SECTION_DELETED",
     description: `Deleted section "${section.name}"`,
     subjectType: "Section",
-    subjectId: id,
+    recordId: id,
     req,
   });
 

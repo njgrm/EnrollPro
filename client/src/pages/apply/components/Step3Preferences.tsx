@@ -35,7 +35,7 @@ export default function Step3Preferences() {
 
   const gradeLevel = watch("gradeLevel");
   const shsTrack = watch("shsTrack");
-  const scpApplication = watch("scpApplication");
+  const isScpApplication = watch("isScpApplication");
   const scpType = watch("scpType");
   const electiveCluster = watch("electiveCluster");
 
@@ -168,9 +168,9 @@ export default function Step3Preferences() {
             <div className='flex items-center space-x-2'>
               <Switch
                 id='scp-app'
-                checked={scpApplication}
+                checked={isScpApplication}
                 onCheckedChange={(checked) =>
-                  setValue("scpApplication", checked)
+                  setValue("isScpApplication", checked)
                 }
               />
               <Label htmlFor='scp-app'>
@@ -178,7 +178,7 @@ export default function Step3Preferences() {
               </Label>
             </div>
 
-            {scpApplication && (
+            {isScpApplication && (
               <div className='p-4 border rounded-md bg-muted/20 space-y-4'>
                 <div className='space-y-2'>
                   <Label>
@@ -221,7 +221,7 @@ export default function Step3Preferences() {
                       SPA Art Field <span className='text-destructive'>*</span>
                     </Label>
                     <Select
-                      onValueChange={(val) => setValue("spaArtField", val)}>
+                      onValueChange={(val) => setValue("artField", val)}>
                       <SelectTrigger className='font-bold'>
                         <SelectValue placeholder='Select Art Field' />
                       </SelectTrigger>
@@ -244,14 +244,14 @@ export default function Step3Preferences() {
                         <div key={s} className='flex items-center space-x-2'>
                           <Checkbox
                             id={`sport-${s}`}
-                            checked={watch("spsSports")?.includes(s)}
+                            checked={watch("sportsList")?.includes(s)}
                             onCheckedChange={(checked) => {
-                              const current = watch("spsSports") || [];
+                              const current = watch("sportsList") || [];
                               if (checked)
-                                setValue("spsSports", [...current, s]);
+                                setValue("sportsList", [...current, s]);
                               else
                                 setValue(
-                                  "spsSports",
+                                  "sportsList",
                                   current.filter((i) => i !== s),
                                 );
                             }}
@@ -273,7 +273,7 @@ export default function Step3Preferences() {
                       <span className='text-destructive'>*</span>
                     </Label>
                     <Select
-                      onValueChange={(val) => setValue("spflLanguage", val)}>
+                      onValueChange={(val) => setValue("foreignLanguage", val)}>
                       <SelectTrigger className='font-bold'>
                         <SelectValue placeholder='Select Language' />
                       </SelectTrigger>
@@ -349,7 +349,7 @@ export default function Step3Preferences() {
               autoComplete='off'
               className='font-bold'
               id='prev-sy'
-              {...register("syLastAttended")}
+              {...register("schoolYearLastAttended")}
               placeholder='e.g. 2025-2026'
             />
           </div>

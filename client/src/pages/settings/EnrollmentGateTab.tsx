@@ -41,7 +41,7 @@ interface AYDates {
   earlyRegCloseDate: string | null;
   enrollOpenDate: string | null;
   enrollCloseDate: string | null;
-  manualOverrideOpen: boolean;
+  isManualOverrideOpen: boolean;
 }
 
 function formatDate(dateString: string | null): string {
@@ -115,8 +115,8 @@ export default function EnrollmentGateTab() {
   const handleToggleOverride = async (checked: boolean) => {
     if (!ay) return;
     try {
-      await api.patch(`/school-years/${ay.id}/override`, { manualOverrideOpen: checked });
-      setAy({ ...ay, manualOverrideOpen: checked });
+      await api.patch(`/school-years/${ay.id}/override`, { isManualOverrideOpen: checked });
+      setAy({ ...ay, isManualOverrideOpen: checked });
       
       // Also fetch public settings to sync store Phase
       const pubRes = await api.get('/settings/public');
@@ -327,7 +327,7 @@ export default function EnrollmentGateTab() {
               <div className="flex items-center gap-3">
                 {enrollmentPhase === 'OVERRIDE' && <Badge variant="warning">OVERRIDE ACTIVE</Badge>}
                 <Switch
-                  checked={ay.manualOverrideOpen}
+                  checked={ay.isManualOverrideOpen}
                   onCheckedChange={handleToggleOverride}
                 />
               </div>

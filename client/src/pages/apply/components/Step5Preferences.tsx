@@ -28,7 +28,7 @@ export default function Step5Enrollment() {
 
   const gradeLevel = watch("gradeLevel");
   const shsTrack = watch("shsTrack");
-  const scpApplication = watch("scpApplication");
+  const isScpApplication = watch("isScpApplication");
   const scpType = watch("scpType");
   const electiveCluster = watch("electiveCluster");
 
@@ -57,7 +57,7 @@ export default function Step5Enrollment() {
                   setValue("electiveCluster", undefined);
                 }
                 if (g !== "7") {
-                  setValue("scpApplication", false);
+                  setValue("isScpApplication", false);
                   setValue("scpType", undefined);
                 }
               }}
@@ -97,23 +97,23 @@ export default function Step5Enrollment() {
                     type='button'
                     className={cn(
                       "flex flex-col p-4 rounded-xl border-2 transition-all cursor-pointer text-left",
-                      !scpApplication
+                      !isScpApplication
                         ? "border-primary bg-primary text-primary-foreground pointer-events-none"
                         : "border-border bg-white hover:bg-primary/5",
                     )}
                     onClick={() => {
-                      setValue("scpApplication", false);
+                      setValue("isScpApplication", false);
                       setValue("scpType", undefined);
                     }}>
                     <div className='flex items-center gap-3 mb-1'>
                       <div
                         className={cn(
                           "w-5 h-5 rounded-full border-2 flex items-center justify-center",
-                          !scpApplication
+                          !isScpApplication
                             ? "border-white"
                             : "border-muted-foreground",
                         )}>
-                        {!scpApplication && (
+                        {!isScpApplication && (
                           <div className='w-2.5 h-2.5 rounded-full bg-white' />
                         )}
                       </div>
@@ -122,7 +122,7 @@ export default function Step5Enrollment() {
                     <p
                       className={cn(
                         "text-[11px] pl-8",
-                        !scpApplication
+                        !isScpApplication
                           ? "text-primary-foreground/80"
                           : "text-muted-foreground",
                       )}>
@@ -134,20 +134,20 @@ export default function Step5Enrollment() {
                     type='button'
                     className={cn(
                       "flex flex-col p-4 rounded-xl border-2 transition-all cursor-pointer text-left",
-                      scpApplication
+                      isScpApplication
                         ? "border-primary bg-primary text-primary-foreground pointer-events-none"
                         : "border-border bg-white hover:bg-primary/5",
                     )}
-                    onClick={() => setValue("scpApplication", true)}>
+                    onClick={() => setValue("isScpApplication", true)}>
                     <div className='flex items-center gap-3 mb-1'>
                       <div
                         className={cn(
                           "w-5 h-5 rounded-full border-2 flex items-center justify-center",
-                          scpApplication
+                          isScpApplication
                             ? "border-white"
                             : "border-muted-foreground",
                         )}>
-                        {scpApplication && (
+                        {isScpApplication && (
                           <div className='w-2.5 h-2.5 rounded-full bg-white' />
                         )}
                       </div>
@@ -158,7 +158,7 @@ export default function Step5Enrollment() {
                     <p
                       className={cn(
                         "text-[11px] pl-8",
-                        scpApplication
+                        isScpApplication
                           ? "text-primary-foreground/80"
                           : "text-muted-foreground",
                       )}>
@@ -168,7 +168,7 @@ export default function Step5Enrollment() {
                 </div>
 
                 <AnimatePresence>
-                  {scpApplication && (
+                  {isScpApplication && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
@@ -275,9 +275,9 @@ export default function Step5Enrollment() {
                                           </Label>
                                           <Select
                                             onValueChange={(val) =>
-                                              setValue("spaArtField", val)
+                                              setValue("artField", val)
                                             }
-                                            defaultValue={watch("spaArtField")}>
+                                            defaultValue={watch("artField")}>
                                             <SelectTrigger className='h-10 bg-white border-2 font-bold'>
                                               <SelectValue placeholder='Select Art Field' />
                                             </SelectTrigger>
@@ -305,21 +305,21 @@ export default function Step5Enrollment() {
                                                 <Checkbox
                                                   id={`sport-${s}`}
                                                   checked={watch(
-                                                    "spsSports",
+                                                    "sportsList",
                                                   )?.includes(s)}
                                                   onCheckedChange={(
                                                     checked,
                                                   ) => {
                                                     const curr =
-                                                      watch("spsSports") || [];
+                                                      watch("sportsList") || [];
                                                     if (checked)
-                                                      setValue("spsSports", [
+                                                      setValue("sportsList", [
                                                         ...curr,
                                                         s,
                                                       ]);
                                                     else
                                                       setValue(
-                                                        "spsSports",
+                                                        "sportsList",
                                                         curr.filter(
                                                           (i) => i !== s,
                                                         ),
@@ -345,10 +345,10 @@ export default function Step5Enrollment() {
                                           </Label>
                                           <Select
                                             onValueChange={(val) =>
-                                              setValue("spflLanguage", val)
+                                              setValue("foreignLanguage", val)
                                             }
                                             defaultValue={watch(
-                                              "spflLanguage",
+                                              "foreignLanguage",
                                             )}>
                                             <SelectTrigger className='h-10 bg-white border-2 font-bold'>
                                               <SelectValue placeholder='Select Language' />

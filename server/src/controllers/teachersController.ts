@@ -66,7 +66,7 @@ export async function store(req: Request, res: Response) {
       actionType: 'TEACHER_CREATED',
       description: `Created teacher profile: ${lastName}, ${firstName}`,
       subjectType: 'Teacher',
-      subjectId: teacher.id,
+      recordId: teacher.id,
       req,
     });
 
@@ -107,7 +107,7 @@ export async function update(req: Request, res: Response) {
       actionType: 'TEACHER_UPDATED',
       description: `Updated teacher profile: ${teacher.lastName}, ${teacher.firstName}`,
       subjectType: 'Teacher',
-      subjectId: id,
+      recordId: id,
       req,
     });
 
@@ -139,7 +139,7 @@ export async function deactivate(req: Request, res: Response) {
       actionType: 'TEACHER_DEACTIVATED',
       description: `Deactivated teacher: ${teacher.lastName}, ${teacher.firstName}`,
       subjectType: 'Teacher',
-      subjectId: id,
+      recordId: id,
       req,
     });
 
@@ -163,7 +163,7 @@ export async function reactivate(req: Request, res: Response) {
       actionType: 'TEACHER_REACTIVATED',
       description: `Reactivated teacher: ${teacher.lastName}, ${teacher.firstName}`,
       subjectType: 'Teacher',
-      subjectId: id,
+      recordId: id,
       req,
     });
 

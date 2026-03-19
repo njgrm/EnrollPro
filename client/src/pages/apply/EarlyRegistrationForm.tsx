@@ -42,14 +42,14 @@ export default function EarlyRegistrationForm({
     // 1. Reset React Hook Form to initial defaults
     reset({
       schoolYear: "2026-2027",
-      privacyConsentGiven: true,
+      isPrivacyConsentGiven: true,
       gradeLevel: "7",
       isIpCommunity: false,
       is4PsBeneficiary: false,
       isBalikAral: false,
       isLearnerWithDisability: false,
       isPermanentSameAsCurrent: true,
-      scpApplication: false,
+      isScpApplication: false,
       learnerType: "Regular",
       isCertifiedTrue: false,
       dateAccomplished: new Date(),
@@ -86,14 +86,14 @@ export default function EarlyRegistrationForm({
     ) as import("react-hook-form").Resolver<EarlyRegistrationFormData>,
     defaultValues: {
       schoolYear: "2026-2027",
-      privacyConsentGiven: true,
+      isPrivacyConsentGiven: true,
       gradeLevel: "7",
       isIpCommunity: false,
       is4PsBeneficiary: false,
       isBalikAral: false,
       isLearnerWithDisability: false,
       isPermanentSameAsCurrent: true,
-      scpApplication: false,
+      isScpApplication: false,
       learnerType: "Regular",
       isCertifiedTrue: false,
       dateAccomplished: new Date(),
@@ -212,12 +212,12 @@ export default function EarlyRegistrationForm({
       fieldsToValidate = [
         "lastSchoolName",
         "lastGradeCompleted",
-        "syLastAttended",
+        "schoolYearLastAttended",
         "lastSchoolType",
       ];
     } else if (stepper.state.current.data.id === "preferences") {
       fieldsToValidate = ["gradeLevel", "learnerType"];
-      if (watch("scpApplication")) fieldsToValidate.push("scpType");
+      if (watch("isScpApplication")) fieldsToValidate.push("scpType");
       if (watch("gradeLevel") === "11")
         fieldsToValidate.push("shsTrack", "electiveCluster");
     }
