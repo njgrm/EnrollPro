@@ -267,7 +267,7 @@ export default function Step5Enrollment() {
                                     animate={{ height: "auto", opacity: 1 }}
                                     exit={{ height: 0, opacity: 0 }}
                                     className='overflow-hidden'>
-                                    <div className='pl-8 pb-4 pt-4 space-y-4'>
+                                    <div className='pl-8'>
                                       {p.id === "SPA" && (
                                         <div className='space-y-2'>
                                           <Label className='text-[10px] font-bold uppercase text-primary'>

@@ -46,7 +46,26 @@ const MAX_STEP_KEY = "enrollpro_f2f_max_step";
 const EDITING_KEY = "enrollpro_f2f_editing";
 
 export default function F2FEarlyRegistration() {
-  const stepper = useStepper();
+  const [initialDraft] = useState(() => {
+    const draft = sessionStorage.getItem(DRAFT_KEY);
+    if (draft) {
+      try {
+        const parsed = JSON.parse(draft);
+        if (parsed.birthdate) parsed.birthdate = new Date(parsed.birthdate);
+        if (parsed.dateAccomplished)
+          parsed.dateAccomplished = new Date(parsed.dateAccomplished);
+        return parsed;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  const stepper = useStepper({
+    initialStep: (sessionStorage.getItem(STEP_KEY) as any) || "personal",
+  });
+
   const { user } = useAuthStore();
   const { colorScheme, selectedAccentHsl } = useSettingsStore();
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -64,7 +83,6 @@ export default function F2FEarlyRegistration() {
   )?.hex;
   const isFefe01 = currentHex?.toLowerCase() === "#fefe01";
 
-  // Check if color is "light" (uses black foreground)
   const accentForeground =
     colorScheme?.palette?.find((p) => p.hsl === accentHsl)?.foreground ??
     colorScheme?.accent_foreground;
@@ -80,7 +98,7 @@ export default function F2FEarlyRegistration() {
     resolver: zodResolver(
       EarlyRegistrationSchema,
     ) as import("react-hook-form").Resolver<EarlyRegistrationFormData>,
-    defaultValues: {
+    defaultValues: initialDraft || {
       schoolYear: "2026-2027",
       isPrivacyConsentGiven: true,
       studentPhoto: undefined,
@@ -106,7 +124,11 @@ export default function F2FEarlyRegistration() {
   const handleFullReset = () => {
     setShowResetConfirm(false);
 
-    // 1. Reset React Hook Form to initial defaults
+    sessionStorage.removeItem(DRAFT_KEY);
+    sessionStorage.removeItem(STEP_KEY);
+    sessionStorage.removeItem(MAX_STEP_KEY);
+    sessionStorage.removeItem(EDITING_KEY);
+
     reset({
       schoolYear: "2026-2027",
       isPrivacyConsentGiven: true,
@@ -123,7 +145,6 @@ export default function F2FEarlyRegistration() {
       dateAccomplished: new Date(),
     });
 
-    // 2. Reset local component states
     setIsSubmitted(false);
     setTrackingNumber("");
     setMaxStepReached(1);
@@ -131,14 +152,7 @@ export default function F2FEarlyRegistration() {
     setShowSubmitConfirm(false);
     setSubmitError("");
 
-    // 3. Reset stepper to first step
     stepper.navigation.goTo("personal");
-
-    // 4. Clear all session storage related to the application
-    sessionStorage.removeItem(DRAFT_KEY);
-    sessionStorage.removeItem(STEP_KEY);
-    sessionStorage.removeItem(MAX_STEP_KEY);
-    sessionStorage.removeItem(EDITING_KEY);
   };
 
   // Track furthest step
@@ -157,21 +171,8 @@ export default function F2FEarlyRegistration() {
     }
   }, [stepper.state.current.data.id, stepper.state]);
 
-  // Initial load of draft, step, and max step
+  // Initial load of step meta
   useEffect(() => {
-    const draft = sessionStorage.getItem(DRAFT_KEY);
-    if (draft) {
-      try {
-        const parsed = JSON.parse(draft);
-        if (parsed.birthdate) parsed.birthdate = new Date(parsed.birthdate);
-        if (parsed.dateAccomplished)
-          parsed.dateAccomplished = new Date(parsed.dateAccomplished);
-        reset(parsed);
-      } catch (e) {
-        console.error("Failed to parse F2F EARLY REGISTRATION draft:", e);
-      }
-    }
-
     const savedMax = sessionStorage.getItem(MAX_STEP_KEY);
     if (savedMax) {
       setMaxStepReached(parseInt(savedMax, 10));
@@ -180,13 +181,6 @@ export default function F2FEarlyRegistration() {
     const savedEditing = sessionStorage.getItem(EDITING_KEY);
     if (savedEditing === "true") {
       setIsEditing(true);
-    }
-
-    const savedStep = sessionStorage.getItem(STEP_KEY);
-    if (savedStep && steps.some((s) => s.id === savedStep)) {
-      setTimeout(() => {
-        stepper.navigation.goTo(savedStep as never);
-      }, 50);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -285,7 +279,6 @@ export default function F2FEarlyRegistration() {
     setSubmitError("");
 
     try {
-      // Convert all strings to uppercase for database uniformity
       const uppercaseData = toUpperCaseRecursive(data);
 
       const payload = {
@@ -299,7 +292,6 @@ export default function F2FEarlyRegistration() {
           : uppercaseData.permanentAddress,
       };
 
-      // Use the authenticated F2F endpoint
       const response = await api.post("/applications/f2f", payload);
       setTrackingNumber(response.data.trackingNumber);
 

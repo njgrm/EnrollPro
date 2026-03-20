@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, User } from "lucide-react";
 import { useApplicationDetail } from "@/hooks/useApplicationDetail";
 import { StatusBadge } from "@/components/applications/StatusBadge";
 import { SCPAssessmentBlock } from "@/components/applications/SCPAssessmentBlock";
@@ -34,6 +34,14 @@ export default function EarlyRegistrationDetail() {
     error,
     refetch,
   } = useApplicationDetail(Number(id), true);
+  const [photoError, setPhotoError] = useState(false);
+
+  const getImageUrl = (photo: string | null) => {
+    if (!photo) return null;
+    if (photo.startsWith("data:")) return photo;
+    const baseUrl = (import.meta.env.VITE_API_URL || "http://localhost:3001/api").replace(/\/api$/, "");
+    return `${baseUrl}${photo}`;
+  };
 
   const handleTemporarilyEnroll = async () => {
     if (!confirm("Mark this applicant as temporarily enrolled? This means they can attend classes while documents are pending.")) return;
@@ -131,6 +139,23 @@ export default function EarlyRegistrationDetail() {
             className='rounded-full'>
             <ArrowLeft className='h-5 w-5' />
           </Button>
+
+          {/* Student Photo */}
+          <div className='w-24 h-24 rounded-xl border-2 border-primary/10 shadow-sm overflow-hidden bg-background flex items-center justify-center shrink-0'>
+            {applicant.studentPhoto && !photoError ? (
+              <img
+                src={getImageUrl(applicant.studentPhoto) || ""}
+                alt='Student'
+                className='w-full h-full object-cover'
+                onError={() => setPhotoError(true)}
+              />
+            ) : (
+              <div className='w-full h-full flex flex-col items-center justify-center text-muted-foreground bg-muted/30'>
+                <User className='w-6 h-6 opacity-20' />
+              </div>
+            )}
+          </div>
+
           <div>
             <h1 className='text-3xl font-bold tracking-tight'>
               {applicant.lastName}, {applicant.firstName} {applicant.middleName}

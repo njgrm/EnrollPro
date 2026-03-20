@@ -32,7 +32,7 @@ export default function PrivacyNotice({ onAccept }: PrivacyNoticeProps) {
   };
 
   return (
-    <div className='max-w-5xl mx-auto p-4 md:p-8'>
+    <div className='mx-auto p-4 md:p-8'>
       <Card className='shadow-lg border-border rounded-2xl overflow-hidden'>
         <CardHeader className='bg-muted/30 border-b pb-6'>
           <div className='flex flex-col items-center text-center gap-2'>

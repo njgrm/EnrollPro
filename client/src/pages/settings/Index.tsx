@@ -31,7 +31,7 @@ export default function Settings() {
         value={activeTab}
         onValueChange={handleTabChange}
         className='w-full'>
-        <TabsList className='w-full flex flex-wrap h-auto gap-1 mb-6 p-1 bg-muted border-border'>
+        <TabsList className='w-full flex flex-wrap h-auto gap-1 mb-6 p-1 bg-white border-border'>
           <TabsTrigger
             value='profile'
             className='flex-1 min-w-25 font-bold transition-all'>

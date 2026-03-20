@@ -112,7 +112,7 @@ export default function Step6Review({
           onEdit={onEdit}>
           {data.studentPhoto && (
             <div className='sm:col-span-2 flex justify-center pb-2'>
-              <div className='relative w-24 h-24 rounded-lg overflow-hidden border-2 border-primary/10 shadow-sm'>
+              <div className='relative w-48 h-48 rounded-lg overflow-hidden border-2 border-primary/10 shadow-sm'>
                 <img
                   src={data.studentPhoto}
                   alt='Student'
@@ -314,8 +314,8 @@ export default function Step6Review({
         </div>
 
         <div className='text-center'>
-          <p className='text-[10px] text-muted-foreground italic'>
-            Privacy consent was recorded on {format(new Date(), "MMM dd, yyyy")}
+          <p className='text-[12px] sm:text-sm text-muted-foreground italic'>
+            Privacy consent was recorded on {format(new Date(), "MMMM dd, yyyy")}
             .
           </p>
         </div>

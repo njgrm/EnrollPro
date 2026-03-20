@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info, HelpCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getManilaNow } from "@/lib/utils";
 
 export default function Step4PreviousSchool() {
   const {
@@ -22,10 +22,10 @@ export default function Step4PreviousSchool() {
     formState: { errors },
   } = useFormContext<EarlyRegistrationFormData>();
 
-  // Generate last 10 school years
-  const currentYear = new Date().getFullYear();
+  // Generate last 10 school years, excluding the current/upcoming one
+  const currentYear = getManilaNow().getFullYear();
   const schoolYears = Array.from({ length: 10 }, (_, i) => {
-    const start = currentYear - i;
+    const start = currentYear - 1 - i;
     return `${start}-${start + 1}`;
   });
 
@@ -111,7 +111,7 @@ export default function Step4PreviousSchool() {
             value={watch("lastGradeCompleted")}
             onValueChange={(val) => setValue("lastGradeCompleted", val)}
             className='flex flex-wrap gap-x-8 gap-y-4 pt-1'>
-            {["Grade 6", "Grade 10", "Grade 11", "Other"].map((opt) => (
+            {["Grade 6", "Grade 10"].map((opt) => (
               <div key={opt} className='flex items-center space-x-2'>
                 <RadioGroupItem
                   value={opt}

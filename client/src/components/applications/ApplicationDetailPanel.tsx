@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { format } from "date-fns";
 import { Link } from "react-router";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, User } from "lucide-react";
 import { useApplicationDetail } from "@/hooks/useApplicationDetail";
 import { StatusBadge } from "./StatusBadge";
 import { ActionButtons } from "./ActionButtons";
@@ -42,6 +43,15 @@ export function ApplicationDetailPanel({
   onTemporarilyEnroll,
 }: Props) {
   const { data: applicant, loading, error } = useApplicationDetail(id);
+  const [photoError, setPhotoError] = useState(false);
+
+  const getImageUrl = (photo: string | null) => {
+    if (!photo) return null;
+    if (photo.startsWith("data:")) return photo;
+    // Assuming /uploads/filename.ext - need to prefix with backend origin
+    const baseUrl = (import.meta.env.VITE_API_URL || "http://localhost:3001/api").replace(/\/api$/, "");
+    return `${baseUrl}${photo}`;
+  };
 
   if (loading) {
     return (
@@ -116,23 +126,55 @@ export function ApplicationDetailPanel({
       <div className='flex-1 overflow-y-auto p-4 space-y-4 font-bold'>
         {/* Summary Block */}
         <div className='bg-[hsl(var(--muted))] p-4 rounded-md border'>
-          <div className='flex justify-between items-start mb-2'>
-            <div>
-              <h3 className='font-bold text-lg uppercase tracking-tight'>
+          <div className='flex flex-col items-center mb-6 pt-2'>
+            <div className='w-32 h-32 rounded-xl border-2 border-primary shadow-md overflow-hidden bg-background flex items-center justify-center mb-4'>
+              {applicant.studentPhoto && !photoError ? (
+                <img
+                  src={getImageUrl(applicant.studentPhoto) || ""}
+                  alt='Student'
+                  className='w-full h-full object-cover'
+                  onError={() => setPhotoError(true)}
+                />
+              ) : (
+                <div className='w-full h-full flex flex-col items-center justify-center text-muted-foreground bg-muted/30'>
+                  <User className='w-10 h-10 mb-1 opacity-20' />
+                  <span className='text-[8px] font-black uppercase tracking-tighter opacity-40'>
+                    {photoError ? "Invalid Photo" : "No Photo"}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className='text-center'>
+              <h3 className='font-bold text-xl uppercase tracking-tight text-foreground'>
                 {applicant.lastName}, {applicant.firstName}{" "}
                 {applicant.middleName}
               </h3>
-              <p className='text-sm'>
+              <div className='flex items-center justify-center gap-2 mt-1'>
+                <StatusBadge status={applicant.status} />
+              </div>
+            </div>
+          </div>
+
+          <div className='grid grid-cols-2 gap-4 border-t pt-4'>
+            <div>
+              <p className='text-[10px] text-muted-foreground uppercase tracking-widest'>
+                Program / Level
+              </p>
+              <p className='text-sm text-foreground'>
                 {applicant.gradeLevel.name} ·{" "}
                 {applicant.applicantType === "REGULAR"
-                  ? "Regular Admission"
-                  : `⚡ ${applicant.applicantType}`}
+                  ? "Regular"
+                  : applicant.applicantType}
               </p>
-              <p className='text-xs text-muted-foreground mt-1'>
+            </div>
+            <div className='text-right'>
+              <p className='text-[10px] text-muted-foreground uppercase tracking-widest'>
+                Reference
+              </p>
+              <p className='text-sm text-foreground'>
                 LRN: {applicant.lrn || "N/A"}
               </p>
             </div>
-            <StatusBadge status={applicant.status} />
           </div>
         </div>
 

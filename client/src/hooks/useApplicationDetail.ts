@@ -90,6 +90,7 @@ export type LearnerType =
 export interface ApplicantDetail {
   id: number;
   lrn: string | null;
+  studentPhoto: string | null;
   psaBirthCertNumber: string | null;
   lastName: string;
   firstName: string;

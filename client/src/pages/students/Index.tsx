@@ -28,6 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { formatManilaDate } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -303,9 +304,9 @@ export default function Students() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    return formatManilaDate(dateString, {
       year: "numeric",
-      month: "short",
+      month: "long",
       day: "numeric",
     });
   };

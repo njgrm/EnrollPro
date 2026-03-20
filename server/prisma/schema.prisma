@@ -135,7 +135,7 @@ model Applicant {
   firstName               String            @map("first_name")
   middleName              String?           @map("middle_name")
   suffix                  String?
-  birthDate               DateTime          @map("birth_date")
+  birthDate               DateTime          @db.Date @map("birth_date")
   sex                     Sex
   placeOfBirth            String?           @map("place_of_birth")
   religion                String?

@@ -24,12 +24,36 @@ import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { toUpperCaseRecursive } from "@/lib/utils";
 import { sileo } from "sileo";
 
+const DRAFT_KEY = "enrollpro_apply_draft";
+const STEP_KEY = "enrollpro_apply_step";
+const MAX_STEP_KEY = "enrollpro_apply_max_step";
+const EDITING_KEY = "enrollpro_apply_editing";
+
 export default function EarlyRegistrationForm({
   onReset,
 }: {
   onReset: () => void;
 }) {
-  const stepper = useStepper();
+  const [initialDraft] = useState(() => {
+    const draft = sessionStorage.getItem(DRAFT_KEY);
+    if (draft) {
+      try {
+        const parsed = JSON.parse(draft);
+        if (parsed.birthdate) parsed.birthdate = new Date(parsed.birthdate);
+        if (parsed.dateAccomplished)
+          parsed.dateAccomplished = new Date(parsed.dateAccomplished);
+        return parsed;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  const stepper = useStepper({
+    initialStep: (sessionStorage.getItem(STEP_KEY) as any) || "personal",
+  });
+
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [trackingNumber, setTrackingNumber] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -37,45 +61,6 @@ export default function EarlyRegistrationForm({
   const [maxStepReached, setMaxStepReached] = useState(1);
   const [isEditing, setIsEditing] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
-
-  const handleFullReset = () => {
-    // 1. Reset React Hook Form to initial defaults
-    reset({
-      schoolYear: "2026-2027",
-      isPrivacyConsentGiven: true,
-      studentPhoto: undefined,
-      gradeLevel: "7",
-      isIpCommunity: false,
-      is4PsBeneficiary: false,
-      isBalikAral: false,
-      isLearnerWithDisability: false,
-      isPermanentSameAsCurrent: true,
-      isScpApplication: false,
-      learnerType: "Regular",
-      isCertifiedTrue: false,
-      dateAccomplished: new Date(),
-    });
-
-    // 2. Reset local component states
-    setIsSubmitted(false);
-    setTrackingNumber("");
-    setMaxStepReached(1);
-    setIsEditing(false);
-    setShowSubmitConfirm(false);
-    setSubmitError("");
-
-    // 3. Reset stepper to first step
-    stepper.navigation.goTo("personal");
-
-    // 4. Clear all session storage related to the application
-    sessionStorage.removeItem("enrollpro_apply_draft");
-    sessionStorage.removeItem("enrollpro_apply_step");
-    sessionStorage.removeItem("enrollpro_apply_max_step");
-    sessionStorage.removeItem("enrollpro_apply_editing");
-
-    // 5. Notify parent (Index.tsx) to reset consent state
-    onReset();
-  };
 
   const methods = useForm<
     EarlyRegistrationFormData,
@@ -85,7 +70,7 @@ export default function EarlyRegistrationForm({
     resolver: zodResolver(
       EarlyRegistrationSchema,
     ) as import("react-hook-form").Resolver<EarlyRegistrationFormData>,
-    defaultValues: {
+    defaultValues: initialDraft || {
       schoolYear: "2026-2027",
       isPrivacyConsentGiven: true,
       studentPhoto: undefined,
@@ -105,6 +90,40 @@ export default function EarlyRegistrationForm({
 
   const { handleSubmit, trigger, reset, watch } = methods;
 
+  const handleFullReset = () => {
+    onReset();
+
+    sessionStorage.removeItem(DRAFT_KEY);
+    sessionStorage.removeItem(STEP_KEY);
+    sessionStorage.removeItem(MAX_STEP_KEY);
+    sessionStorage.removeItem(EDITING_KEY);
+
+    reset({
+      schoolYear: "2026-2027",
+      isPrivacyConsentGiven: true,
+      studentPhoto: undefined,
+      gradeLevel: "7",
+      isIpCommunity: false,
+      is4PsBeneficiary: false,
+      isBalikAral: false,
+      isLearnerWithDisability: false,
+      isPermanentSameAsCurrent: true,
+      isScpApplication: false,
+      learnerType: "Regular",
+      isCertifiedTrue: false,
+      dateAccomplished: new Date(),
+    });
+
+    setIsSubmitted(false);
+    setTrackingNumber("");
+    setMaxStepReached(1);
+    setIsEditing(false);
+    setShowSubmitConfirm(false);
+    setSubmitError("");
+
+    stepper.navigation.goTo("personal");
+  };
+
   const currentIndex =
     steps.findIndex((s) => s.id === stepper.state.current.data.id) + 1;
 
@@ -112,10 +131,7 @@ export default function EarlyRegistrationForm({
   useEffect(() => {
     if (currentIndex > maxStepReached) {
       setMaxStepReached(currentIndex);
-      sessionStorage.setItem(
-        "enrollpro_apply_max_step",
-        currentIndex.toString(),
-      );
+      sessionStorage.setItem(MAX_STEP_KEY, currentIndex.toString());
     }
   }, [currentIndex, maxStepReached, stepper.state]);
 
@@ -123,41 +139,20 @@ export default function EarlyRegistrationForm({
   useEffect(() => {
     if (stepper.state.current.data.id === "review") {
       setIsEditing(false);
-      sessionStorage.removeItem("enrollpro_apply_editing");
+      sessionStorage.removeItem(EDITING_KEY);
     }
   }, [stepper.state.current.data.id, stepper.state]);
 
-  // Initial load of draft, step, and max step
+  // Initial load of step meta
   useEffect(() => {
-    const draft = sessionStorage.getItem("enrollpro_apply_draft");
-    if (draft) {
-      try {
-        const parsed = JSON.parse(draft);
-        if (parsed.birthdate) parsed.birthdate = new Date(parsed.birthdate);
-        if (parsed.dateAccomplished)
-          parsed.dateAccomplished = new Date(parsed.dateAccomplished);
-        reset(parsed);
-      } catch (e) {
-        console.error("Failed to parse EARLY REGISTRATION draft:", e);
-      }
-    }
-
-    const savedMax = sessionStorage.getItem("enrollpro_apply_max_step");
+    const savedMax = sessionStorage.getItem(MAX_STEP_KEY);
     if (savedMax) {
       setMaxStepReached(parseInt(savedMax, 10));
     }
 
-    const savedEditing = sessionStorage.getItem("enrollpro_apply_editing");
+    const savedEditing = sessionStorage.getItem(EDITING_KEY);
     if (savedEditing === "true") {
       setIsEditing(true);
-    }
-
-    const savedStep = sessionStorage.getItem("enrollpro_apply_step");
-    if (savedStep && steps.some((s) => s.id === savedStep)) {
-      // Use a slightly longer timeout or requestAnimationFrame to ensure components are ready
-      setTimeout(() => {
-        stepper.navigation.goTo(savedStep as never);
-      }, 50);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -166,12 +161,8 @@ export default function EarlyRegistrationForm({
   const allValues = watch();
   useEffect(() => {
     const timer = setTimeout(() => {
-      // Don't save if form is empty/uninitialized
       if (allValues.lastName || allValues.firstName || allValues.lrn) {
-        sessionStorage.setItem(
-          "enrollpro_apply_draft",
-          JSON.stringify(allValues),
-        );
+        sessionStorage.setItem(DRAFT_KEY, JSON.stringify(allValues));
       }
     }, 1000);
     return () => clearTimeout(timer);
@@ -180,10 +171,7 @@ export default function EarlyRegistrationForm({
   // Save current step whenever it changes
   useEffect(() => {
     if (stepper.state.current.data.id) {
-      sessionStorage.setItem(
-        "enrollpro_apply_step",
-        stepper.state.current.data.id,
-      );
+      sessionStorage.setItem(STEP_KEY, stepper.state.current.data.id);
     }
   }, [stepper.state.current.data.id, stepper.state]);
 
@@ -243,7 +231,7 @@ export default function EarlyRegistrationForm({
 
   const goToStep = (stepId: number) => {
     setIsEditing(true);
-    sessionStorage.setItem("enrollpro_apply_editing", "true");
+    sessionStorage.setItem(EDITING_KEY, "true");
     stepper.navigation.goTo(steps[stepId - 1].id);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -263,7 +251,6 @@ export default function EarlyRegistrationForm({
     setSubmitError("");
 
     try {
-      // Convert all strings to uppercase for database uniformity
       const uppercaseData = toUpperCaseRecursive(data);
 
       const payload = {
@@ -272,7 +259,6 @@ export default function EarlyRegistrationForm({
           data.birthdate instanceof Date
             ? data.birthdate.toISOString()
             : data.birthdate,
-        // Ensure permanent address is handled correctly if same as current
         permanentAddress: uppercaseData.isPermanentSameAsCurrent
           ? uppercaseData.currentAddress
           : uppercaseData.permanentAddress,
@@ -288,12 +274,12 @@ export default function EarlyRegistrationForm({
 
       setIsSubmitted(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
-      reset(); // Reset form values
-      sessionStorage.removeItem("enrollpro_apply_draft");
+      reset();
+      sessionStorage.removeItem(DRAFT_KEY);
       sessionStorage.removeItem("enrollpro_apply_consent");
-      sessionStorage.removeItem("enrollpro_apply_step");
-      sessionStorage.removeItem("enrollpro_apply_max_step");
-      sessionStorage.removeItem("enrollpro_apply_editing");
+      sessionStorage.removeItem(STEP_KEY);
+      sessionStorage.removeItem(MAX_STEP_KEY);
+      sessionStorage.removeItem(EDITING_KEY);
     } catch (error: unknown) {
       const message =
         (error as { response?: { data?: { message?: string } } })?.response

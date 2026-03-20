@@ -25,9 +25,9 @@ export default function Step2Family() {
 
   return (
     <div className='space-y-12'>
-      <Alert className='bg-[#061E29]/5 border-[#061E29]/20 items-center'>
-        <Info className='h-4 w-4 text-[#061E29]' />
-        <AlertDescription className='font-bold text-[#061E29]/80'>
+      <Alert className='bg-primary/5 border-primary/20 items-center'>
+        <Info className='h-4 w-4 stroke-primary'/>
+        <AlertDescription className='font-bold text-primary/80'>
           Important: Application updates and exam schedules will be sent to the
           email provided below.
         </AlertDescription>
@@ -178,12 +178,12 @@ export default function Step2Family() {
             id='add-guardian'
             checked={showGuardian}
             onCheckedChange={(checked) => setShowGuardian(checked === true)}
-            className='w-5 h-5 border-[#061E29] data-[state=checked]:bg-[#061E29] data-[state=checked]:text-white'
+            className='w-5 h-5 border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground'
           />
           <Label
             htmlFor='add-guardian'
             className='text-sm font-semibold cursor-pointer flex items-center gap-2'>
-            <UserPlus className='w-4 h-4 text-[#061E29]' />
+            <UserPlus className='w-4 h-4 text-primary' />
             Add Guardian / Primary Contact (If different from parents)
           </Label>
         </div>
@@ -274,7 +274,7 @@ export default function Step2Family() {
 
       {/* Address Information */}
       <div className='space-y-8'>
-        <h3 className='text-sm font-bold uppercase tracking-widest text-[#061E29]'>
+        <h3 className='text-sm font-bold uppercase tracking-widest text-primary'>
           Current Address
         </h3>
         <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
@@ -377,7 +377,7 @@ export default function Step2Family() {
             onCheckedChange={(checked) =>
               setValue("isPermanentSameAsCurrent", checked === true)
             }
-            className='w-5 h-5 border-[#061E29] data-[state=checked]:bg-[#061E29] data-[state=checked]:text-white'
+            className='w-5 h-5 border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground'
           />
           <Label
             htmlFor='same-address'

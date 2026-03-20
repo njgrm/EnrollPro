@@ -168,12 +168,12 @@ export default function SchoolProfileTab() {
   };
 
   return (
-    <div className='space-y-6'>
+    <div className="space-y-6">
       {/* School Name */}
       <Card>
         <CardHeader>
-          <CardTitle className='flex items-center gap-2 text-xl'>
-            <School className='h-5 w-5' />
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <School className="h-5 w-5" />
             School Name
           </CardTitle>
           <CardDescription>
@@ -181,18 +181,20 @@ export default function SchoolProfileTab() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className='flex flex-col gap-3 sm:flex-row sm:items-end'>
-            <div className='flex-1 space-y-2'>
-              <Label htmlFor='schoolName'>School Name</Label>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="flex-1 space-y-2">
+              <Label htmlFor="schoolName">School Name</Label>
               <Input
-                id='schoolName'
+                className="font-bold"
+                id="schoolName"
                 value={nameValue}
                 onChange={(e) => setNameValue(e.target.value)}
               />
             </div>
             <Button
               onClick={handleSaveName}
-              disabled={savingName || nameValue === schoolName}>
+              disabled={savingName || nameValue === schoolName}
+            >
               {savingName ? "Saving..." : "Save"}
             </Button>
           </div>
@@ -202,8 +204,8 @@ export default function SchoolProfileTab() {
       {/* Logo & Palette */}
       <Card>
         <CardHeader>
-          <CardTitle className='flex items-center gap-2 text-xl'>
-            <Palette className='h-5 w-5' />
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <Palette className="h-5 w-5" />
             Logo & Accent Color
           </CardTitle>
           <CardDescription>
@@ -211,55 +213,57 @@ export default function SchoolProfileTab() {
             from the extracted palette.
           </CardDescription>
         </CardHeader>
-        <CardContent className='space-y-6'>
+        <CardContent className="space-y-6">
           {/* Logo preview & upload */}
-          <div className='flex flex-col items-center gap-4 sm:flex-row sm:items-start'>
-            <div className='flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border-2 border-dashed border-border bg-muted'>
+          <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border-2 border-dashed border-border bg-muted">
               {logoPreview ? (
                 <img
                   src={logoPreview}
-                  alt='Preview'
-                  className='h-full w-full rounded-lg object-contain p-1'
+                  alt="Preview"
+                  className="h-full w-full rounded-lg object-contain p-1"
                 />
               ) : logoUrl ? (
                 <img
                   src={`${API_BASE}${logoUrl}`}
-                  alt='School Logo'
-                  className='h-full w-full rounded-lg object-contain p-1'
+                  alt="School Logo"
+                  className="h-full w-full rounded-lg object-contain p-1"
                 />
               ) : (
-                <Upload className='h-8 w-8 text-muted-foreground' />
+                <Upload className="h-8 w-8 text-muted-foreground" />
               )}
             </div>
-            <div className='flex flex-1 flex-col gap-3'>
+            <div className="flex flex-1 flex-col gap-3">
               <input
                 ref={fileInputRef}
-                type='file'
-                accept='.png,.jpg,.jpeg,.webp'
+                type="file"
+                accept=".png,.jpg,.jpeg,.webp"
                 onChange={handleLogoUpload}
-                className='hidden'
-                id='logo-upload'
+                className="hidden"
+                id="logo-upload"
               />
-              <div className='flex flex-wrap gap-2 mt-4'>
+              <div className="flex flex-wrap gap-2 mt-4">
                 <Button
-                  variant='outline'
+                  variant="outline"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}>
-                  <Upload className='mr-2 h-4 w-4' />
+                  disabled={uploading}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
                   {uploading ? "Uploading..." : "Upload Logo"}
                 </Button>
                 {logoUrl && (
                   <Button
-                    variant='outline'
+                    variant="outline"
                     onClick={handleRemoveLogo}
                     disabled={removingLogo}
-                    className='text-destructive'>
-                    <Trash2 className='mr-2 h-4 w-4' />
+                    className="text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
                     {removingLogo ? "Removing..." : "Remove"}
                   </Button>
                 )}
               </div>
-              <p className='text-xs text-muted-foreground'>
+              <p className="text-xs text-muted-foreground">
                 Accepted: .png, .jpg, .webp — Max 2MB
               </p>
             </div>
@@ -269,17 +273,17 @@ export default function SchoolProfileTab() {
 
           {/* Extracted Palette */}
           {palette.length > 0 && (
-            <div className='space-y-3'>
-              <h4 className='text-sm font-medium'>Extracted Colors</h4>
-              <p className='text-xs text-muted-foreground'>
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium">Extracted Colors</h4>
+              <p className="text-xs text-muted-foreground">
                 Click a swatch to set it as the accent color. The system
                 automatically adjusts text contrast for WCAG compliance.
               </p>
-              <div className='flex flex-wrap gap-3'>
+              <div className="flex flex-wrap gap-3">
                 {palette.map((color, i) => {
                   const isSelected = color.hsl === currentAccent;
                   return (
-                    <div key={i} className='flex flex-col items-center gap-1'>
+                    <div key={i} className="flex flex-col items-center gap-1">
                       <button
                         onClick={() => handleSelectAccent(color)}
                         disabled={selectingAccent}
@@ -289,15 +293,16 @@ export default function SchoolProfileTab() {
                             : "border-border hover:border-foreground"
                         }`}
                         style={{ backgroundColor: color.hex }}
-                        title={`${color.hex} — hsl(${color.hsl})`}>
+                        title={`${color.hex} — hsl(${color.hsl})`}
+                      >
                         {isSelected && (
                           <Check
-                            className='absolute inset-0 m-auto h-5 w-5'
+                            className="absolute inset-0 m-auto h-5 w-5"
                             style={{ color: `hsl(${color.foreground})` }}
                           />
                         )}
                       </button>
-                      <span className='text-[10px]  text-muted-foreground'>
+                      <span className="text-[10px]  text-muted-foreground">
                         {color.hex}
                       </span>
                     </div>
@@ -308,19 +313,19 @@ export default function SchoolProfileTab() {
           )}
 
           {/* Current Accent */}
-          <div className='space-y-3'>
-            <h4 className='text-sm font-medium'>Current Accent Color</h4>
-            <div className='flex items-center gap-4'>
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium">Current Accent Color</h4>
+            <div className="flex items-center gap-4">
               <div
-                className='h-10 w-10 rounded-lg shadow-sm border border-border'
+                className="h-10 w-10 rounded-lg shadow-sm border border-border"
                 style={{ backgroundColor: `hsl(${currentAccent})` }}
               />
               <div>
-                <p className='text-sm '>{`hsl(${currentAccent})`}</p>
-                <p className='text-xs text-muted-foreground'>
+                <p className="text-sm ">{`hsl(${currentAccent})`}</p>
+                <p className="text-xs text-muted-foreground">
                   {logoUrl ? "From extracted palette" : "Default blue"}
                 </p>
-                <p className='text-xs text-muted-foreground mt-0.5'>
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Text contrast:{" "}
                   {isAccentLight(currentAccent)
                     ? "Dark text (on light accent)"
@@ -331,25 +336,26 @@ export default function SchoolProfileTab() {
           </div>
 
           {/* Live Preview */}
-          <div className='rounded-lg border border-border p-4 space-y-3'>
-            <p className='text-sm font-medium'>Live Preview</p>
-            <div className='flex flex-wrap gap-3'>
-              <Button size='sm'>Primary Button</Button>
-              <Button size='sm' variant='outline'>
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <p className="text-sm font-medium">Live Preview</p>
+            <div className="flex flex-wrap gap-3">
+              <Button size="sm">Primary Button</Button>
+              <Button size="sm" variant="outline">
                 Outline Button
               </Button>
               <a
-                href='#'
+                href="#"
                 onClick={(e) => e.preventDefault()}
-                className='text-sm text-primary hover:underline pt-2'>
+                className="text-sm text-primary hover:underline pt-2"
+              >
                 Accent Link
               </a>
             </div>
-            <div className='flex gap-2'>
+            <div className="flex gap-2">
               <Badge>Default Badge</Badge>
-              <Badge variant='success'>Approved</Badge>
-              <Badge variant='warning'>Pending</Badge>
-              <Badge variant='danger'>Rejected</Badge>
+              <Badge variant="success">Approved</Badge>
+              <Badge variant="warning">Pending</Badge>
+              <Badge variant="danger">Rejected</Badge>
             </div>
           </div>
         </CardContent>

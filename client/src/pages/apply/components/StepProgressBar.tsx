@@ -64,7 +64,7 @@ export default function StepProgressBar({
 
       {/* ── Desktop — stepperize primitives ── */}
       <div className='hidden md:block'>
-        <Stepper.Root className='rounded-2xl border border-border/60 px-8 py-6 bg-card'>
+        <Stepper.Root className='rounded-2xl border border-border/60 px-8 py-6 bg-card mt-6'>
           <Stepper.List className='flex items-center w-full'>
             {steps.map((step, index) => {
               const isActive = step.id === currentStep;

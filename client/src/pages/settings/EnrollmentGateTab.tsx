@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { DatePicker } from '@/components/ui/date-picker';
 
 import { Skeleton } from '@/components/ui/skeleton';
+import { formatManilaDate } from '@/lib/utils';
 
 const MANILA_TIME_ZONE = 'Asia/Manila';
 
@@ -46,7 +47,7 @@ interface AYDates {
 
 function formatDate(dateString: string | null): string {
   if (!dateString) return 'Not set';
-  return new Date(dateString).toLocaleDateString(undefined, {
+  return formatManilaDate(dateString, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

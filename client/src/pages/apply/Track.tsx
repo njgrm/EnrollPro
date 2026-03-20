@@ -149,7 +149,11 @@ const SCP_LABELS: Record<string, string> = {
   SPTVE: "Tech-Voc (SPTVE)",
 };
 
-export default function TrackApplication() {
+interface TrackApplicationProps {
+  onResultsFetched?: (hasResults: boolean) => void;
+}
+
+export default function TrackApplication({ onResultsFetched }: TrackApplicationProps) {
   const { schoolName, logoUrl } = useSettingsStore();
   const [status, setStatus] = useState<ApplicationStatus | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -214,6 +218,7 @@ export default function TrackApplication() {
     setIsLoading(true);
     setError("");
     setStatus(null);
+    onResultsFetched?.(false);
 
     try {
       // Small delay for professional feel
@@ -222,12 +227,14 @@ export default function TrackApplication() {
         `/applications/track/${data.trackingNumber}`,
       );
       setStatus(response.data);
+      onResultsFetched?.(true);
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data
           ?.message ||
         "Could not find an application with that tracking number.";
       setError(message);
+      onResultsFetched?.(false);
     } finally {
       setIsLoading(false);
     }
@@ -678,4 +685,4 @@ export default function TrackApplication() {
       </Card>
     </div>
   );
-};
+}

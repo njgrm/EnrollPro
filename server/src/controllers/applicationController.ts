@@ -1,7 +1,9 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
+import { saveBase64Image } from "../lib/fileUploader.js";
 import { auditLog } from "../services/auditLogger.js";
 import { isEnrollmentOpen } from "../services/enrollmentGateService.js";
+import { normalizeDateToUtcNoon } from "../services/schoolYearService.js";
 import type { ApplicationStatus } from "@prisma/client";
 import { getRequiredDocuments } from "../services/enrollmentRequirementService.js";
 
@@ -65,6 +67,8 @@ const VALID_TRANSITIONS: Record<string, ApplicationStatus[]> = {
  * Recursively converts all string values in an object to uppercase and trims them.
  */
 function toUpperCaseRecursive(obj: any): any {
+  const skipKeys = ["studentPhoto", "email", "emailAddress", "password"];
+
   if (Array.isArray(obj)) {
     return obj.map((v) => toUpperCaseRecursive(v));
   } else if (
@@ -74,7 +78,11 @@ function toUpperCaseRecursive(obj: any): any {
   ) {
     const newObj: any = {};
     for (const key in obj) {
-      newObj[key] = toUpperCaseRecursive(obj[key]);
+      if (skipKeys.includes(key)) {
+        newObj[key] = obj[key];
+      } else {
+        newObj[key] = toUpperCaseRecursive(obj[key]);
+      }
     }
     return newObj;
   } else if (typeof obj === "string") {
@@ -307,11 +315,15 @@ export async function store(req: Request, res: Response) {
     // 8. Build parent contact info (primary contact for quick access)
     const emailAddress = body.email || null;
 
-    // 9. Parse birthdate
-    const birthDate = new Date(body.birthdate);
-    if (isNaN(birthDate.getTime())) {
+    // Parse birthdate
+    const rawBirthDate = new Date(body.birthdate);
+    if (isNaN(rawBirthDate.getTime())) {
       return res.status(400).json({ message: "Invalid birthdate format." });
     }
+    const birthDate = normalizeDateToUtcNoon(rawBirthDate);
+
+    // 9. Save student photo as file if provided
+    const studentPhotoUrl = await saveBase64Image(body.studentPhoto, "photo");
 
     // 10. Create applicant with a temporary tracking number (will update after ID is known)
     const year = new Date().getFullYear();
@@ -321,7 +333,7 @@ export async function store(req: Request, res: Response) {
       data: {
         lrn: body.lrn || null,
         psaBirthCertNumber: body.psaBirthCertNumber || null,
-        studentPhoto: body.studentPhoto ?? null,
+        studentPhoto: studentPhotoUrl,
         lastName: body.lastName,
         firstName: body.firstName,
         middleName: body.middleName || null,
@@ -550,11 +562,15 @@ export async function storeF2F(req: Request, res: Response) {
     // 8. Build parent contact info (primary contact for quick access)
     const emailAddress = body.email || null;
 
-    // 9. Parse birthdate
-    const birthDate = new Date(body.birthdate);
-    if (isNaN(birthDate.getTime())) {
+    // Parse birthdate
+    const rawBirthDate = new Date(body.birthdate);
+    if (isNaN(rawBirthDate.getTime())) {
       return res.status(400).json({ message: "Invalid birthdate format." });
     }
+    const birthDate = normalizeDateToUtcNoon(rawBirthDate);
+
+    // 9. Save student photo as file if provided
+    const studentPhotoUrl = await saveBase64Image(body.studentPhoto, "photo");
 
     // 10. Create applicant with a temporary tracking number (will update after ID is known)
     const year = new Date().getFullYear();
@@ -564,7 +580,7 @@ export async function storeF2F(req: Request, res: Response) {
       data: {
         lrn: body.lrn || null,
         psaBirthCertNumber: body.psaBirthCertNumber || null,
-        studentPhoto: body.studentPhoto ?? null,
+        studentPhoto: studentPhotoUrl,
         lastName: body.lastName,
         firstName: body.firstName,
         middleName: body.middleName || null,

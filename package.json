@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev:server": "pnpm --filter server dev",
-    "dev:client": "pnpm --filter client dev",
-    "dev": "pnpm --filter server --filter client --parallel dev"
+    "dev:client": "pnpm --filter client dev --host",
+    "dev": "pnpm run --parallel --filter server --filter client dev"
   }
 }

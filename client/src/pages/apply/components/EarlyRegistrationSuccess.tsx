@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, FileText, Download, Home, Loader2 } from "lucide-react";
 import { useSettingsStore } from "@/stores/settingsStore";
-import { cn } from "@/lib/utils";
+import { cn, formatManilaDate, getManilaNow } from "@/lib/utils";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import Confetti from "react-confetti";
@@ -30,7 +30,7 @@ export default function EarlyRegistrationSuccess({
   const { schoolName, logoUrl } = useSettingsStore();
   const [copied, setCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [numPieces, setNumPieces] = useState(5000);
+  const [numPieces, setNumPieces] = useState(4000);
   const { width, height } = useWindowSize();
   const pdfRef = useRef<HTMLDivElement>(null);
 
@@ -62,8 +62,6 @@ export default function EarlyRegistrationSuccess({
         logging: false,
         backgroundColor: "#ffffff",
         windowWidth: 800,
-        // Ensure no oklch colors are parsed by avoiding theme variables where possible
-        // or using an ignore strategy. Hardcoding standard colors in the container is best.
       });
 
       const imgData = canvas.toDataURL("image/jpeg", 0.98);
@@ -109,7 +107,7 @@ export default function EarlyRegistrationSuccess({
           }}
         />
       )}
-      {/* PDF Container (Using hardcoded hex colors to avoid oklch parsing errors) â”€â”€ */}
+      {/* PDF Container (Using hardcoded hex colors to avoid oklch parsing errors) ─── */}
       <div
         ref={pdfRef}
         style={{
@@ -200,7 +198,7 @@ export default function EarlyRegistrationSuccess({
                   Date Generated
                 </p>
                 <p style={{ color: "#061E29" }} className='text-sm font-bold'>
-                  {new Date().toLocaleDateString("en-US", {
+                  {formatManilaDate(getManilaNow(), {
                     year: "numeric",
                     month: "long",
                     day: "numeric",
@@ -214,7 +212,7 @@ export default function EarlyRegistrationSuccess({
                   Time Generated
                 </p>
                 <p style={{ color: "#061E29" }} className='text-sm font-bold'>
-                  {new Date().toLocaleTimeString("en-US", {
+                  {formatManilaDate(getManilaNow(), {
                     hour: "2-digit",
                     minute: "2-digit",
                   })}
@@ -300,13 +298,13 @@ export default function EarlyRegistrationSuccess({
         </div>
       </div>
 
-      {/* â”€â”€ Regular Web UI (Uses Theme Variables) â”€â”€ */}
-      <Card className='shadow-lg border-2 border-[#061E29]/10'>
+      {/* ─── Regular Web UI (Uses Theme Variables) ─── */}
+      <Card className='shadow-lg border-2 border-primary/10'>
         <CardHeader className='text-center pb-2'>
           <div className='flex justify-center mb-4'>
-            <CheckCircle2 className='w-16 h-16 text-[#061E29]' />
+            <CheckCircle2 className='w-16 h-16 text-primary' />
           </div>
-          <CardTitle className='text-2xl font-bold text-[#061E29]'>
+          <CardTitle className='text-2xl font-bold text-primary'>
             Application Submitted Successfully!
           </CardTitle>
           <CardDescription className='text-lg'>
@@ -321,21 +319,21 @@ export default function EarlyRegistrationSuccess({
             className={cn(
               "bg-muted p-8 rounded-2xl text-center space-y-3 border-2 border-dashed cursor-pointer transition-all duration-200 group relative overflow-hidden",
               copied
-                ? "border-[#061E29] bg-[#061E29]/5"
-                : "border-muted-foreground/20 hover:border-[#061E29]/50 hover:bg-[#061E29]/2",
+                ? "border-primary bg-primary/5"
+                : "border-muted-foreground/20 hover:border-primary/50 hover:bg-primary/2",
             )}>
             <p className='text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-black'>
               Your Application Tracking Number
             </p>
             <div className='flex items-center justify-center gap-4'>
-              <p className='text-xl sm:text-4xl  font-black text-foreground tracking-tighter'>
+              <p className='text-xl sm:text-4xl font-black text-primary tracking-tighter'>
                 {trackingNumber}
               </p>
             </div>
             <p
               className={cn(
                 "text-xs font-bold transition-all duration-200",
-                copied ? "text-[#061E29] scale-110" : "text-muted-foreground",
+                copied ? "text-primary scale-110" : "text-muted-foreground",
               )}>
               {copied ? "COPIED TO CLIPBOARD!" : "CLICK TO COPY"}
             </p>
