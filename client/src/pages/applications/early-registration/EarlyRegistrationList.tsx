@@ -402,11 +402,6 @@ export default function EarlyRegistration() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell
-                        colSpan={7}
-                        className='h-24 text-center text-sm text-[hsl(var(--muted-foreground))]'>
-                        Loading early registration queue...
-                      </TableCell>
                     </TableRow>
                   ) : applications.length === 0 ? (
                     <TableRow>

@@ -24,6 +24,8 @@ model User {
   enrollments        Enrollment[]
   createdBy          User?        @relation("UserCreatedBy", fields: [createdById], references: [id])
   createdUsers       User[]       @relation("UserCreatedBy")
+  uploadedDocuments  Document[]   @relation("DocumentUploadedBy")
+  updatedChecklists  RequirementChecklist[]
 
   @@map("users")
 }
@@ -227,9 +229,11 @@ model Document {
   verificationNote String?        @map("verification_note")
   isPresentedOnly  Boolean        @default(false) @map("is_presented_only")
   uploadedAt       DateTime       @default(now()) @map("uploaded_at")
+  uploadedById     Int?           @map("uploaded_by_id")
   verifiedAt       DateTime?      @map("verified_at")
   verifiedById     Int?           @map("verified_by_id")
   applicant        Applicant      @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  uploadedBy       User?          @relation("DocumentUploadedBy", fields: [uploadedById], references: [id])
 
   @@index([applicantId], name: "idx_documents_applicant_id")
   @@map("documents")
@@ -239,20 +243,17 @@ model RequirementChecklist {
   id                                 Int       @id @default(autoincrement())
   applicantId                        Int       @unique(map: "uq_requirement_checklists_applicant_id") @map("applicant_id")
   isPsaBirthCertPresented            Boolean   @default(false) @map("is_psa_birth_cert_presented")
-  isPsaBcOnFile                      Boolean   @default(false) @map("is_psa_bc_on_file")
   isOriginalPsaBcCollected           Boolean   @default(false) @map("is_original_psa_bc_collected")
-  isSecondaryBirthProofSubmitted     Boolean   @default(false) @map("is_secondary_birth_proof_submitted")
   isSf9Submitted                     Boolean   @default(false) @map("is_sf9_submitted")
   isSf10Requested                    Boolean   @default(false) @map("is_sf10_requested")
   isGoodMoralPresented               Boolean   @default(false) @map("is_good_moral_presented")
-  isPeptAeSubmitted                  Boolean   @default(false) @map("is_pept_ae_submitted")
-  isPwdIdPresented                   Boolean   @default(false) @map("is_pwd_id_presented")
   isMedicalEvalSubmitted             Boolean   @default(false) @map("is_medical_eval_submitted")
   isUndertakingSigned                Boolean   @default(false) @map("is_undertaking_signed")
   isConfirmationSlipReceived         Boolean   @default(false) @map("is_confirmation_slip_received")
-  isOtherDocSubmitted                Boolean   @default(false) @map("is_other_doc_submitted")
   updatedAt                          DateTime  @updatedAt @map("updated_at")
+  updatedById                        Int?      @map("updated_by_id")
   applicant                          Applicant @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  updatedBy                          User?     @relation(fields: [updatedById], references: [id])
 
   @@map("requirement_checklists")
 }

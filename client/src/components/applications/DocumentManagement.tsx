@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { FileText, Trash2, Upload, Download, Loader2 } from "lucide-react";
+import { Trash2, Upload, Download, Loader2, Eye, FileCheck, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import api from "@/api/axiosInstance";
 import { toastApiError } from "@/hooks/useApiToast";
 import { sileo } from "sileo";
+import { useAuthStore } from "@/stores/authStore";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -23,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import type { AuditLog, ChecklistData } from "@/hooks/useApplicationDetail";
 
 interface Document {
   id: number;
@@ -36,32 +39,56 @@ interface Document {
   isPresentedOnly: boolean;
   uploadedAt: string;
   verifiedAt: string | null;
+  uploadedBy?: { id: number; name: string; role: string } | null;
 }
 
 interface Props {
   applicantId: number;
   documents: Document[];
+  checklist?: ChecklistData | null;
+  encodedBy?: {
+    id: number;
+    name: string;
+    role: string;
+  } | null;
+  auditLogs?: AuditLog[];
   onRefresh: () => void;
   hideUpload?: boolean;
 }
 
+interface AuditRow {
+  type: string;
+  label: string;
+  status: "Added" | "Removed" | "Pending";
+  document: Document | undefined;
+  lastModified: string | null;
+  modifiedBy: { id: number; name: string; role: string } | null;
+  action: "Added" | "Removed" | "Pending";
+}
+
 const DOCUMENT_TYPES = [
-  { value: "PSA_BIRTH_CERTIFICATE", label: "PSA Birth Certificate" },
+  { value: "PSA_BIRTH_CERTIFICATE", label: "PSA Birth Certificate", checklistKey: "isPsaBirthCertPresented" },
   { value: "SECONDARY_BIRTH_PROOF", label: "Secondary Birth Proof (Brgy Cert, etc.)" },
-  { value: "SF9_REPORT_CARD", label: "SF9 / Report Card" },
-  { value: "SF10_PERMANENT_RECORD", label: "SF10 / Permanent Record" },
-  { value: "GOOD_MORAL_CERTIFICATE", label: "Good Moral Certificate" },
+  { value: "SF9_REPORT_CARD", label: "SF9 / Report Card", checklistKey: "isSf9Submitted" },
+  { value: "SF10_PERMANENT_RECORD", label: "SF10 (Permanent Record)", checklistKey: "isSf10Requested" },
+  { value: "GOOD_MORAL_CERTIFICATE", label: "Good Moral Certificate", checklistKey: "isGoodMoralPresented" },
   { value: "MEDICAL_CERTIFICATE", label: "Medical Certificate" },
-  { value: "MEDICAL_EVALUATION", label: "Medical Evaluation (for LWD)" },
-  { value: "PEPT_AE_CERTIFICATE", label: "PEPT / A&E Certificate" },
+  { value: "MEDICAL_EVALUATION", label: "Medical Evaluation", checklistKey: "isMedicalEvalSubmitted" },
   { value: "PWD_ID", label: "PWD ID" },
-  { value: "PSA_MARRIAGE_CERTIFICATE", label: "PSA Marriage Certificate" },
-  { value: "AFFIDAVIT_OF_UNDERTAKING", label: "Affidavit of Undertaking" },
-  { value: "CONFIRMATION_SLIP", label: "Confirmation Slip" },
-  { value: "OTHERS", label: "Other Supporting Documents" },
+  { value: "AFFIDAVIT_OF_UNDERTAKING", label: "Affidavit of Undertaking", checklistKey: "isUndertakingSigned" },
+  { value: "CONFIRMATION_SLIP", label: "Confirmation Slip", checklistKey: "isConfirmationSlipReceived" },
 ];
 
-export function DocumentManagement({ applicantId, documents, onRefresh, hideUpload = false }: Props) {
+export function DocumentManagement({
+  applicantId,
+  documents,
+  checklist,
+  encodedBy,
+  auditLogs,
+  onRefresh,
+  hideUpload = false,
+}: Props) {
+  const { user: sessionUser } = useAuthStore();
   const [isUploading, setIsUploading] = useState(false);
   const [selectedType, setSelectedType] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -116,17 +143,56 @@ export function DocumentManagement({ applicantId, documents, onRefresh, hideUplo
     }
   };
 
-  const formatSize = (bytes: number) => {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-  };
+  // Merge checklist items and documents into audit rows
+  // Showing only requirements that have been acted upon (uploaded, checked, or logged)
+  const auditRows = DOCUMENT_TYPES.map((type) => {
+    const doc = documents.find((d) => d.documentType === type.value);
+    const isChecked = type.checklistKey ? !!(checklist as ChecklistData)?.[type.checklistKey as keyof ChecklistData] : false;
+    
+    // FIND RELEVANT AUDIT LOG
+    // We prioritize the most recent log that matches this document type or checklist label
+    const relevantLog = auditLogs?.find((log) => {
+      const desc = log.description.toUpperCase();
+      const typeVal = type.value.toUpperCase();
+      const labelVal = type.label.toUpperCase();
+      
+      if (desc.includes(typeVal)) return true;
+      if (desc.includes(labelVal)) return true;
+      if (type.value === "SF10_PERMANENT_RECORD" && desc.includes("SF10 (PERMANENT RECORD)")) return true;
+      
+      return false;
+    });
 
-  const getDocLabel = (type: string) => {
-    return DOCUMENT_TYPES.find((t) => t.value === type)?.label || type;
-  };
+    // Determine if we should even show this row
+    // It must have a physical document, be currently checked, or have a historical audit log
+    if (!doc && !isChecked && !relevantLog) return null;
+
+    // Status for internal UI logic (Added/Removed/Pending)
+    let status: "Added" | "Removed" | "Pending" = "Pending";
+    if (doc || isChecked) {
+      status = "Added";
+    } else if (relevantLog) {
+      status = "Removed";
+    }
+
+    return {
+      type: type.value,
+      label: type.label,
+      status,
+      document: doc,
+      lastModified: relevantLog?.createdAt || doc?.uploadedAt || (status === "Added" || status === "Removed" ? checklist?.updatedAt : null),
+      modifiedBy: relevantLog?.user || doc?.uploadedBy || (status === "Added" || status === "Removed" ? checklist?.updatedBy : encodedBy) || sessionUser,
+      action: relevantLog 
+        ? (["DOCUMENT_REMOVED", "DOCUMENT_DELETED"].includes(relevantLog.actionType) ? "Removed" : "Added")
+        : status,
+    };
+  })
+    .filter((row): row is AuditRow => row !== null)
+    .sort((a, b) => {
+      const dateA = a.lastModified ? new Date(a.lastModified).getTime() : 0;
+      const dateB = b.lastModified ? new Date(b.lastModified).getTime() : 0;
+      return dateB - dateA;
+    });
 
   return (
     <div className='space-y-6'>
@@ -175,9 +241,6 @@ export function DocumentManagement({ applicantId, documents, onRefresh, hideUplo
                 {isUploading ? "Uploading..." : "Upload Document"}
               </Button>
             </div>
-            <p className='text-[10px] text-muted-foreground mt-2'>
-              Accepted formats: PDF, JPEG, PNG.
-            </p>
           </CardContent>
         </Card>
       )}
@@ -185,68 +248,132 @@ export function DocumentManagement({ applicantId, documents, onRefresh, hideUplo
       <Card>
         <CardHeader>
           <CardTitle className='text-sm font-bold uppercase tracking-wider'>
-            Submitted Documents ({documents.length})
+            Submitted Documents ({auditRows.length})
           </CardTitle>
         </CardHeader>
         <CardContent className='p-0'>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Document Name</TableHead>
-                <TableHead>Modified By</TableHead>
-                <TableHead>Last Modified</TableHead>
+                <TableHead className='w-[30%]'>Document Name</TableHead>
+                <TableHead className='w-[20%]'>Modified By</TableHead>
+                <TableHead className='w-[25%]'>Last Modified</TableHead>
+                <TableHead className='w-[10%]'>Action</TableHead>
+                <TableHead className='text-right w-[15%]'>Files</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {documents.length === 0 ? (
+              {auditRows.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={5}
                     className='text-center py-10 text-muted-foreground'>
-                    No documents uploaded yet.
+                    No activity recorded.
                   </TableCell>
                 </TableRow>
               ) : (
-                documents.map((doc) => (
-                  <TableRow key={doc.id}>
-                    <TableCell className='font-bold text-xs'>
-                      {getDocLabel(doc.documentType)}
+                auditRows.map((row) => (
+                  <TableRow key={row.type}>
+                    <TableCell className='flex justify-center items-center font-bold text-xs h-24'>
+                      <div className='flex items-center gap-2 text-[12px]'>
+                        {row.status === "Added" ? (
+                          row.document ? (
+                            <Eye className='h-4 w-4 text-blue-500' />
+                          ) : (
+                            <FileCheck className='h-4 w-4 text-green-500' />
+                          )
+                        ) : (
+                          <XCircle className='h-4 w-4 text-muted-foreground' />
+                        )}
+                        <div className='flex flex-col'>
+                          <span
+                            className={
+                              row.status === "Removed"
+                                ? "text-muted-foreground line-through decoration-1"
+                                : ""
+                            }>
+                            {row.label}
+                          </span>
+                          {row.document?.originalName && (
+                            <span className='text-sm text-muted-foreground font-normal truncate max-w-[200px]'>
+                              {row.document.originalName}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </TableCell>
-                    <TableCell className='max-w-[200px] truncate text-xs'>
-                      <div className='flex items-center gap-2'>
-                        <FileText className='h-3 w-3 text-blue-500' />
-                        <span title={doc.originalName || ""}>{doc.originalName || "Unnamed"}</span>
+                    <TableCell className='text-xs text-center'>
+                      <div className='flex flex-col gap-1'>
+                        <span className='font-bold'>
+                          {row.modifiedBy?.name || "N/A"}
+                        </span>
+                        <div className='flex items-center justify-center'>
+                          <Badge
+                            variant='outline'
+                            className='text-[8px] h-4 px-1 uppercase tracking-tighter'>
+                            {row.modifiedBy?.role || "USER"}
+                          </Badge>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className='text-xs'>
-                      {formatSize(doc.size || 0)}
+                      {row.lastModified
+                        ? format(
+                            new Date(row.lastModified),
+                            "MMM dd, yyyy - hh:mm a",
+                          )
+                        : "N/A"}
                     </TableCell>
-                    <TableCell className='text-xs'>
-                      {format(new Date(doc.uploadedAt), "MM/dd/yyyy")}
+                    <TableCell>
+                      {row.action === "Added" && (
+                        <Badge
+                          variant='success'
+                          className='text-[9px] font-bold uppercase'>
+                          Added
+                        </Badge>
+                      )}
+                      {row.action === "Removed" && (
+                        <Badge
+                          variant='destructive'
+                          className='text-[9px] font-bold uppercase'>
+                          Removed
+                        </Badge>
+                      )}
+                      {row.action === "Pending" && (
+                        <Badge
+                          variant='outline'
+                          className='text-[9px] font-bold uppercase'>
+                          Pending
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell className='text-right'>
-                      <div className='flex justify-end gap-1'>
-                        <Button
-                          variant='ghost'
-                          size='icon'
-                          className='h-8 w-8 text-blue-600'
-                          asChild>
-                          <a
-                            href={`${import.meta.env.VITE_API_BASE_URL || "/api"}/../../uploads/${doc.fileName}`}
-                            target='_blank'
-                            rel='noreferrer'>
-                            <Download className='h-4 w-4' />
-                          </a>
-                        </Button>
-                        {!hideUpload && (
-                          <Button
-                            variant='ghost'
-                            size='icon'
-                            className='h-8 w-8 text-red-600'
-                            onClick={() => handleDelete(doc.id)}>
-                            <Trash2 className='h-4 w-4' />
-                          </Button>
-                        )}
+                      <div className='flex justify-end gap-2'>
+                        {row.document ? (
+                          <div className='flex gap-1'>
+                            <Button
+                              variant='ghost'
+                              size='icon'
+                              className='h-7 w-7 text-blue-600'
+                              asChild>
+                              <a
+                                href={`${import.meta.env.VITE_API_BASE_URL || "/api"}/../../uploads/${row.document.fileName}`}
+                                target='_blank'
+                                rel='noreferrer'>
+                                <Download className='h-4 w-4' />
+                              </a>
+                            </Button>
+                            {!hideUpload && (
+                              <Button
+                                variant='ghost'
+                                size='icon'
+                                className='h-7 w-7 text-red-600'
+                                onClick={() => handleDelete(row.document!.id)}>
+                                <Trash2 className='h-4 w-4' />
+                              </Button>
+                            )}
+                          </div>
+                        ) : null}
                       </div>
                     </TableCell>
                   </TableRow>

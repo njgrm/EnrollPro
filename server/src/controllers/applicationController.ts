@@ -171,8 +171,12 @@ export async function show(req: Request, res: Response) {
         gradeLevel: true,
         strand: true,
         schoolYear: true,
-        documents: true,
-        checklist: true,
+        documents: {
+          include: { uploadedBy: { select: { id: true, name: true, role: true } } },
+        },
+        checklist: {
+          include: { updatedBy: { select: { id: true, name: true, role: true } } },
+        },
         encodedBy: { select: { id: true, name: true, role: true } },
         enrollment: {
           include: {
@@ -889,14 +893,16 @@ export async function enroll(req: Request, res: Response) {
           case "PSA_BIRTH_CERTIFICATE":
             // Official enrollment REQUIRES PSA BC (presented now or already on file).
             // Secondary proof only allows TEMPORARY enrollment.
-            isMet = checklist.isPsaBirthCertPresented || checklist.isPsaBcOnFile;
+            isMet = checklist.isPsaBirthCertPresented;
             break;
           case "SF9_REPORT_CARD":
           case "ACADEMIC_RECORD":
             isMet = checklist.isSf9Submitted;
             break;
           case "PEPT_AE_CERTIFICATE":
-            isMet = checklist.isPeptAeSubmitted;
+            // PEPT/A&E requirement is met if it was ever marked as presented
+            // (Note: column isPeptAeSubmitted was dropped in favor of simplified checklist)
+            isMet = false; // We don't have a direct field for this anymore in the simplified checklist
             break;
           // PWD_ID and MEDICAL_EVALUATION are marked as isRequired: false in our service for now
         }
@@ -985,11 +991,62 @@ export async function updateChecklist(req: Request, res: Response) {
     const applicantId = parseInt(String(req.params.id));
     const data = req.body;
 
+    // Filter allowed fields only to prevent Prisma errors on extra fields
+    const allowedFields = [
+      "isPsaBirthCertPresented",
+      "isOriginalPsaBcCollected",
+      "isSf9Submitted",
+      "isSf10Requested",
+      "isGoodMoralPresented",
+      "isMedicalEvalSubmitted",
+      "isUndertakingSigned",
+      "isConfirmationSlipReceived",
+    ];
+
+    const filteredData: any = {};
+    for (const key of allowedFields) {
+      if (data[key] !== undefined) {
+        filteredData[key] = data[key];
+      }
+    }
+
+    // Get current state for auditing
+    const currentChecklist = await prisma.requirementChecklist.findUnique({
+      where: { applicantId }
+    });
+
     const updated = await prisma.requirementChecklist.upsert({
       where: { applicantId },
-      update: data,
-      create: { ...data, applicantId },
+      update: { ...filteredData, updatedById: req.user!.userId },
+      create: { ...filteredData, applicantId, updatedById: req.user!.userId },
     });
+
+    // Record individual audit entries for each changed requirement
+    const fieldsToLabel: Record<string, string> = {
+      isPsaBirthCertPresented: "PSA Birth Certificate",
+      isSf9Submitted: "SF9 / Report Card",
+      isConfirmationSlipReceived: "Confirmation Slip",
+      isSf10Requested: "SF10 (Permanent Record)",
+      isGoodMoralPresented: "Good Moral Certificate",
+      isMedicalEvalSubmitted: "Medical Evaluation",
+      isUndertakingSigned: "Affidavit of Undertaking",
+    };
+
+    for (const [key, label] of Object.entries(fieldsToLabel)) {
+      const newValue = filteredData[key];
+      const oldValue = currentChecklist ? (currentChecklist as any)[key] : false;
+
+      if (newValue !== undefined && newValue !== oldValue) {
+        await auditLog({
+          userId: req.user!.userId,
+          actionType: newValue ? "DOCUMENT_ADDED" : "DOCUMENT_REMOVED",
+          description: `${newValue ? "Added" : "Removed"} requirement: ${label} for applicant #${applicantId}`,
+          subjectType: "Applicant",
+          recordId: applicantId,
+          req,
+        });
+      }
+    }
 
     await auditLog({
       userId: req.user!.userId,
@@ -1723,8 +1780,12 @@ export async function showDetailed(req: Request, res: Response) {
         gradeLevel: true,
         strand: true,
         schoolYear: true,
-        documents: true,
-        checklist: true,
+        documents: {
+          include: { uploadedBy: { select: { id: true, name: true, role: true } } },
+        },
+        checklist: {
+          include: { updatedBy: { select: { id: true, name: true, role: true } } },
+        },
         encodedBy: { select: { id: true, name: true, role: true } },
         enrollment: {
           include: {
@@ -1749,7 +1810,19 @@ export async function showDetailed(req: Request, res: Response) {
       return res.status(404).json({ message: "Application not found" });
     }
 
-    res.json(application);
+    // Fetch audit logs for the applicant
+    const auditLogs = await prisma.auditLog.findMany({
+      where: {
+        subjectType: "Applicant",
+        recordId: application.id,
+      },
+      include: {
+        user: { select: { id: true, name: true, role: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    res.json({ ...application, auditLogs });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

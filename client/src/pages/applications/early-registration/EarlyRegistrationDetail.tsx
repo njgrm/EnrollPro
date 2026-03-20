@@ -269,6 +269,9 @@ export default function EarlyRegistrationDetail() {
                       <DocumentManagement
                         applicantId={applicant.id}
                         documents={applicant.documents || []}
+                        checklist={applicant.checklist}
+                        encodedBy={applicant.encodedBy}
+                        auditLogs={applicant.auditLogs}
                         onRefresh={refetch}
                         hideUpload
                       />

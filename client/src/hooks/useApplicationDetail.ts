@@ -66,19 +66,15 @@ export interface ChecklistData {
   id: number;
   applicantId: number;
   isPsaBirthCertPresented: boolean;
-  isPsaBcOnFile: boolean;
   isOriginalPsaBcCollected: boolean;
-  isSecondaryBirthProofSubmitted: boolean;
   isSf9Submitted: boolean;
   isSf10Requested: boolean;
   isGoodMoralPresented: boolean;
-  isPeptAeSubmitted: boolean;
-  isPwdIdPresented: boolean;
   isMedicalEvalSubmitted: boolean;
   isUndertakingSigned: boolean;
   isConfirmationSlipReceived: boolean;
-  isOtherDocSubmitted: boolean;
   updatedAt: string;
+  updatedBy?: { id: number; name: string; role: string } | null;
 }
 
 export type LearnerType =
@@ -86,6 +82,19 @@ export type LearnerType =
   | "TRANSFEREE"
   | "RETURNING"
   | "CONTINUING";
+
+export interface AuditLog {
+  id: number;
+  userId: number | null;
+  actionType: string;
+  description: string;
+  subjectType: string | null;
+  recordId: number | null;
+  ipAddress: string;
+  userAgent: string | null;
+  createdAt: string;
+  user?: { id: number; name: string; role: string } | null;
+}
 
 export interface ApplicantDetail {
   id: number;
@@ -175,9 +184,11 @@ export interface ApplicantDetail {
     isPresentedOnly: boolean;
     uploadedAt: string;
     verifiedAt: string | null;
+    uploadedBy?: { id: number; name: string; role: string } | null;
   }[];
   checklist?: ChecklistData;
   emailLogs?: EmailLog[];
+  auditLogs?: AuditLog[];
 }
 
 export function useApplicationDetail(

@@ -62,9 +62,8 @@ export function RequirementChecklist({
       key: "isPsaBirthCertPresented",
       label: "PSA Birth Certificate",
       description:
-        "Submitted once per school stay. Mandatory for new enrollees and transferees if not already on file.",
-      isMandatory:
-        learnerType !== "CONTINUING" && !localChecklist.isPsaBcOnFile,
+        "Submitted once per school stay. Mandatory for new enrollees and transferees.",
+      isMandatory: learnerType !== "CONTINUING",
     },
     {
       key: "isSf9Submitted",
@@ -72,13 +71,6 @@ export function RequirementChecklist({
       description:
         "Proof of last grade level completed. Mandatory for new enrollees and transferees.",
       isMandatory: learnerType !== "CONTINUING",
-    },
-    {
-      key: "isSecondaryBirthProofSubmitted",
-      label: "Secondary Proof of Birth",
-      description:
-        "Accepted if PSA Birth Certificate is unavailable (e.g., Brgy Cert, Baptismal). Required for temporary enrollment.",
-      isMandatory: false,
     },
     {
       key: "isConfirmationSlipReceived",
@@ -204,7 +196,7 @@ export function RequirementChecklist({
           {requirements.map((req) => (
             <div
               key={req.key}
-              className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50 transition-colors border border-transparent hover:border-border/50"
+              className="flex items-center space-x-2 p-2 rounded-lg hover:bg-muted/50 transition-colors border border-transparent hover:border-border/50"
             >
               <Checkbox
                 id={req.key}
@@ -217,7 +209,7 @@ export function RequirementChecklist({
                 <div className="flex items-center gap-2">
                   <Label
                     htmlFor={req.key}
-                    className="text-[11px] font-bold leading-tight cursor-pointer truncate"
+                    className="text-[12px] font-bold leading-tight cursor-pointer truncate"
                     title={req.label}
                   >
                     {req.label}
@@ -266,7 +258,7 @@ export function RequirementChecklist({
           <Button
             variant="outline"
             size="sm"
-            className="w-full text-[10px] h-8 font-bold gap-2 uppercase tracking-tight"
+            className="w-full text-[10px] h-8 font-bold gap-2 uppercase tracking-wider"
             asChild
           >
             <Link to="/enrollment/requirements" target="_blank">

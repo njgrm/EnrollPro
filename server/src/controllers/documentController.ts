@@ -67,6 +67,7 @@ export async function upload(req: Request, res: Response) {
         originalName: req.file.originalname,
         mimeType: req.file.mimetype,
         size: req.file.size,
+        uploadedById: req.user!.userId,
       },
     });
 
