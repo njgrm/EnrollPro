@@ -84,7 +84,7 @@ export default function SchoolProfileTab() {
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
+    if (file.size > 5 * 1024 * 1024) {
       sileo.error({
         title: "File too large",
         description: "Maximum file size is 2MB.",

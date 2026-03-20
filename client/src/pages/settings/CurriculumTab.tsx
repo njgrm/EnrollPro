@@ -79,8 +79,6 @@ export default function CurriculumTab() {
 
   const [curriculumDirty, setCurriculumDirty] = useState(false);
   const [savingCurriculum, setSavingCurriculum] = useState(false);
-  const [matrixDirty, setMatrixDirty] = useState(false);
-  const [savingMatrix, setSavingMatrix] = useState(false);
   const [savingScp, setSavingScp] = useState(false);
 
   const fetchData = useCallback(async () => {
@@ -210,48 +208,6 @@ export default function CurriculumTab() {
     }
   };
 
-  // â”€â”€â”€ Matrix Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-  const toggleMatrixCell = (strandId: number, glId: number) => {
-    setStrands((prev) =>
-      prev.map((s) => {
-        if (s.id !== strandId) return s;
-        const has = s.applicableGradeLevelIds.includes(glId);
-        return {
-          ...s,
-          applicableGradeLevelIds: has
-            ? s.applicableGradeLevelIds.filter((id) => id !== glId)
-            : [...s.applicableGradeLevelIds, glId],
-        };
-      }),
-    );
-    setMatrixDirty(true);
-  };
-
-  const handleSaveMatrix = async () => {
-    if (!ayId) return;
-    setSavingMatrix(true);
-    try {
-      const matrix = strands.map((s) => ({
-        strandId: s.id,
-        gradeLevelIds: s.applicableGradeLevelIds,
-      }));
-      const res = await api.put(`/curriculum/${ayId}/strand-matrix`, {
-        matrix,
-      });
-      setStrands(res.data.strands);
-      setMatrixDirty(false);
-      sileo.success({
-        title: "Matrix Saved",
-        description: "Strand-to-grade assignments updated.",
-      });
-    } catch (err) {
-      toastApiError(err as never);
-    } finally {
-      setSavingMatrix(false);
-    }
-  };
-
   if (!ayId) {
     return (
       <Card>
@@ -372,7 +328,7 @@ export default function CurriculumTab() {
               Special Curricular Programs (SCP)
             </CardTitle>
             <CardDescription>
-              Configure EARLY REGISTRATION criteria for STE, SPA, SPS, etc.
+              Configure Early Registration criteria for STE, SPA, SPS, etc.
             </CardDescription>
           </div>
           <Button size='sm' onClick={handleSaveScp} disabled={savingScp}>
@@ -401,7 +357,7 @@ export default function CurriculumTab() {
                   {scp.isOffered && (
                     <Badge
                       variant='outline'
-                      className='bg-emerald-50 text-emerald-700 border-emerald-200'>
+                      className='bg-primary/10 text-primary border-primary/20'>
                       ACTIVE
                     </Badge>
                   )}
@@ -412,7 +368,7 @@ export default function CurriculumTab() {
                     <div className='flex flex-wrap gap-4'>
                       <div className='flex flex-col gap-1 flex-1 min-w-35'>
                         <Label className='text-xs flex items-center gap-1'>
-                          <Calendar className='h-3 w-3' /> EARLY REGISTRATION
+                          <Calendar className='h-3 w-3' /> Exam
                           Date
                         </Label>
                         <DatePicker
@@ -554,7 +510,7 @@ export default function CurriculumTab() {
               <h3 className='text-sm font-bold uppercase tracking-wider text-muted-foreground'>
                 Grade 11: Elective Clusters
               </h3>
-              <Badge className='bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200'>
+              <Badge className='bg-primary/10 text-primary hover:bg-primary/10 border-primary/20'>
                 Track-Based
               </Badge>
             </div>
@@ -563,7 +519,7 @@ export default function CurriculumTab() {
               {/* Academic Track */}
               <div className='space-y-3'>
                 <p className='text-xs font-semibold text-muted-foreground flex items-center gap-2'>
-                  <span className='h-1 w-1 rounded-full bg-blue-500' /> ACADEMIC
+                  <span className='h-1 w-1 rounded-full bg-primary' /> ACADEMIC
                   TRACK
                 </p>
                 <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3'>
@@ -583,18 +539,18 @@ export default function CurriculumTab() {
                             "ACADEMIC",
                           )
                         }
-                        className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-left ${
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-left h-full w-full ${
                           isOffered
-                            ? "bg-blue-50/50 border-blue-200 ring-1 ring-blue-100"
-                            : "bg-card border-border hover:border-blue-200 hover:bg-muted"
+                            ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                            : "bg-card border-border hover:border-primary/50 hover:bg-muted"
                         }`}>
                         {isOffered ? (
-                          <CheckCircle2 className='h-5 w-5 text-blue-600 shrink-0' />
+                          <CheckCircle2 className='h-5 w-5 text-primary-foreground shrink-0' />
                         ) : (
                           <Circle className='h-5 w-5 text-muted-foreground shrink-0' />
                         )}
                         <span
-                          className={`text-sm font-medium ${isOffered ? "text-blue-900" : "text-foreground"}`}>
+                          className={`text-sm font-medium ${isOffered ? "text-primary-foreground" : "text-foreground"}`}>
                           {cluster.label}
                         </span>
                       </button>
@@ -606,7 +562,7 @@ export default function CurriculumTab() {
               {/* TechPro Track */}
               <div className='space-y-3'>
                 <p className='text-xs font-semibold text-muted-foreground flex items-center gap-2'>
-                  <span className='h-1 w-1 rounded-full bg-orange-500' />{" "}
+                  <span className='h-1 w-1 rounded-full bg-primary' />{" "}
                   TECHNICAL-PROFESSIONAL (TECHPRO) TRACK
                 </p>
                 <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3'>
@@ -626,18 +582,18 @@ export default function CurriculumTab() {
                             "TECHPRO",
                           )
                         }
-                        className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-left ${
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-left h-full w-full ${
                           isOffered
-                            ? "bg-orange-50/50 border-orange-200 ring-1 ring-orange-100"
-                            : "bg-card border-border hover:border-orange-200 hover:bg-muted"
+                            ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                            : "bg-card border-border hover:border-primary/50 hover:bg-muted"
                         }`}>
                         {isOffered ? (
-                          <CheckCircle2 className='h-5 w-5 text-orange-600 shrink-0' />
+                          <CheckCircle2 className='h-5 w-5 text-primary-foreground shrink-0' />
                         ) : (
                           <Circle className='h-5 w-5 text-muted-foreground shrink-0' />
                         )}
                         <span
-                          className={`text-sm font-medium ${isOffered ? "text-orange-900" : "text-foreground"}`}>
+                          className={`text-sm font-medium ${isOffered ? "text-primary-foreground" : "text-foreground"}`}>
                           {cluster.label}
                         </span>
                       </button>
@@ -659,83 +615,6 @@ export default function CurriculumTab() {
           </CardFooter>
         )}
       </Card>
-
-      {/* Strand-to-Grade Matrix */}
-      {strands.length > 0 && gradeLevels.length > 0 && (
-        <Card>
-          <CardHeader className='flex flex-row items-center justify-between space-y-0'>
-            <div>
-              <CardTitle className='text-xl'>
-                Curriculum-to-Grade Matrix
-              </CardTitle>
-              <CardDescription>
-                Map Tracks, Clusters, and Strands to Grade Levels
-              </CardDescription>
-            </div>
-            {matrixDirty && (
-              <Button
-                size='sm'
-                onClick={handleSaveMatrix}
-                disabled={savingMatrix}>
-                {savingMatrix ? "Saving..." : "Save Matrix"}
-              </Button>
-            )}
-          </CardHeader>
-          <CardContent>
-            <div className='overflow-x-auto rounded-xl border border-border'>
-              <table className='w-full text-sm'>
-                <thead>
-                  <tr className='bg-muted border-b'>
-                    <th className='text-left px-4 py-3 font-bold text-muted-foreground w-64'>
-                      Item
-                    </th>
-                    {[...gradeLevels]
-                      .sort((a, b) => a.displayOrder - b.displayOrder)
-                      .map((gl) => (
-                        <th
-                          key={gl.id}
-                          className='px-3 py-3 text-center font-bold text-muted-foreground'>
-                          {gl.name}
-                        </th>
-                      ))}
-                  </tr>
-                </thead>
-                <tbody className='divide-y divide-border'>
-                  {strands.map((s) => (
-                    <tr key={s.id} className='hover:bg-muted transition-colors'>
-                      <td className='px-4 py-3'>
-                        <div className='flex flex-col'>
-                          <span className='font-bold'>{s.name}</span>
-                          <span className='text-[10px] text-muted-foreground'>
-                            {s.curriculumType.replace("_", " ")}
-                          </span>
-                        </div>
-                      </td>
-                      {[...gradeLevels]
-                        .sort((a, b) => a.displayOrder - b.displayOrder)
-                        .map((gl) => {
-                          const checked = s.applicableGradeLevelIds.includes(
-                            gl.id,
-                          );
-                          return (
-                            <td key={gl.id} className='px-3 py-3 text-center'>
-                              <input
-                                type='checkbox'
-                                checked={checked}
-                                onChange={() => toggleMatrixCell(s.id, gl.id)}
-                                className='h-5 w-5 rounded border-border accent-primary cursor-pointer transition-transform hover:scale-110'
-                              />
-                            </td>
-                          );
-                        })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

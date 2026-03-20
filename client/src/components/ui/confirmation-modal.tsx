@@ -14,7 +14,7 @@ interface ConfirmationModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  description: string;
+  description: React.ReactNode;
   onConfirm: () => void;
   confirmText?: string;
   loading?: boolean;

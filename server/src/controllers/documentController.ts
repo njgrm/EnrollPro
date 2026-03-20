@@ -30,7 +30,10 @@ export async function upload(req: Request, res: Response) {
       try {
         fs.unlinkSync(req.file.path);
       } catch (unlinkError) {
-        console.warn("[DocumentUpload] Failed to remove orphaned file:", unlinkError);
+        console.warn(
+          "[DocumentUpload] Failed to remove orphaned file:",
+          unlinkError,
+        );
       }
       return res.status(404).json({ message: "Applicant not found" });
     }

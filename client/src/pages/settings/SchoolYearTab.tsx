@@ -288,6 +288,7 @@ export default function SchoolYearTab() {
     }
 
     setCreating(true);
+    await new Promise((resolve) => setTimeout(resolve, 500));
     try {
       const derivedSchedule = buildSchoolYearSchedule(
         editClassOpening,
@@ -592,9 +593,14 @@ export default function SchoolYearTab() {
 
       <ConfirmationModal
         open={!!deleteId}
-        onOpenChange={(open) => !open && setDeleteId(null)}
+        onOpenChange={(open: boolean) => !open && setDeleteId(null)}
         title='Delete School Year'
-        description={`Are you sure you want to delete "${deleteLabel}"?`}
+        description={
+          <span>
+            Are you sure you want to delete{" "}
+            <span className='font-bold'>School Year "{deleteLabel}"</span>?
+          </span>
+        }
         confirmText='Delete'
         loading={deleting}
         onConfirm={handleDelete}

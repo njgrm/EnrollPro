@@ -27,8 +27,8 @@ export async function getStats(req: Request, res: Response): Promise<void> {
       }),
       // Count sections at capacity
       prisma.$queryRaw<{ count: bigint }[]>`
-      SELECT COUNT(*)::bigint as count FROM "Section" s
-      WHERE (SELECT COUNT(*) FROM "Enrollment" e WHERE e."sectionId" = s.id) >= s."maxCapacity"
+      SELECT COUNT(*)::bigint as count FROM "sections" s
+      WHERE (SELECT COUNT(*) FROM "enrollments" e WHERE e."section_id" = s.id) >= s."max_capacity"
     `,
     ]);
 

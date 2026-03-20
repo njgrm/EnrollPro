@@ -23,6 +23,7 @@ export const EarlyRegistrationSchema = z.object({
   scpType: z.enum(["STE", "SPA", "SPS", "SPJ", "SPFL", "SPTVE"]).optional(),
 
   // Section 3: Personal Information
+  studentPhoto: z.string().optional(),
   lastName: z.string().min(1, "Last name is required"),
   firstName: z.string().min(1, "First name is required"),
   middleName: z.string().optional(),

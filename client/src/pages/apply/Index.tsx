@@ -21,7 +21,8 @@ export default function Apply() {
     return (sessionStorage.getItem(TAB_KEY) as "form" | "monitor") || "form";
   });
 
-  const { schoolName, logoUrl } = useSettingsStore();
+  const { schoolName, logoUrl, enrollmentPhase } = useSettingsStore();
+  const isClosed = enrollmentPhase === "CLOSED";
 
   const handleAccept = () => {
     sessionStorage.setItem(CONSENT_KEY, "true");
@@ -164,64 +165,109 @@ export default function Apply() {
           </div>
         </header>
 
-        <main className='min-h-screen py-12 px-4 sm:px-6 lg:px-8'>
+        <main className='py-12 px-4 sm:px-6 lg:px-8 min-h-screen'>
           <div className='max-w-4xl mx-auto space-y-10'>
-            {/* â”€â”€ Tab Switcher (Placed at the top of the content area) â”€â”€ */}
-            <div className='flex justify-center'>
-              <div className='flex bg-white/80 p-1.5 rounded-2xl border-3 border-primary/80 w-full sm:w-auto shadow-inner mb-5'>
-                <button
-                  onClick={() => handleTabChange("form")}
-                  className={cn(
-                    "flex-1 sm:flex-none px-8 py-3 text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] rounded-xl transition-all duration-200",
-                    activeTab === "form"
-                      ? "bg-primary text-primary-foreground shadow-lg scale-[1.02]"
-                      : "text-muted-foreground hover:text-primary hover:bg-primary/5",
-                  )}>
-                  Application Form
-                </button>
-                <button
-                  onClick={() => handleTabChange("monitor")}
-                  className={cn(
-                    "flex-1 sm:flex-none px-8 py-3 text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] rounded-xl transition-all duration-200",
-                    activeTab === "monitor"
-                      ? "bg-primary text-primary-foreground shadow-lg scale-[1.02]"
-                      : "text-muted-foreground hover:text-primary hover:bg-primary/5",
-                  )}>
-                  Monitor Portal
-                </button>
-              </div>
-            </div>
-
-            <AnimatePresence mode='wait'>
-              {activeTab === "monitor" ? (
-                <motion.div
-                  key='monitor'
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.98 }}
-                  transition={{ duration: 0.3 }}>
-                  <TrackApplication />
-                </motion.div>
-              ) : !hasConsented ? (
-                <motion.div
-                  key='privacy'
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.98 }}
-                  transition={{ duration: 0.3 }}>
-                  <PrivacyNotice onAccept={handleAccept} />
-                </motion.div>
-              ) : (
-                <motion.div
-                  key='form'
-                  initial={{ opacity: 0, scale: 1.02, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 1.02 }}
-                  transition={{ duration: 0.4, ease: "easeOut" }}>
-                  <EarlyRegistrationForm onReset={handleReset} />
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {isClosed ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className='text-center space-y-8 py-16 px-6 sm:px-16 bg-white/60 backdrop-blur-md rounded-3xl border border-white/20 shadow-2xl relative overflow-hidden max-w-4xl w-full'>
+                <div className='absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-destructive/50 to-transparent' />
+                <div className='space-y-6 relative z-10'>
+                  {logoUrl ? (
+                    <img
+                      src={`${API_BASE}${logoUrl}`}
+                      className='h-32 w-32 mx-auto object-contain drop-shadow-md'
+                      alt={schoolName}
+                    />
+                  ) : (
+                    <div className='h-24 w-24 mx-auto rounded-3xl bg-primary/10 flex items-center justify-center text-4xl font-black text-primary'>
+                      {schoolName?.charAt(0)}
+                    </div>
+                  )}
+                  <div className='space-y-2'>
+                    <h2 className='text-2xl sm:text-3xl font-black uppercase tracking-tight text-black'>
+                      {schoolName}
+                    </h2>
+                    <div className='inline-flex items-center px-4 py-1.5 rounded-full bg-destructive/10 text-destructive text-xs font-bold tracking-widest uppercase border border-destructive/20'>
+                      Registration Inactive
+                    </div>
+                  </div>
+                  <div className='space-y-4 max-w-lg mx-auto'>
+                    <h3 className='text-xl sm:text-2xl font-bold text-black'>
+                      Early Registration is Currently Closed
+                    </h3>
+                    <p className='text-sm sm:text-base text-black leading-relaxed'>
+                      The online portal for Early Registration is not currently
+                      accepting applications. Registration periods are scheduled
+                      according to the DepEd school calendar.
+                    </p>
+                    <p className='text-sm text-black font-medium pt-4 border-t border-border/50'>
+                      Please stay tuned to our official school social media
+                      pages or visit the school campus for announcements
+                      regarding the next registration schedule.
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            ) : (
+              <>
+                <div className='flex justify-center'>
+                  <div className='flex bg-white/80 p-1.5 rounded-2xl border-3 border-primary/80 w-full sm:w-auto shadow-inner mb-5'>
+                    <button
+                      onClick={() => handleTabChange("form")}
+                      className={cn(
+                        "flex-1 sm:flex-none px-8 py-3 text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] rounded-xl transition-all duration-200",
+                        activeTab === "form"
+                          ? "bg-primary text-primary-foreground shadow-lg scale-[1.02]"
+                          : "text-muted-foreground hover:text-primary hover:bg-primary/5",
+                      )}>
+                      Application Form
+                    </button>
+                    <button
+                      onClick={() => handleTabChange("monitor")}
+                      className={cn(
+                        "flex-1 sm:flex-none px-8 py-3 text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] rounded-xl transition-all duration-200",
+                        activeTab === "monitor"
+                          ? "bg-primary text-primary-foreground shadow-lg scale-[1.02]"
+                          : "text-muted-foreground hover:text-primary hover:bg-primary/5",
+                      )}>
+                      Monitor Portal
+                    </button>
+                  </div>
+                </div>
+                <AnimatePresence mode='wait'>
+                  {activeTab === "monitor" ? (
+                    <motion.div
+                      key='monitor'
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.98 }}
+                      transition={{ duration: 0.3 }}>
+                      <TrackApplication />
+                    </motion.div>
+                  ) : !hasConsented ? (
+                    <motion.div
+                      key='privacy'
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.98 }}
+                      transition={{ duration: 0.3 }}>
+                      <PrivacyNotice onAccept={handleAccept} />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key='form'
+                      initial={{ opacity: 0, scale: 1.02, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 1.02 }}
+                      transition={{ duration: 0.4, ease: "easeOut" }}>
+                      <EarlyRegistrationForm onReset={handleReset} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </>
+            )}
           </div>
         </main>
       </div>

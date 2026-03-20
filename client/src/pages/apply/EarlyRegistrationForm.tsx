@@ -43,6 +43,7 @@ export default function EarlyRegistrationForm({
     reset({
       schoolYear: "2026-2027",
       isPrivacyConsentGiven: true,
+      studentPhoto: undefined,
       gradeLevel: "7",
       isIpCommunity: false,
       is4PsBeneficiary: false,
@@ -87,6 +88,7 @@ export default function EarlyRegistrationForm({
     defaultValues: {
       schoolYear: "2026-2027",
       isPrivacyConsentGiven: true,
+      studentPhoto: undefined,
       gradeLevel: "7",
       isIpCommunity: false,
       is4PsBeneficiary: false,

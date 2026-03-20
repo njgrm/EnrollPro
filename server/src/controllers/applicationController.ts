@@ -231,7 +231,7 @@ export async function store(req: Request, res: Response) {
     if (!isEnrollmentOpen(activeYear)) {
       return res.status(400).json({
         message:
-          "Enrollment is currently closed. Please check back during the enrollment period.",
+          "Early Registration is currently closed. Please check back during the enrollment period.",
       });
     }
 
@@ -321,6 +321,7 @@ export async function store(req: Request, res: Response) {
       data: {
         lrn: body.lrn || null,
         psaBirthCertNumber: body.psaBirthCertNumber || null,
+        studentPhoto: body.studentPhoto ?? null,
         lastName: body.lastName,
         firstName: body.firstName,
         middleName: body.middleName || null,
@@ -473,7 +474,7 @@ export async function storeF2F(req: Request, res: Response) {
     if (!isEnrollmentOpen(activeYear)) {
       return res.status(400).json({
         message:
-          "Enrollment is currently closed. Please check back during the enrollment period.",
+          "Early Registration is currently closed. Please check back during the enrollment period.",
       });
     }
 
@@ -563,6 +564,7 @@ export async function storeF2F(req: Request, res: Response) {
       data: {
         lrn: body.lrn || null,
         psaBirthCertNumber: body.psaBirthCertNumber || null,
+        studentPhoto: body.studentPhoto ?? null,
         lastName: body.lastName,
         firstName: body.firstName,
         middleName: body.middleName || null,
@@ -755,7 +757,7 @@ export async function approve(req: Request, res: Response) {
 
     const result = await prisma.$transaction(async (tx) => {
       const [section] = await tx.$queryRaw<any[]>`
-        SELECT id, "maxCapacity" FROM "Section" WHERE id = ${sectionId} FOR UPDATE
+        SELECT id, "max_capacity" as "maxCapacity" FROM "sections" WHERE id = ${sectionId} FOR UPDATE
       `;
 
       if (!section) throw new Error("Section not found");
@@ -1461,7 +1463,7 @@ export async function offerRegular(req: Request, res: Response) {
     const result = await prisma.$transaction(async (tx) => {
       // Lock section for capacity check
       const [section] = await tx.$queryRaw<any[]>`
-        SELECT id, "maxCapacity" FROM "Section" WHERE id = ${sectionId} FOR UPDATE
+        SELECT id, "max_capacity" as "maxCapacity" FROM "sections" WHERE id = ${sectionId} FOR UPDATE
       `;
 
       if (!section) throw new Error("Section not found");

@@ -83,6 +83,7 @@ export default function F2FEarlyRegistration() {
     defaultValues: {
       schoolYear: "2026-2027",
       isPrivacyConsentGiven: true,
+      studentPhoto: undefined,
       gradeLevel: "7",
       isIpCommunity: false,
       is4PsBeneficiary: false,
@@ -109,6 +110,7 @@ export default function F2FEarlyRegistration() {
     reset({
       schoolYear: "2026-2027",
       isPrivacyConsentGiven: true,
+      studentPhoto: undefined,
       gradeLevel: "7",
       isIpCommunity: false,
       is4PsBeneficiary: false,

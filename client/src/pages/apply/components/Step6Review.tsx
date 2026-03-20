@@ -110,6 +110,17 @@ export default function Step6Review({
           icon={User}
           stepId={1}
           onEdit={onEdit}>
+          {data.studentPhoto && (
+            <div className='sm:col-span-2 flex justify-center pb-2'>
+              <div className='relative w-24 h-24 rounded-lg overflow-hidden border-2 border-primary/10 shadow-sm'>
+                <img
+                  src={data.studentPhoto}
+                  alt='Student'
+                  className='w-full h-full object-cover'
+                />
+              </div>
+            </div>
+          )}
           <DataItem
             label='Full Name'
             value={`${data.lastName}, ${data.firstName}${data.middleName && data.middleName !== "N/A" ? ` ${data.middleName}` : ""}${data.extensionName && data.extensionName !== "N/A" ? ` ${data.extensionName}` : ""}`}

@@ -25,6 +25,7 @@ const optionalAddressSchema = z
 
 export const applicationSubmitSchema = z.object({
   // Reference numbers
+  studentPhoto: z.string().optional().nullable(),
   lrn: z
     .string()
     .regex(/^\d{12}$/, "LRN must be exactly 12 numeric digits")
