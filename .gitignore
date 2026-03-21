@@ -1,8 +1,24 @@
+# Dependencies
 node_modules/
+.agents/
+.gemini/
+
+# Build and Output
 dist/
-.env
-server/uploads/
+build/
 *.log
+*.skill.log
+
+# Environment and Secrets
+.env
+.env.*
+!.env.example
+
+# Project Specifics
+server/uploads/
 docs/
 .vscode/
 
+# OS Specific
+.DS_Store
+Thumbs.db
