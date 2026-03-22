@@ -9,7 +9,8 @@
     "db:migrate": "npx prisma migrate dev",
     "db:generate": "npx prisma generate",
     "db:seed": "tsx prisma/seed.ts",
-    "db:seed-students": "tsx prisma/seed-students.ts"
+    "db:seed-students": "tsx prisma/seed-students.ts",
+    "db:wipe": "tsx prisma/wipe.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

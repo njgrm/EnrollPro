@@ -921,11 +921,16 @@ export async function enroll(req: Request, res: Response) {
       });
     }
 
+    const { generatePortalPin } = await import("../services/portalPinService.js");
+    const { raw: rawPin, hash: pinHash } = generatePortalPin();
+
     const updated = await prisma.applicant.update({
       where: { id: applicantId },
       data: {
         status: "ENROLLED",
         isTemporarilyEnrolled: false,
+        portalPin: pinHash,
+        portalPinChangedAt: new Date(),
       },
     });
 
@@ -938,7 +943,7 @@ export async function enroll(req: Request, res: Response) {
       req,
     });
 
-    res.json(updated);
+    res.json({ ...updated, rawPortalPin: rawPin });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

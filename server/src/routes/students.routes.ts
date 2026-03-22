@@ -1,7 +1,15 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/authenticate.js';
 import { authorize } from '../middleware/authorize.js';
-import { getStudents, getStudentById, updateStudent } from '../controllers/students.controller.js';
+import { 
+  getStudents, 
+  getStudentById, 
+  updateStudent,
+  getHealthRecords,
+  addHealthRecord,
+  updateHealthRecord,
+  resetPortalPin
+} from '../controllers/students.controller.js';
 
 const router: Router = Router();
 
@@ -16,5 +24,13 @@ router.get('/:id', authorize('REGISTRAR', 'SYSTEM_ADMIN', 'TEACHER'), getStudent
 
 // Update student information
 router.put('/:id', authorize('REGISTRAR', 'SYSTEM_ADMIN'), updateStudent);
+
+// Health Records
+router.get('/:id/health-records', authorize('REGISTRAR', 'SYSTEM_ADMIN', 'TEACHER'), getHealthRecords);
+router.post('/:id/health-records', authorize('REGISTRAR', 'SYSTEM_ADMIN'), addHealthRecord);
+router.put('/:id/health-records/:recId', authorize('REGISTRAR', 'SYSTEM_ADMIN'), updateHealthRecord);
+
+// Portal PIN Reset
+router.post('/:id/reset-portal-pin', authorize('REGISTRAR', 'SYSTEM_ADMIN'), resetPortalPin);
 
 export default router;

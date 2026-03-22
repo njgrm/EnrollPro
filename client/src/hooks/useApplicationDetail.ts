@@ -96,6 +96,22 @@ export interface AuditLog {
   user?: { id: number; name: string; role: string } | null;
 }
 
+export interface HealthRecord {
+  id: number;
+  applicantId: number;
+  schoolYearId: number;
+  assessmentPeriod: "BOSY" | "EOSY";
+  assessmentDate: string;
+  weightKg: number;
+  heightCm: number;
+  notes: string | null;
+  recordedById: number;
+  recordedBy?: { id: number; name: string; role: string } | null;
+  schoolYear?: { id: number; yearLabel: string } | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ApplicantDetail {
   id: number;
   lrn: string | null;
@@ -189,6 +205,7 @@ export interface ApplicantDetail {
   checklist?: ChecklistData;
   emailLogs?: EmailLog[];
   auditLogs?: AuditLog[];
+  healthRecords?: HealthRecord[];
 }
 
 export function useApplicationDetail(

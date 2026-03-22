@@ -29,6 +29,21 @@ const STEP_KEY = "enrollpro_apply_step";
 const MAX_STEP_KEY = "enrollpro_apply_max_step";
 const EDITING_KEY = "enrollpro_apply_editing";
 
+const DEFAULT_VALUES = {
+  schoolYear: "2026-2027",
+  isPrivacyConsentGiven: true,
+  studentPhoto: undefined,
+  gradeLevel: "7",
+  isIpCommunity: false,
+  is4PsBeneficiary: false,
+  isBalikAral: false,
+  isLearnerWithDisability: false,
+  isPermanentSameAsCurrent: true,
+  isScpApplication: false,
+  learnerType: "Regular",
+  isCertifiedTrue: false,
+} as const;
+
 export default function EarlyRegistrationForm({
   onReset,
 }: {
@@ -71,18 +86,7 @@ export default function EarlyRegistrationForm({
       EarlyRegistrationSchema,
     ) as import("react-hook-form").Resolver<EarlyRegistrationFormData>,
     defaultValues: initialDraft || {
-      schoolYear: "2026-2027",
-      isPrivacyConsentGiven: true,
-      studentPhoto: undefined,
-      gradeLevel: "7",
-      isIpCommunity: false,
-      is4PsBeneficiary: false,
-      isBalikAral: false,
-      isLearnerWithDisability: false,
-      isPermanentSameAsCurrent: true,
-      isScpApplication: false,
-      learnerType: "Regular",
-      isCertifiedTrue: false,
+      ...DEFAULT_VALUES,
       dateAccomplished: new Date(),
     },
     mode: "onBlur",
@@ -99,18 +103,7 @@ export default function EarlyRegistrationForm({
     sessionStorage.removeItem(EDITING_KEY);
 
     reset({
-      schoolYear: "2026-2027",
-      isPrivacyConsentGiven: true,
-      studentPhoto: undefined,
-      gradeLevel: "7",
-      isIpCommunity: false,
-      is4PsBeneficiary: false,
-      isBalikAral: false,
-      isLearnerWithDisability: false,
-      isPermanentSameAsCurrent: true,
-      isScpApplication: false,
-      learnerType: "Regular",
-      isCertifiedTrue: false,
+      ...DEFAULT_VALUES,
       dateAccomplished: new Date(),
     });
 
@@ -272,9 +265,20 @@ export default function EarlyRegistrationForm({
         description: `Your tracking number is ${response.data.trackingNumber}. Keep it safe!`,
       });
 
+      // Prepare for potential new application or fresh state when going back
       setIsSubmitted(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
-      reset();
+      
+      // Reset form and stepper state
+      reset({
+        ...DEFAULT_VALUES,
+        dateAccomplished: new Date(),
+      });
+      setMaxStepReached(1);
+      setIsEditing(false);
+      stepper.navigation.goTo("personal");
+
+      // Clear all session storage
       sessionStorage.removeItem(DRAFT_KEY);
       sessionStorage.removeItem("enrollpro_apply_consent");
       sessionStorage.removeItem(STEP_KEY);
@@ -363,13 +367,18 @@ export default function EarlyRegistrationForm({
               </AnimatePresence>
 
               {Object.keys(methods.formState.errors).length > 0 && (
-                <div className='p-4 bg-destructive/10 border border-destructive/20 rounded-xl space-y-2 mt-8'>
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className='p-4 bg-destructive/10 border border-destructive/20 rounded-xl space-y-2 mt-8'
+                >
                   <div className='flex items-center gap-2 text-destructive font-bold text-sm'>
                     <AlertCircle className='w-4 h-4' />
                     Please provide the following required information to
                     proceed:
                   </div>
-                  <ul className='list-disc pl-6 text-xs font-medium text-destructive/80 space-y-1'>
+                  <ul className='list-disc pl-6 text-xs font-bold text-destructive/80 space-y-1'>
                     {Array.from(
                       new Set(
                         Object.values(methods.formState.errors).flatMap(
@@ -394,7 +403,7 @@ export default function EarlyRegistrationForm({
                       <li key={i}>{msg as string}</li>
                     ))}
                   </ul>
-                </div>
+                </motion.div>
               )}
 
               <div className='flex flex-col-reverse sm:flex-row justify-between gap-4 pt-10 border-t border-border/60'>

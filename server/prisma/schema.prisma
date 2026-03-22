@@ -26,6 +26,7 @@ model User {
   createdUsers       User[]       @relation("UserCreatedBy")
   uploadedDocuments  Document[]   @relation("DocumentUploadedBy")
   updatedChecklists  RequirementChecklist[]
+  recordedHealthRecords HealthRecord[] @relation("HealthRecordRecordedBy")
 
   @@map("users")
 }
@@ -36,6 +37,7 @@ model Teacher {
   firstName      String    @map("first_name")
   lastName       String    @map("last_name")
   middleName     String?   @map("middle_name")
+  email          String?   @map("email")
   contactNumber  String?   @map("contact_number")
   specialization String?
   subjects       String[]  @default([])
@@ -82,6 +84,7 @@ model SchoolYear {
   schoolSettings     SchoolSettings[]
   scpConfigs         ScpConfig[]
   strands            Strand[]
+  healthRecords      HealthRecord[]
 
   @@map("school_years")
 }
@@ -209,6 +212,9 @@ model Applicant {
   checklist               RequirementChecklist?
   emailLogs               EmailLog[]
   enrollment              Enrollment?
+  portalPin               String?           @map("portal_pin")
+  portalPinChangedAt      DateTime?         @map("portal_pin_changed_at")
+  healthRecords           HealthRecord[]
 
   @@index([status, schoolYearId], name: "idx_applicants_status_school_year_id")
   @@index([lrn], name: "idx_applicants_lrn")
@@ -273,6 +279,17 @@ model Enrollment {
   @@map("enrollments")
 }
 
+model Department {
+  id          Int      @id @default(autoincrement())
+  name        String
+  code        String   @unique(map: "uq_departments_code")
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("departments")
+}
+
 model AuditLog {
   id          Int      @id @default(autoincrement())
   userId      Int?     @map("user_id")
@@ -305,6 +322,29 @@ model EmailLog {
   @@index([status], name: "idx_email_logs_status")
   @@index([trigger], name: "idx_email_logs_trigger")
   @@map("email_logs")
+}
+
+model HealthRecord {
+  id               Int              @id @default(autoincrement())
+  applicantId      Int              @map("applicant_id")
+  schoolYearId     Int              @map("school_year_id")
+  assessmentPeriod AssessmentPeriod @map("assessment_period")
+  assessmentDate   DateTime         @map("assessment_date")
+  weightKg         Float            @map("weight_kg")
+  heightCm         Float            @map("height_cm")
+  notes            String?
+  recordedById     Int              @map("recorded_by_id")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  applicant  Applicant  @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  schoolYear SchoolYear @relation(fields: [schoolYearId], references: [id])
+  recordedBy User       @relation("HealthRecordRecordedBy", fields: [recordedById], references: [id])
+
+  @@unique([applicantId, schoolYearId, assessmentPeriod], name: "uq_health_records_period")
+  @@index([applicantId])
+  @@index([applicantId, schoolYearId])
+  @@map("health_records")
 }
 
 model ScpConfig {
@@ -453,4 +493,11 @@ enum LearnerType {
   CONTINUING
 
   @@map("learner_type")
+}
+
+enum AssessmentPeriod {
+  BOSY
+  EOSY
+
+  @@map("assessment_period")
 }

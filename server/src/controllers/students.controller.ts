@@ -1,113 +1,16 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
+import { generatePortalPin, hashPin } from "../services/portalPinService.js";
+import { searchStudents } from "../services/studentService.js";
 
 export const getStudents = async (req: Request, res: Response) => {
   try {
     const {
-      schoolYearId,
-      search = "",
-      gradeLevelId,
-      sectionId,
-      status,
-      page = "1",
-      limit = "15",
-      sortBy = "createdAt",
-      sortOrder = "desc",
-    } = req.query;
-
-    const pageNum = parseInt(page as string, 10);
-    const limitNum = parseInt(limit as string, 10);
-    const skip = (pageNum - 1) * limitNum;
-
-    // Build where clause
-    const where: any = {};
-
-    // Filter by school year (REQUIRED for data consistency)
-    if (schoolYearId) {
-      where.schoolYearId = parseInt(schoolYearId as string, 10);
-    }
-
-    // Search by LRN or name
-    if (search && typeof search === "string" && search.trim()) {
-      where.OR = [
-        { lrn: { contains: search.trim(), mode: "insensitive" } },
-        { firstName: { contains: search.trim(), mode: "insensitive" } },
-        { lastName: { contains: search.trim(), mode: "insensitive" } },
-        { middleName: { contains: search.trim(), mode: "insensitive" } },
-      ];
-    }
-
-    // Filter by grade level
-    if (gradeLevelId && typeof gradeLevelId === "string") {
-      where.gradeLevelId = parseInt(gradeLevelId, 10);
-    }
-
-    // Filter by status
-    if (status && typeof status === "string") {
-      where.status = status;
-    }
-
-    // Filter by section (via enrollment)
-    if (sectionId && typeof sectionId === "string") {
-      where.enrollment = {
-        sectionId: parseInt(sectionId, 10),
-      };
-    }
-
-    // Build orderBy clause
-    const orderBy: any = [];
-
-    const sortField = sortBy as string;
-    const order =
-      (sortOrder as string).toLowerCase() === "asc" ? "asc" : "desc";
-
-    // Map frontend sort fields to database fields
-    switch (sortField) {
-      case "lrn":
-        orderBy.push({ lrn: order });
-        break;
-      case "lastName":
-        orderBy.push({ lastName: order });
-        orderBy.push({ firstName: order });
-        break;
-      case "gradeLevel":
-        orderBy.push({ gradeLevel: { displayOrder: order } });
-        break;
-      case "section":
-        orderBy.push({ enrollment: { section: { name: order } } });
-        break;
-      case "strand":
-        orderBy.push({ strand: { name: order } });
-        break;
-      case "status":
-        orderBy.push({ status: order });
-        break;
-      case "createdAt":
-        orderBy.push({ createdAt: order });
-        break;
-      default:
-        orderBy.push({ createdAt: "desc" });
-    }
-
-    // Get total count
-    const total = await prisma.applicant.count({ where });
-
-    // Get paginated results
-    const applicants = await prisma.applicant.findMany({
-      where,
-      include: {
-        gradeLevel: true,
-        strand: true,
-        enrollment: {
-          include: {
-            section: true,
-          },
-        },
-      },
-      orderBy,
-      skip,
-      take: limitNum,
-    });
+      applicants,
+      total,
+      pageNum,
+      limitNum,
+    } = await searchStudents(req.query as any);
 
     // Transform data
     const students = applicants.map((applicant) => {
@@ -358,5 +261,203 @@ export const updateStudent = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error updating student:", error);
     res.status(500).json({ message: "Failed to update student" });
+  }
+};
+
+export const getHealthRecords = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const records = await prisma.healthRecord.findMany({
+      where: { applicantId: parseInt(id as string, 10) },
+      include: {
+        schoolYear: {
+          select: { yearLabel: true }
+        },
+        recordedBy: {
+          select: { name: true }
+        }
+      },
+      orderBy: { assessmentDate: "desc" }
+    });
+
+    res.json({ records });
+  } catch (error) {
+    console.error("Error fetching health records:", error);
+    res.status(500).json({ message: "Failed to fetch health records" });
+  }
+};
+
+export const addHealthRecord = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { schoolYearId, assessmentPeriod, assessmentDate, weightKg, heightCm, notes } = req.body;
+    const userId = (req as any).user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const parsedApplicantId = parseInt(id as string, 10);
+    const parsedSchoolYearId = parseInt(schoolYearId as string, 10);
+
+    const existingRecord = await prisma.healthRecord.findFirst({
+      where: {
+        applicantId: parsedApplicantId,
+        schoolYearId: parsedSchoolYearId,
+        assessmentPeriod,
+      },
+      include: {
+        schoolYear: true
+      }
+    });
+
+    if (existingRecord) {
+      const periodLabel = assessmentPeriod === 'BOSY' ? 'BoSY' : 'EoSY';
+      const yearLabel = existingRecord.schoolYear.yearLabel;
+      return res.status(422).json({
+        message: `A ${periodLabel} record already exists for this learner for SY ${yearLabel}.`
+      });
+    }
+
+    const record = await prisma.healthRecord.create({
+      data: {
+        applicantId: parsedApplicantId,
+        schoolYearId: parsedSchoolYearId,
+        assessmentPeriod,
+        assessmentDate: new Date(assessmentDate),
+        weightKg: parseFloat(weightKg as string),
+        heightCm: parseFloat(heightCm as string),
+        notes,
+        recordedById: userId
+      },
+      include: {
+        schoolYear: true,
+        applicant: true,
+        recordedBy: true
+      }
+    });
+
+    const periodLabel = assessmentPeriod === 'BOSY' ? 'BoSY' : 'EoSY';
+    const userName = record.recordedBy?.name || 'Registrar';
+    const learnerName = `${record.applicant.firstName} ${record.applicant.lastName}`;
+    const yearLabel = record.schoolYear.yearLabel;
+
+    // Audit log
+    await prisma.auditLog.create({
+      data: {
+        userId,
+        actionType: "HEALTH_RECORD_ADDED",
+        description: `${userName} added ${periodLabel} health record for ${learnerName}, SY ${yearLabel} — Weight: ${record.weightKg}kg, Height: ${record.heightCm}cm`,
+        subjectType: "HealthRecord",
+        recordId: record.id,
+        ipAddress: req.ip || "unknown",
+        userAgent: req.headers["user-agent"] || null,
+      },
+    });
+
+    res.status(201).json({ message: "Health record added successfully", record });
+  } catch (error) {
+    console.error("Error adding health record:", error);
+    res.status(500).json({ message: "Failed to add health record" });
+  }
+};
+
+export const updateHealthRecord = async (req: Request, res: Response) => {
+  try {
+    const { id, recId } = req.params;
+    const { assessmentPeriod, assessmentDate, weightKg, heightCm, notes } = req.body;
+    const userId = (req as any).user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const record = await prisma.healthRecord.update({
+      where: { id: parseInt(recId as string, 10) },
+      data: {
+        assessmentPeriod,
+        assessmentDate: assessmentDate ? new Date(assessmentDate) : undefined,
+        weightKg: weightKg ? parseFloat(weightKg as string) : undefined,
+        heightCm: heightCm ? parseFloat(heightCm as string) : undefined,
+        notes,
+      },
+      include: {
+        applicant: true,
+      }
+    });
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const userName = user?.name || 'Registrar';
+    const learnerName = `${record.applicant.firstName} ${record.applicant.lastName}`;
+    
+    const changedFields = [];
+    if (assessmentPeriod) changedFields.push('period');
+    if (assessmentDate) changedFields.push('date');
+    if (weightKg) changedFields.push('weight');
+    if (heightCm) changedFields.push('height');
+    if (notes !== undefined) changedFields.push('notes');
+    const changedStr = changedFields.length > 0 ? changedFields.join(', ') : 'details';
+
+    // Audit log
+    await prisma.auditLog.create({
+      data: {
+        userId,
+        actionType: "HEALTH_RECORD_UPDATED",
+        description: `${userName} updated health record #${record.id} for ${learnerName} — Changed: ${changedStr}`,
+        subjectType: "HealthRecord",
+        recordId: record.id,
+        ipAddress: req.ip || "unknown",
+        userAgent: req.headers["user-agent"] || null,
+      },
+    });
+
+    res.json({ message: "Health record updated successfully", record });
+  } catch (error) {
+    console.error("Error updating health record:", error);
+    res.status(500).json({ message: "Failed to update health record" });
+  }
+};
+
+export const resetPortalPin = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = (req as any).user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { raw: newPin, hash: hashedPin } = generatePortalPin();
+
+    const applicantId = parseInt(id as string, 10);
+    const applicant = await prisma.applicant.update({
+      where: { id: applicantId },
+      data: {
+        portalPin: hashedPin,
+        portalPinChangedAt: new Date()
+      }
+    });
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const userName = user?.name || 'Registrar';
+    const learnerName = `${applicant.firstName} ${applicant.lastName}`;
+
+    // Audit log
+    await prisma.auditLog.create({
+      data: {
+        userId,
+        actionType: "PORTAL_PIN_RESET",
+        description: `${userName} reset portal PIN for LRN ${applicant.lrn} — ${learnerName}`,
+        subjectType: "Applicant",
+        recordId: applicantId,
+        ipAddress: req.ip || "unknown",
+        userAgent: req.headers["user-agent"] || null,
+      },
+    });
+
+    res.json({ message: "Portal PIN reset successfully", pin: newPin });
+  } catch (error) {
+    console.error("Error resetting portal PIN:", error);
+    res.status(500).json({ message: "Failed to reset portal PIN" });
   }
 };

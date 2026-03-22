@@ -452,13 +452,18 @@ export default function F2FEarlyRegistration() {
 
               {/* Validation Errors Summary */}
               {Object.keys(methods.formState.errors).length > 0 && (
-                <div className='p-4 bg-destructive/10 border border-destructive/20 rounded-xl space-y-2 mt-8'>
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className='p-4 bg-destructive/10 border border-destructive/20 rounded-xl space-y-2 mt-8'
+                >
                   <div className='flex items-center gap-2 text-destructive font-bold text-sm'>
                     <AlertCircle className='w-4 h-4' />
                     Please provide the following required information to
                     proceed:
                   </div>
-                  <ul className='list-disc pl-6 text-xs font-medium text-destructive/80 space-y-1'>
+                  <ul className='list-disc pl-6 text-xs font-bold text-destructive/80 space-y-1'>
                     {Array.from(
                       new Set(
                         Object.values(methods.formState.errors).flatMap(
@@ -483,7 +488,7 @@ export default function F2FEarlyRegistration() {
                       <li key={i}>{msg as string}</li>
                     ))}
                   </ul>
-                </div>
+                </motion.div>
               )}
 
               {/* Navigation Buttons */}

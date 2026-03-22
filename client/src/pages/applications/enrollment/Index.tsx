@@ -120,13 +120,19 @@ export default function Enrollment() {
   const handleEnroll = async () => {
     if (!selectedApp) return;
     try {
-      await api.patch(`/applications/${selectedApp.id}/enroll`);
-      sileo.success({
-        title: "Enrolled",
-        description: "Official enrollment confirmed.",
-      });
+      const res = await api.patch(`/applications/${selectedApp.id}/enroll`);
+      
       setIsEnrollModalOpen(false);
       fetchData();
+
+      if (res.data.rawPortalPin) {
+        alert(`SUCCESS: Official enrollment confirmed.\n\nIMPORTANT: The Learner Portal PIN is ${res.data.rawPortalPin}\n\nPlease write this down on the enrollment slip. This PIN will only be shown once.`);
+      } else {
+        sileo.success({
+          title: "Enrolled",
+          description: "Official enrollment confirmed.",
+        });
+      }
     } catch (err) {
       toastApiError(err as never);
     }

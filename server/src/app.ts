@@ -16,6 +16,7 @@ import applicationRoutes from "./routes/application.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import auditLogRoutes from "./routes/auditLog.routes.js";
 import teachersRoutes from "./routes/teachers.routes.js";
+import learnerRoutes from "./routes/learner.routes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -67,6 +68,7 @@ app.use("/api/applications", applicationRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/audit-logs", auditLogRoutes);
 app.use("/api/teachers", teachersRoutes);
+app.use("/api/learner", learnerRoutes);
 
 // Error handler
 app.use(errorHandler);

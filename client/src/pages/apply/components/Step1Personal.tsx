@@ -208,7 +208,7 @@ export default function Step1Personal() {
           <DatePicker
             date={birthdate}
             setDate={onBirthdateChange}
-            minDate={new Date("2010-01-01")}
+            minDate={new Date("2000-01-01")}
             maxDate={new Date()}
             placeholder='Select Birthdate'
             className={cn(

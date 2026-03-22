@@ -12,6 +12,8 @@ import EarlyRegistration from '@/pages/applications/early-registration/EarlyRegi
 import EarlyRegistrationDetail from '@/pages/applications/early-registration/EarlyRegistrationDetail';
 import Enrollment from '@/pages/applications/enrollment/Index';
 import Students from '@/pages/students/Index';
+import Profile from '@/pages/students/Profile';
+import LearnerPortal from '@/pages/learner/LearnerPortal';
 import Sections from '@/pages/sections/Index';
 import AuditLogs from '@/pages/audit-logs/Index';
 import Settings from '@/pages/settings/Index';
@@ -37,6 +39,10 @@ export const router = createBrowserRouter([
       {
         path: '/apply',
         element: <Apply />,
+      },
+      {
+        path: '/learner',
+        element: <LearnerPortal />,
       },
       // Auth routes
       {
@@ -105,6 +111,14 @@ export const router = createBrowserRouter([
             element: (
               <AppLayout>
                 <Students />
+              </AppLayout>
+            ),
+          },
+          {
+            path: '/students/:id',
+            element: (
+              <AppLayout>
+                <Profile />
               </AppLayout>
             ),
           },

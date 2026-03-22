@@ -81,7 +81,7 @@ const DataItem = ({
           : typeof value === "string"
             ? value.toUpperCase()
             : value
-        : "â€”"}
+        : "----"}
     </p>
   </div>
 );
