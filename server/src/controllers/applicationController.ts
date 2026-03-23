@@ -1270,7 +1270,7 @@ export async function scheduleExam(req: Request, res: Response) {
       where: { id: applicantId },
       data: {
         status: "ASSESSMENT_SCHEDULED",
-        examDate: new Date(examDate),
+        examDate: normalizeDateToUtcNoon(new Date(examDate)),
         assessmentType,
         examVenue,
       },
@@ -1323,7 +1323,7 @@ export async function recordResult(req: Request, res: Response) {
     } = body;
     // Parse interview date if provided
     const interviewDate = req.body.interviewDate
-      ? new Date(req.body.interviewDate)
+      ? normalizeDateToUtcNoon(new Date(req.body.interviewDate))
       : null;
     const applicantId = parseInt(String(req.params.id));
 
@@ -1753,10 +1753,10 @@ export async function update(req: Request, res: Response) {
       where: { id: applicantId },
       data: {
         ...data,
-        birthDate: data.birthDate ? new Date(data.birthDate) : undefined,
-        examDate: data.examDate ? new Date(data.examDate) : undefined,
+        birthDate: data.birthDate ? normalizeDateToUtcNoon(new Date(data.birthDate)) : undefined,
+        examDate: data.examDate ? normalizeDateToUtcNoon(new Date(data.examDate)) : undefined,
         interviewDate: data.interviewDate
-          ? new Date(data.interviewDate)
+          ? normalizeDateToUtcNoon(new Date(data.interviewDate))
           : undefined,
       },
     });
@@ -1849,7 +1849,7 @@ export async function rescheduleExam(req: Request, res: Response) {
     const updated = await prisma.applicant.update({
       where: { id: applicantId },
       data: {
-        examDate: new Date(examDate),
+        examDate: normalizeDateToUtcNoon(new Date(examDate)),
         examVenue: examVenue || null,
         status: "ASSESSMENT_SCHEDULED",
       },

@@ -13,7 +13,6 @@ import Step3Background from "./components/Step3Background";
 import Step4PreviousSchool from "./components/Step4PreviousSchool";
 import Step5Enrollment from "./components/Step5Preferences";
 import Step6Review from "./components/Step6Review";
-import EarlyRegistrationSuccess from "./components/EarlyRegistrationSuccess";
 import StepProgressBar from "./components/StepProgressBar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -46,8 +45,10 @@ const DEFAULT_VALUES = {
 
 export default function EarlyRegistrationForm({
   onReset,
+  onSuccess,
 }: {
   onReset: () => void;
+  onSuccess?: (trackingNumber: string) => void;
 }) {
   const [initialDraft] = useState(() => {
     const draft = sessionStorage.getItem(DRAFT_KEY);
@@ -69,7 +70,6 @@ export default function EarlyRegistrationForm({
     initialStep: (sessionStorage.getItem(STEP_KEY) as any) || "personal",
   });
 
-  const [isSubmitted, setIsSubmitted] = useState(false);
   const [trackingNumber, setTrackingNumber] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -107,7 +107,6 @@ export default function EarlyRegistrationForm({
       dateAccomplished: new Date(),
     });
 
-    setIsSubmitted(false);
     setTrackingNumber("");
     setMaxStepReached(1);
     setIsEditing(false);
@@ -266,8 +265,9 @@ export default function EarlyRegistrationForm({
       });
 
       // Prepare for potential new application or fresh state when going back
-      setIsSubmitted(true);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      if (onSuccess) {
+        onSuccess(response.data.trackingNumber);
+      }
       
       // Reset form and stepper state
       reset({
@@ -294,15 +294,6 @@ export default function EarlyRegistrationForm({
       setIsSubmitting(false);
     }
   };
-
-  if (isSubmitted) {
-    return (
-      <EarlyRegistrationSuccess
-        trackingNumber={trackingNumber}
-        onBackHome={handleFullReset}
-      />
-    );
-  }
 
   const isLastStep = stepper.state.isLast;
 
@@ -443,6 +434,7 @@ export default function EarlyRegistrationForm({
         onConfirm={() => handleSubmit(onSubmit)()}
         loading={isSubmitting}
         confirmClassName='bg-primary text-primary-foreground hover:bg-primary/90'
+        variant="success"
       />
     </div>
   );

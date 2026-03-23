@@ -530,6 +530,7 @@ export default function F2FEarlyRegistration() {
         onConfirm={() => handleSubmit(onSubmit)()}
         loading={isSubmitting}
         confirmClassName='bg-primary text-primary-foreground hover:opacity-90'
+        variant="success"
       />
 
       {/* Reset Confirmation Modal */}
@@ -541,6 +542,7 @@ export default function F2FEarlyRegistration() {
         confirmText='Reset'
         onConfirm={handleFullReset}
         confirmClassName='bg-primary text-primary-foreground hover:opacity-90'
+        variant="warning"
       />
     </div>
   );

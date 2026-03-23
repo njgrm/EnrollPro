@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import { auditLog } from "../services/auditLogger.js";
+import { normalizeDateToUtcNoon } from "../services/schoolYearService.js";
 
 // ─── Grade Levels ─────────────────────────────────────────
 
@@ -400,7 +401,7 @@ export async function updateScpConfigs(
             data: {
               isOffered: isOffered ?? false,
               cutoffScore: cutoffScore ?? null,
-              examDate: examDate ? new Date(examDate) : null,
+              examDate: examDate ? normalizeDateToUtcNoon(new Date(examDate)) : null,
               artFields: artFields ?? [],
               languages: languages ?? [],
               sportsList: sportsList ?? [],
@@ -414,7 +415,7 @@ export async function updateScpConfigs(
               scpType,
               isOffered: isOffered ?? false,
               cutoffScore: cutoffScore ?? null,
-              examDate: examDate ? new Date(examDate) : null,
+              examDate: examDate ? normalizeDateToUtcNoon(new Date(examDate)) : null,
               artFields: artFields ?? [],
               languages: languages ?? [],
               sportsList: sportsList ?? [],

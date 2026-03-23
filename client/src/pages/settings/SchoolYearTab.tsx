@@ -310,7 +310,7 @@ export default function SchoolYearTab() {
       setSettings({ activeSchoolYearId: res.data.year.id });
       sileo.success({
         title: "School Year Activated",
-        description: `${derivedSchedule.yearLabel} is now active.`,
+        description: `School Year ${derivedSchedule.yearLabel} is now active.`,
       });
       setShowNextForm(false);
       fetchData();
@@ -328,7 +328,7 @@ export default function SchoolYearTab() {
       await api.delete(`/school-years/${deleteId}`);
       sileo.success({
         title: "Deleted",
-        description: `${deleteLabel} has been removed.`,
+        description: `School Year ${deleteLabel} has been removed.`,
       });
       setDeleteId(null);
       fetchData();
@@ -604,6 +604,7 @@ export default function SchoolYearTab() {
         confirmText='Delete'
         loading={deleting}
         onConfirm={handleDelete}
+        variant="danger"
       />
     </div>
   );

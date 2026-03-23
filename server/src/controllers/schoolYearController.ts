@@ -277,10 +277,10 @@ export async function updateDates(req: Request, res: Response): Promise<void> {
   const updated = await prisma.schoolYear.update({
     where: { id },
     data: {
-      ...(earlyRegOpenDate !== undefined ? { earlyRegOpenDate: earlyRegOpenDate ? new Date(earlyRegOpenDate) : null } : {}),
-      ...(earlyRegCloseDate !== undefined ? { earlyRegCloseDate: earlyRegCloseDate ? new Date(earlyRegCloseDate) : null } : {}),
-      ...(enrollOpenDate !== undefined ? { enrollOpenDate: enrollOpenDate ? new Date(enrollOpenDate) : null } : {}),
-      ...(enrollCloseDate !== undefined ? { enrollCloseDate: enrollCloseDate ? new Date(enrollCloseDate) : null } : {}),
+      ...(earlyRegOpenDate !== undefined ? { earlyRegOpenDate: earlyRegOpenDate ? normalizeDateToUtcNoon(new Date(earlyRegOpenDate)) : null } : {}),
+      ...(earlyRegCloseDate !== undefined ? { earlyRegCloseDate: earlyRegCloseDate ? normalizeDateToUtcNoon(new Date(earlyRegCloseDate)) : null } : {}),
+      ...(enrollOpenDate !== undefined ? { enrollOpenDate: enrollOpenDate ? normalizeDateToUtcNoon(new Date(enrollOpenDate)) : null } : {}),
+      ...(enrollCloseDate !== undefined ? { enrollCloseDate: enrollCloseDate ? normalizeDateToUtcNoon(new Date(enrollCloseDate)) : null } : {}),
     },
   });
 

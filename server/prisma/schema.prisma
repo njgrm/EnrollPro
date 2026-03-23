@@ -14,11 +14,11 @@ model User {
   password           String
   role               Role
   isActive           Boolean      @default(true) @map("is_active")
-  lastLoginAt        DateTime?    @map("last_login_at")
+  lastLoginAt        DateTime?    @db.Timestamptz @map("last_login_at")
   mustChangePassword Boolean      @default(false) @map("must_change_password")
   createdById        Int?         @map("created_by_id")
-  createdAt          DateTime     @default(now()) @map("created_at")
-  updatedAt          DateTime     @updatedAt @map("updated_at")
+  createdAt          DateTime     @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt          DateTime     @updatedAt @db.Timestamptz @map("updated_at")
   encodedApplicants  Applicant[]  @relation("ApplicantEncodedBy")
   auditLogs          AuditLog[]
   enrollments        Enrollment[]
@@ -42,8 +42,8 @@ model Teacher {
   specialization String?
   subjects       String[]  @default([])
   isActive       Boolean   @default(true) @map("is_active")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
+  createdAt      DateTime  @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt      DateTime  @updatedAt @db.Timestamptz @map("updated_at")
   sections       Section[]
 
   @@map("teachers")
@@ -67,15 +67,15 @@ model SchoolYear {
   yearLabel          String           @unique(map: "uq_school_years_year_label") @map("year_label")
   status             SchoolYearStatus @default(DRAFT)
   isActive           Boolean          @default(false) @map("is_active")
-  classOpeningDate   DateTime?        @map("class_opening_date")
-  classEndDate       DateTime?        @map("class_end_date")
-  earlyRegOpenDate   DateTime?        @map("early_reg_open_date")
-  earlyRegCloseDate  DateTime?        @map("early_reg_close_date")
-  enrollOpenDate     DateTime?        @map("enroll_open_date")
-  enrollCloseDate    DateTime?        @map("enroll_close_date")
+  classOpeningDate   DateTime?        @db.Date @map("class_opening_date")
+  classEndDate       DateTime?        @db.Date @map("class_end_date")
+  earlyRegOpenDate   DateTime?        @db.Date @map("early_reg_open_date")
+  earlyRegCloseDate  DateTime?        @db.Date @map("early_reg_close_date")
+  enrollOpenDate     DateTime?        @db.Date @map("enroll_open_date")
+  enrollCloseDate    DateTime?        @db.Date @map("enroll_close_date")
   isManualOverrideOpen Boolean        @default(false) @map("is_manual_override_open")
   clonedFromId       Int?             @map("cloned_from_id")
-  createdAt          DateTime         @default(now()) @map("created_at")
+  createdAt          DateTime         @default(now()) @db.Timestamptz @map("created_at")
   clonedFrom         SchoolYear?      @relation("SchoolYearClone", fields: [clonedFromId], references: [id])
   clones             SchoolYear[]     @relation("SchoolYearClone")
   applicants         Applicant[]
@@ -94,7 +94,7 @@ model GradeLevel {
   name           String
   displayOrder   Int          @map("display_order")
   schoolYearId   Int          @map("school_year_id")
-  createdAt      DateTime     @default(now()) @map("created_at")
+  createdAt      DateTime     @default(now()) @db.Timestamptz @map("created_at")
   applicants     Applicant[]
   schoolYear     SchoolYear   @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
   sections       Section[]
@@ -109,7 +109,7 @@ model Strand {
   schoolYearId            Int            @map("school_year_id")
   curriculumType          CurriculumType @default(OLD_STRAND) @map("curriculum_type")
   track                   SHSTrack?
-  createdAt               DateTime       @default(now()) @map("created_at")
+  createdAt               DateTime       @default(now()) @db.Timestamptz @map("created_at")
   applicants              Applicant[]
   schoolYear              SchoolYear     @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
 
@@ -122,8 +122,8 @@ model Section {
   maxCapacity       Int          @default(40) @map("max_capacity")
   gradeLevelId      Int          @map("grade_level_id")
   advisingTeacherId Int?         @map("advising_teacher_id")
-  createdAt         DateTime     @default(now()) @map("created_at")
-  updatedAt         DateTime     @updatedAt @map("updated_at")
+  createdAt         DateTime     @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt         DateTime     @updatedAt @db.Timestamptz @map("updated_at")
   enrollments       Enrollment[]
   advisingTeacher   Teacher?     @relation(fields: [advisingTeacherId], references: [id])
   gradeLevel        GradeLevel   @relation(fields: [gradeLevelId], references: [id], onDelete: Cascade)
@@ -180,13 +180,13 @@ model Applicant {
   schoolYearId            Int               @map("school_year_id")
   applicantType           ApplicantType     @default(REGULAR) @map("applicant_type")
   shsTrack                SHSTrack?         @map("shs_track")
-  examDate                DateTime?         @map("exam_date")
+  examDate                DateTime?         @db.Date @map("exam_date")
   examVenue               String?           @map("exam_venue")
   examScore               Float?            @map("exam_score")
   examResult              String?           @map("exam_result")
   examNotes               String?           @map("exam_notes")
   assessmentType          String?           @map("assessment_type")
-  interviewDate           DateTime?         @map("interview_date")
+  interviewDate           DateTime?         @db.Date @map("interview_date")
   interviewResult         String?           @map("interview_result")
   interviewNotes          String?           @map("interview_notes")
   auditionResult          String?           @map("audition_result")
@@ -196,8 +196,8 @@ model Applicant {
   grade10MathGrade        Float?            @map("grade10_math_grade")
   generalAverage          Float?            @map("general_average")
   isPrivacyConsentGiven   Boolean           @default(false) @map("is_privacy_consent_given")
-  createdAt               DateTime          @default(now()) @map("created_at")
-  updatedAt               DateTime          @updatedAt @map("updated_at")
+  createdAt               DateTime          @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt               DateTime          @updatedAt @db.Timestamptz @map("updated_at")
   admissionChannel        AdmissionChannel  @default(ONLINE) @map("admission_channel")
   encodedById             Int?              @map("encoded_by_id")
   specialNeedsCategory    String?           @map("special_needs_category")
@@ -213,7 +213,7 @@ model Applicant {
   emailLogs               EmailLog[]
   enrollment              Enrollment?
   portalPin               String?           @map("portal_pin")
-  portalPinChangedAt      DateTime?         @map("portal_pin_changed_at")
+  portalPinChangedAt      DateTime?         @db.Timestamptz @map("portal_pin_changed_at")
   healthRecords           HealthRecord[]
 
   @@index([status, schoolYearId], name: "idx_applicants_status_school_year_id")
@@ -234,9 +234,9 @@ model Document {
   size             Int?
   verificationNote String?        @map("verification_note")
   isPresentedOnly  Boolean        @default(false) @map("is_presented_only")
-  uploadedAt       DateTime       @default(now()) @map("uploaded_at")
+  uploadedAt       DateTime       @default(now()) @db.Timestamptz @map("uploaded_at")
   uploadedById     Int?           @map("uploaded_by_id")
-  verifiedAt       DateTime?      @map("verified_at")
+  verifiedAt       DateTime?      @db.Timestamptz @map("verified_at")
   verifiedById     Int?           @map("verified_by_id")
   applicant        Applicant      @relation(fields: [applicantId], references: [id], onDelete: Cascade)
   uploadedBy       User?          @relation("DocumentUploadedBy", fields: [uploadedById], references: [id])
@@ -256,7 +256,7 @@ model RequirementChecklist {
   isMedicalEvalSubmitted             Boolean   @default(false) @map("is_medical_eval_submitted")
   isUndertakingSigned                Boolean   @default(false) @map("is_undertaking_signed")
   isConfirmationSlipReceived         Boolean   @default(false) @map("is_confirmation_slip_received")
-  updatedAt                          DateTime  @updatedAt @map("updated_at")
+  updatedAt                          DateTime  @updatedAt @db.Timestamptz @map("updated_at")
   updatedById                        Int?      @map("updated_by_id")
   applicant                          Applicant @relation(fields: [applicantId], references: [id], onDelete: Cascade)
   updatedBy                          User?     @relation(fields: [updatedById], references: [id])
@@ -269,7 +269,7 @@ model Enrollment {
   applicantId    Int          @unique(map: "uq_enrollments_applicant_id") @map("applicant_id")
   sectionId      Int          @map("section_id")
   schoolYearId   Int          @map("school_year_id")
-  enrolledAt     DateTime     @default(now()) @map("enrolled_at")
+  enrolledAt     DateTime     @default(now()) @db.Timestamptz @map("enrolled_at")
   enrolledById   Int          @map("enrolled_by_id")
   schoolYear     SchoolYear   @relation(fields: [schoolYearId], references: [id])
   applicant      Applicant    @relation(fields: [applicantId], references: [id], onDelete: Cascade)
@@ -284,8 +284,8 @@ model Department {
   name        String
   code        String   @unique(map: "uq_departments_code")
   description String?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt   DateTime @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt   DateTime @updatedAt @db.Timestamptz @map("updated_at")
 
   @@map("departments")
 }
@@ -299,7 +299,7 @@ model AuditLog {
   recordId    Int?     @map("record_id")
   ipAddress   String   @db.VarChar(45) @map("ip_address")
   userAgent   String?  @map("user_agent")
-  createdAt   DateTime @default(now()) @map("created_at")
+  createdAt   DateTime @default(now()) @db.Timestamptz @map("created_at")
   user        User?    @relation(fields: [userId], references: [id])
 
   @@index([actionType], name: "idx_audit_logs_action_type")
@@ -315,8 +315,8 @@ model EmailLog {
   status       EmailStatus  @default(PENDING)
   applicantId  Int?         @map("applicant_id")
   errorMessage String?      @map("error_message")
-  attemptedAt  DateTime     @default(now()) @map("attempted_at")
-  sentAt       DateTime?    @map("sent_at")
+  attemptedAt  DateTime     @default(now()) @db.Timestamptz @map("attempted_at")
+  sentAt       DateTime?    @db.Timestamptz @map("sent_at")
   applicant    Applicant?   @relation(fields: [applicantId], references: [id])
 
   @@index([status], name: "idx_email_logs_status")
@@ -329,13 +329,13 @@ model HealthRecord {
   applicantId      Int              @map("applicant_id")
   schoolYearId     Int              @map("school_year_id")
   assessmentPeriod AssessmentPeriod @map("assessment_period")
-  assessmentDate   DateTime         @map("assessment_date")
+  assessmentDate   DateTime         @db.Date @map("assessment_date")
   weightKg         Float            @map("weight_kg")
   heightCm         Float            @map("height_cm")
   notes            String?
   recordedById     Int              @map("recorded_by_id")
-  createdAt        DateTime         @default(now()) @map("created_at")
-  updatedAt        DateTime         @updatedAt @map("updated_at")
+  createdAt        DateTime         @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt        DateTime         @updatedAt @db.Timestamptz @map("updated_at")
 
   applicant  Applicant  @relation(fields: [applicantId], references: [id], onDelete: Cascade)
   schoolYear SchoolYear @relation(fields: [schoolYearId], references: [id])
@@ -353,7 +353,7 @@ model ScpConfig {
   scpType        ApplicantType @map("scp_type")
   isOffered      Boolean       @default(false) @map("is_offered")
   cutoffScore    Float?        @map("cutoff_score")
-  examDate       DateTime?     @map("exam_date")
+  examDate       DateTime?     @db.Date @map("exam_date")
   artFields      String[]      @map("art_fields")
   languages      String[]
   sportsList     String[]      @map("sports_list")

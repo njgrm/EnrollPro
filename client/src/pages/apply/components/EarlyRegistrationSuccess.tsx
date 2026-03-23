@@ -112,12 +112,16 @@ export default function EarlyRegistrationSuccess({
         ref={pdfRef}
         style={{
           visibility: "hidden",
-          position: "absolute",
+          position: "fixed",
           left: "-9999px",
+          top: "0",
           width: "800px",
+          height: "0",
+          overflow: "hidden",
           padding: "60px",
           backgroundColor: "#ffffff",
           color: "#061E29",
+          pointerEvents: "none",
         }}
         className='font-sans'>
         <div

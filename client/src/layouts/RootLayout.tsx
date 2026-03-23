@@ -108,6 +108,7 @@ export default function RootLayout({ children }: { children?: ReactNode }) {
 
     const primaryColor = isFefe01 ? "200 68% 9%" : accent; // 200 68% 9% is #061E29
     const primaryFg = isFefe01 ? "0 0% 100%" : fg;
+    const ringColor = isFefe01 ? "200 68% 9%" : accent;
 
     // High-contrast version of the accent for links on white background
     // If accent is too light (meaning its contrast foreground is black), we set the link color to black
@@ -119,14 +120,14 @@ export default function RootLayout({ children }: { children?: ReactNode }) {
     root.style.setProperty("--accent", accent);
     root.style.setProperty("--accent-foreground", fg);
     root.style.setProperty("--accent-link", linkAccent);
-    root.style.setProperty("--accent-ring", accent);
+    root.style.setProperty("--accent-ring", ringColor);
     root.style.setProperty("--primary", primaryColor);
     root.style.setProperty("--primary-foreground", primaryFg);
-    root.style.setProperty("--ring", accent);
+    root.style.setProperty("--ring", ringColor);
 
     root.style.setProperty("--sidebar-primary", primaryColor);
     root.style.setProperty("--sidebar-primary-foreground", primaryFg);
-    root.style.setProperty("--sidebar-ring", accent);
+    root.style.setProperty("--sidebar-ring", ringColor);
     root.style.setProperty("--sidebar-accent", mutedAccent);
     root.style.setProperty("--sidebar-accent-foreground", mutedFg);
 

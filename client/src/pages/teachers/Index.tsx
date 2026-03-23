@@ -528,6 +528,7 @@ export default function Teachers() {
           deactivateId && handleToggleStatus(deactivateId, "deactivate")
         }
         loading={submitting}
+        variant="warning"
       />
 
       <ConfirmationModal
@@ -540,6 +541,7 @@ export default function Teachers() {
           reactivateId && handleToggleStatus(reactivateId, "reactivate")
         }
         loading={submitting}
+        variant="info"
       />
     </div>
   );

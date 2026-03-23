@@ -785,6 +785,7 @@ export default function AdminUsers() {
           deactivateId && handleToggleStatus(deactivateId, "deactivate")
         }
         loading={submitting}
+        variant="warning"
       />
 
       <ConfirmationModal
@@ -797,6 +798,7 @@ export default function AdminUsers() {
           reactivateId && handleToggleStatus(reactivateId, "reactivate")
         }
         loading={submitting}
+        variant="info"
       />
     </div>
   );

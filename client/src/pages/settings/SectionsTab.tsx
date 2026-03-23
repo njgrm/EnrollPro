@@ -534,6 +534,7 @@ export default function SectionsTab() {
         confirmText='Delete'
         loading={deleting}
         onConfirm={handleDelete}
+        variant="danger"
       />
     </div>
   );

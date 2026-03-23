@@ -5,10 +5,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { useSettingsStore } from '@/stores/settingsStore';
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { useSettingsStore } from "@/stores/settingsStore";
+import { AlertTriangle, Info, CheckCircle2, AlertCircle, HelpCircle, type LucideIcon } from "lucide-react";
+
+export type ConfirmationModalVariant = "danger" | "info" | "warning" | "success" | "primary";
 
 interface ConfirmationModalProps {
   open: boolean;
@@ -19,7 +22,77 @@ interface ConfirmationModalProps {
   confirmText?: string;
   loading?: boolean;
   confirmClassName?: string;
+  variant?: ConfirmationModalVariant;
+  icon?: LucideIcon;
 }
+
+const variantStyles: Record<ConfirmationModalVariant, {
+  icon: LucideIcon;
+  iconBg: string;
+  iconRing: string;
+  iconText: string;
+  btnBg: string;
+  btnHover: string;
+  btnActive: string;
+  btnShadow: string;
+  btnText: string;
+}> = {
+  danger: {
+    icon: AlertTriangle,
+    iconBg: "bg-[hsl(var(--primary))]",
+    iconRing: "ring-[6px] ring-[hsl(var(--primary)/0.1)]",
+    iconText: "text-[hsl(var(--primary-foreground))]",
+    btnBg: "bg-red-500",
+    btnHover: "hover:bg-red-600",
+    btnActive: "active:bg-red-700",
+    btnShadow: "shadow-red-200",
+    btnText: "text-white",
+  },
+  warning: {
+    icon: AlertCircle,
+    iconBg: "bg-[hsl(var(--primary))]",
+    iconRing: "ring-[6px] ring-[hsl(var(--primary)/0.1)]",
+    iconText: "text-[hsl(var(--primary-foreground))]",
+    btnBg: "bg-amber-500",
+    btnHover: "hover:bg-amber-600",
+    btnActive: "active:bg-amber-700",
+    btnShadow: "shadow-amber-200",
+    btnText: "text-white",
+  },
+  info: {
+    icon: Info,
+    iconBg: "bg-[hsl(var(--primary))]",
+    iconRing: "ring-[6px] ring-[hsl(var(--primary)/0.1)]",
+    iconText: "text-[hsl(var(--primary-foreground))]",
+    btnBg: "bg-blue-500",
+    btnHover: "hover:bg-blue-600",
+    btnActive: "active:bg-blue-700",
+    btnShadow: "shadow-blue-200",
+    btnText: "text-white",
+  },
+  success: {
+    icon: CheckCircle2,
+    iconBg: "bg-[hsl(var(--primary))]",
+    iconRing: "ring-[6px] ring-[hsl(var(--primary)/0.1)]",
+    iconText: "text-[hsl(var(--primary-foreground))]",
+    btnBg: "bg-green-500",
+    btnHover: "hover:bg-green-600",
+    btnActive: "active:bg-green-700",
+    btnShadow: "shadow-green-200",
+    btnText: "text-white",
+  },
+  primary: {
+    icon: HelpCircle,
+    iconBg: "bg-[hsl(var(--primary))]",
+    iconRing: "ring-[6px] ring-[hsl(var(--primary)/0.1)]",
+    iconText: "text-[hsl(var(--primary-foreground))]",
+    btnBg: "bg-[hsl(var(--primary))]",
+    btnHover: "hover:opacity-90",
+    btnActive: "active:scale-[0.98]",
+    btnShadow: "shadow-[hsl(var(--primary)/0.2)]",
+    btnText: "text-[hsl(var(--primary-foreground))]",
+  }
+};
 
 export function ConfirmationModal({
   open,
@@ -27,47 +100,87 @@ export function ConfirmationModal({
   title,
   description,
   onConfirm,
-  confirmText = 'Confirm',
+  confirmText = "Confirm",
   loading = false,
   confirmClassName,
+  variant = "danger",
+  icon: CustomIcon,
 }: ConfirmationModalProps) {
   const { colorScheme, selectedAccentHsl } = useSettingsStore();
 
   const accentHsl = selectedAccentHsl ?? colorScheme?.accent_hsl;
-  const currentHex = colorScheme?.palette?.find(p => p.hsl === accentHsl)?.hex;
-  const isFefe01 = currentHex?.toLowerCase() === '#fefe01';
-
-  // Check if color is "light" (uses black foreground)
-  const accentForeground = colorScheme?.palette?.find(p => p.hsl === accentHsl)?.foreground 
-    ?? colorScheme?.accent_foreground;
-  const isLightColor = accentForeground === '0 0% 0%';
+  const currentHex = colorScheme?.palette?.find(
+    (p) => p.hsl === accentHsl,
+  )?.hex;
+  const currentPalette = colorScheme?.palette?.find((p) => p.hsl === accentHsl);
+  const currentForeground = currentPalette?.foreground ?? colorScheme?.accent_foreground;
+  const isFefe01 = currentHex?.toLowerCase() === "#fefe01";
+  const isLightColor = currentForeground === "0 0% 0%";
 
   const applyOverride = isFefe01 || isLightColor;
+  
+  const style = variantStyles[variant];
+  const Icon = CustomIcon || style.icon;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent 
-        className="w-[calc(100%-2rem)] sm:max-w-md p-6 sm:p-8 rounded-2xl overflow-hidden"
-        style={applyOverride ? {
-          '--primary': '200 68% 9%',
-          '--primary-foreground': '0 0% 100%',
-        } as React.CSSProperties : {}}
+      <DialogContent
+        className={cn(
+          "w-[calc(100%-2rem)] sm:max-w-sm rounded-3xl p-8 overflow-hidden",
+          "bg-sidebar shadow-2xl",
+        )}
+        style={
+          applyOverride
+            ? ({
+                "--primary": "200 68% 9%",
+                "--primary-foreground": "0 0% 100%",
+              } as React.CSSProperties)
+            : {}
+        }
       >
-        <DialogHeader className="space-y-3">
-          <DialogTitle className="text-xl font-bold tracking-tight">{title}</DialogTitle>
-          <DialogDescription className="text-sm leading-relaxed font-medium">
+        {/* ── Icon badge ─────────────────────────────────────────────── */}
+        <div className="flex justify-center mb-5">
+          <span
+            className={cn(
+              "flex items-center justify-center",
+              "w-14 h-14 rounded-full",
+              style.iconBg,
+              style.iconRing,
+              style.iconText,
+            )}
+          >
+            <Icon className="w-6 h-6" strokeWidth={2.5} />
+          </span>
+        </div>
+
+        {/* ── Header — centred ───────────────────────────────────────── */}
+        <DialogHeader className="space-y-2 text-center items-center">
+          <DialogTitle className="text-xl font-bold tracking-tight text-gray-900">
+            {title}
+          </DialogTitle>
+          <DialogDescription className="text-sm leading-relaxed text-gray-500 text-center">
             {description}
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="flex flex-col-reverse sm:flex-row gap-3 sm:justify-end mt-8">
+
+        {/* ── Footer — side-by-side, confirm on the left ─────────────── */}
+        <DialogFooter className="flex flex-row gap-3 mt-7 sm:justify-center">
+          {/* Cancel */}
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={loading}
-            className="h-11 px-6 font-semibold sm:w-auto w-full rounded-xl hover:bg-primary/10 hover:text-foreground"
+            className={cn(
+              "flex-1 h-12 rounded-2xl font-semibold text-sm",
+              "border border-gray-200 bg-white text-gray-700",
+              "hover:bg-gray-50 active:bg-gray-100",
+              "transition-all duration-150 active:scale-[0.97]",
+            )}
           >
             Cancel
           </Button>
+
+          {/* Confirm / destructive */}
           <Button
             variant="default"
             onClick={() => {
@@ -75,14 +188,22 @@ export function ConfirmationModal({
               if (!loading) onOpenChange(false);
             }}
             disabled={loading}
-            className={cn("h-11 px-6 font-bold sm:w-auto w-full rounded-xl hover:opacity-90", confirmClassName)}
+            className={cn(
+              "flex-1 h-12 rounded-2xl font-semibold text-sm",
+              style.btnBg, style.btnHover, style.btnActive, style.btnText,
+              "shadow-md", style.btnShadow,
+              "transition-all duration-150 active:scale-[0.97]",
+              confirmClassName,
+            )}
           >
             {loading ? (
               <span className="flex items-center gap-2">
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                 Processing...
               </span>
-            ) : confirmText}
+            ) : (
+              confirmText
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

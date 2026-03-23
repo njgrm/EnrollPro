@@ -25,13 +25,12 @@ import {
   Download,
 } from "lucide-react";
 import api from "@/api/axiosInstance";
-import { cn } from "@/lib/utils";
+import { cn, formatManilaDate, getManilaNow } from "@/lib/utils";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "motion/react";
 import { useSettingsStore } from "@/stores/settingsStore";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import depedLogo from "@/assets/DepEd-logo.png";
 
 const API_BASE =
   import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:3001";
@@ -153,7 +152,9 @@ interface TrackApplicationProps {
   onResultsFetched?: (hasResults: boolean) => void;
 }
 
-export default function TrackApplication({ onResultsFetched }: TrackApplicationProps) {
+export default function TrackApplication({
+  onResultsFetched,
+}: TrackApplicationProps) {
   const { schoolName, logoUrl } = useSettingsStore();
   const [status, setStatus] = useState<ApplicationStatus | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -179,6 +180,8 @@ export default function TrackApplication({ onResultsFetched }: TrackApplicationP
       element.style.position = "fixed";
       element.style.left = "-9999px";
       element.style.top = "0";
+      element.style.height = "auto";
+      element.style.overflow = "visible";
 
       await new Promise((resolve) => setTimeout(resolve, 800));
 
@@ -202,10 +205,12 @@ export default function TrackApplication({ onResultsFetched }: TrackApplicationP
       });
 
       pdf.addImage(imgData, "JPEG", 0, 0, imgWidth, imgHeight);
-      pdf.save(`Confirmation_${status.trackingNumber}.pdf`);
+      pdf.save(`Early_Registration_Confirmation_${status.trackingNumber}.pdf`);
 
       element.style.visibility = "hidden";
-      element.style.position = "absolute";
+      element.style.position = "fixed";
+      element.style.height = "0";
+      element.style.overflow = "hidden";
     } catch (error) {
       console.error("PDF Generation failed:", error);
       alert("Failed to generate PDF. Please try again.");
@@ -247,81 +252,86 @@ export default function TrackApplication({ onResultsFetched }: TrackApplicationP
 
   return (
     <div
-      className={cn("max-w-4xl mx-auto py-8 px-4 transition-all duration-500")}>
+      className={cn("max-w-4xl mx-auto py-8 px-4 transition-all duration-500")}
+    >
       <Card
         className={cn(
           "shadow-xl border-2 border-primary/5 rounded-3xl overflow-hidden transition-all duration-500 w-full",
-        )}>
-        <CardHeader className='bg-primary text-primary-foreground p-8 text-center'>
-          <CardTitle className='text-2xl font-black uppercase tracking-tight'>
+        )}
+      >
+        <CardHeader className="bg-primary text-primary-foreground p-8 text-center">
+          <CardTitle className="text-2xl font-black uppercase tracking-tight">
             Application Monitor
           </CardTitle>
-          <CardDescription className='text-primary-foreground/90 font-bold'>
+          <CardDescription className="text-primary-foreground/90 font-bold">
             Enter your tracking number to check your status
           </CardDescription>
         </CardHeader>
-        <CardContent className='p-8'>
-          <form onSubmit={handleSubmit(onTrack)} className='space-y-6'>
-            <div className='space-y-2'>
+        <CardContent className="p-8">
+          <form onSubmit={handleSubmit(onTrack)} className="space-y-6">
+            <div className="space-y-2">
               <Label
-                htmlFor='trackingNumber'
-                className='text-xs font-black uppercase tracking-widest text-muted-foreground'>
+                htmlFor="trackingNumber"
+                className="text-xs font-black uppercase tracking-widest text-muted-foreground"
+              >
                 Tracking Number
               </Label>
-              <div className='relative'>
+              <div className="relative">
                 <Input
-                  id='trackingNumber'
+                  id="trackingNumber"
                   {...register("trackingNumber")}
-                  placeholder='APP-2026-XXXXX'
+                  placeholder="APP-2026-XXXXX"
                   className={cn(
                     "h-14 pl-12 text-lg font-black border-2 transition-all",
                     errors.trackingNumber
                       ? "border-destructive focus-visible:ring-destructive"
                       : "border-primary/10 focus-visible:border-primary focus-visible:ring-primary/5",
                   )}
-                  autoComplete='off'
+                  autoComplete="off"
                 />
-                <Search className='absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground' />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               </div>
               {errors.trackingNumber && (
-                <p className='text-xs text-destructive font-bold'>
+                <p className="text-xs text-destructive font-bold">
                   {errors.trackingNumber.message}
                 </p>
               )}
             </div>
 
             <Button
-              type='submit'
-              className='w-full h-14 text-lg font-black uppercase tracking-widest bg-primary hover:bg-primary/90 transition-all text-primary-foreground'
-              disabled={isLoading}>
+              type="submit"
+              className="w-full h-14 text-lg font-black uppercase tracking-widest bg-primary hover:bg-primary/90 transition-all text-primary-foreground"
+              disabled={isLoading}
+            >
               {isLoading ? "Searching..." : "Check Status"}
             </Button>
           </form>
 
           {!status && !error && (
-            <div className='mt-8 pt-6 border-t border-dashed text-center'>
-              <p className='text-md font-bold text-muted-foreground uppercase tracking-widest'>
+            <div className="mt-8 pt-6 border-t border-dashed text-center">
+              <p className="text-md font-bold text-muted-foreground uppercase tracking-widest">
                 Lost or missing confirmation slip?
               </p>
-              <p className='text-[12px] text-muted-foreground/60 mt-1 uppercase font-bold'>
+              <p className="text-[12px] text-muted-foreground/60 mt-1 uppercase font-bold">
                 Enter your tracking number above to retrieve and download your
                 official slip.
               </p>
             </div>
           )}
 
-          <AnimatePresence mode='wait'>
+          <AnimatePresence mode="wait">
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className='mt-8 p-6 bg-destructive/5 border-2 border-destructive/20 rounded-2xl flex items-start gap-4'>
-                <AlertCircle className='w-6 h-6 text-destructive shrink-0 mt-0.5' />
+                className="mt-8 p-6 bg-destructive/5 border-2 border-destructive/20 rounded-2xl flex items-start gap-4"
+              >
+                <AlertCircle className="w-6 h-6 text-destructive shrink-0 mt-0.5" />
                 <div>
-                  <h4 className='font-black text-destructive uppercase tracking-tight'>
+                  <h4 className="font-black text-destructive uppercase tracking-tight">
                     Application Not Found
                   </h4>
-                  <p className='text-sm font-medium text-destructive/80 mt-1'>
+                  <p className="text-sm font-medium text-destructive/80 mt-1">
                     {error}
                   </p>
                 </div>
@@ -332,24 +342,26 @@ export default function TrackApplication({ onResultsFetched }: TrackApplicationP
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className='mt-10 space-y-8'>
+                className="mt-10 space-y-8"
+              >
                 <div
                   className={cn(
                     "p-8 rounded-3xl border-2 flex flex-col items-center text-center gap-4",
                     config.color,
-                  )}>
-                  <div className='p-4 rounded-full bg-white shadow-sm border border-current/20'>
-                    {Icon && <Icon className='w-10 h-10' />}
+                  )}
+                >
+                  <div className="p-4 rounded-full bg-white shadow-sm border border-current/20">
+                    {Icon && <Icon className="w-10 h-10" />}
                   </div>
                   <div>
-                    <h3 className='text-xs font-black uppercase tracking-[0.2em] opacity-70'>
+                    <h3 className="text-xs font-black uppercase tracking-[0.2em] opacity-70">
                       Current Status
                     </h3>
-                    <p className='text-3xl font-black uppercase tracking-tight mt-1'>
+                    <p className="text-3xl font-black uppercase tracking-tight mt-1">
                       {config.label}
                     </p>
                   </div>
-                  <p className='text-sm font-bold leading-relaxed max-w-sm opacity-90'>
+                  <p className="text-sm font-bold leading-relaxed max-w-sm opacity-90">
                     {config.desc}
                   </p>
                 </div>
@@ -360,30 +372,31 @@ export default function TrackApplication({ onResultsFetched }: TrackApplicationP
                     status.isScpApplication
                       ? "grid-cols-1 md:grid-cols-3"
                       : "grid-cols-1 md:grid-cols-2",
-                  )}>
-                  <div className='p-5 bg-primary/5 border border-primary/10 rounded-2xl space-y-1'>
-                    <p className='text-[10px] font-black uppercase text-muted-foreground tracking-widest flex items-center justify-center gap-1.5'>
-                      <User className='w-3 h-3' /> Applicant Name
+                  )}
+                >
+                  <div className="p-5 bg-primary/5 border border-primary/10 rounded-2xl space-y-1">
+                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest flex items-center justify-center gap-1.5">
+                      <User className="w-3 h-3" /> Applicant Name
                     </p>
-                    <p className='font-black text-primary uppercase'>
+                    <p className="font-black text-primary uppercase">
                       {status.lastName}, {status.firstName}
                     </p>
                   </div>
-                  <div className='p-5 bg-primary/5 border border-primary/10 rounded-2xl space-y-1'>
-                    <p className='text-[10px] font-black uppercase text-muted-foreground tracking-widest flex items-center justify-center gap-1.5'>
-                      <FileText className='w-3 h-3' /> Grade Level
+                  <div className="p-5 bg-primary/5 border border-primary/10 rounded-2xl space-y-1">
+                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest flex items-center justify-center gap-1.5">
+                      <FileText className="w-3 h-3" /> Grade Level
                     </p>
-                    <p className='font-black text-primary uppercase'>
+                    <p className="font-black text-primary uppercase">
                       {status.gradeLevel.name}
                     </p>
                   </div>
 
                   {status.isScpApplication && (
-                    <div className='p-5 bg-primary/5 border border-primary/10 rounded-2xl space-y-1'>
-                      <p className='text-[10px] font-black uppercase text-primary/60 tracking-widest flex items-center justify-center gap-1.5'>
-                        <BookOpen className='w-3 h-3' /> SCP Program
+                    <div className="p-5 bg-primary/5 border border-primary/10 rounded-2xl space-y-1">
+                      <p className="text-[10px] font-black uppercase text-primary/60 tracking-widest flex items-center justify-center gap-1.5">
+                        <BookOpen className="w-3 h-3" /> SCP Program
                       </p>
-                      <p className='font-black text-primary uppercase'>
+                      <p className="font-black text-primary uppercase">
                         {status.scpType
                           ? SCP_LABELS[status.scpType] || status.scpType
                           : "Special Program"}
@@ -399,11 +412,12 @@ export default function TrackApplication({ onResultsFetched }: TrackApplicationP
                           status.isScpApplication
                             ? "md:col-span-3"
                             : "md:col-span-2",
-                        )}>
-                        <p className='text-[10px] font-black uppercase text-purple-600 tracking-widest flex items-center justify-center gap-1.5'>
-                          <Calendar className='w-3 h-3' /> Scheduled Assessment
+                        )}
+                      >
+                        <p className="text-[10px] font-black uppercase text-purple-600 tracking-widest flex items-center justify-center gap-1.5">
+                          <Calendar className="w-3 h-3" /> Scheduled Assessment
                         </p>
-                        <p className='font-black text-purple-900 uppercase'>
+                        <p className="font-black text-purple-900 uppercase">
                           {format(
                             new Date(status.examDate),
                             "MMMM dd, yyyy @ hh:mm a",
@@ -420,11 +434,12 @@ export default function TrackApplication({ onResultsFetched }: TrackApplicationP
                           status.isScpApplication
                             ? "md:col-span-3"
                             : "md:col-span-2",
-                        )}>
-                        <p className='text-[10px] font-black uppercase text-destructive tracking-widest flex items-center justify-center gap-1.5'>
-                          <AlertCircle className='w-3 h-3' /> Revision Details
+                        )}
+                      >
+                        <p className="text-[10px] font-black uppercase text-destructive tracking-widest flex items-center justify-center gap-1.5">
+                          <AlertCircle className="w-3 h-3" /> Revision Details
                         </p>
-                        <p className='font-bold text-destructive/90 italic'>
+                        <p className="font-bold text-destructive/90 italic">
                           "{status.rejectionReason}"
                         </p>
                       </div>
@@ -433,36 +448,40 @@ export default function TrackApplication({ onResultsFetched }: TrackApplicationP
                   <div
                     className={cn(
                       "p-5 bg-white border border-border rounded-2xl space-y-1 text-center",
-                      status.isScpApplication ? "md:col-span-3" : "md:col-span-2",
-                    )}>
-                    <p className='text-[10px] font-black uppercase text-muted-foreground tracking-widest'>
+                      status.isScpApplication
+                        ? "md:col-span-3"
+                        : "md:col-span-2",
+                    )}
+                  >
+                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
                       Date Submitted
                     </p>
-                    <p className='text-xs font-bold text-muted-foreground'>
+                    <p className="text-xs font-bold text-muted-foreground">
                       {format(new Date(status.createdAt), "MMMM dd, yyyy")}
                     </p>
                   </div>
                 </div>
 
-                <div className='flex flex-col items-center justify-center '>
-                  <div className='mt-8 pt-6 border-t border-dashed text-center'>
-                    <p className='text-md font-bold text-muted-foreground uppercase tracking-widest'>
+                <div className="flex flex-col items-center justify-center ">
+                  <div className="mt-8 pt-6 border-t border-dashed text-center">
+                    <p className="text-md font-bold text-muted-foreground uppercase tracking-widest">
                       Lost or missing confirmation slip?
                     </p>
-                    <p className='text-[12px] text-muted-foreground/60 mt-1 uppercase font-bold'>
+                    <p className="text-[12px] text-muted-foreground/60 mt-1 uppercase font-bold">
                       Enter your tracking number above to retrieve and download
                       your official slip.
                     </p>
                   </div>
-                  <div className='flex items-center justify-center mt-6'>
+                  <div className="flex items-center justify-center mt-6">
                     <Button
-                      className='h-12 px-8 font-bold w-full sm:w-auto gap-2 bg-primary text-primary-foreground hover:bg-primary/90'
+                      className="h-12 px-8 font-bold w-full sm:w-auto gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
                       onClick={downloadPDF}
-                      disabled={isGenerating}>
+                      disabled={isGenerating}
+                    >
                       {isGenerating ? (
-                        <Loader2 className='w-4 h-4 animate-spin' />
+                        <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
-                        <Download className='w-4 h-4' />
+                        <Download className="w-4 h-4" />
                       )}
                       {isGenerating
                         ? "Generating PDF..."
@@ -471,8 +490,8 @@ export default function TrackApplication({ onResultsFetched }: TrackApplicationP
                   </div>
                 </div>
 
-                <div className='pt-4 text-center'>
-                  <p className='text-[11px] font-bold text-muted-foreground/60 uppercase tracking-widest'>
+                <div className="pt-4 text-center">
+                  <p className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-widest">
                     Last updated: {format(new Date(), "hh:mm a")}
                   </p>
                 </div>
@@ -486,118 +505,135 @@ export default function TrackApplication({ onResultsFetched }: TrackApplicationP
               ref={pdfRef}
               style={{
                 visibility: "hidden",
-                position: "absolute",
-                top: 0,
+                position: "fixed",
                 left: "-9999px",
+                top: "0",
                 width: "800px",
+                height: "0",
+                overflow: "hidden",
                 padding: "60px",
                 backgroundColor: "#ffffff",
                 color: "#061E29",
+                pointerEvents: "none",
               }}
-              className='font-sans'>
+              className="font-sans"
+            >
               <div
                 style={{ borderColor: "#061E29" }}
-                className='flex flex-col items-center justify-center gap-6 mb-4 border-b-2 pb-10'>
-                <div className='flex items-center justify-center gap-10 w-full'>
+                className="flex flex-col items-center justify-center gap-6 mb-4 border-b-2 pb-10"
+              >
+                <div className="flex items-center justify-center gap-10 w-full">
                   {logoUrl ? (
                     <img
                       src={`${API_BASE}${logoUrl}`}
-                      crossOrigin='anonymous'
-                      alt='School Logo'
-                      className='h-28 w-28 object-contain'
+                      crossOrigin="anonymous"
+                      alt="School Logo"
+                      className="h-28 w-28 object-contain"
                     />
                   ) : (
                     <div
                       style={{ backgroundColor: "#f3f4f6" }}
-                      className='h-28 w-28 rounded-full flex items-center justify-center font-bold text-4xl text-[#061E29]'>
+                      className="h-28 w-28 rounded-full flex items-center justify-center font-bold text-4xl text-[#061E29]"
+                    >
                       {schoolName?.charAt(0)}
                     </div>
                   )}
-                  <div className='text-center flex-1'>
+                  <div className="text-center flex-1">
                     <h1
                       style={{ color: "#061E29" }}
-                      className='text-3xl font-black uppercase tracking-tight mb-1'>
+                      className="text-3xl font-black uppercase tracking-tight mb-1"
+                    >
                       {schoolName}
                     </h1>
                     <p
                       style={{ color: "#4b5563" }}
-                      className='text-base font-bold uppercase tracking-[0.2em] mb-2'>
+                      className="text-base font-bold uppercase tracking-[0.2em] mb-2"
+                    >
                       Early Registration Portal
                     </p>
                     <div
                       style={{ backgroundColor: "#061E29", color: "#ffffff" }}
-                      className='flex items-center justify-center px-6 py-3 rounded-xl text-xs font-black tracking-widest uppercase text-center'>
-                      <p className='-mt-3'>
+                      className="flex items-center justify-center px-6 py-3 rounded-xl text-xs font-black tracking-widest uppercase text-center"
+                    >
+                      <p className="-mt-3">
                         Official EARLY REGISTRATION Confirmation Slip
                       </p>
                     </div>
                   </div>
-                  <img
-                    src={depedLogo}
-                    crossOrigin='anonymous'
-                    alt='DepEd Logo'
-                    className='h-28 w-28 object-contain'
-                  />
                 </div>
               </div>
 
-              <div className='space-y-6'>
-                <div className='text-center space-y-4'>
+              <div className="space-y-6">
+                <div className="text-center space-y-4">
                   <h2
                     style={{ color: "#061E29" }}
-                    className='text-4xl font-black tracking-tight'>
-                    Application Confirmation
+                    className="text-4xl font-black tracking-tight"
+                  >
+                    Application Received!
                   </h2>
                   <p
                     style={{ color: "#4b5563" }}
-                    className='text-xl font-medium'>
-                    This document confirms the submission of application for
-                    <br />
-                    <span
-                      style={{ color: "#061E29" }}
-                      className='font-bold uppercase'>
-                      {status.lastName}, {status.firstName}
+                    className="text-xl font-medium"
+                  >
+                    Your application has been successfully submitted to{" "}
+                    <span style={{ color: "#061E29" }} className="font-bold">
+                      {schoolName}
                     </span>
+                    .
                   </p>
                 </div>
 
                 <div
                   style={{ backgroundColor: "#f9fafb", borderColor: "#061E29" }}
-                  className='p-12 rounded-3xl border-4 text-center space-y-6 relative overflow-hidden border-dashed'>
+                  className="p-12 rounded-3xl border-4 text-center space-y-6 relative overflow-hidden border-dashed"
+                >
                   <p
                     style={{ color: "#6b7280" }}
-                    className='text-xs uppercase tracking-[0.3em] font-black'>
+                    className="text-xs uppercase tracking-[0.3em] font-black"
+                  >
                     Application Tracking Number
                   </p>
                   <p
                     style={{ color: "#061E29" }}
-                    className='text-7xl  font-black tracking-tighter'>
+                    className="text-7xl  font-black tracking-tighter"
+                  >
                     {status.trackingNumber}
                   </p>
 
-                  <div className='pt-6 flex justify-center gap-12 text-center'>
-                    <div className='space-y-1'>
+                  <div className="pt-6 flex justify-center gap-12 text-center">
+                    <div className="space-y-1">
                       <p
                         style={{ color: "#9ca3af" }}
-                        className='text-[10px] font-black uppercase'>
-                        Grade Level
+                        className="text-[10px] font-black uppercase"
+                      >
+                        Date Generated
                       </p>
                       <p
                         style={{ color: "#061E29" }}
-                        className='text-sm font-bold'>
-                        {status.gradeLevel.name}
+                        className="text-sm font-bold"
+                      >
+                        {formatManilaDate(getManilaNow(), {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
                       </p>
                     </div>
-                    <div className='space-y-1'>
+                    <div className="space-y-1">
                       <p
                         style={{ color: "#9ca3af" }}
-                        className='text-[10px] font-black uppercase'>
-                        Date Submitted
+                        className="text-[10px] font-black uppercase"
+                      >
+                        Time Generated
                       </p>
                       <p
                         style={{ color: "#061E29" }}
-                        className='text-sm font-bold'>
-                        {format(new Date(status.createdAt), "MMMM dd, yyyy")}
+                        className="text-sm font-bold"
+                      >
+                        {formatManilaDate(getManilaNow(), {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </p>
                     </div>
                   </div>
@@ -605,14 +641,20 @@ export default function TrackApplication({ onResultsFetched }: TrackApplicationP
 
                 <div
                   style={{ borderColor: "#f3f4f6" }}
-                  className='space-y-8 bg-white p-8 border-2 rounded-3xl'>
+                  className="space-y-8 bg-white p-8 border-2 rounded-3xl"
+                >
                   <h3
                     style={{ color: "#061E29" }}
-                    className='text-2xl font-black flex items-center gap-3 uppercase tracking-tight -mt-3'>
-                    Important Reminders
+                    className="text-2xl font-black flex items-center gap-3 uppercase tracking-tight -mt-3"
+                  >
+                    Important Next Steps
                   </h3>
-                  <div className='grid grid-cols-1 gap-6 text-sm'>
+                  <div className="grid grid-cols-1 gap-6 text-sm">
                     {[
+                      {
+                        title: "Check your email",
+                        desc: "A confirmation has been sent to your primary contact email.",
+                      },
                       {
                         title: "Wait for verification",
                         desc: "Our Registrar will review your documents within 3-5 working days.",
@@ -626,20 +668,22 @@ export default function TrackApplication({ onResultsFetched }: TrackApplicationP
                         desc: "Use your tracking number to check the status of your application.",
                       },
                     ].map((step, i) => (
-                      <div key={i} className='flex gap-4 items-start'>
+                      <div key={i} className="flex gap-4 items-start">
                         <div
                           style={{ backgroundColor: "#061E29" }}
-                          className='w-2 h-2 rounded-full mt-3 shrink-0'
+                          className="w-2 h-2 rounded-full mt-3 shrink-0"
                         />
                         <div>
                           <p
                             style={{ color: "#061E29" }}
-                            className='font-black uppercase tracking-wide'>
+                            className="font-black uppercase tracking-wide"
+                          >
                             {step.title}
                           </p>
                           <p
                             style={{ color: "#4b5563" }}
-                            className='font-medium'>
+                            className="font-medium"
+                          >
                             {step.desc}
                           </p>
                         </div>
@@ -650,29 +694,34 @@ export default function TrackApplication({ onResultsFetched }: TrackApplicationP
 
                 <div
                   style={{ borderColor: "#061E29" }}
-                  className='border-t-4 pt-12 mt-12 flex justify-between items-end'>
-                  <div className='space-y-2'>
+                  className="border-t-4 pt-12 mt-12 flex justify-between items-end"
+                >
+                  <div className="space-y-2">
                     <p
                       style={{ color: "#9ca3af" }}
-                      className='text-[10px] font-black uppercase tracking-widest'>
+                      className="text-[10px] font-black uppercase tracking-widest"
+                    >
                       Security Validation
                     </p>
                     <div
                       style={{ backgroundColor: "#061E29", color: "#ffffff" }}
-                      className='px-4 py-2  text-xs font-bold'>
+                      className="px-4 py-2  text-xs font-bold"
+                    >
                       VALID_AUTHENTIC_SUBMISSION_
                       {status.trackingNumber.replace(/-/g, "_")}
                     </div>
                   </div>
-                  <div className='text-right space-y-1'>
+                  <div className="text-right space-y-1">
                     <p
                       style={{ color: "#061E29" }}
-                      className='font-black uppercase tracking-tight text-lg leading-none'>
+                      className="font-black uppercase tracking-tight text-lg leading-none"
+                    >
                       EnrollPro Management System
                     </p>
                     <p
                       style={{ color: "#9ca3af" }}
-                      className='text-[10px] font-bold'>
+                      className="text-[10px] font-bold"
+                    >
                       This document is electronically generated. No physical
                       signature required.
                     </p>
@@ -686,3 +735,4 @@ export default function TrackApplication({ onResultsFetched }: TrackApplicationP
     </div>
   );
 }
+

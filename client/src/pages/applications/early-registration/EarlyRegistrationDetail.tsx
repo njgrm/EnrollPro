@@ -343,12 +343,12 @@ export default function EarlyRegistrationDetail() {
 
                   <span className="text-muted-foreground">Created:</span>
                   <span>
-                    {format(new Date(applicant.createdAt), "MM/dd/yyyy")}
+                    {format(new Date(applicant.createdAt), "MMMM dd, yyyy 'at' h:mm a")}
                   </span>
 
                   <span className="text-muted-foreground">Last Updated:</span>
                   <span>
-                    {format(new Date(applicant.updatedAt), "MM/dd/yyyy")}
+                    {format(new Date(applicant.updatedAt), "MMMM dd, yyyy 'at' h:mm a")}
                   </span>
 
                   {applicant.encodedBy && (

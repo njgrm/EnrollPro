@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import { generatePortalPin, hashPin } from "../services/portalPinService.js";
 import { searchStudents } from "../services/studentService.js";
+import { normalizeDateToUtcNoon } from "../services/schoolYearService.js";
 
 export const getStudents = async (req: Request, res: Response) => {
   try {
@@ -225,7 +226,7 @@ export const updateStudent = async (req: Request, res: Response) => {
         middleName,
         suffix,
         sex,
-        birthDate: birthDate ? new Date(birthDate) : undefined,
+        birthDate: birthDate ? normalizeDateToUtcNoon(new Date(birthDate)) : undefined,
         currentAddress: currentAddress ?? undefined,
         permanentAddress: permanentAddress ?? undefined,
         motherName: motherName ?? undefined,
@@ -324,7 +325,7 @@ export const addHealthRecord = async (req: Request, res: Response) => {
         applicantId: parsedApplicantId,
         schoolYearId: parsedSchoolYearId,
         assessmentPeriod,
-        assessmentDate: new Date(assessmentDate),
+        assessmentDate: normalizeDateToUtcNoon(new Date(assessmentDate)),
         weightKg: parseFloat(weightKg as string),
         heightCm: parseFloat(heightCm as string),
         notes,
@@ -376,7 +377,7 @@ export const updateHealthRecord = async (req: Request, res: Response) => {
       where: { id: parseInt(recId as string, 10) },
       data: {
         assessmentPeriod,
-        assessmentDate: assessmentDate ? new Date(assessmentDate) : undefined,
+        assessmentDate: assessmentDate ? normalizeDateToUtcNoon(new Date(assessmentDate)) : undefined,
         weightKg: weightKg ? parseFloat(weightKg as string) : undefined,
         heightCm: heightCm ? parseFloat(heightCm as string) : undefined,
         notes,

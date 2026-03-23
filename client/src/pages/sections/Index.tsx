@@ -515,6 +515,7 @@ export default function Sections() {
         confirmText='Delete'
         loading={deleting}
         onConfirm={handleDelete}
+        variant="danger"
       />
     </div>
   );

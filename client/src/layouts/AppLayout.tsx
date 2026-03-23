@@ -247,6 +247,8 @@ function AppSidebar() {
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [activeYearLabel, setActiveYearLabel] = useState<string | null>(null);
 
+  const [activeYearStatus, setActiveYearStatus] = useState<string | null>(null);
+
   const isAdmin = user?.role === "SYSTEM_ADMIN";
   const isRegistrar = user?.role === "REGISTRAR";
   const pathname = location.pathname;
@@ -263,6 +265,7 @@ function AppSidebar() {
           (y: SchoolYearItem) => y.id === activeSchoolYearId,
         );
         setActiveYearLabel(found?.yearLabel ?? null);
+        setActiveYearStatus(found?.status ?? null);
       })
       .catch(() => {});
   }, [activeSchoolYearId]);
@@ -344,10 +347,15 @@ function AppSidebar() {
                       label='Dashboard'
                       pathname={pathname}
                     />
+
                     <NavItemParent
                       icon={ClipboardList}
                       label='Applications'
-                      isActive={pathname.startsWith("/applications")}>
+                      isActive={
+                        pathname.startsWith("/applications") &&
+                        activeYearStatus !== "UPCOMING" &&
+                        activeYearStatus !== "ACTIVE"
+                      }>
                       <NavItemChild
                         to='/applications/early-registration'
                         icon={FileText}
@@ -495,6 +503,7 @@ function AppSidebar() {
         description='Are you sure you want to sign out of your account?'
         confirmText='Sign Out'
         onConfirm={handleLogout}
+        variant="warning"
       />
     </>
   );

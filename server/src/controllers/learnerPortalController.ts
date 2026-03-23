@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import { verifyPin } from "../services/portalPinService.js";
+import { normalizeDateToUtcNoon } from "../services/schoolYearService.js";
 
 /**
  * Lookup learner records using LRN, Birthdate, and PIN.
@@ -20,7 +21,7 @@ export const lookupLearner = async (req: Request, res: Response) => {
     const applicant = await prisma.applicant.findFirst({
       where: {
         lrn: lrn,
-        birthDate: new Date(birthDate),
+        birthDate: normalizeDateToUtcNoon(new Date(birthDate)),
       },
       include: {
         gradeLevel: true,

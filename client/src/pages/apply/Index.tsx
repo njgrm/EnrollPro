@@ -3,6 +3,7 @@ import depedLogo from "@/assets/Deped-logo.png";
 import GuestLayout from "@/layouts/GuestLayout";
 import PrivacyNotice from "./PrivacyNotice";
 import EarlyRegistrationForm from "./EarlyRegistrationForm";
+import EarlyRegistrationSuccess from "./components/EarlyRegistrationSuccess";
 import TrackApplication from "./Track";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ export default function Apply() {
     return (sessionStorage.getItem(TAB_KEY) as "form" | "monitor") || "form";
   });
   const [monitorHasResults, setMonitorHasResults] = useState(false);
+  const [submittedTrackingNumber, setSubmittedTrackingNumber] = useState<string | null>(null);
 
   const { schoolName, logoUrl, enrollmentPhase } = useSettingsStore();
   const isClosed = enrollmentPhase === "CLOSED";
@@ -33,11 +35,18 @@ export default function Apply() {
   const handleReset = () => {
     sessionStorage.removeItem(CONSENT_KEY);
     setHasConsented(false);
+    setSubmittedTrackingNumber(null);
   };
 
   const handleTabChange = (tab: "form" | "monitor") => {
     sessionStorage.setItem(TAB_KEY, tab);
     setActiveTab(tab);
+    setSubmittedTrackingNumber(null);
+  };
+
+  const handleBackHome = () => {
+    setSubmittedTrackingNumber(null);
+    handleReset();
   };
 
   return (
@@ -271,6 +280,18 @@ export default function Apply() {
                           onResultsFetched={setMonitorHasResults}
                         />
                       </motion.div>
+                    ) : submittedTrackingNumber ? (
+                      <motion.div
+                        key='success'
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.4 }}>
+                        <EarlyRegistrationSuccess
+                          trackingNumber={submittedTrackingNumber}
+                          onBackHome={handleBackHome}
+                        />
+                      </motion.div>
                     ) : !hasConsented ? (
                       <motion.div
                         key='privacy'
@@ -287,7 +308,10 @@ export default function Apply() {
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 1.02 }}
                         transition={{ duration: 0.4, ease: "easeOut" }}>
-                        <EarlyRegistrationForm onReset={handleReset} />
+                        <EarlyRegistrationForm
+                          onReset={handleReset}
+                          onSuccess={setSubmittedTrackingNumber}
+                        />
                       </motion.div>
                     )}
                   </AnimatePresence>
