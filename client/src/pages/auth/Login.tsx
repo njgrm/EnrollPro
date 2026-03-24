@@ -42,7 +42,7 @@ export default function Login() {
     }
   }, [sessionExpired, setSessionExpired]);
 
-  const API_BASE = import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:3001";
+  const API_BASE = import.meta.env.VITE_API_URL?.replace("/api", "") || "http://192.168.254.106:3001";
 
   const strokeColor = accentForeground === "0 0% 0%" ? "000000" : "ffffff";
 
@@ -78,7 +78,7 @@ export default function Login() {
       setAuth(res.data.token, res.data.user);
       sileo.success({
         title: "Welcome back!",
-        description: `Logged in as ${res.data.user.name}`,
+        description: `Logged in as ${res.data.user.firstName} ${res.data.user.lastName}`,
       });
       navigate("/dashboard");
     } catch (err: any) {

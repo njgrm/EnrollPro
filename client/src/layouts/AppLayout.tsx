@@ -52,7 +52,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useWindowSize } from "react-use";
 
 const API_BASE =
-  import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:3001";
+  import.meta.env.VITE_API_URL?.replace("/api", "") || "http://192.168.254.106:3001";
 
 interface SchoolYearItem {
   id: number;
@@ -456,7 +456,7 @@ function AppSidebar() {
             <SidebarMenuItem>
               <SidebarMenuButton
                 size='lg'
-                tooltip={user?.name ?? "User"}
+                tooltip={user?.firstName ? `${user.firstName} ${user.lastName}` : "User"}
                 onClick={() => setShowLogoutConfirm(true)}
                 className='relative'>
                 {/* Collapsed State: LogOut Icon only */}
@@ -468,11 +468,13 @@ function AppSidebar() {
                 <div className='flex w-full items-center gap-2 transition-all duration-200 opacity-100 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:scale-95 group-data-[collapsible=icon]:pointer-events-none'>
                   <div className='flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground overflow-hidden'>
                     <span className='text-xs font-semibold'>
-                      {user?.name?.charAt(0).toUpperCase() ?? "U"}
+                      {user?.firstName?.charAt(0).toUpperCase() ?? "U"}
                     </span>
                   </div>
                   <div className='grid flex-1 text-left text-sm leading-tight overflow-hidden'>
-                    <span className='truncate font-semibold'>{user?.name}</span>
+                    <span className='truncate font-semibold'>
+                      {user?.firstName} {user?.lastName}
+                    </span>
                     {user?.role === "SYSTEM_ADMIN" && (
                       <Badge
                         variant='outline'
@@ -551,7 +553,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className='flex-1 overflow-auto py-3 px-6'>
+            className='flex-1 overflow-auto py-3 px-6 scrollbar-thin'>
             {children}
           </motion.main>
         </AnimatePresence>

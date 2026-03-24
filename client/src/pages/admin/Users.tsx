@@ -13,6 +13,9 @@ import {
   ShieldAlert,
   Check,
   Copy,
+  Briefcase,
+  IdCard,
+  Phone,
 } from "lucide-react";
 import api from "@/api/axiosInstance";
 import { toastApiError } from "@/hooks/useApiToast";
@@ -37,18 +40,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
-import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { motion, AnimatePresence } from "motion/react";
 
 interface User {
   id: number;
-  name: string;
+  firstName: string;
+  lastName: string;
+  middleName: string | null;
+  suffix: string | null;
+  sex: "MALE" | "FEMALE";
+  employeeId: string | null;
+  designation: string | null;
+  mobileNumber: string | null;
   email: string;
   role: "REGISTRAR" | "SYSTEM_ADMIN";
   isActive: boolean;
   lastLoginAt: string | null;
   createdAt: string;
-  createdBy: { name: string } | null;
+  createdBy: { firstName: string; lastName: string } | null;
 }
 
 interface FetchUsersParams {
@@ -98,14 +108,28 @@ export default function AdminUsers() {
   // Inline Editing State
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editFormData, setEditFormData] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
+    middleName: "",
+    suffix: "",
+    sex: "FEMALE" as "MALE" | "FEMALE",
+    employeeId: "",
+    designation: "",
+    mobileNumber: "",
     email: "",
     role: "REGISTRAR" as "REGISTRAR" | "SYSTEM_ADMIN",
   });
 
   // Create Form State
   const [formData, setFormData] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
+    middleName: "",
+    suffix: "",
+    sex: "FEMALE" as "MALE" | "FEMALE",
+    employeeId: "",
+    designation: "",
+    mobileNumber: "",
     email: "",
     role: "REGISTRAR" as "REGISTRAR" | "SYSTEM_ADMIN",
     password: "",
@@ -114,6 +138,7 @@ export default function AdminUsers() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -141,7 +166,7 @@ export default function AdminUsers() {
       await api.post("/admin/users", formData);
       sileo.success({
         title: "Account Created",
-        description: `${formData.name} has been added as a ${formData.role?.toLowerCase() ?? "user"}.`,
+        description: `${formData.lastName}, ${formData.firstName} has been added as a ${formData.role?.toLowerCase() ?? "user"}.`,
       });
       setCreateOpen(false);
       fetchUsers();
@@ -155,7 +180,14 @@ export default function AdminUsers() {
   const startEditing = (user: User) => {
     setEditingId(user.id);
     setEditFormData({
-      name: user.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      middleName: user.middleName || "",
+      suffix: user.suffix || "",
+      sex: user.sex,
+      employeeId: user.employeeId || "",
+      designation: user.designation || "",
+      mobileNumber: user.mobileNumber || "",
       email: user.email,
       role: user.role,
     });
@@ -188,11 +220,11 @@ export default function AdminUsers() {
     try {
       await api.patch(`/admin/users/${selectedUser.id}/reset-password`, {
         newPassword: formData.password,
-        mustChangePassword: formData.mustChangePassword,
+        mustChangePassword: true,
       });
       sileo.success({
         title: "Password Reset",
-        description: `New password generated for ${selectedUser.name}.`,
+        description: `New password generated for ${selectedUser.lastName}, ${selectedUser.firstName}. User must change password on next login.`,
       });
       setResetOpen(false);
     } catch (err) {
@@ -233,23 +265,30 @@ export default function AdminUsers() {
   };
 
   return (
-    <div className='space-y-6 max-w-full overflow-x-hidden'>
-      <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
+    <div className='p-4 md:p-6 lg:p-8 space-y-6 max-w-full overflow-x-hidden'>
+      <div className='flex flex-col lg:flex-row lg:items-center justify-between gap-4'>
         <div className='space-y-1 text-left'>
           <h1 className='text-2xl md:text-3xl font-bold flex items-center justify-start gap-2 text-balance'>
             <UserCog className='h-7 w-7 md:h-8 md:w-8 text-primary' />
             User Management
           </h1>
-          <p className='text-sm text-muted-foreground text-balance'>
+          <p className='text-[14px] text-muted-foreground text-balance'>
             Provision and manage staff accounts
             {schoolName ? ` for ${schoolName}` : ""}
           </p>
         </div>
-        <div className='flex justify-end'>
+        <div className='flex lg:justify-end'>
           <Button
             onClick={() => {
               setFormData({
-                name: "",
+                firstName: "",
+                lastName: "",
+                middleName: "",
+                suffix: "",
+                sex: "FEMALE",
+                employeeId: "",
+                designation: "",
+                mobileNumber: "",
                 email: "",
                 role: "REGISTRAR",
                 password: generatePassword(),
@@ -257,14 +296,14 @@ export default function AdminUsers() {
               });
               setCreateOpen(true);
             }}
-            className='w-fit shadow-sm'>
+            className='w-full sm:w-fit shadow-sm'>
             <Plus className='h-4 w-4 mr-2' />
             Add User
           </Button>
         </div>
       </div>
 
-      <Card className='overflow-hidden max-w-full'>
+      <Card className='max-w-full overflow-hidden'>
         <CardHeader className='pb-3 px-4 md:px-6 border-b bg-muted/10'>
           <div className='flex flex-col lg:flex-row lg:items-center justify-between gap-4'>
             <CardTitle className='text-lg font-semibold'>
@@ -272,32 +311,32 @@ export default function AdminUsers() {
             </CardTitle>
             <div className='flex flex-wrap items-center gap-2 md:gap-3'>
               <div className='flex items-center gap-2 bg-background border rounded-md px-2 py-1'>
-                <Label className='text-[10px] md:text-xs font-bold uppercase opacity-60'>
+                <Label className='text-[14px] font-bold uppercase opacity-60'>
                   Role
                 </Label>
                 <Select value={roleFilter} onValueChange={setRoleFilter}>
-                  <SelectTrigger className='h-7 border-0 bg-transparent focus:ring-0 w-24 md:w-28 text-[11px] md:text-xs shadow-none p-0'>
+                  <SelectTrigger className='h-7 border-0 bg-transparent focus:ring-0 w-24 md:w-28 text-[14px] shadow-none p-0'>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value='all'>All Roles</SelectItem>
-                    <SelectItem value='SYSTEM_ADMIN'>Admins</SelectItem>
-                    <SelectItem value='REGISTRAR'>Registrars</SelectItem>
+                    <SelectItem value='all' className='text-[14px]'>All Roles</SelectItem>
+                    <SelectItem value='SYSTEM_ADMIN' className='text-[14px]'>Admins</SelectItem>
+                    <SelectItem value='REGISTRAR' className='text-[14px]'>Registrars</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className='flex items-center gap-2 bg-background border rounded-md px-2 py-1'>
-                <Label className='text-[10px] md:text-xs font-bold uppercase opacity-60'>
+                <Label className='text-[14px] font-bold uppercase opacity-60'>
                   Status
                 </Label>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className='h-7 border-0 bg-transparent focus:ring-0 w-24 md:w-28 text-[11px] md:text-xs shadow-none p-0'>
+                  <SelectTrigger className='h-7 border-0 bg-transparent focus:ring-0 w-24 md:w-28 text-[14px] shadow-none p-0'>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value='all'>All Status</SelectItem>
-                    <SelectItem value='active'>Active</SelectItem>
-                    <SelectItem value='inactive'>Inactive</SelectItem>
+                    <SelectItem value='all' className='text-[14px]'>All Status</SelectItem>
+                    <SelectItem value='active' className='text-[14px]'>Active</SelectItem>
+                    <SelectItem value='inactive' className='text-[14px]'>Inactive</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -316,85 +355,154 @@ export default function AdminUsers() {
         <CardContent className='p-0'>
           <div className='p-4 md:p-6'>
             <div className='rounded-md border border-border bg-background overflow-hidden'>
-              <div className='w-full overflow-x-auto scrollbar-thin'>
-                <table className='w-full text-sm border-collapse table-fixed lg:table-auto min-w-250'>
+              <div className='overflow-x-auto scrollbar-thin pb-2'>
+                <table className='w-full text-[14px] border-collapse table-fixed lg:table-auto min-w-[1000px] lg:min-w-full'>
                   <thead className='bg-muted/50 border-b'>
                     <tr>
-                      <th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[10px] w-48'>
+                      <th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[14px] w-48'>
                         Name
                       </th>
-                      <th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[10px] w-64'>
-                        Email
+                      <th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[14px] w-64'>
+                        Position & ID
                       </th>
-                      <th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[10px] w-32'>
+                      <th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[14px] w-64'>
+                        Contact Info
+                      </th>
+                      <th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[14px] w-32'>
                         Role
                       </th>
-                      <th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[10px] w-32'>
+                      <th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[14px] w-32'>
                         Status
                       </th>
-                      <th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[10px] hidden xl:table-cell w-48'>
+                      <th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[14px] hidden xl:table-cell w-48'>
                         Last Login
                       </th>
-                      <th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[10px] hidden 2xl:table-cell w-40'>
-                        Created By
-                      </th>
-                      <th className='px-4 py-3.5 text-center font-semibold text-muted-foreground uppercase tracking-wider text-[10px] w-64'>
+                      <th className='px-4 py-3.5 text-center font-semibold text-muted-foreground uppercase tracking-wider text-[14px] w-64'>
                         Actions
                       </th>
                     </tr>
                   </thead>
                   <tbody className='divide-y'>
-                    {loading ? (
-                      Array.from({ length: 5 }).map((_, i) => (
-                        <tr key={i} className='animate-pulse'>
-                          <td colSpan={7} className='px-4 py-6'>
-                            <div className='h-4 bg-muted rounded w-3/4 mx-auto'></div>
+                    {users.length === 0 ? (
+                      !loading && (
+                        <tr>
+                          <td
+                            colSpan={7}
+                            className='px-4 py-12 text-center text-muted-foreground italic'>
+                            No users found matching the criteria.
                           </td>
                         </tr>
-                      ))
-                    ) : users.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={7}
-                          className='px-4 py-12 text-center text-muted-foreground italic'>
-                          No users found matching the criteria.
-                        </td>
-                      </tr>
+                      )
                     ) : (
                       users.map((user) => (
                         <tr
                           key={user.id}
                           className={`hover:bg-muted/30 transition-colors ${!user.isActive ? "opacity-60 bg-muted/10" : ""}`}>
-                          <td className='px-4 py-4 text-center font-medium border-r last:border-r-0 max-w-37.5'>
+                          <td className='px-4 py-4 text-center font-medium border-r last:border-r-0'>
                             {editingId === user.id ? (
-                              <Input
-                                value={editFormData.name}
-                                onChange={(e) =>
-                                  setEditFormData({
-                                    ...editFormData,
-                                    name: e.target.value,
-                                  })
-                                }
-                                className='h-8 text-xs'
-                              />
+                              <div className="space-y-1">
+                                <Input
+                                  placeholder="Last Name"
+                                  value={editFormData.lastName}
+                                  onChange={(e) =>
+                                    setEditFormData({
+                                      ...editFormData,
+                                      lastName: e.target.value,
+                                    })
+                                  }
+                                  className='h-7 text-[14px]'
+                                />
+                                <Input
+                                  placeholder="First Name"
+                                  value={editFormData.firstName}
+                                  onChange={(e) =>
+                                    setEditFormData({
+                                      ...editFormData,
+                                      firstName: e.target.value,
+                                    })
+                                  }
+                                  className='h-7 text-[14px]'
+                                />
+                              </div>
                             ) : (
-                              <div className='truncate'>{user.name}</div>
+                              <div>
+                                {user.lastName}, {user.firstName} {user.suffix}
+                              </div>
                             )}
                           </td>
-                          <td className='px-4 py-4 text-center  text-xs border-r last:border-r-0 max-w-50'>
+                          <td className='px-4 py-4 text-center border-r last:border-r-0'>
                             {editingId === user.id ? (
-                              <Input
-                                value={editFormData.email}
-                                onChange={(e) =>
-                                  setEditFormData({
-                                    ...editFormData,
-                                    email: e.target.value,
-                                  })
-                                }
-                                className='h-8 text-[11px]'
-                              />
+                                <div className="space-y-1">
+                                    <Input
+                                        placeholder="Designation"
+                                        value={editFormData.designation}
+                                        onChange={(e) =>
+                                            setEditFormData({
+                                            ...editFormData,
+                                            designation: e.target.value,
+                                            })
+                                        }
+                                        className='h-7 text-[14px]'
+                                    />
+                                    <Input
+                                        placeholder="Employee ID"
+                                        value={editFormData.employeeId}
+                                        onChange={(e) =>
+                                            setEditFormData({
+                                            ...editFormData,
+                                            employeeId: e.target.value,
+                                            })
+                                        }
+                                        className='h-7 text-[14px]'
+                                    />
+                                </div>
                             ) : (
-                              <div className='truncate'>{user.email}</div>
+                                <div className="space-y-0.5">
+                                    <div className="text-[14px] font-bold text-primary flex items-center justify-center gap-1">
+                                        <Briefcase className="h-3 w-3" />
+                                        {user.designation || "No Position Set"}
+                                    </div>
+                                    <div className="text-[14px] text-muted-foreground flex items-center justify-center gap-1">
+                                        <IdCard className="h-3 w-3" />
+                                        {user.employeeId || "No ID Set"}
+                                    </div>
+                                </div>
+                            )}
+                          </td>
+                          <td className='px-4 py-4 text-center border-r last:border-r-0'>
+                            {editingId === user.id ? (
+                              <div className="space-y-1">
+                                <Input
+                                    placeholder="Email"
+                                    value={editFormData.email}
+                                    onChange={(e) =>
+                                    setEditFormData({
+                                        ...editFormData,
+                                        email: e.target.value,
+                                    })
+                                    }
+                                    className='h-7 text-[14px]'
+                                />
+                                <Input
+                                    placeholder="Mobile Number"
+                                    value={editFormData.mobileNumber}
+                                    onChange={(e) =>
+                                    setEditFormData({
+                                        ...editFormData,
+                                        mobileNumber: e.target.value,
+                                    })
+                                    }
+                                    className='h-7 text-[14px]'
+                                />
+                              </div>
+                            ) : (
+                              <div className='space-y-0.5'>
+                                <div className='text-[14px] font-medium'>{user.email}</div>
+                                <div className='text-[14px] text-muted-foreground flex items-center justify-center gap-1'>
+                                    <Phone className="h-2.5 w-2.5" />
+                                    {user.mobileNumber || "No Mobile Set"}
+                                </div>
+                              </div>
                             )}
                           </td>
                           <td className='px-4 py-4 text-center border-r last:border-r-0'>
@@ -410,7 +518,7 @@ export default function AdminUsers() {
                                       role: v,
                                     })
                                   }>
-                                  <SelectTrigger className='h-8 w-28 text-[10px] font-bold uppercase'>
+                                  <SelectTrigger className='h-8 w-28 text-[14px] font-bold uppercase'>
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -425,9 +533,9 @@ export default function AdminUsers() {
                               ) : (
                                 <Badge
                                   variant='outline'
-                                  className={`px-2 py-0.5 text-[10px] uppercase font-bold tracking-tight ${
+                                  className={`px-2 py-0.5 text-[14px] uppercase font-bold tracking-tight ${
                                     user.role === "REGISTRAR"
-                                      ? "border-blue-200 bg-blue-50 text-blue-700"
+                                      ? "border-primary/20 bg-primary/10 text-primary"
                                       : "border-purple-200 bg-purple-50 text-purple-700"
                                   }`}>
                                   {user.role}
@@ -440,12 +548,12 @@ export default function AdminUsers() {
                               <div
                                 className={`h-2 w-2 rounded-full ring-2 ring-offset-1 ${user.isActive ? "bg-green-500 ring-green-100" : "bg-slate-400 ring-slate-100"}`}
                               />
-                              <span className='text-[11px] font-medium'>
+                              <span className='text-[14px] font-medium'>
                                 {user.isActive ? "Active" : "Inactive"}
                               </span>
                             </div>
                           </td>
-                          <td className='px-4 py-4 text-center text-xs text-muted-foreground border-r last:border-r-0 hidden xl:table-cell whitespace-nowrap'>
+                          <td className='px-4 py-4 text-center text-[14px] text-muted-foreground border-r last:border-r-0 hidden xl:table-cell whitespace-nowrap'>
                             {user.lastLoginAt
                               ? new Date(user.lastLoginAt).toLocaleString(
                                   "en-US",
@@ -458,9 +566,6 @@ export default function AdminUsers() {
                                 )
                               : "—"}
                           </td>
-                          <td className='px-4 py-4 text-center text-xs border-r last:border-r-0 hidden 2xl:table-cell truncate max-w-30'>
-                            {user.createdBy?.name || "—"}
-                          </td>
                           <td className='px-4 py-4 text-center'>
                             <div className='flex flex-wrap items-center justify-center gap-1.5'>
                               {editingId === user.id ? (
@@ -468,7 +573,7 @@ export default function AdminUsers() {
                                   <Button
                                     variant='default'
                                     size='sm'
-                                    className='h-7 px-2 text-[10px] gap-1 bg-blue-600 hover:bg-blue-700'
+                                    className='h-7 px-2 text-[14px] gap-1 bg-primary hover:bg-primary/90'
                                     onClick={() => handleUpdate(user.id)}
                                     disabled={submitting}>
                                     <Check className='h-3 w-3' />
@@ -477,7 +582,7 @@ export default function AdminUsers() {
                                   <Button
                                     variant='outline'
                                     size='sm'
-                                    className='h-7 px-2 text-[10px] gap-1'
+                                    className='h-7 px-2 text-[14px] gap-1'
                                     onClick={cancelEditing}
                                     disabled={submitting}>
                                     Cancel
@@ -488,7 +593,7 @@ export default function AdminUsers() {
                                   <Button
                                     variant='outline'
                                     size='sm'
-                                    className='h-7 px-2 text-[10px] gap-1'
+                                    className='h-7 px-2 text-[14px] gap-1'
                                     onClick={() => startEditing(user)}>
                                     <Edit2 className='h-3 w-3' />
                                     Edit
@@ -496,7 +601,7 @@ export default function AdminUsers() {
                                   <Button
                                     variant='outline'
                                     size='sm'
-                                    className='h-7 px-2 text-[10px] gap-1'
+                                    className='h-7 px-2 text-[14px] gap-1'
                                     onClick={() => {
                                       setSelectedUser(user);
                                       setFormData({
@@ -514,7 +619,7 @@ export default function AdminUsers() {
                                       variant='outline'
                                       size='sm'
                                       disabled={currentUser?.id === user.id}
-                                      className='h-7 px-2 text-[10px] gap-1 text-destructive hover:bg-destructive hover:text-destructive-foreground disabled:opacity-30'
+                                      className='h-7 px-2 text-[14px] gap-1 text-destructive hover:bg-destructive hover:text-destructive-foreground disabled:opacity-30'
                                       onClick={() => setDeactivateId(user.id)}>
                                       <UserMinus className='h-3 w-3' />
                                       Deactivate
@@ -523,7 +628,7 @@ export default function AdminUsers() {
                                     <Button
                                       variant='outline'
                                       size='sm'
-                                      className='h-7 px-2 text-[10px] gap-1 text-emerald-600 hover:bg-emerald-600 hover:text-white'
+                                      className='h-7 px-2 text-[14px] gap-1 text-emerald-600 hover:bg-emerald-600 hover:text-white'
                                       onClick={() => setReactivateId(user.id)}>
                                       <UserCheck className='h-3 w-3' />
                                       Reactivate
@@ -546,26 +651,102 @@ export default function AdminUsers() {
 
       {/* Add User Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className='w-[95vw] max-w-lg sm:w-full overflow-y-auto max-h-[90vh]'>
+        <DialogContent className='w-[95vw] max-w-2xl sm:w-full overflow-y-auto max-h-[90vh] scrollbar-thin'>
           <DialogHeader>
             <DialogTitle>Add User Account</DialogTitle>
             <DialogDescription>
-              Add a new Registrar to the system. Teachers are managed separately
-              via Teacher Management.
+              Add a new Registrar or Admin to the system.
             </DialogDescription>
           </DialogHeader>
           <div className='space-y-4 py-2'>
-            <div className='grid gap-4 sm:grid-cols-2'>
+            <div className='grid gap-4 sm:grid-cols-3'>
               <div className='space-y-2'>
-                <Label>Full Name *</Label>
+                <Label>First Name *</Label>
                 <Input
-                  placeholder='e.g. Cruz, Regina A.'
-                  value={formData.name}
+                  placeholder='e.g. Regina'
+                  value={formData.firstName}
                   onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
+                    setFormData({ ...formData, firstName: e.target.value })
                   }
                 />
               </div>
+              <div className='space-y-2'>
+                <Label>Middle Name</Label>
+                <Input
+                  placeholder='e.g. Alcantara'
+                  value={formData.middleName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, middleName: e.target.value })
+                  }
+                />
+              </div>
+              <div className='space-y-2'>
+                <Label>Last Name *</Label>
+                <Input
+                  placeholder='e.g. Cruz'
+                  value={formData.lastName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, lastName: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+
+            <div className='grid gap-4 sm:grid-cols-3'>
+              <div className='space-y-2'>
+                <Label>Suffix</Label>
+                <Input
+                  placeholder='e.g. Jr., III'
+                  value={formData.suffix}
+                  onChange={(e) =>
+                    setFormData({ ...formData, suffix: e.target.value })
+                  }
+                />
+              </div>
+              <div className='space-y-2 sm:col-span-2'>
+                <Label className="mb-3 block">Sex *</Label>
+                <RadioGroup
+                  value={formData.sex}
+                  onValueChange={(v: "MALE" | "FEMALE") =>
+                    setFormData({ ...formData, sex: v })
+                  }
+                  className='flex gap-6 mt-1'>
+                  <div className='flex items-center space-x-2'>
+                    <RadioGroupItem value='MALE' id='sex-male' />
+                    <Label htmlFor='sex-male' className="font-medium cursor-pointer">Male</Label>
+                  </div>
+                  <div className='flex items-center space-x-2'>
+                    <RadioGroupItem value='FEMALE' id='sex-female' />
+                    <Label htmlFor='sex-female' className="font-medium cursor-pointer">Female</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            </div>
+
+            <div className='grid gap-4 sm:grid-cols-2'>
+              <div className='space-y-2'>
+                <Label>Employee ID (Optional)</Label>
+                <Input
+                  placeholder='e.g. 1234567'
+                  value={formData.employeeId}
+                  onChange={(e) =>
+                    setFormData({ ...formData, employeeId: e.target.value })
+                  }
+                />
+              </div>
+              <div className='space-y-2'>
+                <Label>Position / Designation</Label>
+                <Input
+                  placeholder='e.g. Registrar I'
+                  value={formData.designation}
+                  onChange={(e) =>
+                    setFormData({ ...formData, designation: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+
+            <div className='grid gap-4 sm:grid-cols-2'>
               <div className='space-y-2'>
                 <Label>Email Address *</Label>
                 <Input
@@ -577,7 +758,21 @@ export default function AdminUsers() {
                   }
                 />
               </div>
+              <div className='space-y-2'>
+                <Label>Mobile Number *</Label>
+                <Input
+                  placeholder='e.g. 09123456789'
+                  value={formData.mobileNumber}
+                  onChange={(e) =>
+                    setFormData({ ...formData, mobileNumber: e.target.value })
+                  }
+                />
+              </div>
             </div>
+            <p className="text-[14px] text-muted-foreground italic -mt-2">
+                Official email and mobile number are required for account recovery.
+            </p>
+
             <div className='space-y-2'>
               <Label>Role *</Label>
               <RadioGroup
@@ -585,36 +780,56 @@ export default function AdminUsers() {
                 onValueChange={(v: "REGISTRAR" | "SYSTEM_ADMIN") =>
                   setFormData({ ...formData, role: v })
                 }
-                className='grid gap-2'>
-                <div className='flex items-start gap-3 rounded-lg border p-2.5 hover:bg-muted/50 cursor-pointer transition-colors relative'>
+                className='flex flex-row gap-4'>
+                <div 
+                  className={`flex items-center gap-3 rounded-lg border p-2.5 hover:bg-muted/50 cursor-pointer transition-all relative flex-1 ${
+                    formData.role === 'SYSTEM_ADMIN' 
+                      ? 'border-primary bg-primary/5 shadow-sm' 
+                      : 'border-border'
+                  }`}
+                  onClick={() => setFormData({ ...formData, role: 'SYSTEM_ADMIN' })}
+                >
                   <RadioGroupItem
                     value='SYSTEM_ADMIN'
                     id='role-admin'
-                    className='mt-1'
                   />
                   <Label
                     htmlFor='role-admin'
-                    className='flex flex-col gap-0.5 cursor-pointer flex-1'>
-                    <span className='font-bold text-sm'>
-                      System Administrator
+                    className={`flex flex-col gap-0.5 cursor-pointer flex-1 ${
+                      formData.role === 'SYSTEM_ADMIN' ? 'text-primary' : ''
+                    }`}>
+                    <span className='font-bold text-[14px]'>
+                      Admin
                     </span>
-                    <span className='text-[10px] text-muted-foreground leading-tight'>
-                      Full access, audit logs, and system health.
+                    <span className={`text-[14px] leading-tight ${
+                      formData.role === 'SYSTEM_ADMIN' ? 'text-primary/70' : 'text-muted-foreground'
+                    }`}>
+                      Full access & logs.
                     </span>
                   </Label>
                 </div>
-                <div className='flex items-start gap-3 rounded-lg border p-2.5 hover:bg-muted/50 cursor-pointer transition-colors relative'>
+                <div 
+                  className={`flex items-center gap-3 rounded-lg border p-2.5 hover:bg-muted/50 cursor-pointer transition-all relative flex-1 ${
+                    formData.role === 'REGISTRAR' 
+                      ? 'border-primary bg-primary/5 shadow-sm' 
+                      : 'border-border'
+                  }`}
+                  onClick={() => setFormData({ ...formData, role: 'REGISTRAR' })}
+                >
                   <RadioGroupItem
                     value='REGISTRAR'
                     id='role-reg'
-                    className='mt-1'
                   />
                   <Label
                     htmlFor='role-reg'
-                    className='flex flex-col gap-0.5 cursor-pointer flex-1'>
-                    <span className='font-bold text-sm'>Registrar</span>
-                    <span className='text-[10px] text-muted-foreground leading-tight'>
-                      Access to enrollment, applications, and sections.
+                    className={`flex flex-col gap-0.5 cursor-pointer flex-1 ${
+                      formData.role === 'REGISTRAR' ? 'text-primary' : ''
+                    }`}>
+                    <span className='font-bold text-[14px]'>Registrar</span>
+                    <span className={`text-[14px] leading-tight ${
+                      formData.role === 'REGISTRAR' ? 'text-primary/70' : 'text-muted-foreground'
+                    }`}>
+                      Enrollment & sections.
                     </span>
                   </Label>
                 </div>
@@ -628,45 +843,63 @@ export default function AdminUsers() {
                   onChange={(e) =>
                     setFormData({ ...formData, password: e.target.value })
                   }
-                  className=' text-xs sm:text-sm'
+                  className=' text-[14px] sm:text-[14px]'
                 />
                 <Button
                   variant='outline'
                   size='icon'
                   className='shrink-0 h-9 w-9'
-                  onClick={() =>
-                    setFormData({ ...formData, password: generatePassword() })
-                  }
+                  onClick={() => {
+                    setIsGenerating(true);
+                    setFormData({ ...formData, password: generatePassword() });
+                    setTimeout(() => setIsGenerating(false), 600);
+                  }}
                   title='Generate'>
-                  <RefreshCw className='h-4 w-4' />
+                  <motion.div
+                    animate={isGenerating ? { rotate: 360 } : { rotate: 0 }}
+                    transition={{ duration: 0.5, ease: "easeInOut" }}
+                  >
+                    <RefreshCw className='h-4 w-4' />
+                  </motion.div>
                 </Button>
                 <Button
                   variant='outline'
                   size='icon'
-                  className='shrink-0 h-9 w-9'
+                  className='shrink-0 h-9 w-9 overflow-hidden'
                   onClick={() => copyToClipboard(formData.password)}
                   title='Copy'>
-                  {copied ? (
-                    <Check className='h-4 w-4 text-green-600' />
-                  ) : (
-                    <Copy className='h-4 w-4' />
-                  )}
+                  <AnimatePresence mode='wait'>
+                    {copied ? (
+                      <motion.div
+                        key="check"
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <Check className='h-4 w-4 text-green-600' />
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="copy"
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <Copy className='h-4 w-4' />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </Button>
               </div>
             </div>
-            <div className='flex items-center space-x-2 pt-1'>
-              <Checkbox
-                id='must-change'
-                checked={formData.mustChangePassword}
-                onCheckedChange={(v: boolean) =>
-                  setFormData({ ...formData, mustChangePassword: v })
-                }
-              />
-              <Label
-                htmlFor='must-change'
-                className='text-xs sm:text-sm cursor-pointer'>
-                Require password change on first login
-              </Label>
+            <div className='p-3 rounded-lg bg-primary text-primary-foreground text-[14px] leading-relaxed shadow-sm'>
+              <strong className="flex items-center gap-1.5 mb-0.5">
+                <ShieldAlert className="h-3.5 w-3.5" />
+                Security Notice:
+              </strong> 
+              Users will be required to change this temporary password upon their first login for security compliance.
             </div>
           </div>
           <DialogFooter className='gap-2 sm:gap-0'>
@@ -681,8 +914,10 @@ export default function AdminUsers() {
               onClick={handleCreate}
               disabled={
                 submitting ||
-                !formData.name ||
+                !formData.firstName ||
+                !formData.lastName ||
                 !formData.email ||
+                !formData.mobileNumber ||
                 !formData.password
               }
               className='w-full sm:w-auto'>
@@ -701,11 +936,11 @@ export default function AdminUsers() {
               Reset Password
             </DialogTitle>
             <DialogDescription>
-              Generate a new temporary password for {selectedUser?.name}.
+              Generate a new temporary password for {selectedUser?.lastName}, {selectedUser?.firstName}.
             </DialogDescription>
           </DialogHeader>
           <div className='space-y-4 py-2'>
-            <div className='p-3 rounded-lg bg-orange-50 border border-orange-100 text-[11px] text-orange-800 leading-relaxed'>
+            <div className='p-3 rounded-lg bg-orange-50 border border-orange-100 text-[14px] text-orange-800 leading-relaxed'>
               <strong>Warning:</strong> Existing login sessions for this user
               will be invalidated. Share the new password through a secure
               offline channel.
@@ -718,43 +953,63 @@ export default function AdminUsers() {
                   onChange={(e) =>
                     setFormData({ ...formData, password: e.target.value })
                   }
-                  className=' text-xs sm:text-sm'
+                  className=' text-[14px] sm:text-[14px]'
                 />
                 <Button
                   variant='outline'
                   size='icon'
                   className='shrink-0 h-9 w-9'
-                  onClick={() =>
-                    setFormData({ ...formData, password: generatePassword() })
-                  }>
-                  <RefreshCw className='h-4 w-4' />
+                  onClick={() => {
+                    setIsGenerating(true);
+                    setFormData({ ...formData, password: generatePassword() });
+                    setTimeout(() => setIsGenerating(false), 600);
+                  }}
+                  title='Generate'>
+                  <motion.div
+                    animate={isGenerating ? { rotate: 360 } : { rotate: 0 }}
+                    transition={{ duration: 0.5, ease: "easeInOut" }}
+                  >
+                    <RefreshCw className='h-4 w-4' />
+                  </motion.div>
                 </Button>
                 <Button
                   variant='outline'
                   size='icon'
-                  className='shrink-0 h-9 w-9'
-                  onClick={() => copyToClipboard(formData.password)}>
-                  {copied ? (
-                    <Check className='h-4 w-4 text-green-600' />
-                  ) : (
-                    <Copy className='h-4 w-4' />
-                  )}
+                  className='shrink-0 h-9 w-9 overflow-hidden'
+                  onClick={() => copyToClipboard(formData.password)}
+                  title='Copy'>
+                  <AnimatePresence mode='wait'>
+                    {copied ? (
+                      <motion.div
+                        key="check"
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <Check className='h-4 w-4 text-green-600' />
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="copy"
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <Copy className='h-4 w-4' />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </Button>
               </div>
             </div>
-            <div className='flex items-center space-x-2 pt-1'>
-              <Checkbox
-                id='reset-must-change'
-                checked={formData.mustChangePassword}
-                onCheckedChange={(v: boolean) =>
-                  setFormData({ ...formData, mustChangePassword: v })
-                }
-              />
-              <Label
-                htmlFor='reset-must-change'
-                className='text-xs sm:text-sm cursor-pointer'>
-                Require password change on next login
-              </Label>
+            <div className='p-3 rounded-lg bg-primary text-primary-foreground text-[14px] leading-relaxed shadow-sm'>
+              <strong className="flex items-center gap-1.5 mb-0.5">
+                <ShieldAlert className="h-3.5 w-3.5" />
+                Security Policy:
+              </strong> 
+              Password change is mandatory on next login for all administrative accounts.
             </div>
           </div>
           <DialogFooter className='gap-2 sm:gap-0'>

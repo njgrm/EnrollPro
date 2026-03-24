@@ -35,7 +35,7 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
 const API_BASE =
-  import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:3001";
+  import.meta.env.VITE_API_URL?.replace("/api", "") || "http://192.168.254.106:3001";
 const trackSchema = z.object({
   trackingNumber: z
     .string()

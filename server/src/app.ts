@@ -40,7 +40,9 @@ app.use(
 app.use(
   cors({
     origin: [
-      process.env.CLIENT_URL || "http://localhost:5173",
+      process.env.CLIENT_URL || "http://192.168.254.106:5173",
+      "http://192.168.254.106:5173",
+      "http://192.168.254.106:5174",
       "http://localhost:5173",
       "http://localhost:5174",
     ],

@@ -33,7 +33,7 @@ export default function StudentProfile() {
     if (!photo) return null;
     if (photo.startsWith("data:")) return photo;
     const baseUrl = (
-      import.meta.env.VITE_API_URL || "http://localhost:3001/api"
+      import.meta.env.VITE_API_URL || "http://192.168.254.106:3001/api"
     ).replace(/\/api$/, "");
     return `${baseUrl}${photo}`;
   };
@@ -329,7 +329,7 @@ export default function StudentProfile() {
                       {student.encodedBy && (
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Encoded By:</span>
-                          <span>{student.encodedBy.name}</span>
+                          <span>{student.encodedBy.firstName} {student.encodedBy.lastName}</span>
                         </div>
                       )}
                     </CardContent>

@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import type { ApplicantDetail } from '@/hooks/useApplicationDetail';
+import { CONFIG as STATUS_CONFIG } from './StatusBadge';
 
 interface Props {
   applicant: ApplicantDetail;
@@ -20,9 +21,10 @@ export function StatusTimeline({ applicant }: Props) {
   // Example heuristic timeline. In reality, we'd map over applicant.emailLogs or an audit array.
   // We'll stick to a simple display.
   if (['UNDER_REVIEW', 'ELIGIBLE', 'ASSESSMENT_SCHEDULED', 'ASSESSMENT_TAKEN', 'PASSED', 'PRE_REGISTERED', 'ENROLLED', 'REJECTED'].includes(applicant.status)) {
+    const statusLabel = STATUS_CONFIG[applicant.status]?.label || applicant.status.replace('_', ' ');
     timeline.push({
       date: new Date(applicant.updatedAt),
-      label: `Status changed to ${applicant.status.replace('_', ' ')}`,
+      label: `Status changed to ${statusLabel}`,
     });
   }
 

@@ -123,7 +123,7 @@ export default function Dashboard() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
-            Welcome back, <span className="font-semibold text-primary">{user?.name}</span>
+            Welcome back, <span className="font-semibold text-primary">{user?.firstName} {user?.lastName}</span>
           </p>
         </div>
         <div className="flex items-center gap-2">

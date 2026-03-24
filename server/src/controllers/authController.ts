@@ -44,14 +44,14 @@ export async function login(req: Request, res: Response): Promise<void> {
 
   res.json({
     token,
-    user: { id: user.id, name: user.name, email: user.email, role: user.role, mustChangePassword: user.mustChangePassword },
+    user: { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email, role: user.role, mustChangePassword: user.mustChangePassword },
   });
 }
 
 export async function me(req: Request, res: Response): Promise<void> {
   const user = await prisma.user.findUnique({
     where: { id: req.user!.userId },
-    select: { id: true, name: true, email: true, role: true, mustChangePassword: true },
+    select: { id: true, firstName: true, lastName: true, email: true, role: true, mustChangePassword: true },
   });
 
   if (!user) {
@@ -83,7 +83,7 @@ export async function changePassword(req: Request, res: Response): Promise<void>
   const updated = await prisma.user.update({
     where: { id: userId },
     data: { password: hashed, mustChangePassword: false, updatedAt: new Date() },
-    select: { id: true, name: true, email: true, role: true, mustChangePassword: true },
+    select: { id: true, firstName: true, lastName: true, email: true, role: true, mustChangePassword: true },
   });
 
   const token = jwt.sign(

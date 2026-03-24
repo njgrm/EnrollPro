@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
-import { Search, Eye, Info } from "lucide-react";
+import { Search, Eye } from "lucide-react";
 import { sileo } from "sileo";
 import api from "@/api/axiosInstance";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { toastApiError } from "@/hooks/useApiToast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Table,
@@ -37,6 +36,8 @@ import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import { ApplicationDetailPanel } from "@/components/applications/ApplicationDetailPanel";
 import { ScheduleExamDialog } from "@/components/applications/ScheduleExamDialog";
+import { StatusBadge } from "@/components/applications/StatusBadge";
+import type { ApplicantDetail } from "@/hooks/useApplicationDetail";
 
 interface Application {
   id: number;
@@ -46,38 +47,13 @@ interface Application {
   middleName: string | null;
   suffix: string | null;
   trackingNumber: string;
-  status:
-    | "SUBMITTED"
-    | "UNDER_REVIEW"
-    | "FOR_REVISION"
-    | "ELIGIBLE"
-    | "ASSESSMENT_SCHEDULED"
-    | "ASSESSMENT_TAKEN"
-    | "PRE_REGISTERED"
-    | "NOT_QUALIFIED"
-    | "ENROLLED"
-    | "REJECTED"
-    | "WITHDRAWN";
+  status: string;
   applicantType: string;
   gradeLevelId: number;
   gradeLevel: { name: string };
   strand?: { name: string } | null;
   createdAt: string;
 }
-
-const STATUS_COLORS: Record<string, string> = {
-  SUBMITTED: "bg-slate-100 text-slate-700 border-slate-200",
-  UNDER_REVIEW: "bg-blue-100 text-blue-700 border-blue-200",
-  FOR_REVISION: "bg-orange-100 text-orange-700 border-orange-200",
-  ELIGIBLE: "bg-cyan-100 text-cyan-700 border-cyan-200",
-  ASSESSMENT_SCHEDULED: "bg-amber-100 text-amber-800 border-amber-300",
-  ASSESSMENT_TAKEN: "bg-purple-100 text-purple-700 border-purple-200",
-  PRE_REGISTERED: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  NOT_QUALIFIED: "bg-amber-100 text-amber-700 border-amber-200",
-  ENROLLED: "bg-green-100 text-green-700 border-green-200",
-  REJECTED: "bg-red-100 text-red-700 border-red-200",
-  WITHDRAWN: "bg-zinc-100 text-zinc-700 border-zinc-200",
-};
 
 const APPLICANT_TYPES = [
   { value: "ALL", label: "All Types" },
@@ -106,7 +82,7 @@ export default function EarlyRegistration() {
   const [page, setPage] = useState(1);
 
   // Detail/Action state
-  const [selectedApp, setSelectedApp] = useState<any | null>(null);
+  const [selectedApp, setSelectedApp] = useState<Application | ApplicantDetail | null>(null);
   const [actionType, setActionType] = useState<
     "APPROVE" | "REJECT" | "RESULT" | "ELIGIBLE" | null
   >(null);
@@ -309,11 +285,12 @@ export default function EarlyRegistration() {
                     <SelectItem value="FOR_REVISION">For Revision</SelectItem>
                     <SelectItem value="ELIGIBLE">Eligible</SelectItem>
                     <SelectItem value="ASSESSMENT_SCHEDULED">
-                      Assessment Scheduled
+                      Exam Scheduled
                     </SelectItem>
                     <SelectItem value="ASSESSMENT_TAKEN">
-                      Assessment Taken
+                      Exam Taken
                     </SelectItem>
+
                     <SelectItem value="NOT_QUALIFIED">Not Qualified</SelectItem>
                     <SelectItem value="REJECTED">Rejected</SelectItem>
                     <SelectItem value="WITHDRAWN">Withdrawn</SelectItem>
@@ -431,12 +408,7 @@ export default function EarlyRegistration() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={`font-bold ${STATUS_COLORS[app.status]}`}
-                          >
-                            {app.status.replace("_", " ")}
-                          </Badge>
+                          <StatusBadge status={app.status} />
                         </TableCell>
                         <TableCell className="text-[hsl(var(--muted-foreground))] hidden xl:table-cell">
                           {format(new Date(app.createdAt), "MMM dd, yyyy")}
@@ -748,7 +720,7 @@ export default function EarlyRegistration() {
       <ScheduleExamDialog
         open={isScheduleDialogOpen}
         onOpenChange={setIsScheduleDialogOpen}
-        applicant={selectedApp}
+        applicant={selectedApp as ApplicantDetail | null}
         onSuccess={fetchData}
       />
     </div>

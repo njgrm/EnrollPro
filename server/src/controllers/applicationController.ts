@@ -178,12 +178,12 @@ export async function show(req: Request, res: Response) {
         strand: true,
         schoolYear: true,
         documents: {
-          include: { uploadedBy: { select: { id: true, name: true, role: true } } },
+          include: { uploadedBy: { select: { id: true, firstName: true, lastName: true, role: true } } },
         },
         checklist: {
-          include: { updatedBy: { select: { id: true, name: true, role: true } } },
+          include: { updatedBy: { select: { id: true, firstName: true, lastName: true, role: true } } },
         },
-        encodedBy: { select: { id: true, name: true, role: true } },
+        encodedBy: { select: { id: true, firstName: true, lastName: true, role: true } },
         enrollment: {
           include: {
             section: {
@@ -193,7 +193,7 @@ export async function show(req: Request, res: Response) {
                 },
               },
             },
-            enrolledBy: { select: { id: true, name: true } },
+            enrolledBy: { select: { id: true, firstName: true, lastName: true } },
           },
         },
       },
@@ -1309,7 +1309,7 @@ export async function scheduleExam(req: Request, res: Response) {
         await prisma.emailLog.create({
           data: {
             recipient: applicant.emailAddress,
-            subject: `Assessment Scheduled - ${applicant.trackingNumber}`,
+            subject: `Exam Scheduled - ${applicant.trackingNumber}`,
             trigger: "EXAM_SCHEDULED",
             status: "PENDING",
             applicantId,
@@ -1518,7 +1518,7 @@ export async function getTimeline(req: Request, res: Response) {
         recordId: applicantId,
       },
       include: {
-        user: { select: { id: true, name: true, role: true } },
+        user: { select: { id: true, firstName: true, lastName: true, role: true } },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -1805,12 +1805,12 @@ export async function showDetailed(req: Request, res: Response) {
         strand: true,
         schoolYear: true,
         documents: {
-          include: { uploadedBy: { select: { id: true, name: true, role: true } } },
+          include: { uploadedBy: { select: { id: true, firstName: true, lastName: true, role: true } } },
         },
         checklist: {
-          include: { updatedBy: { select: { id: true, name: true, role: true } } },
+          include: { updatedBy: { select: { id: true, firstName: true, lastName: true, role: true } } },
         },
-        encodedBy: { select: { id: true, name: true, role: true } },
+        encodedBy: { select: { id: true, firstName: true, lastName: true, role: true } },
         enrollment: {
           include: {
             section: {
@@ -1820,7 +1820,7 @@ export async function showDetailed(req: Request, res: Response) {
                 },
               },
             },
-            enrolledBy: { select: { id: true, name: true } },
+            enrolledBy: { select: { id: true, firstName: true, lastName: true } },
           },
         },
         emailLogs: {
@@ -1841,7 +1841,7 @@ export async function showDetailed(req: Request, res: Response) {
         recordId: application.id,
       },
       include: {
-        user: { select: { id: true, name: true, role: true } },
+        user: { select: { id: true, firstName: true, lastName: true, role: true } },
       },
       orderBy: { createdAt: "desc" },
     });

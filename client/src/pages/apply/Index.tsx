@@ -12,7 +12,7 @@ import { useSettingsStore } from "@/stores/settingsStore";
 const CONSENT_KEY = "enrollpro_apply_consent";
 const TAB_KEY = "enrollpro_apply_active_tab";
 const API_BASE =
-  import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:3001";
+  import.meta.env.VITE_API_URL?.replace("/api", "") || "http://192.168.254.106:3001";
 
 export default function Apply() {
   const [hasConsented, setHasConsented] = useState(() => {

@@ -21,7 +21,7 @@ import type { ApplicantDetail } from "@/hooks/useApplicationDetail";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  applicant: ApplicantDetail;
+  applicant: ApplicantDetail | null;
   onSuccess: () => void;
 }
 
@@ -78,6 +78,8 @@ export function ScheduleExamDialog({
     }
   }, [open, applicant]);
 
+  if (!applicant) return null;
+
   const handleSchedule = async () => {
     if (!examDate) return;
     try {
@@ -89,7 +91,7 @@ export function ScheduleExamDialog({
       });
       sileo.success({
         title: "Scheduled",
-        description: "Assessment scheduled successfully.",
+        description: "Exam scheduled successfully.",
       });
       onOpenChange(false);
       onSuccess();
@@ -100,7 +102,7 @@ export function ScheduleExamDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='sm:max-w-md'>
+      <DialogContent className='w-[95vw] max-w-md sm:w-full overflow-y-auto max-h-[90vh] scrollbar-thin'>
         <DialogHeader>
           <DialogTitle>Schedule Assessment</DialogTitle>
           <DialogDescription>

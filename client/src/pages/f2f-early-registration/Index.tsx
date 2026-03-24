@@ -326,7 +326,7 @@ export default function F2FEarlyRegistration() {
     return (
       <F2FEarlyRegistrationSuccess
         trackingNumber={trackingNumber}
-        encodedBy={user?.name || "Staff"}
+        encodedBy={user ? `${user.firstName} ${user.lastName}` : "Staff"}
         onNewApplication={handleFullReset}
       />
     );

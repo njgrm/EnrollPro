@@ -46,7 +46,8 @@ export interface EnrollmentDetail {
   };
   enrolledBy: {
     id: number;
-    name: string;
+    firstName: string;
+    lastName: string;
   };
 }
 
@@ -74,7 +75,7 @@ export interface ChecklistData {
   isUndertakingSigned: boolean;
   isConfirmationSlipReceived: boolean;
   updatedAt: string;
-  updatedBy?: { id: number; name: string; role: string } | null;
+  updatedBy?: { id: number; firstName: string; lastName: string; role: string } | null;
 }
 
 export type LearnerType =
@@ -93,7 +94,7 @@ export interface AuditLog {
   ipAddress: string;
   userAgent: string | null;
   createdAt: string;
-  user?: { id: number; name: string; role: string } | null;
+  user?: { id: number; firstName: string; lastName: string; role: string } | null;
 }
 
 export interface HealthRecord {
@@ -106,7 +107,7 @@ export interface HealthRecord {
   heightCm: number;
   notes: string | null;
   recordedById: number;
-  recordedBy?: { id: number; name: string; role: string } | null;
+  recordedBy?: { id: number; firstName: string; lastName: string; role: string } | null;
   schoolYear?: { id: number; yearLabel: string } | null;
   createdAt: string;
   updatedAt: string;
@@ -186,7 +187,7 @@ export interface ApplicantDetail {
   gradeLevel: { id: number; name: string };
   strand: { id: number; name: string } | null;
   schoolYear: { id: number; yearLabel: string };
-  encodedBy: { id: number; name: string; role: string } | null;
+  encodedBy: { id: number; firstName: string; lastName: string; role: string } | null;
   enrollment: EnrollmentDetail | null;
   documents?: {
     id: number;
@@ -200,7 +201,7 @@ export interface ApplicantDetail {
     isPresentedOnly: boolean;
     uploadedAt: string;
     verifiedAt: string | null;
-    uploadedBy?: { id: number; name: string; role: string } | null;
+    uploadedBy?: { id: number; firstName: string; lastName: string; role: string } | null;
   }[];
   checklist?: ChecklistData;
   emailLogs?: EmailLog[];

@@ -39,7 +39,7 @@ interface Document {
   isPresentedOnly: boolean;
   uploadedAt: string;
   verifiedAt: string | null;
-  uploadedBy?: { id: number; name: string; role: string } | null;
+  uploadedBy?: { id: number; firstName: string; lastName: string; role: string } | null;
 }
 
 interface Props {
@@ -48,7 +48,8 @@ interface Props {
   checklist?: ChecklistData | null;
   encodedBy?: {
     id: number;
-    name: string;
+    firstName: string;
+    lastName: string;
     role: string;
   } | null;
   auditLogs?: AuditLog[];
@@ -62,7 +63,7 @@ interface AuditRow {
   status: "Added" | "Removed" | "Pending";
   document: Document | undefined;
   lastModified: string | null;
-  modifiedBy: { id: number; name: string; role: string } | null;
+  modifiedBy: { id: number; firstName: string; lastName: string; role: string } | null;
   action: "Added" | "Removed" | "Pending";
 }
 
@@ -304,7 +305,9 @@ export function DocumentManagement({
                     <TableCell className='text-xs text-center'>
                       <div className='flex flex-col gap-1'>
                         <span className='font-bold'>
-                          {row.modifiedBy?.name || "N/A"}
+                          {row.modifiedBy
+                            ? `${row.modifiedBy.firstName} ${row.modifiedBy.lastName}`
+                            : "N/A"}
                         </span>
                         <div className='flex items-center justify-center'>
                           <Badge

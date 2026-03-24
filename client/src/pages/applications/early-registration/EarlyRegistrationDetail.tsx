@@ -41,7 +41,7 @@ export default function EarlyRegistrationDetail() {
     if (!photo) return null;
     if (photo.startsWith("data:")) return photo;
     const baseUrl = (
-      import.meta.env.VITE_API_URL || "http://localhost:3001/api"
+      import.meta.env.VITE_API_URL || "http://192.168.254.106:3001/api"
     ).replace(/\/api$/, "");
     return `${baseUrl}${photo}`;
   };
@@ -353,7 +353,10 @@ export default function EarlyRegistrationDetail() {
                   {applicant.encodedBy && (
                     <>
                       <span className="text-muted-foreground">Encoded By:</span>
-                      <span>{applicant.encodedBy.name}</span>
+                      <span>
+                        {applicant.encodedBy.firstName}{" "}
+                        {applicant.encodedBy.lastName}
+                      </span>
                     </>
                   )}
                 </div>

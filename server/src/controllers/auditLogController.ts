@@ -31,7 +31,8 @@ export async function index(req: Request, res: Response) {
           user: {
             select: {
               id: true,
-              name: true,
+              firstName: true,
+              lastName: true,
               role: true,
             },
           },
@@ -71,7 +72,8 @@ export async function exportCsv(req: Request, res: Response) {
       include: {
         user: {
           select: {
-            name: true,
+            firstName: true,
+            lastName: true,
             role: true,
           },
         },
@@ -81,17 +83,20 @@ export async function exportCsv(req: Request, res: Response) {
 
     const csv = [
       'Timestamp,User,Role,Action Type,Description,IP Address,User Agent',
-      ...logs.map((log) =>
-        [
+      ...logs.map((log) => {
+        const userName = log.user 
+          ? `"${log.user.lastName}, ${log.user.firstName}"`
+          : '"System/Guest"';
+        return [
           log.createdAt.toISOString(),
-          `"${log.user?.name || 'System/Guest'}"`,
+          userName,
           log.user?.role || '',
           log.actionType,
           `"${log.description}"`,
           log.ipAddress,
           `"${log.userAgent || ''}"`,
-        ].join(',')
-      ),
+        ].join(',');
+      }),
     ].join('\n');
 
     res.setHeader('Content-Type', 'text/csv');

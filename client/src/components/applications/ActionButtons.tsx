@@ -69,7 +69,7 @@ export function ActionButtons({ applicant, ...handlers }: Props) {
           <Button
             className='w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90'
             onClick={handlers.onRecordResult}>
-            Record Assessment Result
+            Record Exam Result
           </Button>
           <Button
             variant='outline'

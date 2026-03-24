@@ -106,7 +106,8 @@ export const getStudentById = async (req: Request, res: Response) => {
             enrolledBy: {
               select: {
                 id: true,
-                name: true,
+                firstName: true,
+                lastName: true,
                 email: true,
               },
             },
@@ -178,7 +179,7 @@ export const getStudentById = async (req: Request, res: Response) => {
               ? `${applicant.enrollment.section.advisingTeacher.lastName}, ${applicant.enrollment.section.advisingTeacher.firstName}${applicant.enrollment.section.advisingTeacher.middleName ? ` ${applicant.enrollment.section.advisingTeacher.middleName.charAt(0)}.` : ""}`
               : null,
             enrolledAt: applicant.enrollment.enrolledAt,
-            enrolledBy: applicant.enrollment.enrolledBy.name,
+            enrolledBy: `${applicant.enrollment.enrolledBy.lastName}, ${applicant.enrollment.enrolledBy.firstName}`,
           }
         : null,
       createdAt: applicant.createdAt,
@@ -275,7 +276,7 @@ export const getHealthRecords = async (req: Request, res: Response) => {
           select: { yearLabel: true }
         },
         recordedBy: {
-          select: { name: true }
+          select: { firstName: true, lastName: true }
         }
       },
       orderBy: { assessmentDate: "desc" }
@@ -338,8 +339,9 @@ export const addHealthRecord = async (req: Request, res: Response) => {
       }
     });
 
-    const periodLabel = assessmentPeriod === 'BOSY' ? 'BoSY' : 'EoSY';
-    const userName = record.recordedBy?.name || 'Registrar';
+    const userName = record.recordedBy 
+      ? `${record.recordedBy.firstName} ${record.recordedBy.lastName}`
+      : 'Registrar';
     const learnerName = `${record.applicant.firstName} ${record.applicant.lastName}`;
     const yearLabel = record.schoolYear.yearLabel;
 
@@ -387,8 +389,11 @@ export const updateHealthRecord = async (req: Request, res: Response) => {
       }
     });
 
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    const userName = user?.name || 'Registrar';
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true }
+    });
+    const userName = user ? `${user.firstName} ${user.lastName}` : 'Registrar';
     const learnerName = `${record.applicant.firstName} ${record.applicant.lastName}`;
     
     const changedFields = [];
@@ -439,8 +444,11 @@ export const resetPortalPin = async (req: Request, res: Response) => {
       }
     });
 
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    const userName = user?.name || 'Registrar';
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true }
+    });
+    const userName = user ? `${user.firstName} ${user.lastName}` : 'Registrar';
     const learnerName = `${applicant.firstName} ${applicant.lastName}`;
 
     // Audit log

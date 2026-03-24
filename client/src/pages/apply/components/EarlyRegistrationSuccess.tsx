@@ -16,7 +16,7 @@ import Confetti from "react-confetti";
 import { useWindowSize } from "react-use";
 
 const API_BASE =
-  import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:3001";
+  import.meta.env.VITE_API_URL?.replace("/api", "") || "http://192.168.254.106:3001";
 
 interface EarlyRegistrationSuccessProps {
   trackingNumber: string;

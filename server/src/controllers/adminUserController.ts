@@ -19,13 +19,20 @@ export async function index(req: Request, res: Response) {
         where,
         select: {
           id: true,
-          name: true,
+          firstName: true,
+          lastName: true,
+          middleName: true,
+          suffix: true,
+          sex: true,
+          employeeId: true,
+          designation: true,
+          mobileNumber: true,
           email: true,
           role: true,
           isActive: true,
           lastLoginAt: true,
           createdAt: true,
-          createdBy: { select: { name: true } },
+          createdBy: { select: { firstName: true, lastName: true } },
         },
         orderBy: { createdAt: 'desc' },
         skip,
@@ -42,17 +49,33 @@ export async function index(req: Request, res: Response) {
 
 export async function store(req: Request, res: Response) {
   try {
-    const { name, email, password, role, mustChangePassword = true } = req.body;
-
-    // Allow creating another SYSTEM_ADMIN if needed, or keep it restricted? 
-    // Usually, only one super admin is seeded, but let's allow it if requested by a super admin.
-    // However, the prompt just said "add the admin user account so admin can manage his/her account".
+    const { 
+      firstName, 
+      lastName, 
+      middleName, 
+      suffix, 
+      sex, 
+      employeeId,
+      designation,
+      mobileNumber,
+      email, 
+      password, 
+      role, 
+      mustChangePassword = true 
+    } = req.body;
 
     const hashed = await bcrypt.hash(password, 12);
 
     const user = await prisma.user.create({
       data: {
-        name,
+        firstName,
+        lastName,
+        middleName,
+        suffix,
+        sex,
+        employeeId,
+        designation,
+        mobileNumber,
         email,
         password: hashed,
         role,
@@ -61,7 +84,8 @@ export async function store(req: Request, res: Response) {
       },
       select: {
         id: true,
-        name: true,
+        firstName: true,
+        lastName: true,
         email: true,
         role: true,
         isActive: true,
@@ -72,7 +96,7 @@ export async function store(req: Request, res: Response) {
     await auditLog({
       userId: req.user!.userId,
       actionType: 'ADMIN_USER_CREATED',
-      description: `Admin created account: ${name} (${role})`,
+      description: `Admin created account: ${lastName}, ${firstName} (${role})`,
       subjectType: 'User',
       recordId: user.id,
       req,
@@ -86,26 +110,30 @@ export async function store(req: Request, res: Response) {
 
 export async function update(req: Request, res: Response) {
   try {
-    const { name, email, role } = req.body;
+    const { firstName, lastName, middleName, suffix, sex, employeeId, designation, mobileNumber, email, role } = req.body;
     const userId = parseInt(String(req.params.id));
 
     const targetUser = await prisma.user.findUnique({ where: { id: userId } });
     if (!targetUser) return res.status(404).json({ message: 'User not found' });
 
-    // Protect SYSTEM_ADMIN role transitions if necessary
-    // If updating a SYSTEM_ADMIN, don't allow changing their role unless there's another one?
-    // For now, let's just allow updates.
-
     const user = await prisma.user.update({
       where: { id: userId },
       data: { 
-        name, 
+        firstName, 
+        lastName, 
+        middleName, 
+        suffix, 
+        sex, 
+        employeeId,
+        designation,
+        mobileNumber,
         email, 
         ...(role ? { role } : {}) 
       },
       select: {
         id: true,
-        name: true,
+        firstName: true,
+        lastName: true,
         email: true,
         role: true,
         isActive: true,
@@ -115,7 +143,7 @@ export async function update(req: Request, res: Response) {
     await auditLog({
       userId: req.user!.userId,
       actionType: 'ADMIN_USER_UPDATED',
-      description: `Admin updated account: ${name}`,
+      description: `Admin updated account: ${lastName}, ${firstName}`,
       subjectType: 'User',
       recordId: userId,
       req,
@@ -141,13 +169,13 @@ export async function deactivate(req: Request, res: Response) {
     const user = await prisma.user.update({
       where: { id: userId },
       data: { isActive: false },
-      select: { id: true, name: true, role: true },
+      select: { id: true, firstName: true, lastName: true, role: true },
     });
 
     await auditLog({
       userId: req.user!.userId,
       actionType: 'ADMIN_USER_DEACTIVATED',
-      description: `Admin deactivated account: ${user.name} (${user.role})`,
+      description: `Admin deactivated account: ${user.lastName}, ${user.firstName} (${user.role})`,
       subjectType: 'User',
       recordId: userId,
       req,
@@ -166,13 +194,13 @@ export async function reactivate(req: Request, res: Response) {
     const user = await prisma.user.update({
       where: { id: userId },
       data: { isActive: true },
-      select: { id: true, name: true, role: true },
+      select: { id: true, firstName: true, lastName: true, role: true },
     });
 
     await auditLog({
       userId: req.user!.userId,
       actionType: 'ADMIN_USER_REACTIVATED',
-      description: `Admin reactivated account: ${user.name} (${user.role})`,
+      description: `Admin reactivated account: ${user.lastName}, ${user.firstName} (${user.role})`,
       subjectType: 'User',
       recordId: userId,
       req,
@@ -194,13 +222,13 @@ export async function resetPassword(req: Request, res: Response) {
     const user = await prisma.user.update({
       where: { id: userId },
       data: { password: hashed, mustChangePassword },
-      select: { id: true, name: true },
+      select: { id: true, firstName: true, lastName: true },
     });
 
     await auditLog({
       userId: req.user!.userId,
       actionType: 'ADMIN_PASSWORD_RESET',
-      description: `Admin reset password for: ${user.name}`,
+      description: `Admin reset password for: ${user.lastName}, ${user.firstName}`,
       subjectType: 'User',
       recordId: userId,
       req,

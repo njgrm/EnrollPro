@@ -9,7 +9,14 @@ datasource db {
 
 model User {
   id                 Int          @id @default(autoincrement())
-  name               String
+  firstName          String       @map("first_name")
+  lastName           String       @map("last_name")
+  middleName         String?      @map("middle_name")
+  suffix             String?
+  sex                Sex          @default(FEMALE)
+  employeeId         String?      @unique(map: "uq_users_employee_id") @map("employee_id")
+  designation        String?
+  mobileNumber       String?      @map("mobile_number")
   email              String       @unique(map: "uq_users_email")
   password           String
   role               Role

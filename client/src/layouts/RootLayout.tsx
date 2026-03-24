@@ -6,7 +6,7 @@ import api from "@/api/axiosInstance";
 
 const DEFAULT_ACCENT_HSL = "221 83% 53%";
 const API_BASE =
-  import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:3001";
+  import.meta.env.VITE_API_URL?.replace("/api", "") || "http://192.168.254.106:3001";
 
 /** Relative luminance from HSL values */
 function luminanceFromHSL(h: number, s: number, l: number): number {

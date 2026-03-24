@@ -34,7 +34,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Teacher {
   id: number;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
 }
 
@@ -44,7 +45,7 @@ interface SectionItem {
   maxCapacity: number;
   enrolledCount: number;
   fillPercent: number;
-  advisingTeacher: { id: number; name: string } | null;
+  advisingTeacher: { id: number; firstName: string; lastName: string } | null;
 }
 
 interface GradeLevelGroup {
@@ -366,7 +367,7 @@ export default function Sections() {
                               </SelectItem>
                               {teachers.map((t) => (
                                 <SelectItem key={t.id} value={t.id.toString()}>
-                                  {t.name}
+                                  {t.firstName} {t.lastName}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -409,8 +410,8 @@ export default function Sections() {
                           {s.advisingTeacher && (
                             <span
                               className='text-xs text-[hsl(var(--muted-foreground))] truncate max-w-25'
-                              title={s.advisingTeacher.name}>
-                              {s.advisingTeacher.name}
+                              title={`${s.advisingTeacher.firstName} ${s.advisingTeacher.lastName}`}>
+                              {s.advisingTeacher.firstName} {s.advisingTeacher.lastName}
                             </span>
                           )}
                           <span className='text-xs  text-[hsl(var(--muted-foreground))]'>
@@ -489,7 +490,7 @@ export default function Sections() {
                   <SelectItem value='none'>No Advising Teacher</SelectItem>
                   {teachers.map((t) => (
                     <SelectItem key={t.id} value={t.id.toString()}>
-                      {t.name}
+                      {t.firstName} {t.lastName}
                     </SelectItem>
                   ))}
                 </SelectContent>
