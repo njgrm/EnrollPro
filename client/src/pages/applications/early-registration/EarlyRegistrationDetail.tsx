@@ -19,6 +19,7 @@ import { format } from "date-fns";
 import { DocumentManagement } from "@/components/applications/DocumentManagement";
 import { RequirementChecklist } from "@/components/applications/RequirementChecklist";
 import { ActionButtons } from "@/components/applications/ActionButtons";
+import { ScheduleExamDialog } from "@/components/applications/ScheduleExamDialog";
 import { toastApiError } from "@/hooks/useApiToast";
 import api from "@/api/axiosInstance";
 import { sileo } from "sileo";
@@ -27,6 +28,7 @@ export default function EarlyRegistrationDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
+  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
   const {
     data: applicant,
     loading,
@@ -88,10 +90,7 @@ export default function EarlyRegistrationDetail() {
   };
 
   const handleScheduleExam = async () => {
-    sileo.info({
-      title: "SCP Flow",
-      description: "Opening assessment scheduler...",
-    });
+    setIsScheduleDialogOpen(true);
   };
 
   const handleRecordResult = async () => {
@@ -383,6 +382,12 @@ export default function EarlyRegistrationDetail() {
           </Card>
         </div>
       </div>
+      <ScheduleExamDialog
+        open={isScheduleDialogOpen}
+        onOpenChange={setIsScheduleDialogOpen}
+        applicant={applicant}
+        onSuccess={refetch}
+      />
     </div>
   );
 }

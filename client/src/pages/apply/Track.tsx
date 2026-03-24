@@ -23,6 +23,8 @@ import {
   User,
   BookOpen,
   Download,
+  MapPin,
+  ClipboardList,
 } from "lucide-react";
 import api from "@/api/axiosInstance";
 import { cn, formatManilaDate, getManilaNow } from "@/lib/utils";
@@ -57,6 +59,9 @@ interface ApplicationStatus {
   strand?: { name: string };
   enrollment?: { section: { name: string }; enrolledAt: string };
   examDate?: string;
+  examTime?: string;
+  examVenue?: string;
+  examNotes?: string;
   rejectionReason?: string;
   isScpApplication?: boolean;
   scpType?: string;
@@ -74,67 +79,79 @@ const statusConfig: Record<
   SUBMITTED: {
     label: "Submitted",
     icon: Clock,
-    color: "text-blue-600 bg-blue-50 border-blue-200",
+    color: "text-slate-600 bg-slate-50 border-slate-200",
     desc: "Your application has been received and is waiting for initial review.",
   },
   UNDER_REVIEW: {
     label: "Under Review",
     icon: Search,
-    color: "text-amber-600 bg-amber-50 border-amber-200",
+    color: "text-blue-600 bg-blue-50 border-blue-200",
     desc: "The Registrar is currently verifying your documents and information.",
   },
   FOR_REVISION: {
-    label: "Action Required",
+    label: "For Revision",
     icon: AlertCircle,
-    color: "text-destructive bg-destructive/5 border-destructive/20",
-    desc: "There are issues with your application. Please check your email for instructions.",
+    color: "text-orange-600 bg-orange-50 border-orange-200",
+    desc: "A fixable issue was found. Please follow the instructions sent to your email to correct your application.",
   },
   ELIGIBLE: {
-    label: "Qualified / Eligible",
+    label: "Eligible",
     icon: CheckCircle2,
-    color: "text-emerald-600 bg-emerald-50 border-emerald-200",
-    desc: "Your documents have been verified. You are cleared for the next step.",
+    color: "text-cyan-600 bg-cyan-50 border-cyan-200",
+    desc: "Basic screening is complete. You are cleared for the next step.",
   },
   ASSESSMENT_SCHEDULED: {
-    label: "Assessment Scheduled",
+    label: "Exam Scheduled",
     icon: Calendar,
-    color: "text-purple-600 bg-purple-50 border-purple-200",
-    desc: "An entrance exam or interview has been scheduled for you.",
+    color: "text-amber-600 bg-amber-50 border-amber-200",
+    desc: "An entrance exam has been scheduled for you. Please check the details below.",
   },
   ASSESSMENT_TAKEN: {
-    label: "Assessment Completed",
+    label: "Assessment Taken",
     icon: CheckCircle2,
-    color: "text-indigo-600 bg-indigo-50 border-indigo-200",
-    desc: "Your assessment is finished. We are currently processing the results.",
+    color: "text-purple-600 bg-purple-50 border-purple-200",
+    desc: "You have completed the assessment. We are now processing your results.",
   },
-  PRE_REGISTERED: {
-    label: "Pre-Registered",
+  PASSED: {
+    label: "Passed",
     icon: CheckCircle2,
     color: "text-green-600 bg-green-50 border-green-200",
-    desc: "Congratulations! You are officially cleared for section assignment.",
+    desc: "Congratulations! You have passed the program assessment and are cleared for pre-registration.",
+  },
+  PRE_REGISTERED: {
+    label: "Approved",
+    icon: CheckCircle2,
+    color: "text-emerald-600 bg-emerald-50 border-emerald-200",
+    desc: "Congratulations! Your application is approved. You are now officially admitted and assigned to a section.",
+  },
+  TEMPORARILY_ENROLLED: {
+    label: "Temporarily Enrolled",
+    icon: Clock,
+    color: "text-blue-600 bg-blue-50 border-blue-200",
+    desc: "You are allowed to attend classes while your remaining documents are being completed.",
   },
   ENROLLED: {
-    label: "Officially Enrolled",
+    label: "Enrolled",
     icon: CheckCircle2,
     color: "text-green-700 bg-green-100 border-green-300",
-    desc: "Welcome! You are now an officially enrolled student for the School Year.",
-  },
-  REJECTED: {
-    label: "Rejected",
-    icon: AlertCircle,
-    color: "text-gray-600 bg-gray-100 border-gray-300",
-    desc: "Your application was not accepted due to specific data integrity issues.",
+    desc: "Welcome! You are now an officially enrolled student for this School Year.",
   },
   NOT_QUALIFIED: {
     label: "Not Qualified",
     icon: AlertCircle,
-    color: "text-gray-600 bg-gray-100 border-gray-300",
-    desc: "You did not meet the specific requirements for your chosen program.",
+    color: "text-amber-600 bg-amber-50 border-amber-200",
+    desc: "You did not meet the specialized program criteria. The Registrar may offer a regular section if available.",
+  },
+  REJECTED: {
+    label: "Rejected",
+    icon: AlertCircle,
+    color: "text-red-600 bg-red-50 border-red-200",
+    desc: "Your application was not accepted due to eligibility or data integrity issues.",
   },
   WITHDRAWN: {
     label: "Withdrawn",
     icon: AlertCircle,
-    color: "text-gray-400 bg-gray-50 border-gray-200",
+    color: "text-zinc-400 bg-zinc-50 border-zinc-200",
     desc: "This application has been voluntarily withdrawn.",
   },
 };
@@ -406,24 +423,46 @@ export default function TrackApplication({
 
                   {status.status === "ASSESSMENT_SCHEDULED" &&
                     status.examDate && (
-                      <div
-                        className={cn(
-                          "p-5 bg-purple-50 border border-purple-200 rounded-2xl space-y-1",
-                          status.isScpApplication
-                            ? "md:col-span-3"
-                            : "md:col-span-2",
-                        )}
-                      >
-                        <p className="text-[10px] font-black uppercase text-purple-600 tracking-widest flex items-center justify-center gap-1.5">
-                          <Calendar className="w-3 h-3" /> Scheduled Assessment
-                        </p>
-                        <p className="font-black text-purple-900 uppercase">
-                          {format(
-                            new Date(status.examDate),
-                            "MMMM dd, yyyy @ hh:mm a",
-                          )}
-                        </p>
-                      </div>
+                      <>
+                        <div className="p-5 bg-purple-50 border border-purple-200 rounded-2xl space-y-1">
+                          <p className="text-[10px] font-black uppercase text-purple-600 tracking-widest flex items-center justify-center gap-1.5">
+                            <Calendar className="w-3 h-3" /> Scheduled Date
+                          </p>
+                          <p className="font-black text-purple-900 uppercase">
+                            {format(
+                              new Date(status.examDate),
+                              "MMMM dd, yyyy",
+                            )}
+                          </p>
+                          <p className="text-[10px] font-bold text-purple-700/70 uppercase">
+                            {status.examTime ? (
+                              new Date(`2000-01-01T${status.examTime}`).toLocaleTimeString("en-US", {
+                                hour: "numeric",
+                                minute: "2-digit",
+                                hour12: true,
+                              })
+                            ) : (
+                              format(new Date(status.examDate), "hh:mm a")
+                            )}
+                          </p>
+                        </div>
+                        <div className="p-5 bg-purple-50 border border-purple-200 rounded-2xl space-y-1">
+                          <p className="text-[10px] font-black uppercase text-purple-600 tracking-widest flex items-center justify-center gap-1.5">
+                            <MapPin className="w-3 h-3" /> Exam Location
+                          </p>
+                          <p className="font-black text-purple-900 uppercase">
+                            {status.examVenue || "TO BE ANNOUNCED"}
+                          </p>
+                        </div>
+                        <div className="p-5 bg-purple-50 border border-purple-200 rounded-2xl space-y-1">
+                          <p className="text-[10px] font-black uppercase text-purple-600 tracking-widest flex items-center justify-center gap-1.5">
+                            <ClipboardList className="w-3 h-3" /> Additional Notes
+                          </p>
+                          <p className="font-bold text-purple-900/80 text-[10px] uppercase italic leading-tight line-clamp-2">
+                            {status.examNotes || "No special instructions"}
+                          </p>
+                        </div>
+                      </>
                     )}
 
                   {status.status === "FOR_REVISION" &&

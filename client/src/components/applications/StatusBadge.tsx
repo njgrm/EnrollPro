@@ -7,7 +7,7 @@ const CONFIG: Record<string, { label: string; className: string }> = {
   ELIGIBLE:       { label: 'Eligible',       className: 'bg-cyan-100 text-cyan-800 border-cyan-300' },
   PENDING:        { label: 'Pending',        className: 'bg-amber-100 text-amber-800 border-amber-300' },
   EXAM_SCHEDULED: { label: 'Exam Scheduled', className: 'bg-amber-100 text-amber-800 border-amber-300' },
-  ASSESSMENT_SCHEDULED: { label: 'Assessment Scheduled', className: 'bg-amber-100 text-amber-800 border-amber-300' },
+  ASSESSMENT_SCHEDULED: { label: 'Exam Scheduled', className: 'bg-amber-100 text-amber-800 border-amber-300' },
   EXAM_TAKEN:     { label: 'Exam Taken',     className: 'bg-indigo-100 text-indigo-800 border-indigo-300' },
   ASSESSMENT_TAKEN: { label: 'Assessment Taken', className: 'bg-indigo-100 text-indigo-800 border-indigo-300' },
   PASSED:         { label: 'Passed',         className: 'bg-green-100 text-green-800 border-green-300' },

@@ -41,10 +41,16 @@ export async function getRequirements(req: Request, res: Response) {
 
 // â"€â"€ Valid status transitions â"€â"€
 const VALID_TRANSITIONS: Record<string, ApplicationStatus[]> = {
-  SUBMITTED: ["UNDER_REVIEW", "REJECTED", "WITHDRAWN"],
+  SUBMITTED: [
+    "UNDER_REVIEW",
+    "ASSESSMENT_SCHEDULED",
+    "REJECTED",
+    "WITHDRAWN",
+  ],
   UNDER_REVIEW: [
     "FOR_REVISION",
     "ELIGIBLE",
+    "ASSESSMENT_SCHEDULED",
     "PRE_REGISTERED",
     "TEMPORARILY_ENROLLED",
     "REJECTED",
@@ -738,6 +744,8 @@ export async function track(req: Request, res: Response) {
           select: { section: { select: { name: true } }, enrolledAt: true },
         },
         examDate: true,
+        examVenue: true,
+        examNotes: true,
         rejectionReason: true,
         isScpApplication: true,
         scpType: true,
@@ -1247,10 +1255,7 @@ export async function markEligible(req: Request, res: Response) {
 // — Schedule assessment (SCP flow) —
 export async function scheduleExam(req: Request, res: Response) {
   try {
-    const body = toUpperCaseRecursive(req.body);
-    const { examDate, assessmentType } = body;
-    // examVenue should preserve case, not uppercase
-    const examVenue = req.body.examVenue || null;
+    const { examDate, examTime, examVenue, examNotes } = req.body;
     const applicantId = parseInt(String(req.params.id));
 
     const applicant = await prisma.applicant.findUnique({
@@ -1262,17 +1267,31 @@ export async function scheduleExam(req: Request, res: Response) {
 
     if (!canTransition(applicant.status, "ASSESSMENT_SCHEDULED")) {
       return res.status(422).json({
-        message: `Cannot schedule assessment for application with status "${applicant.status}". Only ELIGIBLE applications can be scheduled.`,
+        message: `Cannot schedule assessment for application with status "${applicant.status}".`,
       });
     }
+
+    // Fetch assessmentType from ScpConfig for this school year and scpType
+    const scpConfig = await prisma.scpConfig.findUnique({
+      where: {
+        uq_scp_configs_school_year_scp_type: {
+          schoolYearId: applicant.schoolYearId,
+          scpType: applicant.applicantType as any,
+        },
+      },
+    });
+
+    const assessmentType = scpConfig?.assessmentType || "EXAM_ONLY";
 
     const updated = await prisma.applicant.update({
       where: { id: applicantId },
       data: {
         status: "ASSESSMENT_SCHEDULED",
         examDate: normalizeDateToUtcNoon(new Date(examDate)),
+        examTime: examTime || null,
         assessmentType,
-        examVenue,
+        examVenue: examVenue || null,
+        examNotes: examNotes || null,
       },
     });
 

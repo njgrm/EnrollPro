@@ -4,6 +4,7 @@ import {
   Layers,
   ShieldCheck,
   Calendar,
+  Clock,
   Info,
   CheckCircle2,
   Circle,
@@ -26,6 +27,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { DatePicker } from "@/components/ui/date-picker";
+import { TimePicker } from "@/components/ui/time-picker";
 import { ACADEMIC_CLUSTERS, TECHPRO_CLUSTERS } from "@/pages/apply/types";
 
 import { Skeleton } from "@/components/ui/skeleton";
@@ -52,6 +54,7 @@ interface ScpConfig {
   isOffered: boolean;
   cutoffScore: number | null;
   examDate: string | null;
+  examTime: string | null;
   artFields: string[];
   languages: string[];
   sportsList: string[];
@@ -107,6 +110,7 @@ export default function CurriculumTab() {
             isOffered: false,
             cutoffScore: null,
             examDate: null,
+            examTime: null,
             artFields: [],
             languages: [],
             sportsList: [],
@@ -365,11 +369,10 @@ export default function CurriculumTab() {
 
                 {scp.isOffered && (
                   <div className='p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300'>
-                    <div className='flex flex-wrap gap-4'>
-                      <div className='flex flex-col gap-1 flex-1 min-w-35'>
+                    <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-20 gap-4'>
+                      <div className='flex flex-col gap-1 lg:col-span-4'>
                         <Label className='text-xs flex items-center gap-1'>
-                          <Calendar className='h-3 w-3' /> Exam
-                          Date
+                          <Calendar className='h-3 w-3' /> Exam Date
                         </Label>
                         <DatePicker
                           date={
@@ -385,13 +388,24 @@ export default function CurriculumTab() {
                           className='h-8 text-xs'
                         />
                       </div>
-                      <div className='flex flex-col gap-1 flex-1 min-w-30'>
+                      <div className='flex flex-col gap-1 lg:col-span-4'>
                         <Label className='text-xs flex items-center gap-1'>
-                          <Info className='h-3 w-3' /> Cut-off Score
+                          <Clock className='h-3 w-3' /> Exam Time
+                        </Label>
+                        <TimePicker
+                          value={scp.examTime}
+                          onChange={(v) =>
+                            handleUpdateScpField(idx, "examTime", v)
+                          }
+                        />
+                      </div>
+                      <div className='flex flex-col gap-1 lg:col-span-2'>
+                        <Label className='text-xs flex items-center gap-1'>
+                          <Info className='h-3 w-3' /> Cut-off
                         </Label>
                         <Input
                           type='number'
-                          placeholder='Min score to pass'
+                          placeholder='Min score'
                           className='h-8 text-xs'
                           value={scp.cutoffScore ?? ""}
                           onChange={(e) =>
@@ -405,7 +419,7 @@ export default function CurriculumTab() {
                           }
                         />
                       </div>
-                      <div className='flex flex-col gap-1 flex-1 min-w-40'>
+                      <div className='flex flex-col gap-1 lg:col-span-10'>
                         <Label className='text-xs'>Program Notes</Label>
                         <Input
                           placeholder='Additional requirements or details...'

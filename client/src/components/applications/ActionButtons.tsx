@@ -25,9 +25,9 @@ export function ActionButtons({ applicant, ...handlers }: Props) {
         ["SUBMITTED", "UNDER_REVIEW", "ELIGIBLE"].includes(status) && (
           <>
             <Button
-              className='w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90'
+              className='w-full bg-emerald-600 text-white hover:bg-emerald-700'
               onClick={handlers.onApprove}>
-              Approve &amp; Assign Section
+              Approve &amp; Pre-register
             </Button>
             <Button
               variant='outline'
@@ -38,11 +38,11 @@ export function ActionButtons({ applicant, ...handlers }: Props) {
           </>
         )}
 
-      {/* Temporary Enrollment - Phase 2 (Missing Docs) */}
-      {(status === "UNDER_REVIEW" || status === "PRE_REGISTERED") && (
+      {/* Temporary Enrollment - Per DepEd Order No. 3, s. 2018 */}
+      {(status === "UNDER_REVIEW" || status === "ELIGIBLE" || status === "PRE_REGISTERED") && (
         <Button
           variant='secondary'
-          className='w-full border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100'
+          className='w-full border-blue-300 text-blue-800 bg-blue-50 hover:bg-blue-100'
           onClick={handlers.onTemporarilyEnroll}>
           Mark as Temporarily Enrolled
         </Button>
@@ -57,7 +57,7 @@ export function ActionButtons({ applicant, ...handlers }: Props) {
           </Button>
           <Button
             variant='outline'
-            className='w-full border-primary text-primary border-2'
+            className='w-full border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground'
             onClick={handlers.onReject}>
             Reject Application
           </Button>
@@ -65,11 +65,19 @@ export function ActionButtons({ applicant, ...handlers }: Props) {
       )}
 
       {isSCP && status === "ASSESSMENT_SCHEDULED" && (
-        <Button
-          className='w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90'
-          onClick={handlers.onRecordResult}>
-          Record Assessment Result
-        </Button>
+        <>
+          <Button
+            className='w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90'
+            onClick={handlers.onRecordResult}>
+            Record Assessment Result
+          </Button>
+          <Button
+            variant='outline'
+            className='w-full border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground'
+            onClick={handlers.onReject}>
+            Reject Application
+          </Button>
+        </>
       )}
 
       {isSCP && status === "ASSESSMENT_TAKEN" && (

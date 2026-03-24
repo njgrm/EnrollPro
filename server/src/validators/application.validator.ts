@@ -142,7 +142,8 @@ export const rejectSchema = z.object({
 
 export const scheduleExamSchema = z.object({
   examDate: z.string().or(z.date()),
-  assessmentType: z.string().min(1, "Assessment type is required"),
+  examTime: z.string().optional().nullable(),
+  assessmentType: z.string().optional(),
   examVenue: z.string().optional().nullable(),
 });
 

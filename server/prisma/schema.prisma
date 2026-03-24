@@ -181,6 +181,7 @@ model Applicant {
   applicantType           ApplicantType     @default(REGULAR) @map("applicant_type")
   shsTrack                SHSTrack?         @map("shs_track")
   examDate                DateTime?         @db.Date @map("exam_date")
+  examTime                String?           @map("exam_time")
   examVenue               String?           @map("exam_venue")
   examScore               Float?            @map("exam_score")
   examResult              String?           @map("exam_result")
@@ -353,7 +354,9 @@ model ScpConfig {
   scpType        ApplicantType @map("scp_type")
   isOffered      Boolean       @default(false) @map("is_offered")
   cutoffScore    Float?        @map("cutoff_score")
+  assessmentType String?       @map("assessment_type")
   examDate       DateTime?     @db.Date @map("exam_date")
+  examTime       String?       @map("exam_time")
   artFields      String[]      @map("art_fields")
   languages      String[]
   sportsList     String[]      @map("sports_list")
