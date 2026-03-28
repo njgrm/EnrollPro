@@ -1,5 +1,5 @@
 import { useState } from "react";
-import depedLogo from "@/assets/Deped-logo.png";
+import depedLogo from "@/assets/DepEd-logo.png";
 import GuestLayout from "@/shared/layouts/GuestLayout";
 import PrivacyNotice from "./PrivacyNotice";
 import EarlyRegistrationForm from "./EarlyRegistrationForm";

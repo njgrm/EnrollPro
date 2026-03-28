@@ -1,7 +1,6 @@
 import * as React from "react";
 import { Clock } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
-import { Input } from "@/shared/ui/input";
 import {
   Select,
   SelectContent,
@@ -26,7 +25,7 @@ export function TimePicker({ value, onChange, className }: TimePickerProps) {
   React.useEffect(() => {
     if (value && value.includes(":")) {
       const [h24, m] = value.split(":");
-      let hInt = parseInt(h24);
+      const hInt = parseInt(h24);
       const p = hInt >= 12 ? "PM" : "AM";
 
       // Convert to 12h
@@ -55,30 +54,39 @@ export function TimePicker({ value, onChange, className }: TimePickerProps) {
 
   const handleHourChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value.replace(/\D/g, "");
+    if (val.length > 2) val = val.slice(-2);
+    
     if (val === "") {
       setHour("");
       return;
     }
+
     let h = parseInt(val);
     if (h > 12) h = 12;
-    if (h < 1) h = 1;
-    const hStr = h.toString().padStart(2, "0");
-    setHour(hStr);
-    updateValue(hStr, minute, period);
+    // Allow '0' to be typed so user can type '08', etc.
+    setHour(val);
+
+    if (h >= 1 && h <= 12) {
+      updateValue(h.toString().padStart(2, "0"), minute, period);
+    }
   };
 
   const handleMinuteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value.replace(/\D/g, "");
+    if (val.length > 2) val = val.slice(-2);
+    
     if (val === "") {
       setMinute("");
       return;
     }
+
     let m = parseInt(val);
     if (m > 59) m = 59;
-    if (m < 0) m = 0;
-    const mStr = m.toString().padStart(2, "0");
-    setMinute(mStr);
-    updateValue(hour, mStr, period);
+    setMinute(val);
+
+    if (val.length <= 2) {
+      updateValue(hour, m.toString().padStart(2, "0"), period);
+    }
   };
 
   const handlePeriodChange = (p: "AM" | "PM") => {

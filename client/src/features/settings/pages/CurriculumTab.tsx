@@ -358,8 +358,8 @@ export default function CurriculumTab() {
 
                     {scp.isOffered && (
                       <div className='p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300'>
-                        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-20 gap-4'>
-                          <div className='flex flex-col gap-1 lg:col-span-4'>
+                        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4'>
+                          <div className='flex flex-col gap-1 lg:col-span-3'>
                             <Label className='text-xs flex items-center gap-1'>
                               <Calendar className='h-3 w-3' /> Exam Date
                             </Label>
@@ -374,10 +374,10 @@ export default function CurriculumTab() {
                                   d ? d.toISOString() : null,
                                 )
                               }
-                              className='h-8 text-xs'
+                              className='h-8 text-xs font-bold'
                             />
                           </div>
-                          <div className='flex flex-col gap-1 lg:col-span-4'>
+                          <div className='flex flex-col gap-1 lg:col-span-2'>
                             <Label className='text-xs flex items-center gap-1'>
                               <Clock className='h-3 w-3' /> Exam Time
                             </Label>
@@ -395,7 +395,7 @@ export default function CurriculumTab() {
                             <Input
                               type='number'
                               placeholder='Min score'
-                              className='h-8 text-xs'
+                              className='h-8 text-xs font-bold'
                               value={scp.cutoffScore ?? ""}
                               onChange={(e) =>
                                 handleUpdateScpField(
@@ -408,7 +408,7 @@ export default function CurriculumTab() {
                               }
                             />
                           </div>
-                          <div className='flex flex-col gap-1 lg:col-span-10'>
+                          <div className='flex flex-col gap-1 lg:col-span-5'>
                             <Label className='text-xs'>Program Notes</Label>
                             <Input
                               placeholder='Additional requirements or details...'
