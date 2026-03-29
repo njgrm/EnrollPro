@@ -3,172 +3,221 @@ import { prisma } from '../../lib/prisma.js';
 import { auditLog } from '../audit-logs/audit-logs.service.js';
 
 export async function index(req: Request, res: Response) {
-  try {
-    const teachers = await prisma.teacher.findMany({
-      orderBy: { lastName: 'asc' },
-      include: {
-        _count: { select: { sections: true } }
-      }
-    });
-    res.json({ teachers });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
-  }
+	try {
+		const teachers = await prisma.teacher.findMany({
+			orderBy: { lastName: 'asc' },
+			include: {
+				subjects: true,
+				_count: { select: { sections: true } },
+			},
+		});
+		res.json({ teachers });
+	} catch (error: any) {
+		res.status(500).json({ message: error.message });
+	}
 }
 
 export async function show(req: Request, res: Response) {
-  try {
-    const id = parseInt(String(req.params.id));
-    const teacher = await prisma.teacher.findUnique({
-      where: { id },
-      include: {
-        sections: {
-          include: {
-            gradeLevel: true,
-            _count: { select: { enrollments: true } }
-          }
-        }
-      }
-    });
+	try {
+		const id = parseInt(String(req.params.id));
+		const teacher = await prisma.teacher.findUnique({
+			where: { id },
+			include: {
+				subjects: true,
+				sections: {
+					include: {
+						gradeLevel: true,
+						_count: { select: { enrollments: true } },
+					},
+				},
+			},
+		});
 
-    if (!teacher) {
-      return res.status(404).json({ message: 'Teacher not found' });
-    }
+		if (!teacher) {
+			return res.status(404).json({ message: 'Teacher not found' });
+		}
 
-    res.json({ teacher });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
-  }
+		res.json({ teacher });
+	} catch (error: any) {
+		res.status(500).json({ message: error.message });
+	}
 }
 
 export async function store(req: Request, res: Response) {
-  try {
-    const { firstName, lastName, middleName, employeeId, contactNumber, specialization, subjects } = req.body;
+	try {
+		const {
+			firstName,
+			lastName,
+			middleName,
+			employeeId,
+			contactNumber,
+			specialization,
+			subjects,
+		} = req.body;
 
-    if (!firstName || !lastName) {
-      return res.status(400).json({ message: 'First name and last name are required' });
-    }
+		if (!firstName || !lastName) {
+			return res
+				.status(400)
+				.json({ message: 'First name and last name are required' });
+		}
 
-    const teacher = await prisma.teacher.create({
-      data: {
-        firstName,
-        lastName,
-        middleName: middleName || null,
-        employeeId: employeeId || null,
-        contactNumber: contactNumber || null,
-        specialization: specialization || null,
-        subjects: subjects || [],
-      },
-    });
+		const teacher = await prisma.teacher.create({
+			data: {
+				firstName,
+				lastName,
+				middleName: middleName || null,
+				employeeId: employeeId || null,
+				contactNumber: contactNumber || null,
+				specialization: specialization || null,
+				subjects: subjects?.length
+					? {
+							createMany: {
+								data: subjects.map((s: string) => ({ subjectName: s })),
+							},
+						}
+					: undefined,
+			},
+			include: { subjects: true },
+		});
 
-    await auditLog({
-      userId: req.user!.userId,
-      actionType: 'TEACHER_CREATED',
-      description: `Created teacher profile: ${lastName}, ${firstName}`,
-      subjectType: 'Teacher',
-      recordId: teacher.id,
-      req,
-    });
+		await auditLog({
+			userId: req.user!.userId,
+			actionType: 'TEACHER_CREATED',
+			description: `Created teacher profile: ${lastName}, ${firstName}`,
+			subjectType: 'Teacher',
+			recordId: teacher.id,
+			req,
+		});
 
-    res.status(201).json({ teacher });
-  } catch (error: any) {
-    if (error.code === 'P2002' && error.meta?.target?.includes('employeeId')) {
-      return res.status(400).json({ message: 'Employee ID already exists' });
-    }
-    res.status(500).json({ message: error.message });
-  }
+		res.status(201).json({ teacher });
+	} catch (error: any) {
+		if (error.code === 'P2002' && error.meta?.target?.includes('employeeId')) {
+			return res.status(400).json({ message: 'Employee ID already exists' });
+		}
+		res.status(500).json({ message: error.message });
+	}
 }
 
 export async function update(req: Request, res: Response) {
-  try {
-    const id = parseInt(String(req.params.id));
-    const { firstName, lastName, middleName, employeeId, contactNumber, specialization, subjects } = req.body;
+	try {
+		const id = parseInt(String(req.params.id));
+		const {
+			firstName,
+			lastName,
+			middleName,
+			employeeId,
+			contactNumber,
+			specialization,
+			subjects,
+		} = req.body;
 
-    const existing = await prisma.teacher.findUnique({ where: { id } });
-    if (!existing) {
-      return res.status(404).json({ message: 'Teacher not found' });
-    }
+		const existing = await prisma.teacher.findUnique({ where: { id } });
+		if (!existing) {
+			return res.status(404).json({ message: 'Teacher not found' });
+		}
 
-    const teacher = await prisma.teacher.update({
-      where: { id },
-      data: {
-        ...(firstName ? { firstName } : {}),
-        ...(lastName ? { lastName } : {}),
-        ...(middleName !== undefined ? { middleName: middleName || null } : {}),
-        ...(employeeId !== undefined ? { employeeId: employeeId || null } : {}),
-        ...(contactNumber !== undefined ? { contactNumber: contactNumber || null } : {}),
-        ...(specialization !== undefined ? { specialization: specialization || null } : {}),
-        ...(subjects !== undefined ? { subjects } : {}),
-      },
-    });
+		const teacher = await prisma.$transaction(async (tx) => {
+			if (subjects !== undefined) {
+				await tx.teacherSubject.deleteMany({ where: { teacherId: id } });
+				if (subjects.length > 0) {
+					await tx.teacherSubject.createMany({
+						data: subjects.map((s: string) => ({
+							teacherId: id,
+							subjectName: s,
+						})),
+					});
+				}
+			}
 
-    await auditLog({
-      userId: req.user!.userId,
-      actionType: 'TEACHER_UPDATED',
-      description: `Updated teacher profile: ${teacher.lastName}, ${teacher.firstName}`,
-      subjectType: 'Teacher',
-      recordId: id,
-      req,
-    });
+			return tx.teacher.update({
+				where: { id },
+				data: {
+					...(firstName ? { firstName } : {}),
+					...(lastName ? { lastName } : {}),
+					...(middleName !== undefined
+						? { middleName: middleName || null }
+						: {}),
+					...(employeeId !== undefined
+						? { employeeId: employeeId || null }
+						: {}),
+					...(contactNumber !== undefined
+						? { contactNumber: contactNumber || null }
+						: {}),
+					...(specialization !== undefined
+						? { specialization: specialization || null }
+						: {}),
+				},
+				include: { subjects: true },
+			});
+		});
 
-    res.json({ teacher });
-  } catch (error: any) {
-    if (error.code === 'P2002' && error.meta?.target?.includes('employeeId')) {
-      return res.status(400).json({ message: 'Employee ID already exists' });
-    }
-    res.status(500).json({ message: error.message });
-  }
+		await auditLog({
+			userId: req.user!.userId,
+			actionType: 'TEACHER_UPDATED',
+			description: `Updated teacher profile: ${teacher.lastName}, ${teacher.firstName}`,
+			subjectType: 'Teacher',
+			recordId: id,
+			req,
+		});
+
+		res.json({ teacher });
+	} catch (error: any) {
+		if (error.code === 'P2002' && error.meta?.target?.includes('employeeId')) {
+			return res.status(400).json({ message: 'Employee ID already exists' });
+		}
+		res.status(500).json({ message: error.message });
+	}
 }
 
 export async function deactivate(req: Request, res: Response) {
-  try {
-    const id = parseInt(String(req.params.id));
+	try {
+		const id = parseInt(String(req.params.id));
 
-    const existing = await prisma.teacher.findUnique({ where: { id } });
-    if (!existing) {
-      return res.status(404).json({ message: 'Teacher not found' });
-    }
+		const existing = await prisma.teacher.findUnique({ where: { id } });
+		if (!existing) {
+			return res.status(404).json({ message: 'Teacher not found' });
+		}
 
-    const teacher = await prisma.teacher.update({
-      where: { id },
-      data: { isActive: false },
-    });
+		const teacher = await prisma.teacher.update({
+			where: { id },
+			data: { isActive: false },
+		});
 
-    await auditLog({
-      userId: req.user!.userId,
-      actionType: 'TEACHER_DEACTIVATED',
-      description: `Deactivated teacher: ${teacher.lastName}, ${teacher.firstName}`,
-      subjectType: 'Teacher',
-      recordId: id,
-      req,
-    });
+		await auditLog({
+			userId: req.user!.userId,
+			actionType: 'TEACHER_DEACTIVATED',
+			description: `Deactivated teacher: ${teacher.lastName}, ${teacher.firstName}`,
+			subjectType: 'Teacher',
+			recordId: id,
+			req,
+		});
 
-    res.json({ teacher });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
-  }
+		res.json({ teacher });
+	} catch (error: any) {
+		res.status(500).json({ message: error.message });
+	}
 }
 
 export async function reactivate(req: Request, res: Response) {
-  try {
-    const id = parseInt(String(req.params.id));
+	try {
+		const id = parseInt(String(req.params.id));
 
-    const teacher = await prisma.teacher.update({
-      where: { id },
-      data: { isActive: true },
-    });
+		const teacher = await prisma.teacher.update({
+			where: { id },
+			data: { isActive: true },
+		});
 
-    await auditLog({
-      userId: req.user!.userId,
-      actionType: 'TEACHER_REACTIVATED',
-      description: `Reactivated teacher: ${teacher.lastName}, ${teacher.firstName}`,
-      subjectType: 'Teacher',
-      recordId: id,
-      req,
-    });
+		await auditLog({
+			userId: req.user!.userId,
+			actionType: 'TEACHER_REACTIVATED',
+			description: `Reactivated teacher: ${teacher.lastName}, ${teacher.firstName}`,
+			subjectType: 'Teacher',
+			recordId: id,
+			req,
+		});
 
-    res.json({ teacher });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
-  }
+		res.json({ teacher });
+	} catch (error: any) {
+		res.status(500).json({ message: error.message });
+	}
 }

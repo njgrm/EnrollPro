@@ -49,11 +49,11 @@ model Teacher {
   email          String?   @map("email")
   contactNumber  String?   @map("contact_number")
   specialization String?
-  subjects       String[]  @default([])
-  isActive       Boolean   @default(true) @map("is_active")
-  createdAt      DateTime  @default(now()) @db.Timestamptz @map("created_at")
-  updatedAt      DateTime  @updatedAt @db.Timestamptz @map("updated_at")
+  isActive       Boolean          @default(true) @map("is_active")
+  createdAt      DateTime         @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt      DateTime         @updatedAt @db.Timestamptz @map("updated_at")
   sections       Section[]
+  subjects       TeacherSubject[]
 
   @@map("teachers")
 }
@@ -110,21 +110,22 @@ model GradeLevel {
   applicants     Applicant[]
   schoolYear     SchoolYear   @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
   sections       Section[]
+  strands        StrandGradeLevel[]
 
   @@map("grade_levels")
 }
 
 /// SHS academic tracks/strands (e.g. STEM, ABM) and elective clusters, cloned per school year
 model Strand {
-  id                      Int            @id @default(autoincrement())
+  id                      Int              @id @default(autoincrement())
   name                    String
-  applicableGradeLevelIds Int[]          @map("applicable_grade_level_ids")
-  schoolYearId            Int            @map("school_year_id")
-  curriculumType          CurriculumType @default(OLD_STRAND) @map("curriculum_type")
+  schoolYearId            Int              @map("school_year_id")
+  curriculumType          CurriculumType   @default(OLD_STRAND) @map("curriculum_type")
   track                   SHSTrack?
-  createdAt               DateTime       @default(now()) @db.Timestamptz @map("created_at")
+  createdAt               DateTime         @default(now()) @db.Timestamptz @map("created_at")
   applicants              Applicant[]
-  schoolYear              SchoolYear     @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  schoolYear              SchoolYear       @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  gradeLevels             StrandGradeLevel[]
 
   @@map("strands")
 }
@@ -160,11 +161,6 @@ model Applicant {
   placeOfBirth            String?           @map("place_of_birth")
   religion                String?
   motherTongue            String?           @map("mother_tongue")
-  currentAddress          Json              @map("current_address")
-  permanentAddress        Json?             @map("permanent_address")
-  motherName              Json              @map("mother_name")
-  fatherName              Json              @map("father_name")
-  guardianInfo            Json?             @map("guardian_info")
   emailAddress            String?           @map("email_address")
   isIpCommunity           Boolean           @default(false) @map("is_ip_community")
   ipGroupName             String?           @map("ip_group_name")
@@ -174,19 +170,8 @@ model Applicant {
   lastYearEnrolled        String?           @map("last_year_enrolled")
   isLearnerWithDisability Boolean           @default(false) @map("is_learner_with_disability")
   disabilityTypes         String[]          @map("disability_types")
-  lastSchoolName          String?           @map("last_school_name")
-  lastSchoolId            String?           @map("last_school_id")
-  lastGradeCompleted      String?           @map("last_grade_completed")
-  schoolYearLastAttended  String?           @map("school_year_last_attended")
-  lastSchoolAddress       String?           @map("last_school_address")
-  lastSchoolType          String?           @map("last_school_type")
   learnerType             LearnerType       @default(NEW_ENROLLEE) @map("learner_type")
   electiveCluster         String?           @map("elective_cluster")
-  isScpApplication        Boolean           @default(false) @map("is_scp_application")
-  scpType                 String?           @map("scp_type")
-  artField                String?           @map("art_field")
-  sportsList              String[]          @map("sports_list")
-  foreignLanguage         String?           @map("foreign_language")
   trackingNumber          String            @unique(map: "uq_applicants_tracking_number") @map("tracking_number")
   status                  ApplicationStatus @default(SUBMITTED)
   rejectionReason         String?           @map("rejection_reason")
@@ -195,22 +180,6 @@ model Applicant {
   schoolYearId            Int               @map("school_year_id")
   applicantType           ApplicantType     @default(REGULAR) @map("applicant_type")
   shsTrack                SHSTrack?         @map("shs_track")
-  examDate                DateTime?         @db.Date @map("exam_date")
-  examTime                String?           @map("exam_time")
-  examVenue               String?           @map("exam_venue")
-  examScore               Float?            @map("exam_score")
-  examResult              String?           @map("exam_result")
-  examNotes               String?           @map("exam_notes")
-  assessmentType          String?           @map("assessment_type")
-  interviewDate           DateTime?         @db.Date @map("interview_date")
-  interviewResult         String?           @map("interview_result")
-  interviewNotes          String?           @map("interview_notes")
-  auditionResult          String?           @map("audition_result")
-  tryoutResult            String?           @map("tryout_result")
-  natScore                Float?            @map("nat_score")
-  grade10ScienceGrade     Float?            @map("grade10_science_grade")
-  grade10MathGrade        Float?            @map("grade10_math_grade")
-  generalAverage          Float?            @map("general_average")
   isPrivacyConsentGiven   Boolean           @default(false) @map("is_privacy_consent_given")
   createdAt               DateTime          @default(now()) @db.Timestamptz @map("created_at")
   updatedAt               DateTime          @updatedAt @db.Timestamptz @map("updated_at")
@@ -220,16 +189,21 @@ model Applicant {
   hasPwdId                Boolean           @default(false) @map("has_pwd_id")
   learningModalities      String[]          @map("learning_modalities")
   isTemporarilyEnrolled   Boolean           @default(false) @map("is_temporarily_enrolled")
+  portalPin               String?           @map("portal_pin")
+  portalPinChangedAt      DateTime?         @db.Timestamptz @map("portal_pin_changed_at")
   schoolYear              SchoolYear        @relation(fields: [schoolYearId], references: [id])
   encodedBy               User?             @relation("ApplicantEncodedBy", fields: [encodedById], references: [id])
   gradeLevel              GradeLevel        @relation(fields: [gradeLevelId], references: [id])
   strand                  Strand?           @relation(fields: [strandId], references: [id])
+  addresses               ApplicantAddress[]
+  familyMembers           ApplicantFamilyMember[]
+  previousSchool          PreviousSchool?
+  assessments             Assessment[]
+  scpDetail               ScpDetail?
   documents               Document[]
   checklist               RequirementChecklist?
   emailLogs               EmailLog[]
   enrollment              Enrollment?
-  portalPin               String?           @map("portal_pin")
-  portalPinChangedAt      DateTime?         @db.Timestamptz @map("portal_pin_changed_at")
   healthRecords           HealthRecord[]
 
   @@index([status, schoolYearId], name: "idx_applicants_status_school_year_id")
@@ -237,6 +211,95 @@ model Applicant {
   @@index([applicantType, status], name: "idx_applicants_type_status")
   @@index([trackingNumber], name: "idx_applicants_tracking_number")
   @@map("applicants")
+}
+
+/// Applicant address: current or permanent, extracted from JSON for queryability
+model ApplicantAddress {
+  id               Int         @id @default(autoincrement())
+  applicantId      Int         @map("applicant_id")
+  addressType      AddressType @map("address_type")
+  houseNo          String?     @map("house_no")
+  street           String?
+  barangay         String?
+  cityMunicipality String?     @map("city_municipality")
+  province         String?
+  country          String?     @default("PHILIPPINES")
+  zipCode          String?     @map("zip_code")
+  applicant        Applicant   @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+
+  @@unique([applicantId, addressType], name: "uq_applicant_addresses_type")
+  @@index([applicantId], name: "idx_applicant_addresses_applicant_id")
+  @@map("applicant_addresses")
+}
+
+/// Parent/guardian info extracted from JSON for relational querying and DepEd reporting
+model ApplicantFamilyMember {
+  id             Int                @id @default(autoincrement())
+  applicantId    Int                @map("applicant_id")
+  relationship   FamilyRelationship
+  firstName      String             @map("first_name")
+  lastName       String             @map("last_name")
+  middleName     String?            @map("middle_name")
+  contactNumber  String?            @map("contact_number")
+  email          String?
+  occupation     String?
+  applicant      Applicant          @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+
+  @@unique([applicantId, relationship], name: "uq_applicant_family_members_rel")
+  @@index([applicantId], name: "idx_applicant_family_members_applicant_id")
+  @@map("applicant_family_members")
+}
+
+/// Previous school record with academic grades, extracted from Applicant for 3NF
+model PreviousSchool {
+  id                  Int       @id @default(autoincrement())
+  applicantId         Int       @unique(map: "uq_previous_schools_applicant_id") @map("applicant_id")
+  schoolName          String?   @map("school_name")
+  schoolDepedId       String?   @map("school_deped_id")
+  gradeCompleted      String?   @map("grade_completed")
+  schoolYearAttended  String?   @map("school_year_attended")
+  schoolAddress       String?   @map("school_address")
+  schoolType          String?   @map("school_type")
+  natScore            Float?    @map("nat_score")
+  grade10ScienceGrade Float?    @map("grade10_science_grade")
+  grade10MathGrade    Float?    @map("grade10_math_grade")
+  generalAverage      Float?    @map("general_average")
+  applicant           Applicant @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+
+  @@map("previous_schools")
+}
+
+/// Assessment event (exam, interview, audition, tryout) — 1:many with Applicant for reschedules
+model Assessment {
+  id            Int            @id @default(autoincrement())
+  applicantId   Int            @map("applicant_id")
+  type          AssessmentKind @map("assessment_kind")
+  scheduledDate DateTime?      @db.Date @map("scheduled_date")
+  scheduledTime String?        @map("scheduled_time")
+  venue         String?
+  score         Float?
+  result        String?
+  notes         String?
+  conductedAt   DateTime?      @db.Timestamptz @map("conducted_at")
+  createdAt     DateTime       @default(now()) @db.Timestamptz @map("created_at")
+  applicant     Applicant      @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+
+  @@index([applicantId], name: "idx_assessments_applicant_id")
+  @@index([applicantId, type], name: "idx_assessments_applicant_type")
+  @@map("assessments")
+}
+
+/// SCP-specific details, only present for Special Curricular Program applicants
+model ScpDetail {
+  id              Int           @id @default(autoincrement())
+  applicantId     Int           @unique(map: "uq_scp_details_applicant_id") @map("applicant_id")
+  scpType         ApplicantType @map("scp_type")
+  artField        String?       @map("art_field")
+  foreignLanguage String?       @map("foreign_language")
+  sportsList      String[]      @map("sports_list")
+  applicant       Applicant     @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+
+  @@map("scp_details")
 }
 
 /// Uploaded documentary requirements (PSA, SF9, etc.) attached to an applicant
@@ -372,22 +435,56 @@ model HealthRecord {
 
 /// Special Curricular Program configuration per school year and applicant type
 model ScpConfig {
-  id             Int           @id @default(autoincrement())
-  schoolYearId   Int           @map("school_year_id")
-  scpType        ApplicantType @map("scp_type")
-  isOffered      Boolean       @default(false) @map("is_offered")
-  cutoffScore    Float?        @map("cutoff_score")
-  assessmentType String?       @map("assessment_type")
-  examDate       DateTime?     @db.Date @map("exam_date")
-  examTime       String?       @map("exam_time")
-  artFields      String[]      @map("art_fields")
-  languages      String[]
-  sportsList     String[]      @map("sports_list")
+  id             Int             @id @default(autoincrement())
+  schoolYearId   Int             @map("school_year_id")
+  scpType        ApplicantType   @map("scp_type")
+  isOffered      Boolean         @default(false) @map("is_offered")
+  cutoffScore    Float?          @map("cutoff_score")
+  assessmentType String?         @map("assessment_type")
+  examDate       DateTime?       @db.Date @map("exam_date")
+  examTime       String?         @map("exam_time")
   notes          String?
-  schoolYear     SchoolYear    @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  schoolYear     SchoolYear      @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  options        ScpConfigOption[]
 
   @@unique([schoolYearId, scpType], name: "uq_scp_configs_school_year_scp_type")
   @@map("scp_configs")
+}
+
+/// Options for SCP configuration: art fields, languages, and sports per SCP config
+model ScpConfigOption {
+  id          Int           @id @default(autoincrement())
+  scpConfigId Int           @map("scp_config_id")
+  optionType  ScpOptionType @map("option_type")
+  value       String
+  scpConfig   ScpConfig     @relation(fields: [scpConfigId], references: [id], onDelete: Cascade)
+
+  @@unique([scpConfigId, optionType, value], name: "uq_scp_config_options_type_value")
+  @@index([scpConfigId], name: "idx_scp_config_options_config_id")
+  @@map("scp_config_options")
+}
+
+/// Junction table linking strands to applicable grade levels (replaces Int[] for referential integrity)
+model StrandGradeLevel {
+  strandId     Int        @map("strand_id")
+  gradeLevelId Int        @map("grade_level_id")
+  strand       Strand     @relation(fields: [strandId], references: [id], onDelete: Cascade)
+  gradeLevel   GradeLevel @relation(fields: [gradeLevelId], references: [id], onDelete: Cascade)
+
+  @@id([strandId, gradeLevelId])
+  @@map("strand_grade_levels")
+}
+
+/// Teacher subject specializations, extracted from String[] for 1NF compliance
+model TeacherSubject {
+  id        Int     @id @default(autoincrement())
+  teacherId Int     @map("teacher_id")
+  subject   String
+  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, subject], name: "uq_teacher_subjects_teacher_subject")
+  @@index([teacherId], name: "idx_teacher_subjects_teacher_id")
+  @@map("teacher_subjects")
 }
 
 /// User role: REGISTRAR handles enrollment; SYSTEM_ADMIN has full access
@@ -541,4 +638,40 @@ enum AssessmentPeriod {
   EOSY
 
   @@map("assessment_period")
+}
+
+/// Address type: current residential or permanent
+enum AddressType {
+  CURRENT
+  PERMANENT
+
+  @@map("address_type")
+}
+
+/// Family member relationship to the applicant
+enum FamilyRelationship {
+  MOTHER
+  FATHER
+  GUARDIAN
+
+  @@map("family_relationship")
+}
+
+/// Assessment event type for SCP admission pipeline
+enum AssessmentKind {
+  WRITTEN_EXAM
+  INTERVIEW
+  AUDITION
+  TRYOUT
+
+  @@map("assessment_kind")
+}
+
+/// SCP configuration option category
+enum ScpOptionType {
+  ART_FIELD
+  LANGUAGE
+  SPORT
+
+  @@map("scp_option_type")
 }
