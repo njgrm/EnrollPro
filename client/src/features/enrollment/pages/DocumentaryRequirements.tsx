@@ -59,7 +59,7 @@ export default function DocumentaryRequirements() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="p-4 rounded-lg border bg-card">
                 <h4 className="font-bold text-sm mb-2 flex items-center gap-2 text-primary">
-                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px]">1</span>
+                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[0.625rem]">1</span>
                   Once-Only PSA Submission
                 </h4>
                 <p className="text-xs text-muted-foreground leading-relaxed">
@@ -68,7 +68,7 @@ export default function DocumentaryRequirements() {
               </div>
               <div className="p-4 rounded-lg border bg-card">
                 <h4 className="font-bold text-sm mb-2 flex items-center gap-2 text-primary">
-                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px]">2</span>
+                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[0.625rem]">2</span>
                   Verification vs Collection
                 </h4>
                 <p className="text-xs text-muted-foreground leading-relaxed">
@@ -77,7 +77,7 @@ export default function DocumentaryRequirements() {
               </div>
               <div className="p-4 rounded-lg border bg-card">
                 <h4 className="font-bold text-sm mb-2 flex items-center gap-2 text-primary">
-                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px]">3</span>
+                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[0.625rem]">3</span>
                   No Refusal Policy
                 </h4>
                 <p className="text-xs text-muted-foreground leading-relaxed">
@@ -86,7 +86,7 @@ export default function DocumentaryRequirements() {
               </div>
               <div className="p-4 rounded-lg border bg-card">
                 <h4 className="font-bold text-sm mb-2 flex items-center gap-2 text-primary">
-                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[10px]">4</span>
+                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-[0.625rem]">4</span>
                   SF10 Post-Enrollment
                 </h4>
                 <p className="text-xs text-muted-foreground leading-relaxed">
@@ -261,7 +261,7 @@ export default function DocumentaryRequirements() {
               </div>
               <div className="p-3 bg-amber-50 rounded-md border border-amber-200 flex items-start gap-3">
                 <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
-                <p className="text-[11px] text-amber-800 leading-normal">
+                <p className="text-[0.6875rem] text-amber-800 leading-normal">
                   <strong>STEM Applicants:</strong> During SCP Early Registration, Science and Math grades on the SF9 must be â‰¥ 85. Registrar must verify these specific grades before marking as Eligible.
                 </p>
               </div>
@@ -396,7 +396,7 @@ export default function DocumentaryRequirements() {
         </CardContent>
       </Card>
 
-      <div className="flex justify-between items-center text-[10px] text-muted-foreground pt-4 border-t">
+      <div className="flex justify-between items-center text-[0.625rem] text-muted-foreground pt-4 border-t">
         <div className="flex gap-4">
           <p>Policy: DepEd Order No. 017, s. 2025</p>
           <p>Basis: RA 11909 (Once-Only PSA)</p>

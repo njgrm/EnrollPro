@@ -64,6 +64,38 @@ export function SCPAssessmentBlock({ applicant }: Props) {
 					</>
 				)}
 			</div>
+
+			{/* Interview Section */}
+			{applicant.interviewDate && (
+				<>
+					<div className='flex items-center gap-2 font-bold border-t border-primary/50 pt-2 mt-2'>
+						<span>🎤</span>
+						<span>INTERVIEW</span>
+					</div>
+					<div className='text-sm grid grid-cols-[110px_1fr] gap-1 font-bold'>
+						<span className='text-muted-foreground'>Date:</span>
+						<span className='uppercase'>
+							{format(new Date(applicant.interviewDate), 'MMM dd, yyyy')}
+						</span>
+
+						{applicant.interviewResult && (
+							<>
+								<span className='text-muted-foreground'>Result:</span>
+								<span className='uppercase'>{applicant.interviewResult}</span>
+							</>
+						)}
+
+						{applicant.interviewNotes && (
+							<>
+								<span className='text-muted-foreground'>Notes:</span>
+								<span className='uppercase italic'>
+									{applicant.interviewNotes}
+								</span>
+							</>
+						)}
+					</div>
+				</>
+			)}
 		</div>
 	);
 }

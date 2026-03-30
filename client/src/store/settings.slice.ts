@@ -29,8 +29,10 @@ export interface SettingsState {
 	viewingSchoolYearId: number | null;
 	accentForeground: string | null;
 	accentMutedForeground: string | null;
+	fontSize: number; // 100 by default (percentage)
 	setSettings: (settings: Partial<SettingsState>) => void;
 	setViewingSY: (id: number | null) => void;
+	setFontSize: (size: number) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -45,8 +47,10 @@ export const useSettingsStore = create<SettingsState>()(
 			viewingSchoolYearId: null,
 			accentForeground: null,
 			accentMutedForeground: null,
+			fontSize: 100, // percentage
 			setSettings: (settings) => set((state) => ({ ...state, ...settings })),
 			setViewingSY: (id) => set({ viewingSchoolYearId: id }),
+			setFontSize: (size) => set({ fontSize: size }),
 		}),
 		{
 			name: 'enrollpro-settings',

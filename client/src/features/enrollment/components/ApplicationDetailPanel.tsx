@@ -32,6 +32,7 @@ interface Props {
 	onFail: () => void;
 	onOfferRegular: () => void;
 	onTemporarilyEnroll: () => void;
+	onScheduleInterview?: () => void;
 }
 
 export function ApplicationDetailPanel({
@@ -45,6 +46,7 @@ export function ApplicationDetailPanel({
 	onFail,
 	onOfferRegular,
 	onTemporarilyEnroll,
+	onScheduleInterview,
 }: Props) {
 	const { data: applicant, loading, error, refetch } = useApplicationDetail(id);
 
@@ -162,7 +164,7 @@ export function ApplicationDetailPanel({
 							) : (
 								<div className='w-full h-full flex flex-col items-center justify-center text-muted-foreground bg-muted/30'>
 									<User className='w-10 h-10 mb-1 opacity-20' />
-									<span className='text-[8px] font-black uppercase tracking-tighter opacity-40'>
+									<span className='text-[0.5rem] font-black uppercase tracking-tighter opacity-40'>
 										{photoError ? 'No Photo' : ''}
 									</span>
 								</div>
@@ -181,7 +183,7 @@ export function ApplicationDetailPanel({
 
 					<div className='grid grid-cols-2 gap-4 border-t pt-4'>
 						<div>
-							<p className='text-[10px] text-foreground uppercase tracking-widest'>
+							<p className='text-[0.625rem] text-foreground uppercase tracking-widest'>
 								Grade Level | Applicant Type
 							</p>
 							<p className='text-sm text-foreground'>
@@ -190,7 +192,7 @@ export function ApplicationDetailPanel({
 							</p>
 						</div>
 						<div className='text-right'>
-							<p className='text-[10px] text-muted-foreground uppercase tracking-widest'>
+							<p className='text-[0.625rem] text-muted-foreground uppercase tracking-widest'>
 								Learner Reference Number
 							</p>
 							<p className='text-sm text-foreground'>
@@ -245,6 +247,7 @@ export function ApplicationDetailPanel({
 				onFail={onFail}
 				onOfferRegular={onOfferRegular}
 				onTemporarilyEnroll={onTemporarilyEnroll}
+				onScheduleInterview={onScheduleInterview}
 			/>
 
 			{applicant.studentPhoto && (

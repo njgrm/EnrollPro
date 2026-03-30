@@ -52,7 +52,7 @@ export function PersonalInfoSection({ learner }: Props) {
 						key={item.label}
 						className='grid grid-cols-[140px_1fr] gap-4 items-start py-2 border-b border-muted/30 last:border-0 md:[&:nth-last-child(-n+2)]:border-0'
 					>
-						<span className='text-[10px] font-bold text-muted-foreground uppercase tracking-wider pt-0.5'>
+						<span className='text-[0.625rem] font-bold text-muted-foreground uppercase tracking-wider pt-0.5'>
 							{item.label}
 						</span>
 						<span className='text-sm font-bold text-foreground'>
@@ -61,7 +61,7 @@ export function PersonalInfoSection({ learner }: Props) {
 					</div>
 				))}
 				<div className='grid grid-cols-[140px_1fr] gap-4 items-start py-2 col-span-1 md:col-span-2'>
-					<span className='text-[10px] font-bold text-muted-foreground uppercase tracking-wider pt-0.5'>
+					<span className='text-[0.625rem] font-bold text-muted-foreground uppercase tracking-wider pt-0.5'>
 						Address
 					</span>
 					<span className='text-sm font-bold text-foreground leading-relaxed'>

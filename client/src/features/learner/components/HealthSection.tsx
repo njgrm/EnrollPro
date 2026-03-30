@@ -73,7 +73,7 @@ export function HealthSection({ learner }: Props) {
 									key={item.label}
 									className='bg-white p-3 rounded-lg border border-blue-100 shadow-sm'
 								>
-									<span className='block text-[10px] font-bold text-blue-800/60 uppercase tracking-tighter mb-1'>
+									<span className='block text-[0.625rem] font-bold text-blue-800/60 uppercase tracking-tighter mb-1'>
 										{item.label}
 									</span>
 									<span
@@ -93,7 +93,7 @@ export function HealthSection({ learner }: Props) {
 						<div className='rounded-lg border border-muted/30 overflow-hidden bg-muted/5'>
 							<table className='w-full text-sm'>
 								<thead className='bg-muted/30'>
-									<tr className='text-[10px] uppercase tracking-wider text-muted-foreground font-bold'>
+									<tr className='text-[0.625rem] uppercase tracking-wider text-muted-foreground font-bold'>
 										<th className='px-4 py-2 text-left'>Year</th>
 										<th className='px-4 py-2 text-left'>Period</th>
 										<th className='px-4 py-2 text-center'>Weight</th>
@@ -154,7 +154,7 @@ export function HealthSection({ learner }: Props) {
 
 			<div className='flex gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200'>
 				<Info className='h-5 w-5 text-slate-400 shrink-0' />
-				<p className='text-[10px] leading-relaxed text-slate-500'>
+				<p className='text-[0.625rem] leading-relaxed text-slate-500'>
 					BMI and nutritional status are computed using WHO 2007 Growth
 					Reference for school-age children (5–19 years). This information is
 					for reference only. Consult the school clinic or a qualified health

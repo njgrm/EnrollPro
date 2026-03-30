@@ -215,7 +215,7 @@ export default function EarlyRegistrationSuccess({
 							<div className='space-y-1'>
 								<p
 									style={{ color: '#9ca3af' }}
-									className='text-[10px] font-black uppercase'
+									className='text-[0.625rem] font-black uppercase'
 								>
 									Date Generated
 								</p>
@@ -233,7 +233,7 @@ export default function EarlyRegistrationSuccess({
 							<div className='space-y-1'>
 								<p
 									style={{ color: '#9ca3af' }}
-									className='text-[10px] font-black uppercase'
+									className='text-[0.625rem] font-black uppercase'
 								>
 									Time Generated
 								</p>
@@ -313,7 +313,7 @@ export default function EarlyRegistrationSuccess({
 						<div className='space-y-2'>
 							<p
 								style={{ color: '#9ca3af' }}
-								className='text-[10px] font-black uppercase tracking-widest'
+								className='text-[0.625rem] font-black uppercase tracking-widest'
 							>
 								Security Validation
 							</p>
@@ -333,7 +333,7 @@ export default function EarlyRegistrationSuccess({
 							</p>
 							<p
 								style={{ color: '#9ca3af' }}
-								className='text-[10px] font-bold'
+								className='text-[0.625rem] font-bold'
 							>
 								This document is electronically generated. No physical signature
 								required.
@@ -368,7 +368,7 @@ export default function EarlyRegistrationSuccess({
 								: 'border-muted-foreground/20 hover:border-primary/50 hover:bg-primary/2',
 						)}
 					>
-						<p className='text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-black'>
+						<p className='text-[0.625rem] text-muted-foreground uppercase tracking-[0.2em] font-black'>
 							Your Application Tracking Number
 						</p>
 						<div className='flex items-center justify-center gap-4'>

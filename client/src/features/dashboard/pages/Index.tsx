@@ -187,7 +187,7 @@ export default function Dashboard() {
 									) : (
 										<>
 											<div className='text-2xl font-black'>{stat.value}</div>
-											<p className='text-[10px] text-muted-foreground mt-1'>
+											<p className='text-[0.625rem] text-muted-foreground mt-1'>
 												{stat.description}
 											</p>
 										</>

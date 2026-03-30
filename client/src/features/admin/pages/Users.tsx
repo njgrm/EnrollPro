@@ -278,7 +278,7 @@ export default function AdminUsers() {
 						<UserCog className='h-7 w-7 md:h-8 md:w-8 text-primary' />
 						User Management
 					</h1>
-					<p className='text-[14px] text-muted-foreground text-balance'>
+					<p className='text-sm text-muted-foreground text-balance'>
 						Provision and manage staff accounts
 						{schoolName ? ` for ${schoolName}` : ''}
 					</p>
@@ -318,32 +318,32 @@ export default function AdminUsers() {
 						</CardTitle>
 						<div className='flex flex-wrap items-center gap-2 md:gap-3'>
 							<div className='flex items-center gap-2 bg-background border rounded-md px-2 py-1'>
-								<Label className='text-[14px] font-bold uppercase opacity-60'>
+								<Label className='text-sm font-bold uppercase opacity-60'>
 									Role
 								</Label>
 								<Select
 									value={roleFilter}
 									onValueChange={setRoleFilter}
 								>
-									<SelectTrigger className='h-7 border-0 bg-transparent focus:ring-0 w-24 md:w-28 text-[14px] shadow-none p-0'>
+									<SelectTrigger className='h-7 border-0 bg-transparent focus:ring-0 w-24 md:w-28 text-sm shadow-none p-0'>
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
 										<SelectItem
 											value='all'
-											className='text-[14px]'
+											className='text-sm'
 										>
 											All Roles
 										</SelectItem>
 										<SelectItem
 											value='SYSTEM_ADMIN'
-											className='text-[14px]'
+											className='text-sm'
 										>
 											Admins
 										</SelectItem>
 										<SelectItem
 											value='REGISTRAR'
-											className='text-[14px]'
+											className='text-sm'
 										>
 											Registrars
 										</SelectItem>
@@ -351,32 +351,32 @@ export default function AdminUsers() {
 								</Select>
 							</div>
 							<div className='flex items-center gap-2 bg-background border rounded-md px-2 py-1'>
-								<Label className='text-[14px] font-bold uppercase opacity-60'>
+								<Label className='text-sm font-bold uppercase opacity-60'>
 									Status
 								</Label>
 								<Select
 									value={statusFilter}
 									onValueChange={setStatusFilter}
 								>
-									<SelectTrigger className='h-7 border-0 bg-transparent focus:ring-0 w-24 md:w-28 text-[14px] shadow-none p-0'>
+									<SelectTrigger className='h-7 border-0 bg-transparent focus:ring-0 w-24 md:w-28 text-sm shadow-none p-0'>
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
 										<SelectItem
 											value='all'
-											className='text-[14px]'
+											className='text-sm'
 										>
 											All Status
 										</SelectItem>
 										<SelectItem
 											value='active'
-											className='text-[14px]'
+											className='text-sm'
 										>
 											Active
 										</SelectItem>
 										<SelectItem
 											value='inactive'
-											className='text-[14px]'
+											className='text-sm'
 										>
 											Inactive
 										</SelectItem>
@@ -400,28 +400,28 @@ export default function AdminUsers() {
 					<div className='p-4 md:p-6'>
 						<div className='rounded-md border border-border bg-background overflow-hidden'>
 							<div className='overflow-x-auto scrollbar-thin pb-2'>
-								<table className='w-full text-[14px] border-collapse table-fixed lg:table-auto min-w-[1000px] lg:min-w-full'>
+								<table className='w-full text-sm border-collapse table-fixed lg:table-auto min-w-[1000px] lg:min-w-full'>
 									<thead className='bg-muted/50 border-b'>
 										<tr>
-											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[14px] w-48'>
+											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-sm w-48'>
 												Name
 											</th>
-											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[14px] w-64'>
+											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-sm w-64'>
 												Position & ID
 											</th>
-											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[14px] w-64'>
+											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-sm w-64'>
 												Contact Info
 											</th>
-											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[14px] w-32'>
+											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-sm w-32'>
 												Role
 											</th>
-											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[14px] w-32'>
+											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-sm w-32'>
 												Status
 											</th>
-											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[14px] hidden xl:table-cell w-48'>
+											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-sm hidden xl:table-cell w-48'>
 												Last Login
 											</th>
-											<th className='px-4 py-3.5 text-center font-semibold text-muted-foreground uppercase tracking-wider text-[14px] w-64'>
+											<th className='px-4 py-3.5 text-center font-semibold text-muted-foreground uppercase tracking-wider text-sm w-64'>
 												Actions
 											</th>
 										</tr>
@@ -480,7 +480,7 @@ export default function AdminUsers() {
 																			lastName: e.target.value,
 																		})
 																	}
-																	className='h-7 text-[14px]'
+																	className='h-7 text-sm'
 																/>
 																<Input
 																	placeholder='First Name'
@@ -491,7 +491,7 @@ export default function AdminUsers() {
 																			firstName: e.target.value,
 																		})
 																	}
-																	className='h-7 text-[14px]'
+																	className='h-7 text-sm'
 																/>
 															</div>
 														) : (
@@ -512,7 +512,7 @@ export default function AdminUsers() {
 																			designation: e.target.value,
 																		})
 																	}
-																	className='h-7 text-[14px]'
+																	className='h-7 text-sm'
 																/>
 																<Input
 																	placeholder='Employee ID'
@@ -523,16 +523,16 @@ export default function AdminUsers() {
 																			employeeId: e.target.value,
 																		})
 																	}
-																	className='h-7 text-[14px]'
+																	className='h-7 text-sm'
 																/>
 															</div>
 														) : (
 															<div className='space-y-0.5'>
-																<div className='text-[14px] font-bold text-primary flex items-center justify-center gap-1'>
+																<div className='text-sm font-bold text-primary flex items-center justify-center gap-1'>
 																	<Briefcase className='h-3 w-3' />
 																	{user.designation || 'No Position Set'}
 																</div>
-																<div className='text-[14px] text-muted-foreground flex items-center justify-center gap-1'>
+																<div className='text-sm text-muted-foreground flex items-center justify-center gap-1'>
 																	<IdCard className='h-3 w-3' />
 																	{user.employeeId || 'No ID Set'}
 																</div>
@@ -551,7 +551,7 @@ export default function AdminUsers() {
 																			email: e.target.value,
 																		})
 																	}
-																	className='h-7 text-[14px]'
+																	className='h-7 text-sm'
 																/>
 																<Input
 																	placeholder='Mobile Number'
@@ -562,15 +562,15 @@ export default function AdminUsers() {
 																			mobileNumber: e.target.value,
 																		})
 																	}
-																	className='h-7 text-[14px]'
+																	className='h-7 text-sm'
 																/>
 															</div>
 														) : (
 															<div className='space-y-0.5'>
-																<div className='text-[14px] font-medium'>
+																<div className='text-sm font-medium'>
 																	{user.email}
 																</div>
-																<div className='text-[14px] text-muted-foreground flex items-center justify-center gap-1'>
+																<div className='text-sm text-muted-foreground flex items-center justify-center gap-1'>
 																	<Phone className='h-2.5 w-2.5' />
 																	{user.mobileNumber || 'No Mobile Set'}
 																</div>
@@ -591,7 +591,7 @@ export default function AdminUsers() {
 																		})
 																	}
 																>
-																	<SelectTrigger className='h-8 w-28 text-[14px] font-bold uppercase'>
+																	<SelectTrigger className='h-8 w-28 text-sm font-bold uppercase'>
 																		<SelectValue />
 																	</SelectTrigger>
 																	<SelectContent>
@@ -606,7 +606,7 @@ export default function AdminUsers() {
 															) : (
 																<Badge
 																	variant='outline'
-																	className={`px-2 py-0.5 text-[14px] uppercase font-bold tracking-tight ${
+																	className={`px-2 py-0.5 text-sm uppercase font-bold tracking-tight ${
 																		user.role === 'REGISTRAR'
 																			? 'border-primary/20 bg-primary/10 text-primary'
 																			: 'border-purple-200 bg-purple-50 text-purple-700'
@@ -622,12 +622,12 @@ export default function AdminUsers() {
 															<div
 																className={`h-2 w-2 rounded-full ring-2 ring-offset-1 ${user.isActive ? 'bg-green-500 ring-green-100' : 'bg-slate-400 ring-slate-100'}`}
 															/>
-															<span className='text-[14px] font-medium'>
+															<span className='text-sm font-medium'>
 																{user.isActive ? 'Active' : 'Inactive'}
 															</span>
 														</div>
 													</td>
-													<td className='px-4 py-4 text-center text-[14px] text-muted-foreground border-r last:border-r-0 hidden xl:table-cell whitespace-nowrap'>
+													<td className='px-4 py-4 text-center text-sm text-muted-foreground border-r last:border-r-0 hidden xl:table-cell whitespace-nowrap'>
 														{user.lastLoginAt
 															? new Date(user.lastLoginAt).toLocaleString(
 																	'en-US',
@@ -647,7 +647,7 @@ export default function AdminUsers() {
 																	<Button
 																		variant='default'
 																		size='sm'
-																		className='h-7 px-2 text-[14px] gap-1 bg-primary hover:bg-primary/90'
+																		className='h-7 px-2 text-sm gap-1 bg-primary hover:bg-primary/90'
 																		onClick={() => handleUpdate(user.id)}
 																		disabled={submitting}
 																	>
@@ -657,7 +657,7 @@ export default function AdminUsers() {
 																	<Button
 																		variant='outline'
 																		size='sm'
-																		className='h-7 px-2 text-[14px] gap-1'
+																		className='h-7 px-2 text-sm gap-1'
 																		onClick={cancelEditing}
 																		disabled={submitting}
 																	>
@@ -669,7 +669,7 @@ export default function AdminUsers() {
 																	<Button
 																		variant='outline'
 																		size='sm'
-																		className='h-7 px-2 text-[14px] gap-1'
+																		className='h-7 px-2 text-sm gap-1'
 																		onClick={() => startEditing(user)}
 																	>
 																		<Edit2 className='h-3 w-3' />
@@ -678,7 +678,7 @@ export default function AdminUsers() {
 																	<Button
 																		variant='outline'
 																		size='sm'
-																		className='h-7 px-2 text-[14px] gap-1'
+																		className='h-7 px-2 text-sm gap-1'
 																		onClick={() => {
 																			setSelectedUser(user);
 																			setFormData({
@@ -697,7 +697,7 @@ export default function AdminUsers() {
 																			variant='outline'
 																			size='sm'
 																			disabled={currentUser?.id === user.id}
-																			className='h-7 px-2 text-[14px] gap-1 text-destructive hover:bg-destructive hover:text-destructive-foreground disabled:opacity-30'
+																			className='h-7 px-2 text-sm gap-1 text-destructive hover:bg-destructive hover:text-destructive-foreground disabled:opacity-30'
 																			onClick={() => setDeactivateId(user.id)}
 																		>
 																			<UserMinus className='h-3 w-3' />
@@ -707,7 +707,7 @@ export default function AdminUsers() {
 																		<Button
 																			variant='outline'
 																			size='sm'
-																			className='h-7 px-2 text-[14px] gap-1 text-emerald-600 hover:bg-emerald-600 hover:text-white'
+																			className='h-7 px-2 text-sm gap-1 text-emerald-600 hover:bg-emerald-600 hover:text-white'
 																			onClick={() => setReactivateId(user.id)}
 																		>
 																			<UserCheck className='h-3 w-3' />
@@ -869,7 +869,7 @@ export default function AdminUsers() {
 								/>
 							</div>
 						</div>
-						<p className='text-[14px] text-muted-foreground italic -mt-2'>
+						<p className='text-sm text-muted-foreground italic -mt-2'>
 							Official email and mobile number are required for account
 							recovery.
 						</p>
@@ -903,9 +903,9 @@ export default function AdminUsers() {
 											formData.role === 'SYSTEM_ADMIN' ? 'text-primary' : ''
 										}`}
 									>
-										<span className='font-bold text-[14px]'>Admin</span>
+										<span className='font-bold text-sm'>Admin</span>
 										<span
-											className={`text-[14px] leading-tight ${
+											className={`text-sm leading-tight ${
 												formData.role === 'SYSTEM_ADMIN'
 													? 'text-primary/70'
 													: 'text-muted-foreground'
@@ -935,9 +935,9 @@ export default function AdminUsers() {
 											formData.role === 'REGISTRAR' ? 'text-primary' : ''
 										}`}
 									>
-										<span className='font-bold text-[14px]'>Registrar</span>
+										<span className='font-bold text-sm'>Registrar</span>
 										<span
-											className={`text-[14px] leading-tight ${
+											className={`text-sm leading-tight ${
 												formData.role === 'REGISTRAR'
 													? 'text-primary/70'
 													: 'text-muted-foreground'
@@ -957,7 +957,7 @@ export default function AdminUsers() {
 									onChange={(e) =>
 										setFormData({ ...formData, password: e.target.value })
 									}
-									className=' text-[14px] sm:text-[14px]'
+									className=' text-sm sm:text-sm'
 								/>
 								<Button
 									variant='outline'
@@ -1010,7 +1010,7 @@ export default function AdminUsers() {
 								</Button>
 							</div>
 						</div>
-						<div className='p-3 rounded-lg bg-primary text-primary-foreground text-[14px] leading-relaxed shadow-sm'>
+						<div className='p-3 rounded-lg bg-primary text-primary-foreground text-sm leading-relaxed shadow-sm'>
 							<strong className='flex items-center gap-1.5 mb-0.5'>
 								<ShieldAlert className='h-3.5 w-3.5' />
 								Security Notice:
@@ -1063,7 +1063,7 @@ export default function AdminUsers() {
 						</DialogDescription>
 					</DialogHeader>
 					<div className='space-y-4 py-2'>
-						<div className='p-3 rounded-lg bg-orange-50 border border-orange-100 text-[14px] text-orange-800 leading-relaxed'>
+						<div className='p-3 rounded-lg bg-orange-50 border border-orange-100 text-sm text-orange-800 leading-relaxed'>
 							<strong>Warning:</strong> Existing login sessions for this user
 							will be invalidated. Share the new password through a secure
 							offline channel.
@@ -1076,7 +1076,7 @@ export default function AdminUsers() {
 									onChange={(e) =>
 										setFormData({ ...formData, password: e.target.value })
 									}
-									className=' text-[14px] sm:text-[14px]'
+									className=' text-sm sm:text-sm'
 								/>
 								<Button
 									variant='outline'
@@ -1129,7 +1129,7 @@ export default function AdminUsers() {
 								</Button>
 							</div>
 						</div>
-						<div className='p-3 rounded-lg bg-primary text-primary-foreground text-[14px] leading-relaxed shadow-sm'>
+						<div className='p-3 rounded-lg bg-primary text-primary-foreground text-sm leading-relaxed shadow-sm'>
 							<strong className='flex items-center gap-1.5 mb-0.5'>
 								<ShieldAlert className='h-3.5 w-3.5' />
 								Security Policy:

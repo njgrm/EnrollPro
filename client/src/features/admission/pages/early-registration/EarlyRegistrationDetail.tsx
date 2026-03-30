@@ -20,6 +20,7 @@ import { DocumentManagement } from '@/features/enrollment/components/DocumentMan
 import { RequirementChecklist } from '@/features/enrollment/components/RequirementChecklist';
 import { ActionButtons } from '@/features/enrollment/components/ActionButtons';
 import { ScheduleExamDialog } from '@/features/enrollment/components/ScheduleExamDialog';
+import { ScheduleInterviewDialog } from '@/features/enrollment/components/ScheduleInterviewDialog';
 import { toastApiError } from '@/shared/hooks/useApiToast';
 import api from '@/shared/api/axiosInstance';
 import { sileo } from 'sileo';
@@ -33,6 +34,7 @@ export default function EarlyRegistrationDetail() {
 	const navigate = useNavigate();
 	const [activeTab, setActiveTab] = useState('overview');
 	const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
+	const [isInterviewDialogOpen, setIsInterviewDialogOpen] = useState(false);
 	const {
 		data: applicant,
 		loading,
@@ -146,6 +148,10 @@ export default function EarlyRegistrationDetail() {
 		setIsScheduleDialogOpen(true);
 	};
 
+	const handleScheduleInterview = () => {
+		setIsInterviewDialogOpen(true);
+	};
+
 	const handleRecordResult = async () => {
 		sileo.info({
 			title: 'SCP Flow',
@@ -253,10 +259,10 @@ export default function EarlyRegistrationDetail() {
 					</div>
 
 					<div>
-						<h1 className='text-lg sm:text-2xl lg:text-3xl font-bold tracking-tight'>
+						<h1 className='text-xs font-bold tracking-tight'>
 							{applicant.lastName}, {applicant.firstName} {applicant.middleName}
 						</h1>
-						<p className='text-muted-foreground flex flex-wrap items-center gap-1 sm:gap-2 mt-1 font-bold text-xs sm:text-sm'>
+						<p className='text-muted-foreground flex flex-wrap items-center gap-1 sm:gap-2 mt-1 font-bold text-xs'>
 							<span>#{applicant.trackingNumber}</span>
 							<span>•</span>
 							<span>{applicant.gradeLevel.name}</span>
@@ -279,19 +285,19 @@ export default function EarlyRegistrationDetail() {
 						<TabsList className='w-full flex flex-wrap h-auto gap-1 mb-6 p-1 bg-white border-border'>
 							<TabsTrigger
 								value='overview'
-								className='flex-1 min-w-25 font-bold transition-all'
+								className='flex-1 min-w-25 font-bold transition-all text-xs'
 							>
 								Overview
 							</TabsTrigger>
 							<TabsTrigger
 								value='documents'
-								className='flex-1 min-w-25 font-bold transition-all'
+								className='flex-1 min-w-25 font-bold transition-all text-xs'
 							>
 								Documents
 							</TabsTrigger>
 							<TabsTrigger
 								value='history'
-								className='flex-1 min-w-25 font-bold transition-all'
+								className='flex-1 min-w-25 font-bold transition-all text-xs'
 							>
 								Full History
 							</TabsTrigger>
@@ -403,7 +409,7 @@ export default function EarlyRegistrationDetail() {
 				>
 					<Card>
 						<div className='p-4 pb-0'>
-							<h3 className='text-sm font-bold text-muted-foreground uppercase tracking-wider'>
+							<h3 className='text-xs font-bold text-muted-foreground uppercase tracking-wider'>
 								Actions
 							</h3>
 						</div>
@@ -417,16 +423,17 @@ export default function EarlyRegistrationDetail() {
 							onFail={handleFail}
 							onOfferRegular={handleOfferRegular}
 							onTemporarilyEnroll={handleTemporarilyEnroll}
+							onScheduleInterview={handleScheduleInterview}
 						/>
 					</Card>
 
 					<Card>
 						<CardContent className='p-4 space-y-4'>
 							<div>
-								<h3 className='text-sm font-bold text-muted-foreground uppercase tracking-wider mb-2'>
+								<h3 className='text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2'>
 									System Info
 								</h3>
-								<div className='text-sm grid grid-cols-[100px_1fr] gap-2 font-bold'>
+								<div className='text-xs grid grid-cols-[100px_1fr] gap-2 font-bold'>
 									<span className='text-muted-foreground'>Channel:</span>
 									<span>
 										{applicant.admissionChannel === 'F2F'
@@ -464,10 +471,10 @@ export default function EarlyRegistrationDetail() {
 
 							{applicant.enrollment && (
 								<div className='pt-4 border-t'>
-									<h3 className='text-sm font-bold text-emerald-700 uppercase tracking-wider mb-2 flex items-center gap-2'>
+									<h3 className='text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2 flex items-center gap-2'>
 										<span>✅</span> Enrolled
 									</h3>
-									<div className='text-sm grid grid-cols-[100px_1fr] gap-2'>
+									<div className='text-xs grid grid-cols-[100px_1fr] gap-2'>
 										<span className='text-muted-foreground'>Section:</span>
 										<span className='font-bold'>
 											{applicant.enrollment.section?.name || 'N/A'}
@@ -488,6 +495,12 @@ export default function EarlyRegistrationDetail() {
 			<ScheduleExamDialog
 				open={isScheduleDialogOpen}
 				onOpenChange={setIsScheduleDialogOpen}
+				applicant={applicant}
+				onSuccess={refetch}
+			/>
+			<ScheduleInterviewDialog
+				open={isInterviewDialogOpen}
+				onOpenChange={setIsInterviewDialogOpen}
 				applicant={applicant}
 				onSuccess={refetch}
 			/>

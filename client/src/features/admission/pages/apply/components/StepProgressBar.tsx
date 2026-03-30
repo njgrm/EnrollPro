@@ -26,7 +26,7 @@ export default function StepProgressBar({
 			<div className='md:hidden'>
 				<div className='flex items-center justify-between mb-4 p-4 rounded-2xl shadow-sm border border-primary/10 bg-primary text-primary-foreground'>
 					<div className='flex flex-col'>
-						<span className='text-[10px] font-bold uppercase tracking-widest opacity-85 text-primary-foreground'>
+						<span className='text-[0.625rem] font-bold uppercase tracking-widest opacity-85 text-primary-foreground'>
 							Step {currentStep} of {totalSteps}
 						</span>
 						<span className='text-lg font-extrabold leading-tight text-primary-foreground'>
@@ -101,7 +101,7 @@ export default function StepProgressBar({
 										<div className='flex flex-col items-center gap-0.5'>
 											<span
 												className={cn(
-													'text-[10px] lg:text-[11px] font-semibold uppercase tracking-wider text-center whitespace-nowrap transition-colors duration-200',
+													'text-[0.625rem] lg:text-[0.6875rem] font-semibold uppercase tracking-wider text-center whitespace-nowrap transition-colors duration-200',
 													isCompleted || isActive
 														? 'text-foreground'
 														: 'text-muted-foreground',
@@ -112,7 +112,7 @@ export default function StepProgressBar({
 											{/* Status badge */}
 											<span
 												className={cn(
-													'text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full transition-all duration-200',
+													'text-[0.5625rem] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full transition-all duration-200',
 													isCompleted
 														? 'bg-primary text-primary-foreground'
 														: isActive

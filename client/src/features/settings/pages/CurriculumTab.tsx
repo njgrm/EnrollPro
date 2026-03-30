@@ -281,7 +281,7 @@ export default function CurriculumTab() {
                         className='rounded-lg border border-border px-3 py-2 hover:bg-muted transition-colors'>
                         <div className='flex flex-col'>
                           <span className='text-sm font-medium'>{gl.name}</span>
-                          <span className='text-[10px] text-muted-foreground'>
+                          <span className='text-[0.625rem] text-muted-foreground'>
                             {gl.sections.length} sections
                           </span>
                         </div>
@@ -301,7 +301,7 @@ export default function CurriculumTab() {
                         className='rounded-lg border border-border px-3 py-2 hover:bg-muted transition-colors'>
                         <div className='flex flex-col'>
                           <span className='text-sm font-medium'>{gl.name}</span>
-                          <span className='text-[10px] text-muted-foreground'>
+                          <span className='text-[0.625rem] text-muted-foreground'>
                             {gl.sections.length} sections
                           </span>
                         </div>
@@ -502,7 +502,7 @@ export default function CurriculumTab() {
                   </CardDescription>
                 </div>
                 <div className='flex items-center gap-2'>
-                  <Badge variant='outline' className=' text-[10px]'>
+                  <Badge variant='outline' className=' text-[0.625rem]'>
                     <span className='hidden sm:inline'>DEPED</span> DM 012, S. 2026
                   </Badge>
                 </div>

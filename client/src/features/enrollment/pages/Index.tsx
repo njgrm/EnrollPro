@@ -266,7 +266,7 @@ export default function Enrollment() {
                           <span className='font-bold text-sm'>
                             {app.lastName}, {app.firstName}
                           </span>
-                          <span className='text-[10px] text-[hsl(var(--muted-foreground))]'>
+                          <span className='text-[0.625rem] text-[hsl(var(--muted-foreground))]'>
                             #{app.trackingNumber}
                           </span>
                         </div>
@@ -278,7 +278,7 @@ export default function Enrollment() {
                             {app.gradeLevel.name}
                           </span>
                           {app.strand && (
-                            <span className='text-[10px] text-[hsl(var(--muted-foreground))]'>
+                            <span className='text-[0.625rem] text-[hsl(var(--muted-foreground))]'>
                               {app.strand.name}
                             </span>
                           )}
@@ -294,7 +294,7 @@ export default function Enrollment() {
                       <TableCell>
                         <Badge
                           variant='outline'
-                          className={`text-[10px] font-bold ${STATUS_COLORS[app.status]}`}>
+                          className={`text-[0.625rem] font-bold ${STATUS_COLORS[app.status]}`}>
                           {app.status.replace("_", " ")}
                         </Badge>
                       </TableCell>

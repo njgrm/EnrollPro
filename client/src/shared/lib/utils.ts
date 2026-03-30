@@ -7,6 +7,18 @@ export function cn(...inputs: ClassValue[]) {
 
 export const MANILA_TIME_ZONE = 'Asia/Manila';
 
+export const SCP_LABELS: Record<string, string> = {
+	SCIENCE_TECHNOLOGY_AND_ENGINEERING: 'Science, Technology & Engineering',
+	SPECIAL_PROGRAM_IN_THE_ARTS: 'Special Program in the Arts',
+	SPECIAL_PROGRAM_IN_SPORTS: 'Special Program in Sports',
+	SPECIAL_PROGRAM_IN_JOURNALISM: 'Special Program in Journalism',
+	SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE: 'Special Program in Foreign Language',
+	SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION:
+		'Special Program in Tech-Voc Education',
+	STEM_GRADE_11: 'STEM (Grade 11)',
+	REGULAR: 'Regular',
+};
+
 /**
  * Formats a date string or object to a human-readable format in Manila timezone.
  */
@@ -41,20 +53,7 @@ export function getManilaNow(): Date {
  */
 export function formatScpType(scpType: string | null | undefined): string {
 	if (!scpType) return 'N/A';
-
-	const mapping: Record<string, string> = {
-		SCIENCE_TECHNOLOGY_AND_ENGINEERING: 'Science, Technology & Engineering',
-		SPECIAL_PROGRAM_IN_THE_ARTS: 'Special Program in the Arts',
-		SPECIAL_PROGRAM_IN_SPORTS: 'Special Program in Sports',
-		SPECIAL_PROGRAM_IN_JOURNALISM: 'Special Program in Journalism',
-		SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE: 'Special Program in Foreign Language',
-		SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION:
-			'Special Program in Tech-Voc Education',
-		STEM_GRADE_11: 'STEM (Grade 11)',
-		REGULAR: 'Regular',
-	};
-
-	return mapping[scpType] || scpType;
+	return SCP_LABELS[scpType] || scpType;
 }
 
 /**

@@ -206,7 +206,7 @@ export function LookupForm({ onLookup, loading, error }: LookupFormProps) {
 							maxLength={6}
 							required
 						/>
-						<p className='text-[10px] text-muted-foreground text-center'>
+						<p className='text-[0.625rem] text-muted-foreground text-center'>
 							(Found on your official enrollment confirmation slip)
 						</p>
 					</div>
@@ -222,7 +222,7 @@ export function LookupForm({ onLookup, loading, error }: LookupFormProps) {
 					<div className='text-center pt-2 border-t'>
 						<button
 							type='button'
-							className='text-[10px] text-muted-foreground hover:text-primary transition-colors underline'
+							className='text-[0.625rem] text-muted-foreground hover:text-primary transition-colors underline'
 							onClick={() =>
 								alert(
 									'Please visit the school registrar in person with a valid ID or birth certificate to reset your PIN.',

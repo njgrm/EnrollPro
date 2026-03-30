@@ -305,7 +305,7 @@ export default function EnrollmentGateTab() {
 						) : (
 							<div className='flex items-center gap-4 text-sm bg-muted p-3 rounded-lg border border-border'>
 								<div className='flex-1 text-center border-r border-border'>
-									<span className='block text-[10px] text-muted-foreground uppercase tracking-wider'>
+									<span className='block text-[0.625rem] text-muted-foreground uppercase tracking-wider'>
 										Opens
 									</span>
 									<span className='font-medium'>
@@ -313,7 +313,7 @@ export default function EnrollmentGateTab() {
 									</span>
 								</div>
 								<div className='flex-1 text-center'>
-									<span className='block text-[10px] text-muted-foreground uppercase tracking-wider'>
+									<span className='block text-[0.625rem] text-muted-foreground uppercase tracking-wider'>
 										Closes
 									</span>
 									<span className='font-medium'>
@@ -370,7 +370,7 @@ export default function EnrollmentGateTab() {
 						) : (
 							<div className='flex items-center gap-4 text-sm bg-muted p-3 rounded-lg border border-border'>
 								<div className='flex-1 text-center border-r border-border'>
-									<span className='block text-[10px] text-muted-foreground uppercase tracking-wider'>
+									<span className='block text-[0.625rem] text-muted-foreground uppercase tracking-wider'>
 										Opens
 									</span>
 									<span className='font-medium'>
@@ -378,7 +378,7 @@ export default function EnrollmentGateTab() {
 									</span>
 								</div>
 								<div className='flex-1 text-center'>
-									<span className='block text-[10px] text-muted-foreground uppercase tracking-wider'>
+									<span className='block text-[0.625rem] text-muted-foreground uppercase tracking-wider'>
 										Closes
 									</span>
 									<span className='font-medium'>

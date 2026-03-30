@@ -50,7 +50,7 @@ export default function Step2Family() {
 					className={cn('h-11 font-bold', errors.email && 'border-destructive')}
 				/>
 				{errors.email && (
-					<p className='text-[11px] text-destructive font-medium'>
+					<p className='text-[0.6875rem] text-destructive font-medium'>
 						{errors.email.message}
 					</p>
 				)}

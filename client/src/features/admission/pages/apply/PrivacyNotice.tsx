@@ -208,7 +208,7 @@ export default function PrivacyNotice({ onAccept }: PrivacyNoticeProps) {
 
 						<div
 							className={cn(
-								'flex items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-widest transition-all duration-500 py-1',
+								'flex items-center justify-center gap-2 text-[0.6875rem] font-bold uppercase tracking-widest transition-all duration-500 py-1',
 								hasScrolledNotice
 									? 'text-primary'
 									: 'text-primary/60 animate-pulse',

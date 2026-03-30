@@ -11,6 +11,7 @@ interface Props {
 	onFail: () => void;
 	onOfferRegular: () => void;
 	onTemporarilyEnroll: () => void;
+	onScheduleInterview?: () => void;
 }
 
 export function ActionButtons({ applicant, ...handlers }: Props) {
@@ -108,12 +109,22 @@ export function ActionButtons({ applicant, ...handlers }: Props) {
 			)}
 
 			{isSCP && status === 'PASSED' && (
-				<Button
-					className='w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90'
-					onClick={handlers.onApprove}
-				>
-					Assign Section
-				</Button>
+				<>
+					{handlers.onScheduleInterview && (
+						<Button
+							className='w-full bg-amber-600 text-white hover:bg-amber-700'
+							onClick={handlers.onScheduleInterview}
+						>
+							Schedule Interview
+						</Button>
+					)}
+					<Button
+						className='w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90'
+						onClick={handlers.onApprove}
+					>
+						Assign Section
+					</Button>
+				</>
 			)}
 
 			{isSCP && status === 'NOT_QUALIFIED' && (

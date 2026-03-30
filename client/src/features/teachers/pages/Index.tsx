@@ -230,22 +230,22 @@ export default function Teachers() {
 								<table className='w-full text-sm border-collapse table-fixed lg:table-auto min-w-200'>
 									<thead className='bg-muted/50 border-b'>
 										<tr>
-											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[10px] w-24'>
+											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[0.625rem] w-24'>
 												Employee ID
 											</th>
-											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[10px] w-48'>
+											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[0.625rem] w-48'>
 												Full Name
 											</th>
-											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[10px] w-40'>
+											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[0.625rem] w-40'>
 												Specialization
 											</th>
-											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[10px] w-32'>
+											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[0.625rem] w-32'>
 												Contact
 											</th>
-											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[10px] w-24'>
+											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[0.625rem] w-24'>
 												Status
 											</th>
-											<th className='px-4 py-3.5 text-center font-semibold text-muted-foreground uppercase tracking-wider text-[10px] w-48'>
+											<th className='px-4 py-3.5 text-center font-semibold text-muted-foreground uppercase tracking-wider text-[0.625rem] w-48'>
 												Actions
 											</th>
 										</tr>
@@ -372,7 +372,7 @@ export default function Teachers() {
 															<div
 																className={`h-2 w-2 rounded-full ring-2 ring-offset-1 ${teacher.isActive ? 'bg-green-500 ring-green-100' : 'bg-slate-400 ring-slate-100'}`}
 															/>
-															<span className='text-[11px] font-medium'>
+															<span className='text-[0.6875rem] font-medium'>
 																{teacher.isActive ? 'Active' : 'Inactive'}
 															</span>
 														</div>
@@ -384,7 +384,7 @@ export default function Teachers() {
 																	<Button
 																		variant='default'
 																		size='sm'
-																		className='h-7 px-2 text-[10px] gap-1 bg-blue-600 hover:bg-blue-700'
+																		className='h-7 px-2 text-[0.625rem] gap-1 bg-blue-600 hover:bg-blue-700'
 																		onClick={() => handleUpdate(teacher.id)}
 																		disabled={submitting}
 																	>
@@ -394,7 +394,7 @@ export default function Teachers() {
 																	<Button
 																		variant='outline'
 																		size='sm'
-																		className='h-7 px-2 text-[10px] gap-1'
+																		className='h-7 px-2 text-[0.625rem] gap-1'
 																		onClick={cancelEditing}
 																		disabled={submitting}
 																	>
@@ -406,7 +406,7 @@ export default function Teachers() {
 																	<Button
 																		variant='outline'
 																		size='sm'
-																		className='h-7 px-2 text-[10px] gap-1'
+																		className='h-7 px-2 text-[0.625rem] gap-1'
 																		onClick={() => startEditing(teacher)}
 																	>
 																		<Edit2 className='h-3 w-3' />
@@ -416,7 +416,7 @@ export default function Teachers() {
 																		<Button
 																			variant='outline'
 																			size='sm'
-																			className='h-7 px-2 text-[10px] gap-1 text-destructive hover:bg-destructive hover:text-destructive-foreground'
+																			className='h-7 px-2 text-[0.625rem] gap-1 text-destructive hover:bg-destructive hover:text-destructive-foreground'
 																			onClick={() =>
 																				setDeactivateId(teacher.id)
 																			}
@@ -428,7 +428,7 @@ export default function Teachers() {
 																		<Button
 																			variant='outline'
 																			size='sm'
-																			className='h-7 px-2 text-[10px] gap-1 text-emerald-600 hover:bg-emerald-600 hover:text-white'
+																			className='h-7 px-2 text-[0.625rem] gap-1 text-emerald-600 hover:bg-emerald-600 hover:text-white'
 																			onClick={() =>
 																				setReactivateId(teacher.id)
 																			}

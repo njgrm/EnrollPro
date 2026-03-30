@@ -1,7 +1,8 @@
 import { Badge } from '@/shared/ui/badge';
+import { cn } from '@/shared/lib/utils';
 import { STATUS_CONFIG } from '../constants';
 
-export function StatusBadge({ status }: { status: string }) {
+export function StatusBadge({ status, className: extraClassName }: { status: string; className?: string }) {
 	const { label, className } = STATUS_CONFIG[status] ?? {
 		label: status,
 		className: 'bg-muted text-muted-foreground border-muted-foreground',
@@ -9,7 +10,7 @@ export function StatusBadge({ status }: { status: string }) {
 	return (
 		<Badge
 			variant='outline'
-			className={className}
+			className={cn('h-auto py-1 px-3 whitespace-normal text-center leading-tight', className, extraClassName)}
 			aria-label={`Status: ${label}`}
 		>
 			{label}

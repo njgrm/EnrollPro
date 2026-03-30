@@ -164,7 +164,7 @@ export default function Apply() {
 									<span className='text-sm font-black tracking-tight text-foreground leading-none uppercase'>
 										{schoolName}
 									</span>
-									<span className='text-[8px] font-black tracking-widest uppercase text-muted-foreground mt-0.5'>
+									<span className='text-[0.5rem] font-black tracking-widest uppercase text-muted-foreground mt-0.5'>
 										Early Registration Portal
 									</span>
 								</div>
@@ -175,7 +175,7 @@ export default function Apply() {
 								<span className='text-base sm:text-lg md:text-xl font-black tracking-tight text-foreground leading-none uppercase wrap-break-word'>
 									{schoolName}
 								</span>
-								<span className='text-[9px] sm:text-[10px] md:text-xs font-black tracking-widest sm:tracking-[0.15em] uppercase text-muted-foreground mt-1 wrap-break-word'>
+								<span className='text-[0.5625rem] sm:text-[0.625rem] md:text-xs font-black tracking-widest sm:tracking-[0.15em] uppercase text-muted-foreground mt-1 wrap-break-word'>
 									Early Registration Portal
 								</span>
 							</div>
@@ -255,7 +255,7 @@ export default function Apply() {
 										<button
 											onClick={() => handleTabChange('form')}
 											className={cn(
-												'flex-1 sm:flex-none px-8 py-3 text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] rounded-xl transition-all duration-200',
+												'flex-1 sm:flex-none px-8 py-3 text-[0.625rem] sm:text-xs font-black uppercase tracking-[0.15em] rounded-xl transition-all duration-200',
 												activeTab === 'form'
 													? 'bg-primary text-primary-foreground shadow-lg scale-[1.02]'
 													: 'text-muted-foreground hover:text-primary hover:bg-primary/5',
@@ -266,7 +266,7 @@ export default function Apply() {
 										<button
 											onClick={() => handleTabChange('monitor')}
 											className={cn(
-												'flex-1 sm:flex-none px-8 py-3 text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] rounded-xl transition-all duration-200',
+												'flex-1 sm:flex-none px-8 py-3 text-[0.625rem] sm:text-xs font-black uppercase tracking-[0.15em] rounded-xl transition-all duration-200',
 												activeTab === 'monitor'
 													? 'bg-primary text-primary-foreground shadow-lg scale-[1.02]'
 													: 'text-muted-foreground hover:text-primary hover:bg-primary/5',

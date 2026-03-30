@@ -43,7 +43,7 @@ export function EnrollmentSection({ learner }: Props) {
 				{currentEnrollment ? (
 					<div className='grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4'>
 						<div className='grid grid-cols-[140px_1fr] gap-4 items-center py-2 border-b border-muted/30'>
-							<span className='text-[10px] font-bold text-muted-foreground uppercase tracking-wider'>
+							<span className='text-[0.625rem] font-bold text-muted-foreground uppercase tracking-wider'>
 								School Year
 							</span>
 							<span className='text-sm font-bold'>
@@ -51,7 +51,7 @@ export function EnrollmentSection({ learner }: Props) {
 							</span>
 						</div>
 						<div className='grid grid-cols-[140px_1fr] gap-4 items-center py-2 border-b border-muted/30'>
-							<span className='text-[10px] font-bold text-muted-foreground uppercase tracking-wider'>
+							<span className='text-[0.625rem] font-bold text-muted-foreground uppercase tracking-wider'>
 								Grade Level
 							</span>
 							<span className='text-sm font-bold'>
@@ -59,7 +59,7 @@ export function EnrollmentSection({ learner }: Props) {
 							</span>
 						</div>
 						<div className='grid grid-cols-[140px_1fr] gap-4 items-center py-2 border-b border-muted/30'>
-							<span className='text-[10px] font-bold text-muted-foreground uppercase tracking-wider'>
+							<span className='text-[0.625rem] font-bold text-muted-foreground uppercase tracking-wider'>
 								Section
 							</span>
 							<span className='text-sm font-bold'>
@@ -67,7 +67,7 @@ export function EnrollmentSection({ learner }: Props) {
 							</span>
 						</div>
 						<div className='grid grid-cols-[140px_1fr] gap-4 items-center py-2 border-b border-muted/30'>
-							<span className='text-[10px] font-bold text-muted-foreground uppercase tracking-wider'>
+							<span className='text-[0.625rem] font-bold text-muted-foreground uppercase tracking-wider'>
 								Class Adviser
 							</span>
 							<span className='text-sm font-bold'>
@@ -77,10 +77,10 @@ export function EnrollmentSection({ learner }: Props) {
 							</span>
 						</div>
 						<div className='grid grid-cols-[140px_1fr] gap-4 items-center py-2 border-b border-muted/30'>
-							<span className='text-[10px] font-bold text-muted-foreground uppercase tracking-wider'>
+							<span className='text-[0.625rem] font-bold text-muted-foreground uppercase tracking-wider'>
 								Status
 							</span>
-							<Badge className='w-fit bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100 text-[10px] font-bold uppercase tracking-tighter h-5 px-1.5'>
+							<Badge className='w-fit bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100 text-[0.625rem] font-bold uppercase tracking-tighter h-5 px-1.5'>
 								{learner.status}
 							</Badge>
 						</div>
@@ -104,7 +104,7 @@ export function EnrollmentSection({ learner }: Props) {
 				<div className='rounded-lg border border-muted/30 overflow-hidden bg-muted/5'>
 					<table className='w-full text-sm'>
 						<thead className='bg-muted/30'>
-							<tr className='text-[10px] uppercase tracking-wider text-muted-foreground font-bold'>
+							<tr className='text-[0.625rem] uppercase tracking-wider text-muted-foreground font-bold'>
 								<th className='px-4 py-2 text-left'>Year</th>
 								<th className='px-4 py-2 text-left'>Grade</th>
 								<th className='px-4 py-2 text-left'>Section / School</th>
@@ -123,7 +123,7 @@ export function EnrollmentSection({ learner }: Props) {
 									<td className='px-4 py-3 text-xs'>{h.gradeLevel}</td>
 									<td className='px-4 py-3 text-xs'>{h.sectionOrSchool}</td>
 									<td className='px-4 py-3 text-right'>
-										<span className='text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 uppercase'>
+										<span className='text-[0.625rem] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 uppercase'>
 											{h.status}
 										</span>
 									</td>

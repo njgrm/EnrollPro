@@ -358,7 +358,7 @@ export function DocumentManagement({
 								auditRows.map((row) => (
 									<TableRow key={row.type}>
 										<TableCell className='flex justify-center items-center font-bold text-xs h-24'>
-											<div className='flex items-center gap-2 text-[12px]'>
+											<div className='flex items-center gap-2 text-xs'>
 												{row.status === 'Added' ? (
 													row.document ? (
 														<Eye className='h-4 w-4 text-blue-500' />
@@ -396,7 +396,7 @@ export function DocumentManagement({
 												<div className='flex items-center justify-center'>
 													<Badge
 														variant='outline'
-														className='text-[8px] h-4 px-1 uppercase tracking-tighter'
+														className='text-[0.5rem] h-4 px-1 uppercase tracking-tighter'
 													>
 														{row.modifiedBy?.role || 'USER'}
 													</Badge>
@@ -415,7 +415,7 @@ export function DocumentManagement({
 											{row.action === 'Added' && (
 												<Badge
 													variant='success'
-													className='text-[9px] font-bold uppercase'
+													className='text-[0.5625rem] font-bold uppercase'
 												>
 													Added
 												</Badge>
@@ -423,7 +423,7 @@ export function DocumentManagement({
 											{row.action === 'Removed' && (
 												<Badge
 													variant='destructive'
-													className='text-[9px] font-bold uppercase'
+													className='text-[0.5625rem] font-bold uppercase'
 												>
 													Removed
 												</Badge>
@@ -431,7 +431,7 @@ export function DocumentManagement({
 											{row.action === 'Pending' && (
 												<Badge
 													variant='outline'
-													className='text-[9px] font-bold uppercase'
+													className='text-[0.5625rem] font-bold uppercase'
 												>
 													Pending
 												</Badge>

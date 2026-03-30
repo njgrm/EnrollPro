@@ -36,10 +36,11 @@ import { Label } from '@/shared/ui/label';
 import { format } from 'date-fns';
 import { ApplicationDetailPanel } from '@/features/enrollment/components/ApplicationDetailPanel';
 import { ScheduleExamDialog } from '@/features/enrollment/components/ScheduleExamDialog';
+import { ScheduleInterviewDialog } from '@/features/enrollment/components/ScheduleInterviewDialog';
 import { StatusBadge } from '@/features/enrollment/components/StatusBadge';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { useDelayedLoading } from '@/shared/hooks/useDelayedLoading';
-import { formatScpType } from '@/shared/lib/utils';
+import { formatScpType, SCP_LABELS } from '@/shared/lib/utils';
 import type { ApplicantDetail } from '@/features/enrollment/hooks/useApplicationDetail';
 
 interface Application {
@@ -60,32 +61,10 @@ interface Application {
 
 const APPLICANT_TYPES = [
 	{ value: 'ALL', label: 'All Types' },
-	{ value: 'REGULAR', label: 'Regular' },
-	{
-		value: 'SCIENCE_TECHNOLOGY_AND_ENGINEERING',
-		label: 'Science, Technology & Engineering (STE)',
-	},
-	{
-		value: 'SPECIAL_PROGRAM_IN_THE_ARTS',
-		label: 'Special Program in the Arts (SPA)',
-	},
-	{
-		value: 'SPECIAL_PROGRAM_IN_SPORTS',
-		label: 'Special Program in Sports (SPS)',
-	},
-	{
-		value: 'SPECIAL_PROGRAM_IN_JOURNALISM',
-		label: 'Special Program in Journalism (SPJ)',
-	},
-	{
-		value: 'SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE',
-		label: 'Special Program in Foreign Language (SPFL)',
-	},
-	{
-		value: 'SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION',
-		label: 'Special Program in Tech-Voc Education (SPTVE)',
-	},
-	{ value: 'STEM_GRADE_11', label: 'Grade 11 STEM' },
+	...Object.entries(SCP_LABELS).map(([value, label]) => ({
+		value,
+		label,
+	})),
 ];
 
 export default function EarlyRegistration() {
@@ -113,6 +92,7 @@ export default function EarlyRegistration() {
 		'APPROVE' | 'REJECT' | 'RESULT' | 'ELIGIBLE' | null
 	>(null);
 	const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
+	const [isInterviewDialogOpen, setIsInterviewDialogOpen] = useState(false);
 	const [rejectionReason, setRejectionReason] = useState('');
 	const [examScore, setExamScore] = useState('');
 	const [examResult, setExamResult] = useState('PASSED');
@@ -176,7 +156,7 @@ export default function EarlyRegistration() {
 
 			if (type !== 'ALL') params.append('applicantType', type);
 			params.append('page', String(page));
-			params.append('limit', '15');
+			params.append('limit', '50');
 
 			const res = await api.get(`/applications?${params.toString()}`);
 
@@ -295,17 +275,17 @@ export default function EarlyRegistration() {
 			<div className='flex-1 flex flex-col space-y-4 sm:space-y-6 overflow-auto px-2 sm:px-0'>
 				<div className='flex flex-col md:flex-row md:items-center justify-between gap-4'>
 					<div>
-						<h1 className='text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight'>
+						<h1 className='text-3xl font-bold tracking-tight'>
 							Early Registration Monitoring Dashboard
 						</h1>
-						<p className='text-sm text-[hsl(var(--muted-foreground))]'>
+						<p className='text-[hsl(var(--muted-foreground))]'>
 							Applicant screening and assessment workflow
 						</p>
 					</div>
 					<div className='flex items-center gap-2'>
 						<Badge
 							variant='outline'
-							className='bg-blue-50 text-blue-700'
+							className='bg-blue-50 text-blue-700 text-xs'
 						>
 							<span className='hidden sm:inline'>Early Registration </span>
 							Queue: {total}
@@ -324,7 +304,7 @@ export default function EarlyRegistration() {
 									<Search className='absolute left-2.5 top-2.5 h-4 w-4 text-[hsl(var(--muted-foreground))]' />
 									<Input
 										placeholder='LRN, First Name, Last Name...'
-										className='pl-9 h-10'
+										className='pl-9 h-10 text-xs'
 										value={search}
 										onChange={(e) => setSearch(e.target.value)}
 									/>
@@ -339,27 +319,71 @@ export default function EarlyRegistration() {
 										value={status}
 										onValueChange={setStatus}
 									>
-										<SelectTrigger className='h-10 md:w-48'>
+										<SelectTrigger className='h-10 md:w-48 text-xs'>
 											<SelectValue />
 										</SelectTrigger>
 										<SelectContent>
-											<SelectItem value='ALL'>All Active Intake</SelectItem>
-											<SelectItem value='SUBMITTED'>Submitted</SelectItem>
-											<SelectItem value='UNDER_REVIEW'>Under Review</SelectItem>
-											<SelectItem value='FOR_REVISION'>For Revision</SelectItem>
-											<SelectItem value='ELIGIBLE'>Eligible</SelectItem>
-											<SelectItem value='ASSESSMENT_SCHEDULED'>
+											<SelectItem
+												value='ALL'
+												className='text-xs'
+											>
+												All Active Intake
+											</SelectItem>
+											<SelectItem
+												value='SUBMITTED'
+												className='text-xs'
+											>
+												Submitted
+											</SelectItem>
+											<SelectItem
+												value='UNDER_REVIEW'
+												className='text-xs'
+											>
+												Under Review
+											</SelectItem>
+											<SelectItem
+												value='FOR_REVISION'
+												className='text-xs'
+											>
+												For Revision
+											</SelectItem>
+											<SelectItem
+												value='ELIGIBLE'
+												className='text-xs'
+											>
+												Eligible
+											</SelectItem>
+											<SelectItem
+												value='ASSESSMENT_SCHEDULED'
+												className='text-xs'
+											>
 												Exam Scheduled
 											</SelectItem>
-											<SelectItem value='ASSESSMENT_TAKEN'>
+											<SelectItem
+												value='ASSESSMENT_TAKEN'
+												className='text-xs'
+											>
 												Exam Taken
 											</SelectItem>
 
-											<SelectItem value='NOT_QUALIFIED'>
+											<SelectItem
+												value='NOT_QUALIFIED'
+												className='text-xs'
+											>
 												Not Qualified
 											</SelectItem>
-											<SelectItem value='REJECTED'>Rejected</SelectItem>
-											<SelectItem value='WITHDRAWN'>Withdrawn</SelectItem>
+											<SelectItem
+												value='REJECTED'
+												className='text-xs'
+											>
+												Rejected
+											</SelectItem>
+											<SelectItem
+												value='WITHDRAWN'
+												className='text-xs'
+											>
+												Withdrawn
+											</SelectItem>
 										</SelectContent>
 									</Select>
 								</div>
@@ -371,7 +395,7 @@ export default function EarlyRegistration() {
 										value={type}
 										onValueChange={setType}
 									>
-										<SelectTrigger className='h-10 md:w-48'>
+										<SelectTrigger className='h-10 md:w-48 text-xs'>
 											<SelectValue />
 										</SelectTrigger>
 										<SelectContent>
@@ -379,6 +403,7 @@ export default function EarlyRegistration() {
 												<SelectItem
 													key={t.value}
 													value={t.value}
+													className='text-xs'
 												>
 													{t.label}
 												</SelectItem>
@@ -389,7 +414,7 @@ export default function EarlyRegistration() {
 							</div>
 							<Button
 								variant='outline'
-								className='h-10 px-3 w-full md:w-auto'
+								className='h-10 px-3 w-full md:w-auto text-xs'
 								onClick={() => {
 									setSearch('');
 									setStatus('ALL');
@@ -405,25 +430,25 @@ export default function EarlyRegistration() {
 							<Table className='border-collapse'>
 								<TableHeader className='bg-[hsl(var(--primary))]'>
 									<TableRow>
-										<TableHead className='text-center font-bold text-primary-foreground'>
+										<TableHead className='text-center font-bold text-primary-foreground text-sm'>
 											Applicant
 										</TableHead>
-										<TableHead className='text-center font-bold text-primary-foreground hidden md:table-cell'>
+										<TableHead className='text-center font-bold text-primary-foreground hidden md:table-cell text-sm'>
 											LRN
 										</TableHead>
-										<TableHead className='text-center font-bold text-primary-foreground'>
+										<TableHead className='text-center font-bold text-primary-foreground text-sm'>
 											Grade
 										</TableHead>
-										<TableHead className='text-center font-bold text-primary-foreground hidden lg:table-cell'>
+										<TableHead className='text-center font-bold text-primary-foreground hidden lg:table-cell text-sm'>
 											Type
 										</TableHead>
-										<TableHead className='text-center font-bold text-primary-foreground'>
+										<TableHead className='text-center font-bold text-primary-foreground text-sm'>
 											Status
 										</TableHead>
-										<TableHead className='text-center font-bold text-primary-foreground hidden xl:table-cell'>
+										<TableHead className='text-center font-bold text-primary-foreground hidden xl:table-cell text-sm'>
 											Date
 										</TableHead>
-										<TableHead className='text-center font-bold text-primary-foreground'>
+										<TableHead className='text-center font-bold text-primary-foreground text-sm'>
 											Actions
 										</TableHead>
 									</TableRow>
@@ -432,37 +457,37 @@ export default function EarlyRegistration() {
 									{showSkeleton ? (
 										Array.from({ length: 5 }).map((_, i) => (
 											<TableRow key={i}>
-												<TableCell>
+												<TableCell className='text-sm'>
 													<div className='space-y-2'>
 														<Skeleton className='h-4 w-32' />
 														<Skeleton className='h-3 w-24' />
 													</div>
 												</TableCell>
-												<TableCell className='hidden md:table-cell'>
+												<TableCell className='hidden md:table-cell text-sm'>
 													<Skeleton className='h-4 w-24' />
 												</TableCell>
-												<TableCell>
+												<TableCell className='text-sm'>
 													<div className='space-y-2 text-center flex flex-col items-center'>
 														<Skeleton className='h-4 w-16' />
 														<Skeleton className='h-3 w-20' />
 													</div>
 												</TableCell>
-												<TableCell className='hidden lg:table-cell'>
+												<TableCell className='hidden lg:table-cell text-sm'>
 													<div className='flex justify-center'>
 														<Skeleton className='h-4 w-16' />
 													</div>
 												</TableCell>
-												<TableCell>
+												<TableCell className='text-sm'>
 													<div className='flex justify-center'>
 														<Skeleton className='h-6 w-20 rounded-full' />
 													</div>
 												</TableCell>
-												<TableCell className='hidden xl:table-cell'>
+												<TableCell className='hidden xl:table-cell text-sm'>
 													<div className='flex justify-center'>
 														<Skeleton className='h-4 w-24' />
 													</div>
 												</TableCell>
-												<TableCell>
+												<TableCell className='text-sm'>
 													<div className='flex justify-center'>
 														<Skeleton className='h-8 w-16' />
 													</div>
@@ -482,7 +507,7 @@ export default function EarlyRegistration() {
 										applications.map((app) => (
 											<TableRow
 												key={app.id}
-												className={`hover:bg-[hsl(var(--muted))] transition-colors text-center cursor-pointer ${selectedId === app.id ? 'bg-[hsl(var(--muted))] shadow-inner' : ''}`}
+												className={`hover:bg-[hsl(var(--muted))] transition-colors text-center cursor-pointer text-sm ${selectedId === app.id ? 'bg-[hsl(var(--muted))] shadow-inner' : ''}`}
 												onClick={() => setSelectedId(app.id)}
 											>
 												<TableCell>
@@ -490,21 +515,21 @@ export default function EarlyRegistration() {
 														<span className='font-bold text-sm uppercase'>
 															{app.lastName}, {app.firstName}
 														</span>
-														<span className='text-[hsl(var(--muted-foreground))]'>
+														<span className='text-[hsl(var(--muted-foreground))] text-sm'>
 															#{app.trackingNumber}
 														</span>
 													</div>
 												</TableCell>
-												<TableCell className='hidden md:table-cell'>
+												<TableCell className='hidden md:table-cell text-sm'>
 													{app.lrn}
 												</TableCell>
 												<TableCell>
 													<div className='flex flex-col'>
-														<span className='font-medium'>
+														<span className='font-medium text-sm'>
 															{app.gradeLevel.name}
 														</span>
 														{app.strand && (
-															<span className='text-[hsl(var(--muted-foreground))]'>
+															<span className='text-[hsl(var(--muted-foreground))] text-sm'>
 																{app.strand.name}
 															</span>
 														)}
@@ -513,22 +538,25 @@ export default function EarlyRegistration() {
 												<TableCell className='hidden lg:table-cell'>
 													<Badge
 														variant='outline'
-														className='font-bold px-1.5 py-0 h-4 border-slate-300 text-slate-600'
+														className='font-bold px-2 py-0.5 h-auto border-slate-300 text-slate-600 text-sm leading-tight text-center'
 													>
 														{formatScpType(app.applicantType)}
 													</Badge>
 												</TableCell>
 												<TableCell>
-													<StatusBadge status={app.status} />
+													<StatusBadge
+														status={app.status}
+														className='text-sm'
+													/>
 												</TableCell>
-												<TableCell className='text-[hsl(var(--muted-foreground))] hidden xl:table-cell'>
-													{format(new Date(app.createdAt), 'MMM dd, yyyy')}
+												<TableCell className='text-[hsl(var(--muted-foreground))] text-sm hidden xl:table-cell'>
+													{format(new Date(app.createdAt), 'MMMM dd, yyyy')}
 												</TableCell>
 												<TableCell className='text-center'>
 													<Button
 														variant='secondary'
 														size='sm'
-														className='h-8 text-xs font-medium bg-primary/10 hover:bg-primary border-2 border-primary/20 hover:text-primary-foreground'
+														className='h-8 text-sm font-medium bg-primary/10 hover:bg-primary border-2 border-primary/20 hover:text-primary-foreground'
 														onClick={(e) => {
 															e.stopPropagation();
 															setSelectedId(app.id);
@@ -552,7 +580,7 @@ export default function EarlyRegistration() {
 								<Button
 									variant='outline'
 									size='sm'
-									className='h-9 sm:h-8'
+									className='h-9 sm:h-8 text-xs'
 									onClick={() => setPage((p) => Math.max(1, p - 1))}
 									disabled={page === 1}
 								>
@@ -560,16 +588,16 @@ export default function EarlyRegistration() {
 								</Button>
 								<Badge
 									variant='secondary'
-									className='px-3 h-8'
+									className='px-3 h-8 text-xs'
 								>
 									Page {page}
 								</Badge>
 								<Button
 									variant='outline'
 									size='sm'
-									className='h-9 sm:h-8'
+									className='h-9 sm:h-8 text-xs'
 									onClick={() => setPage((p) => p + 1)}
-									disabled={page * 15 >= total}
+									disabled={page * 50 >= total}
 								>
 									Next
 								</Button>
@@ -699,6 +727,23 @@ export default function EarlyRegistration() {
 										toastApiError(e as never);
 									}
 								}}
+								onScheduleInterview={async () => {
+									const app = applications.find((a) => a.id === selectedId);
+									if (app) {
+										setLoading(true);
+										try {
+											const fullRes = await api.get(
+												`/applications/${selectedId}`,
+											);
+											setSelectedApp(fullRes.data);
+											setIsInterviewDialogOpen(true);
+										} catch (err) {
+											toastApiError(err as never);
+										} finally {
+											setLoading(false);
+										}
+									}
+								}}
 							/>
 						</div>
 					)}
@@ -712,20 +757,20 @@ export default function EarlyRegistration() {
 			>
 				<DialogContent className='sm:max-w-md'>
 					<DialogHeader>
-						<DialogTitle>
+						<DialogTitle className='text-xs'>
 							{actionType === 'APPROVE' && 'Approve & Pre-register'}
 							{actionType === 'ELIGIBLE' && 'Mark as Eligible'}
 							{actionType === 'REJECT' && 'Reject Application'}
 							{actionType === 'RESULT' && 'Record Assessment Result'}
 						</DialogTitle>
-						<DialogDescription>
+						<DialogDescription className='text-xs'>
 							Candidate: {selectedApp?.lastName}, {selectedApp?.firstName}
 						</DialogDescription>
 					</DialogHeader>
 
 					{actionType === 'ELIGIBLE' && (
 						<div className='py-4'>
-							<p className='text-sm'>
+							<p className='text-xs'>
 								Marking this applicant as{' '}
 								<span className='font-bold text-cyan-700'>ELIGIBLE</span> means
 								their documents are verified and they are cleared for assessment
@@ -741,12 +786,14 @@ export default function EarlyRegistration() {
 								assigned to a section.
 							</p>
 							<div className='space-y-2'>
-								<Label>Select Section for {selectedApp?.gradeLevel.name}</Label>
+								<Label className='text-xs'>
+									Select Section for {selectedApp?.gradeLevel.name}
+								</Label>
 								<Select
 									value={selectedSectionId}
 									onValueChange={setSelectedSectionId}
 								>
-									<SelectTrigger>
+									<SelectTrigger className='text-xs'>
 										<SelectValue placeholder='Choose a section...' />
 									</SelectTrigger>
 									<SelectContent>
@@ -755,6 +802,7 @@ export default function EarlyRegistration() {
 												key={s.id}
 												value={String(s.id)}
 												disabled={s._count.enrollments >= s.maxCapacity}
+												className='text-xs'
 											>
 												{s.name} ({s._count.enrollments}/{s.maxCapacity})
 											</SelectItem>
@@ -768,9 +816,9 @@ export default function EarlyRegistration() {
 					{actionType === 'REJECT' && (
 						<div className='space-y-4 py-4'>
 							<div className='space-y-2'>
-								<Label>Reason for Rejection</Label>
+								<Label className='text-xs'>Reason for Rejection</Label>
 								<textarea
-									className='w-full min-h-[100px] rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+									className='w-full min-h-[100px] rounded-md border border-input bg-transparent px-3 py-2 text-xs shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
 									placeholder='Explain why this application is being rejected...'
 									value={rejectionReason}
 									onChange={(e) => setRejectionReason(e.target.value)}
@@ -782,29 +830,36 @@ export default function EarlyRegistration() {
 					{actionType === 'RESULT' && (
 						<div className='space-y-4 py-4'>
 							<div className='space-y-2'>
-								<Label>Score / Rating</Label>
+								<Label className='text-xs'>Score / Rating</Label>
 								<Input
 									type='number'
 									step='0.01'
 									placeholder='e.g. 85.5'
 									value={examScore}
 									onChange={(e) => setExamScore(e.target.value)}
+									className='text-xs'
 								/>
 							</div>
 							<div className='space-y-2'>
-								<Label>Final Verdict</Label>
+								<Label className='text-xs'>Final Verdict</Label>
 								<Select
 									value={examResult}
 									onValueChange={setExamResult}
 								>
-									<SelectTrigger>
+									<SelectTrigger className='text-xs'>
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value='PASSED'>
+										<SelectItem
+											value='PASSED'
+											className='text-xs'
+										>
 											PASSED - Qualifies for Program
 										</SelectItem>
-										<SelectItem value='FAILED'>
+										<SelectItem
+											value='FAILED'
+											className='text-xs'
+										>
 											FAILED - Did not meet criteria
 										</SelectItem>
 									</SelectContent>
@@ -817,12 +872,13 @@ export default function EarlyRegistration() {
 						<Button
 							variant='outline'
 							onClick={() => setActionType(null)}
+							className='text-xs'
 						>
 							Cancel
 						</Button>
 						{actionType === 'ELIGIBLE' && (
 							<Button
-								className='bg-cyan-600 hover:bg-cyan-700'
+								className='bg-cyan-600 hover:bg-cyan-700 text-xs'
 								onClick={handleMarkEligible}
 							>
 								Confirm Eligibility
@@ -830,7 +886,7 @@ export default function EarlyRegistration() {
 						)}
 						{actionType === 'APPROVE' && (
 							<Button
-								className='bg-emerald-600 hover:bg-emerald-700'
+								className='bg-emerald-600 hover:bg-emerald-700 text-xs'
 								onClick={handleApprove}
 								disabled={!selectedSectionId}
 							>
@@ -842,19 +898,32 @@ export default function EarlyRegistration() {
 								variant='destructive'
 								onClick={handleReject}
 								disabled={!rejectionReason}
+								className='text-xs'
 							>
 								Reject Application
 							</Button>
 						)}
 						{actionType === 'RESULT' && (
-							<Button onClick={handleRecordResult}>Save Result</Button>
+							<Button
+								onClick={handleRecordResult}
+								className='text-xs'
+							>
+								Save Result
+							</Button>
 						)}
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
 			<ScheduleExamDialog
 				open={isScheduleDialogOpen}
-				onOpenChange={setIsScheduleDialogOpen}
+				onOpenChange={isScheduleDialogOpen ? setIsScheduleDialogOpen : () => {}}
+				applicant={selectedApp as ApplicantDetail | null}
+				onSuccess={fetchData}
+				onCloseSheet={() => setSelectedId(null)}
+			/>
+			<ScheduleInterviewDialog
+				open={isInterviewDialogOpen}
+				onOpenChange={setIsInterviewDialogOpen}
 				applicant={selectedApp as ApplicantDetail | null}
 				onSuccess={fetchData}
 			/>

@@ -180,7 +180,7 @@ export function RequirementChecklist({
 							size='sm'
 							onClick={handleSave}
 							disabled={isUpdating || !hasChanges}
-							className='h-7 text-[10px] font-bold uppercase tracking-tight gap-1.5'
+							className='h-7 text-[0.625rem] font-bold uppercase tracking-tight gap-1.5'
 						>
 							{isUpdating ? (
 								<Loader2 className='h-3 w-3 animate-spin' />
@@ -191,7 +191,7 @@ export function RequirementChecklist({
 						</Button>
 					</div>
 				</div>
-				<p className='text-[10px] text-muted-foreground mt-1'>
+				<p className='text-[0.625rem] text-muted-foreground mt-1'>
 					Learner Type:{' '}
 					<span className='font-bold text-primary'>
 						{getLearnerTypeLabel(learnerType)}
@@ -216,7 +216,7 @@ export function RequirementChecklist({
 								<div className='flex items-center gap-2'>
 									<Label
 										htmlFor={req.key}
-										className='text-[12px] font-bold leading-tight cursor-pointer truncate'
+										className='text-xs font-bold leading-tight cursor-pointer truncate'
 										title={req.label}
 									>
 										{req.label}
@@ -224,7 +224,7 @@ export function RequirementChecklist({
 									{req.isMandatory && (
 										<Badge
 											variant='outline'
-											className='text-[8px] h-3.5 px-1 text-red-600 border-red-200 bg-red-50 shrink-0'
+											className='text-[0.5rem] h-3.5 px-1 text-red-600 border-red-200 bg-red-50 shrink-0'
 										>
 											M
 										</Badge>
@@ -255,7 +255,7 @@ export function RequirementChecklist({
 				</div>
 
 				{checklist?.updatedAt && (
-					<p className='text-[9px] text-right text-muted-foreground pt-2 border-t'>
+					<p className='text-[0.5625rem] text-right text-muted-foreground pt-2 border-t'>
 						Last updated:{' '}
 						{format(new Date(checklist.updatedAt), 'MMM dd, yyyy hh:mm a')}
 					</p>
@@ -265,7 +265,7 @@ export function RequirementChecklist({
 					<Button
 						variant='outline'
 						size='sm'
-						className='w-full text-[10px] h-8 font-bold gap-2 uppercase tracking-wider'
+						className='w-full text-[0.625rem] h-8 font-bold gap-2 uppercase tracking-wider'
 						asChild
 					>
 						<Link

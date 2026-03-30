@@ -18,6 +18,8 @@ import type {
 	previousSchoolSchema,
 	updateChecklistSchema,
 	requestRevisionSchema,
+	scheduleInterviewSchema,
+	recordInterviewResultSchema,
 } from '../schemas/application.schema.js';
 import type {
 	teacherSchema,
@@ -68,6 +70,10 @@ export type RecordResultInput = z.infer<typeof recordResultSchema>;
 export type RescheduleExamInput = z.infer<typeof rescheduleExamSchema>;
 export type UpdateChecklistInput = z.infer<typeof updateChecklistSchema>;
 export type RequestRevisionInput = z.infer<typeof requestRevisionSchema>;
+export type ScheduleInterviewInput = z.infer<typeof scheduleInterviewSchema>;
+export type RecordInterviewResultInput = z.infer<
+	typeof recordInterviewResultSchema
+>;
 
 // ─── Teacher Types ─────────────────────────────────────
 export type TeacherInput = z.infer<typeof teacherSchema>;

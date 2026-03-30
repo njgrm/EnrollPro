@@ -306,7 +306,7 @@ export default function SchoolProfileTab() {
 													/>
 												)}
 											</button>
-											<span className='text-[10px]  text-muted-foreground'>
+											<span className='text-[0.625rem]  text-muted-foreground'>
 												{color.hex}
 											</span>
 										</div>

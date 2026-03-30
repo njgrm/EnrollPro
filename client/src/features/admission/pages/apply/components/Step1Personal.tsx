@@ -98,7 +98,7 @@ export default function Step1Personal() {
 							) : (
 								<div className='flex flex-col items-center text-muted-foreground group-hover:text-primary transition-colors'>
 									<Camera className='w-8 h-8 mb-1' />
-									<span className='text-[10px] uppercase font-bold tracking-tight'>
+									<span className='text-[0.625rem] uppercase font-bold tracking-tight'>
 										Upload 2x2
 									</span>
 								</div>
@@ -113,7 +113,7 @@ export default function Step1Personal() {
 							title='Upload student photo'
 						/>
 					</div>
-					<p className='text-[10px] text-center text-muted-foreground leading-tight'>
+					<p className='text-[0.625rem] text-center text-muted-foreground leading-tight'>
 						Accepted formats: JPG, PNG.
 						<br />
 						Max size: 5MB.
@@ -141,7 +141,7 @@ export default function Step1Personal() {
 							)}
 						/>
 						{errors.lastName && (
-							<p className='text-[11px] text-destructive font-medium flex items-center gap-1'>
+							<p className='text-[0.6875rem] text-destructive font-medium flex items-center gap-1'>
 								<AlertCircle className='w-3 h-3' /> {errors.lastName.message}
 							</p>
 						)}
@@ -166,7 +166,7 @@ export default function Step1Personal() {
 							)}
 						/>
 						{errors.firstName && (
-							<p className='text-[11px] text-destructive font-medium flex items-center gap-1'>
+							<p className='text-[0.6875rem] text-destructive font-medium flex items-center gap-1'>
 								<AlertCircle className='w-3 h-3' /> {errors.firstName.message}
 							</p>
 						)}
@@ -235,7 +235,7 @@ export default function Step1Personal() {
 						)}
 					/>
 					{errors.birthdate && (
-						<p className='text-[11px] text-destructive font-medium flex items-center gap-1'>
+						<p className='text-[0.6875rem] text-destructive font-medium flex items-center gap-1'>
 							<AlertCircle className='w-3 h-3' /> {errors.birthdate.message}
 						</p>
 					)}
@@ -255,7 +255,7 @@ export default function Step1Personal() {
 						readOnly
 						className='h-11 font-bold cursor-not-allowed '
 					/>
-					<p className='text-[12px] text-muted-foreground italic'>
+					<p className='text-xs text-muted-foreground italic'>
 						Auto-calculated
 					</p>
 				</div>
@@ -296,7 +296,7 @@ export default function Step1Personal() {
 							</Label>
 						</div>
 					</RadioGroup>
-					<p className='text-[12px] text-muted-foreground italic'>
+					<p className='text-xs text-muted-foreground italic'>
 						As recorded on PSA Birth Certificate
 					</p>
 				</div>
@@ -321,7 +321,7 @@ export default function Step1Personal() {
 						)}
 					/>
 					{errors.placeOfBirth && (
-						<p className='text-[11px] text-destructive font-medium flex items-center gap-1'>
+						<p className='text-[0.6875rem] text-destructive font-medium flex items-center gap-1'>
 							<AlertCircle className='w-3 h-3' /> {errors.placeOfBirth.message}
 						</p>
 					)}
@@ -376,11 +376,11 @@ export default function Step1Personal() {
 								);
 							}}
 						/>
-						<p className='text-[10px] text-muted-foreground italic'>
+						<p className='text-[0.625rem] text-muted-foreground italic'>
 							12 digits • found on the learner's Grade 6 Report Card (SF9).
 						</p>
 						{errors.lrn && (
-							<p className='text-[11px] text-destructive font-medium flex items-center gap-1'>
+							<p className='text-[0.6875rem] text-destructive font-medium flex items-center gap-1'>
 								<AlertCircle className='w-3 h-3' /> {errors.lrn.message}
 							</p>
 						)}
@@ -400,7 +400,7 @@ export default function Step1Personal() {
 							placeholder='PSA BC Number'
 							className='h-11 font-bold'
 						/>
-						<p className='text-[10px] text-muted-foreground italic'>
+						<p className='text-[0.625rem] text-muted-foreground italic'>
 							Found on the birth certificate (While this field is optional, the
 							physical document must be submitted for verification.).
 						</p>

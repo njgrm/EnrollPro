@@ -19,7 +19,7 @@ import {
 	SelectValue,
 } from '@/shared/ui/select';
 import { GraduationCap, BookOpen, AlertTriangle } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
+import { cn, SCP_LABELS } from '@/shared/lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function Step5Enrollment() {
@@ -125,7 +125,7 @@ export default function Step5Enrollment() {
 										</div>
 										<p
 											className={cn(
-												'text-[11px] pl-8',
+												'text-[0.6875rem] pl-8',
 												!isScpApplication
 													? 'text-primary-foreground/80'
 													: 'text-muted-foreground',
@@ -164,7 +164,7 @@ export default function Step5Enrollment() {
 										</div>
 										<p
 											className={cn(
-												'text-[11px] pl-8',
+												'text-[0.6875rem] pl-8',
 												isScpApplication
 													? 'text-primary-foreground/80'
 													: 'text-muted-foreground',
@@ -191,34 +191,33 @@ export default function Step5Enrollment() {
 													{[
 														{
 															id: 'SCIENCE_TECHNOLOGY_AND_ENGINEERING',
-															label: 'Science, Technology & Engineering (STE)',
+															label: SCP_LABELS.SCIENCE_TECHNOLOGY_AND_ENGINEERING,
 															desc: 'Written entrance exam + Interview.',
 														},
 														{
 															id: 'SPECIAL_PROGRAM_IN_THE_ARTS',
-															label: 'Special Program in the Arts (SPA)',
+															label: SCP_LABELS.SPECIAL_PROGRAM_IN_THE_ARTS,
 															desc: 'Written exam + Audition + Interview.',
 														},
 														{
 															id: 'SPECIAL_PROGRAM_IN_SPORTS',
-															label: 'Special Program in Sports (SPS)',
+															label: SCP_LABELS.SPECIAL_PROGRAM_IN_SPORTS,
 															desc: 'Physical tryout • Sports background required.',
 														},
 														{
 															id: 'SPECIAL_PROGRAM_IN_JOURNALISM',
-															label: 'Special Program in Journalism (SPJ)',
+															label: SCP_LABELS.SPECIAL_PROGRAM_IN_JOURNALISM,
 															desc: 'Written exam (SPJQE) + Interview.',
 														},
 														{
 															id: 'SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE',
-															label:
-																'Special Program in Foreign Language (SPFL)',
+															label: SCP_LABELS.SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE,
 															desc: 'Based on NAT English score.',
 														},
 														{
 															id: 'SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION',
 															label:
-																'Special Program in Tech-Voc Education (SPTVE)',
+																SCP_LABELS.SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION,
 															desc: 'Aptitude assessment.',
 														},
 													].map((p) => (
@@ -258,7 +257,7 @@ export default function Step5Enrollment() {
 																</div>
 																<p
 																	className={cn(
-																		'text-[11px] pl-8 italic',
+																		'text-[0.6875rem] pl-8 italic',
 																		scpType === p.id
 																			? 'text-primary-foreground/80'
 																			: 'text-muted-foreground',
@@ -281,7 +280,7 @@ export default function Step5Enrollment() {
 																			{p.id ===
 																				'SPECIAL_PROGRAM_IN_THE_ARTS' && (
 																				<div className='space-y-2'>
-																					<Label className='text-[10px] font-bold uppercase text-primary'>
+																					<Label className='text-[0.625rem] font-bold uppercase text-primary'>
 																						Preferred Art Field *
 																					</Label>
 																					<Select
@@ -309,7 +308,7 @@ export default function Step5Enrollment() {
 
 																			{p.id === 'SPECIAL_PROGRAM_IN_SPORTS' && (
 																				<div className='space-y-2'>
-																					<Label className='text-[10px] font-bold uppercase text-primary'>
+																					<Label className='text-[0.625rem] font-bold uppercase text-primary'>
 																						Primary Sport *
 																					</Label>
 																					<div className='grid grid-cols-2 gap-2'>
@@ -358,7 +357,7 @@ export default function Step5Enrollment() {
 																			{p.id ===
 																				'SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE' && (
 																				<div className='space-y-2'>
-																					<Label className='text-[10px] font-bold uppercase text-primary'>
+																					<Label className='text-[0.625rem] font-bold uppercase text-primary'>
 																						Preferred Language *
 																					</Label>
 																					<Select
@@ -542,7 +541,7 @@ export default function Step5Enrollment() {
 																			/>
 																			{watch('g10ScienceGrade') !== undefined &&
 																				watch('g10ScienceGrade')! < 85 && (
-																					<p className='text-[10px] font-bold text-amber-700 italic'>
+																					<p className='text-[0.625rem] font-bold text-amber-700 italic'>
 																						Note: Below 85. Registrar will
 																						review your case.
 																					</p>
@@ -567,7 +566,7 @@ export default function Step5Enrollment() {
 																			/>
 																			{watch('g10MathGrade') !== undefined &&
 																				watch('g10MathGrade')! < 85 && (
-																					<p className='text-[10px] font-bold text-amber-700 italic'>
+																					<p className='text-[0.625rem] font-bold text-amber-700 italic'>
 																						Note: Below 85. Registrar will
 																						review your case.
 																					</p>

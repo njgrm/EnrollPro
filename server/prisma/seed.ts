@@ -7,16 +7,74 @@ const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-	// Ensure school settings row exists
-	const existing = await prisma.schoolSettings.findFirst();
-	if (!existing) {
-		await prisma.schoolSettings.create({ data: { schoolName: 'My School' } });
+	// 1. Ensure school settings row exists
+	let settings = await prisma.schoolSettings.findFirst();
+	if (!settings) {
+		settings = await prisma.schoolSettings.create({ data: { schoolName: 'EnrollPro High School' } });
 		console.log('Created default SchoolSettings row.');
 	} else {
 		console.log('SchoolSettings already exists.');
 	}
 
-	// Create first SYSTEM_ADMIN account
+	// 2. Ensure an active School Year exists
+	let activeYear = await prisma.schoolYear.findFirst({
+		where: { status: 'ACTIVE' },
+	});
+
+	if (!activeYear) {
+		activeYear = await prisma.schoolYear.create({
+			data: {
+				yearLabel: '2026-2027',
+				status: 'ACTIVE',
+				isActive: true,
+				classOpeningDate: new Date('2026-06-15'),
+				classEndDate: new Date('2027-03-31'),
+				earlyRegOpenDate: new Date('2026-01-01'),
+				earlyRegCloseDate: new Date('2026-05-31'),
+				enrollOpenDate: new Date('2026-05-01'),
+				enrollCloseDate: new Date('2026-06-30'),
+			},
+		});
+		console.log(`✅ Created Active School Year: ${activeYear.yearLabel}`);
+		
+		// Update settings to point to this active year
+		await prisma.schoolSettings.update({
+			where: { id: settings.id },
+			data: { activeSchoolYearId: activeYear.id }
+		});
+	}
+
+	// 3. Ensure Grade Levels G7-G12 exist for the active school year
+	const grades = [
+		{ name: '7', displayOrder: 7 },
+		{ name: '8', displayOrder: 8 },
+		{ name: '9', displayOrder: 9 },
+		{ name: '10', displayOrder: 10 },
+		{ name: '11', displayOrder: 11 },
+		{ name: '12', displayOrder: 12 },
+	];
+
+	for (const grade of grades) {
+		const existingGrade = await prisma.gradeLevel.findFirst({
+			where: {
+				schoolYearId: activeYear.id,
+				name: grade.name,
+			},
+		});
+
+		if (!existingGrade) {
+			await prisma.gradeLevel.create({
+				data: {
+					name: grade.name,
+					displayOrder: grade.displayOrder,
+					schoolYearId: activeYear.id,
+				},
+			});
+			console.log(`✅ Created Grade Level: ${grade.name}`);
+		}
+	}
+
+	// 4. Create first SYSTEM_ADMIN account
 	const email = process.env.ADMIN_EMAIL ?? 'admin@deped.edu.ph';
 	const password = process.env.ADMIN_PASSWORD ?? 'Admin2026!';
 

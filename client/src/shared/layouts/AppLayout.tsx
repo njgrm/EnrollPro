@@ -42,6 +42,7 @@ import { Separator } from '@/shared/ui/separator';
 import { Button } from '@/shared/ui/button';
 import { Badge } from '@/shared/ui/badge';
 import { Skeleton } from '@/shared/ui/skeleton';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover';
 
 import { useAuthStore } from '@/store/auth.slice';
 import { useSettingsStore } from '@/store/settings.slice';
@@ -50,6 +51,15 @@ import { ConfirmationModal } from '@/shared/ui/confirmation-modal';
 import { motion, AnimatePresence } from 'motion/react';
 
 import { useWindowSize } from 'react-use';
+
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from '@/shared/ui/tooltip';
+import { AccessibilityMenu } from '@/shared/components/AccessibilityMenu';
+import { useAccessibility } from '@/shared/hooks/useAccessibility';
 
 const API_BASE =
 	import.meta.env.VITE_API_URL?.replace('/api', '') ||
@@ -85,18 +95,25 @@ function SYSwitcher() {
 
 	return (
 		<div className='relative'>
-			<Button
-				variant='outline'
-				size='sm'
-				className='h-8 gap-1.5 text-xs font-medium'
-				onClick={() => setOpen(!open)}
-			>
-				<Calendar className='size-3.5' />
-				<span className={isOverride ? 'text-destructive' : ''}>
-					{currentLabel}
-				</span>
-				<ChevronsUpDown className='size-3 opacity-50' />
-			</Button>
+			<TooltipProvider>
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Button
+							variant='outline'
+							size='sm'
+							className='h-8 gap-1.5 text-xs font-medium'
+							onClick={() => setOpen(!open)}
+						>
+							<Calendar className='size-3.5' />
+							<span className={isOverride ? 'text-destructive' : ''}>
+								{currentLabel}
+							</span>
+							<ChevronsUpDown className='size-3 opacity-50' />
+						</Button>
+					</TooltipTrigger>
+					<TooltipContent>Switch School Year</TooltipContent>
+				</Tooltip>
+			</TooltipProvider>
 			{open && (
 				<div className='absolute right-0 top-full z-50 mt-1 min-w-45 rounded-md border border-border bg-popover'>
 					{years.map((y) => (
@@ -114,7 +131,7 @@ function SYSwitcher() {
 						>
 							<span className='flex-1 text-left'>{y.yearLabel}</span>
 							<span
-								className={`rounded px-1 py-0.5 text-[10px] font-medium ${
+								className={`rounded px-1 py-0.5 text-[0.625rem] font-medium ${
 									y.status === 'ACTIVE'
 										? 'bg-green-100 text-green-700'
 										: y.status === 'UPCOMING'
@@ -137,7 +154,7 @@ function SYSwitcher() {
 function NavDivider({ label }: { label: string }) {
 	return (
 		<div className='px-3 py-2 mt-2 transition-[margin,opacity,height] duration-200 ease-linear group-data-[collapsible=icon]:m-0 group-data-[collapsible=icon]:h-0 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:opacity-0 overflow-hidden'>
-			<span className='text-[10px] font-bold uppercase tracking-wider text-muted-foreground opacity-60 whitespace-nowrap'>
+			<span className='text-[0.625rem] font-bold uppercase tracking-wider text-muted-foreground opacity-60 whitespace-nowrap'>
 				{label}
 			</span>
 		</div>
@@ -242,7 +259,7 @@ function NavItemChild({
 					<Icon className='size-3.5' />
 					<span>{label}</span>
 					{badgeCount != null && badgeCount > 0 && (
-						<span className='ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground'>
+						<span className='ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[0.625rem] font-semibold text-primary-foreground'>
 							{badgeCount}
 						</span>
 					)}
@@ -323,17 +340,17 @@ function AppSidebar() {
 									<div className='flex items-center gap-1 mt-0.5'>
 										{activeYearLabel ? (
 											<>
-												<span className='truncate text-[11px] text-foreground'>
+												<span className='truncate text-[0.6875rem] text-foreground'>
 													S.Y. {activeYearLabel}
 												</span>
-												<span className='shrink-0 text-[10px] font-semibold text-green-600'>
+												<span className='shrink-0 text-[0.625rem] font-semibold text-green-600'>
 													● ACTIVE
 												</span>
 											</>
 										) : (
 											<>
 												<AlertTriangle className='size-3 shrink-0 text-amber-500' />
-												<span className='text-[11px] text-muted-foreground'>
+												<span className='text-[0.6875rem] text-muted-foreground'>
 													No Active Year
 												</span>
 											</>
@@ -499,7 +516,7 @@ function AppSidebar() {
 										{user?.role === 'SYSTEM_ADMIN' && (
 											<Badge
 												variant='outline'
-												className='mt-0.5 w-fit h-4 px-1 text-[9px] font-bold border-purple-200 bg-purple-50 text-purple-700'
+												className='mt-0.5 w-fit h-4 px-1 text-[0.5625rem] font-bold border-purple-200 bg-purple-50 text-purple-700'
 											>
 												System Admin
 											</Badge>
@@ -507,7 +524,7 @@ function AppSidebar() {
 										{user?.role === 'REGISTRAR' && (
 											<Badge
 												variant='outline'
-												className='mt-0.5 w-fit h-4 px-1 text-[9px] font-bold border-accent bg-[hsl(var(--accent-muted))] text-accent'
+												className='mt-0.5 w-fit h-4 px-1 text-[0.5625rem] font-bold border-accent bg-[hsl(var(--accent-muted))] text-accent'
 											>
 												Registrar
 											</Badge>
@@ -546,6 +563,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 	const toastTheme = accentForeground === '0 0% 100%' ? 'light' : 'dark';
 	const toastPosition = width < 768 ? 'top-center' : 'top-right';
 
+	// Apply all accessibility settings to the DOM
+	useAccessibility();
+
 	return (
 		<SidebarProvider>
 			<AppSidebar />
@@ -566,7 +586,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 					<span className='text-sm font-medium text-muted-foreground'>
 						EnrollPro
 					</span>
-					<div className='ml-auto'>
+					<div className='ml-auto flex items-center gap-2'>
+						<AccessibilityMenu />
 						<SYSwitcher />
 					</div>
 				</header>

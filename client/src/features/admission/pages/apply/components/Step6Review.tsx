@@ -51,7 +51,7 @@ const SummaryCard = ({
 				variant='ghost'
 				size='sm'
 				onClick={() => onEdit(stepId)}
-				className='h-7 text-[10px] font-bold uppercase text-primary hover:text-primary hover:bg-primary/5 gap-1'
+				className='h-7 text-[0.625rem] font-bold uppercase text-primary hover:text-primary hover:bg-primary/5 gap-1'
 			>
 				<Edit2 className='w-3 h-3' /> Edit
 			</Button>
@@ -72,7 +72,7 @@ const DataItem = ({
 	noUppercase?: boolean;
 }) => (
 	<div className='space-y-0.5'>
-		<p className='text-[10px] font-bold uppercase text-muted-foreground tracking-tight'>
+		<p className='text-[0.625rem] font-bold uppercase text-muted-foreground tracking-tight'>
 			{label}
 		</p>
 		<p className='font-bold text-foreground truncate'>
@@ -314,7 +314,7 @@ export default function Step6Review({
 						<div className='space-y-2'>
 							<Label
 								htmlFor='sig'
-								className='text-[10px] font-bold uppercase text-primary/60'
+								className='text-[0.625rem] font-bold uppercase text-primary/60'
 							>
 								Full Name of Parent / Guardian *
 							</Label>
@@ -335,7 +335,7 @@ export default function Step6Review({
 							)}
 						</div>
 						<div className='space-y-2'>
-							<Label className='text-[10px] font-bold uppercase text-primary/60'>
+							<Label className='text-[0.625rem] font-bold uppercase text-primary/60'>
 								Date Accomplished
 							</Label>
 							<Input
@@ -349,7 +349,7 @@ export default function Step6Review({
 				</div>
 
 				<div className='text-center'>
-					<p className='text-[12px] sm:text-sm text-muted-foreground italic'>
+					<p className='text-xs sm:text-sm text-muted-foreground italic'>
 						Privacy consent was recorded on{' '}
 						{format(new Date(), 'MMMM dd, yyyy')}.
 					</p>

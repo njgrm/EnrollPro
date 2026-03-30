@@ -11,6 +11,8 @@ import {
 	rescheduleExamSchema,
 	updateChecklistSchema,
 	requestRevisionSchema,
+	scheduleInterviewSchema,
+	recordInterviewResultSchema,
 } from '@enrollpro/shared';
 import * as ctrl from './admission.controller.js';
 import * as docCtrl from './document.controller.js';
@@ -200,6 +202,20 @@ router.patch(
 	authorize('REGISTRAR', 'SYSTEM_ADMIN'),
 	validate(rescheduleExamSchema),
 	ctrl.rescheduleExam,
+);
+router.patch(
+	'/:id/schedule-interview',
+	authenticate,
+	authorize('REGISTRAR', 'SYSTEM_ADMIN'),
+	validate(scheduleInterviewSchema),
+	ctrl.scheduleInterview,
+);
+router.patch(
+	'/:id/record-interview-result',
+	authenticate,
+	authorize('REGISTRAR', 'SYSTEM_ADMIN'),
+	validate(recordInterviewResultSchema),
+	ctrl.recordInterviewResult,
 );
 router.patch(
 	'/:id/record-result',

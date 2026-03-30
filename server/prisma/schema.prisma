@@ -440,11 +440,12 @@ model ScpConfig {
   scpType        ApplicantType   @map("scp_type")
   isOffered      Boolean         @default(false) @map("is_offered")
   cutoffScore    Float?          @map("cutoff_score")
-  assessmentType String?         @map("assessment_type")
-  examDate       DateTime?       @db.Date @map("exam_date")
-  examTime       String?         @map("exam_time")
-  notes          String?
-  schoolYear     SchoolYear      @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  assessmentType     String?         @map("assessment_type")
+  examDate           DateTime?       @db.Date @map("exam_date")
+  examTime           String?         @map("exam_time")
+  interviewRequired  Boolean         @default(false) @map("interview_required")
+  notes              String?
+  schoolYear         SchoolYear      @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
   options        ScpConfigOption[]
 
   @@unique([schoolYearId, scpType], name: "uq_scp_configs_school_year_scp_type")
@@ -569,6 +570,7 @@ enum EmailTrigger {
   APPLICATION_APPROVED
   APPLICATION_REJECTED
   EXAM_SCHEDULED
+  INTERVIEW_SCHEDULED
   ASSESSMENT_PASSED
   ASSESSMENT_FAILED
 

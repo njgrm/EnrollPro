@@ -190,3 +190,16 @@ export const updateChecklistSchema = z.object({
 export const requestRevisionSchema = z.object({
 	message: z.string().optional(),
 });
+
+export const scheduleInterviewSchema = z.object({
+	interviewDate: z.string().or(z.date()),
+	interviewTime: z.string().optional().nullable(),
+	interviewVenue: z.string().optional().nullable(),
+	interviewNotes: z.string().optional().nullable(),
+});
+
+export const recordInterviewResultSchema = z.object({
+	interviewScore: z.number().optional().nullable(),
+	interviewResult: z.string().optional().nullable(),
+	interviewNotes: z.string().optional().nullable(),
+});

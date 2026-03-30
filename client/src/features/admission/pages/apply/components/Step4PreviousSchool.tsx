@@ -50,7 +50,7 @@ export default function Step4PreviousSchool() {
 						)}
 					/>
 					{errors.lastSchoolName && (
-						<p className='text-[11px] text-destructive font-medium'>
+						<p className='text-[0.6875rem] text-destructive font-medium'>
 							{errors.lastSchoolName.message}
 						</p>
 					)}

@@ -14,14 +14,17 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/shared/ui/dialog';
+import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { sileo } from 'sileo';
 import type { ApplicantDetail } from '@/features/enrollment/hooks/useApplicationDetail';
+import { formatScpType } from '@/shared/lib/utils';
 
 interface Props {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	applicant: ApplicantDetail | null;
 	onSuccess: () => void;
+	onCloseSheet?: () => void;
 }
 
 export function ScheduleExamDialog({
@@ -29,6 +32,7 @@ export function ScheduleExamDialog({
 	onOpenChange,
 	applicant,
 	onSuccess,
+	onCloseSheet,
 }: Props) {
 	const [examDate, setExamDate] = useState('');
 	const [examTime, setExamTime] = useState('');
@@ -102,6 +106,7 @@ export function ScheduleExamDialog({
 			});
 			onOpenChange(false);
 			onSuccess();
+			if (onCloseSheet) onCloseSheet();
 		} catch (err) {
 			toastApiError(err as never);
 		}
@@ -112,12 +117,15 @@ export function ScheduleExamDialog({
 			open={open}
 			onOpenChange={onOpenChange}
 		>
-			<DialogContent className='w-[95vw] max-w-md sm:w-full overflow-y-auto max-h-[90vh] scrollbar-thin'>
+			<DialogContent className='max-w-2xl sm:w-full overflow-y-auto max-h-[90vh] scrollbar-thin'>
 				<DialogHeader>
-					<DialogTitle>Schedule Assessment</DialogTitle>
-					<DialogDescription>
-						Candidate: {applicant.lastName}, {applicant.firstName} (
-						{applicant.gradeLevel.name} - {applicant.applicantType})
+					<DialogTitle className='font-bold uppercase'>
+						Schedule Exam
+					</DialogTitle>
+					<DialogDescription className='font-bold text-foreground'>
+						Applicant: {applicant.lastName}, {applicant.firstName} (
+						{applicant.gradeLevel.name} -{' '}
+						{formatScpType(applicant.applicantType)})
 					</DialogDescription>
 				</DialogHeader>
 
@@ -127,27 +135,27 @@ export function ScheduleExamDialog({
 							<span>✓</span>
 							<span>Documents Verified</span>
 						</div>
-						<p className='text-[10px] text-muted-foreground leading-relaxed'>
+						<p className='text-xs text-foreground leading-relaxed font-bold'>
 							SF9 (Grade 6 Report Card) and PSA Birth Certificate have been
 							checked and filed.
 						</p>
 					</div>
 
 					<div className='space-y-1.5'>
-						<Label className='text-[10px] uppercase tracking-widest text-muted-foreground'>
+						<Label className='text-[0.625rem] uppercase tracking-widest text-muted-foreground'>
 							Assessment Type
 						</Label>
 						<div className='p-2 rounded border bg-muted/30 text-sm font-bold uppercase'>
-							{scpConfig?.assessmentType || 'Written Entrance Exam (EXAM ONLY)'}
+							{scpConfig?.assessmentType || 'Written Entrance Exam'}
 						</div>
 					</div>
 
 					<div className='grid grid-cols-2 gap-4'>
 						<div className='space-y-2'>
 							<Label>Exam Date</Label>
-							<div className='p-2 rounded border bg-muted/30 text-sm font-bold'>
+							<div className='p-2 rounded border bg-muted/30 text-sm font-bold uppercase'>
 								{examDate
-									? format(new Date(examDate), 'MMMM dd, yyyy')
+									? format(new Date(examDate), 'MMMM d, yyyy')
 									: 'NOT SET BY ADMIN'}
 							</div>
 						</div>
@@ -155,8 +163,7 @@ export function ScheduleExamDialog({
 							<Label>Exam Time</Label>
 							<div className='p-2 rounded border bg-muted/30 text-sm font-bold'>
 								{examTime
-									? // Convert 24h to 12h for friendly display
-										new Date(`2000-01-01T${examTime}`).toLocaleTimeString(
+									? new Date(`2000-01-01T${examTime}`).toLocaleTimeString(
 											'en-US',
 											{
 												hour: 'numeric',
@@ -171,8 +178,9 @@ export function ScheduleExamDialog({
 
 					<div className='grid grid-cols-2 gap-4'>
 						<div className='space-y-2'>
-							<Label>Venue (Optional)</Label>
+							<Label>Venue</Label>
 							<Input
+								className='uppercase font-bold'
 								placeholder='e.g. Science Lab'
 								value={examVenue}
 								onChange={(e) => setExamVenue(e.target.value)}
@@ -181,6 +189,7 @@ export function ScheduleExamDialog({
 						<div className='space-y-2'>
 							<Label>Notes (Optional)</Label>
 							<Input
+								className='uppercase font-bold'
 								placeholder='e.g. Bring pencils'
 								value={examNotes}
 								onChange={(e) => setExamNotes(e.target.value)}
@@ -188,26 +197,28 @@ export function ScheduleExamDialog({
 						</div>
 					</div>
 
-					<div className='flex items-start gap-2 p-3 rounded-lg bg-blue-50 text-blue-800 text-[10px]'>
-						<Info className='h-3.5 w-3.5 shrink-0 mt-0.5' />
-						<p>
+					<Alert className='flex items-center bg-primary/5 border-primary/20 p-3 gap-3 min-h-0 [&>svg]:static [&>svg]:translate-y-0'>
+						<Info className='h-4 w-4 stroke-primary shrink-0' />
+						<AlertDescription className='!p-0 !m-0 !translate-y-0 font-bold text-primary/80 text-xs leading-tight'>
 							A confirmation email will be sent to the parent/guardian at{' '}
-							<span className='font-bold'>
+							<span className='font-bold underline text-primary'>
 								{applicant.emailAddress || 'N/A'}
 							</span>{' '}
 							with the exam schedule.
-						</p>
-					</div>
+						</AlertDescription>
+					</Alert>
 				</div>
 
 				<DialogFooter>
 					<Button
+						className='font-bold'
 						variant='outline'
 						onClick={() => onOpenChange(false)}
 					>
 						Cancel
 					</Button>
 					<Button
+						className='font-bold'
 						onClick={handleSchedule}
 						disabled={!examDate || loading}
 					>

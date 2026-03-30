@@ -335,7 +335,7 @@ export default function TrackApplication({
 							<p className='text-md font-bold text-muted-foreground uppercase tracking-widest'>
 								Lost or missing confirmation slip?
 							</p>
-							<p className='text-[12px] text-muted-foreground/60 mt-1 uppercase font-bold'>
+							<p className='text-xs text-muted-foreground/60 mt-1 uppercase font-bold'>
 								Enter your tracking number above to retrieve and download your
 								official slip.
 							</p>
@@ -398,7 +398,7 @@ export default function TrackApplication({
 									)}
 								>
 									<div className='p-5 bg-primary/5 border border-primary/10 rounded-2xl space-y-1'>
-										<p className='text-[10px] font-black uppercase text-muted-foreground tracking-widest flex items-center justify-center gap-1.5'>
+										<p className='text-[0.625rem] font-black uppercase text-muted-foreground tracking-widest flex items-center justify-center gap-1.5'>
 											<User className='w-3 h-3' /> Applicant Name
 										</p>
 										<p className='font-black text-primary uppercase'>
@@ -406,7 +406,7 @@ export default function TrackApplication({
 										</p>
 									</div>
 									<div className='p-5 bg-primary/5 border border-primary/10 rounded-2xl space-y-1'>
-										<p className='text-[10px] font-black uppercase text-muted-foreground tracking-widest flex items-center justify-center gap-1.5'>
+										<p className='text-[0.625rem] font-black uppercase text-muted-foreground tracking-widest flex items-center justify-center gap-1.5'>
 											<FileText className='w-3 h-3' /> Grade Level
 										</p>
 										<p className='font-black text-primary uppercase'>
@@ -416,7 +416,7 @@ export default function TrackApplication({
 
 									{status.isScpApplication && (
 										<div className='p-5 bg-primary/5 border border-primary/10 rounded-2xl space-y-1'>
-											<p className='text-[10px] font-black uppercase text-primary/60 tracking-widest flex items-center justify-center gap-1.5'>
+											<p className='text-[0.625rem] font-black uppercase text-primary/60 tracking-widest flex items-center justify-center gap-1.5'>
 												<BookOpen className='w-3 h-3' /> SCP Program
 											</p>
 											<p className='font-black text-primary uppercase'>
@@ -431,13 +431,13 @@ export default function TrackApplication({
 										status.examDate && (
 											<>
 												<div className='p-5 bg-purple-50 border border-purple-200 rounded-2xl space-y-1'>
-													<p className='text-[10px] font-black uppercase text-purple-600 tracking-widest flex items-center justify-center gap-1.5'>
+													<p className='text-[0.625rem] font-black uppercase text-purple-600 tracking-widest flex items-center justify-center gap-1.5'>
 														<Calendar className='w-3 h-3' /> Scheduled Date
 													</p>
 													<p className='font-black text-purple-900 uppercase'>
 														{format(new Date(status.examDate), 'MMMM dd, yyyy')}
 													</p>
-													<p className='text-[10px] font-bold text-purple-700/70 uppercase'>
+													<p className='text-[0.625rem] font-bold text-purple-700/70 uppercase'>
 														{status.examTime
 															? new Date(
 																	`2000-01-01T${status.examTime}`,
@@ -450,7 +450,7 @@ export default function TrackApplication({
 													</p>
 												</div>
 												<div className='p-5 bg-purple-50 border border-purple-200 rounded-2xl space-y-1'>
-													<p className='text-[10px] font-black uppercase text-purple-600 tracking-widest flex items-center justify-center gap-1.5'>
+													<p className='text-[0.625rem] font-black uppercase text-purple-600 tracking-widest flex items-center justify-center gap-1.5'>
 														<MapPin className='w-3 h-3' /> Exam Location
 													</p>
 													<p className='font-black text-purple-900 uppercase'>
@@ -458,11 +458,11 @@ export default function TrackApplication({
 													</p>
 												</div>
 												<div className='p-5 bg-purple-50 border border-purple-200 rounded-2xl space-y-1'>
-													<p className='text-[10px] font-black uppercase text-purple-600 tracking-widest flex items-center justify-center gap-1.5'>
+													<p className='text-[0.625rem] font-black uppercase text-purple-600 tracking-widest flex items-center justify-center gap-1.5'>
 														<ClipboardList className='w-3 h-3' /> Additional
 														Notes
 													</p>
-													<p className='font-bold text-purple-900/80 text-[10px] uppercase italic leading-tight line-clamp-2'>
+													<p className='font-bold text-purple-900/80 text-[0.625rem] uppercase italic leading-tight line-clamp-2'>
 														{status.examNotes || 'No special instructions'}
 													</p>
 												</div>
@@ -479,7 +479,7 @@ export default function TrackApplication({
 														: 'md:col-span-2',
 												)}
 											>
-												<p className='text-[10px] font-black uppercase text-destructive tracking-widest flex items-center justify-center gap-1.5'>
+												<p className='text-[0.625rem] font-black uppercase text-destructive tracking-widest flex items-center justify-center gap-1.5'>
 													<AlertCircle className='w-3 h-3' /> Revision Details
 												</p>
 												<p className='font-bold text-destructive/90 italic'>
@@ -496,7 +496,7 @@ export default function TrackApplication({
 												: 'md:col-span-2',
 										)}
 									>
-										<p className='text-[10px] font-black uppercase text-muted-foreground tracking-widest'>
+										<p className='text-[0.625rem] font-black uppercase text-muted-foreground tracking-widest'>
 											Date Submitted
 										</p>
 										<p className='text-xs font-bold text-muted-foreground'>
@@ -510,7 +510,7 @@ export default function TrackApplication({
 										<p className='text-md font-bold text-muted-foreground uppercase tracking-widest'>
 											Lost or missing confirmation slip?
 										</p>
-										<p className='text-[12px] text-muted-foreground/60 mt-1 uppercase font-bold'>
+										<p className='text-xs text-muted-foreground/60 mt-1 uppercase font-bold'>
 											Enter your tracking number above to retrieve and download
 											your official slip.
 										</p>
@@ -534,7 +534,7 @@ export default function TrackApplication({
 								</div>
 
 								<div className='pt-4 text-center'>
-									<p className='text-[11px] font-bold text-muted-foreground/60 uppercase tracking-widest'>
+									<p className='text-[0.6875rem] font-bold text-muted-foreground/60 uppercase tracking-widest'>
 										Last updated: {format(new Date(), 'hh:mm a')}
 									</p>
 								</div>
@@ -650,7 +650,7 @@ export default function TrackApplication({
 										<div className='space-y-1'>
 											<p
 												style={{ color: '#9ca3af' }}
-												className='text-[10px] font-black uppercase'
+												className='text-[0.625rem] font-black uppercase'
 											>
 												Date Generated
 											</p>
@@ -668,7 +668,7 @@ export default function TrackApplication({
 										<div className='space-y-1'>
 											<p
 												style={{ color: '#9ca3af' }}
-												className='text-[10px] font-black uppercase'
+												className='text-[0.625rem] font-black uppercase'
 											>
 												Time Generated
 											</p>
@@ -748,7 +748,7 @@ export default function TrackApplication({
 									<div className='space-y-2'>
 										<p
 											style={{ color: '#9ca3af' }}
-											className='text-[10px] font-black uppercase tracking-widest'
+											className='text-[0.625rem] font-black uppercase tracking-widest'
 										>
 											Security Validation
 										</p>
@@ -769,7 +769,7 @@ export default function TrackApplication({
 										</p>
 										<p
 											style={{ color: '#9ca3af' }}
-											className='text-[10px] font-bold'
+											className='text-[0.625rem] font-bold'
 										>
 											This document is electronically generated. No physical
 											signature required.

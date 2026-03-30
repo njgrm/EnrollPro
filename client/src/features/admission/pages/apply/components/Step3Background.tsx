@@ -30,7 +30,7 @@ export default function Step3Background() {
 					<p className='text-sm font-bold text-primary'>
 						Sensitive Information
 					</p>
-					<p className='text-[11px] text-primary font-medium uppercase tracking-wider'>
+					<p className='text-[0.6875rem] text-primary font-medium uppercase tracking-wider'>
 						All details are kept strictly confidential.
 					</p>
 				</div>
@@ -45,7 +45,7 @@ export default function Step3Background() {
 						</Label>
 						<Badge
 							variant='outline'
-							className='text-[10px] uppercase border-primary/20 text-primary gap-1 font-bold'
+							className='text-[0.625rem] uppercase border-primary/20 text-primary gap-1 font-bold'
 						>
 							<Lock className='w-2.5 h-2.5' /> Confidential
 						</Badge>
@@ -119,7 +119,7 @@ export default function Step3Background() {
 						</Label>
 						<Badge
 							variant='outline'
-							className='text-[10px] uppercase border-primary/20 text-primary gap-1 font-bold'
+							className='text-[0.625rem] uppercase border-primary/20 text-primary gap-1 font-bold'
 						>
 							<Lock className='w-2.5 h-2.5' /> Confidential
 						</Badge>
@@ -241,7 +241,7 @@ export default function Step3Background() {
 						</Label>
 						<Badge
 							variant='outline'
-							className='text-[10px] uppercase border-primary/20 text-primary gap-1 font-bold'
+							className='text-[0.625rem] uppercase border-primary/20 text-primary gap-1 font-bold'
 						>
 							<Lock className='w-2.5 h-2.5' /> Confidential
 						</Badge>

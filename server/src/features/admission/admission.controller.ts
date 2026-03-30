@@ -55,7 +55,8 @@ const VALID_TRANSITIONS: Record<string, ApplicationStatus[]> = {
 	ELIGIBLE: ['EXAM_SCHEDULED', 'PRE_REGISTERED', 'WITHDRAWN'],
 	EXAM_SCHEDULED: ['ASSESSMENT_TAKEN', 'WITHDRAWN'],
 	ASSESSMENT_TAKEN: ['PASSED', 'NOT_QUALIFIED', 'WITHDRAWN'],
-	PASSED: ['PRE_REGISTERED', 'WITHDRAWN'],
+	PASSED: ['PRE_REGISTERED', 'ASSESSMENT_SCHEDULED', 'WITHDRAWN'],
+	ASSESSMENT_SCHEDULED: ['ASSESSMENT_TAKEN', 'WITHDRAWN'],
 	PRE_REGISTERED: ['ENROLLED', 'TEMPORARILY_ENROLLED', 'WITHDRAWN'],
 	TEMPORARILY_ENROLLED: ['ENROLLED', 'WITHDRAWN'],
 	NOT_QUALIFIED: ['UNDER_REVIEW', 'WITHDRAWN', 'REJECTED'],
@@ -1375,12 +1376,13 @@ export async function scheduleExam(req: Request, res: Response) {
 			},
 		});
 
-		const assessmentType = scpConfig?.assessmentType || 'EXAM ONLY';
+		const assessmentType = scpConfig?.assessmentType || 'WRITTEN EXAM';
 
 		// Determine assessment kind from config
-		let assessmentKind = 'EXAM';
+		let assessmentKind = 'WRITTEN_EXAM';
 		if (assessmentType.includes('INTERVIEW')) assessmentKind = 'INTERVIEW';
 		if (assessmentType.includes('AUDITION')) assessmentKind = 'AUDITION';
+		if (assessmentType.includes('TRYOUT')) assessmentKind = 'TRYOUT';
 
 		// Create Assessment record + update status in one transaction
 		const updated = await prisma.$transaction(async (tx) => {
@@ -1471,7 +1473,7 @@ export async function recordResult(req: Request, res: Response) {
 		if (examScore !== undefined || examResult !== undefined) {
 			assessmentCreates.push({
 				applicantId,
-				type: 'EXAM' as const,
+				type: 'WRITTEN_EXAM',
 				score: examScore ?? null,
 				result: examResult ?? null,
 				notes: examNotes ?? null,
@@ -1532,6 +1534,159 @@ export async function recordResult(req: Request, res: Response) {
 			userId: req.user!.userId,
 			actionType: 'EXAM_RESULT_RECORDED',
 			description: `Recorded assessment result for ${applicant.firstName} ${applicant.lastName} (#${applicantId}): ${examResult || 'N/A'} (Score: ${examScore ?? natScore ?? 'N/A'})`,
+			subjectType: 'Applicant',
+			recordId: applicantId,
+			req,
+		});
+
+		res.json(updated);
+	} catch (error: any) {
+		res.status(500).json({ message: error.message });
+	}
+}
+
+// — Schedule interview (SCP flow — after exam pass) —
+export async function scheduleInterview(req: Request, res: Response) {
+	try {
+		const { interviewDate, interviewTime, interviewVenue, interviewNotes } =
+			req.body;
+		const applicantId = parseInt(String(req.params.id));
+
+		const applicant = await prisma.applicant.findUnique({
+			where: { id: applicantId },
+		});
+		if (!applicant) {
+			return res.status(404).json({ message: 'Applicant not found' });
+		}
+
+		if (applicant.applicantType === 'REGULAR') {
+			return res.status(422).json({
+				message: 'Interviews are only applicable to SCP applicants.',
+			});
+		}
+
+		if (!canTransition(applicant.status, 'ASSESSMENT_SCHEDULED')) {
+			return res.status(422).json({
+				message: `Cannot schedule interview for application with status "${applicant.status}". Only PASSED applications can proceed to interview.`,
+			});
+		}
+
+		// Verify the SCP config requires an interview
+		const scpConfig = await prisma.scpConfig.findUnique({
+			where: {
+				uq_scp_configs_school_year_scp_type: {
+					schoolYearId: applicant.schoolYearId,
+					scpType: applicant.applicantType as any,
+				},
+			},
+		});
+
+		if (!scpConfig?.interviewRequired) {
+			return res.status(422).json({
+				message:
+					'This SCP program does not require an interview. Proceed directly to section assignment.',
+			});
+		}
+
+		const updated = await prisma.$transaction(async (tx) => {
+			await tx.assessment.create({
+				data: {
+					applicantId,
+					type: 'INTERVIEW',
+					scheduledDate: normalizeDateToUtcNoon(new Date(interviewDate)),
+					scheduledTime: interviewTime || null,
+					venue: interviewVenue || null,
+					notes: interviewNotes || null,
+				},
+			});
+
+			return tx.applicant.update({
+				where: { id: applicantId },
+				data: { status: 'ASSESSMENT_SCHEDULED' },
+			});
+		});
+
+		await auditLog({
+			userId: req.user!.userId,
+			actionType: 'INTERVIEW_SCHEDULED',
+			description: `Scheduled interview for ${applicant.firstName} ${applicant.lastName} (#${applicantId}) on ${interviewDate}${interviewVenue ? ` at ${interviewVenue}` : ''}`,
+			subjectType: 'Applicant',
+			recordId: applicantId,
+			req,
+		});
+
+		if (applicant.emailAddress) {
+			try {
+				await prisma.emailLog.create({
+					data: {
+						recipient: applicant.emailAddress,
+						subject: `Interview Scheduled - ${applicant.trackingNumber}`,
+						trigger: 'INTERVIEW_SCHEDULED',
+						status: 'PENDING',
+						applicantId,
+					},
+				});
+			} catch {
+				/* non-critical */
+			}
+		}
+
+		res.json(updated);
+	} catch (error: any) {
+		res.status(500).json({ message: error.message });
+	}
+}
+
+// — Record interview result —
+export async function recordInterviewResult(req: Request, res: Response) {
+	try {
+		const { interviewScore, interviewResult, interviewNotes } = req.body;
+		const applicantId = parseInt(String(req.params.id));
+
+		const applicant = await prisma.applicant.findUnique({
+			where: { id: applicantId },
+			include: { assessments: { orderBy: { createdAt: 'desc' }, take: 1 } },
+		});
+		if (!applicant) {
+			return res.status(404).json({ message: 'Applicant not found' });
+		}
+
+		if (!canTransition(applicant.status, 'ASSESSMENT_TAKEN')) {
+			return res.status(422).json({
+				message: `Cannot record interview result for application with status "${applicant.status}". Only ASSESSMENT_SCHEDULED applications can record results.`,
+			});
+		}
+
+		// Ensure the latest assessment is an INTERVIEW
+		const latestAssessment = applicant.assessments[0];
+		if (!latestAssessment || latestAssessment.type !== 'INTERVIEW') {
+			return res.status(422).json({
+				message:
+					'No pending interview assessment found. Schedule an interview first.',
+			});
+		}
+
+		const updated = await prisma.$transaction(async (tx) => {
+			await tx.assessment.update({
+				where: { id: latestAssessment.id },
+				data: {
+					score: interviewScore ?? null,
+					result: interviewResult ?? null,
+					notes: interviewNotes ?? null,
+					conductedAt: new Date(),
+				},
+			});
+
+			return tx.applicant.update({
+				where: { id: applicantId },
+				data: { status: 'ASSESSMENT_TAKEN' },
+			});
+		});
+
+		await auditLog({
+			userId: req.user!.userId,
+			actionType: 'INTERVIEW_RESULT_RECORDED',
+			description: `Recorded interview result for ${applicant.firstName} ${applicant.lastName} (#${applicantId}): ${interviewResult || 'N/A'}`,
 			subjectType: 'Applicant',
 			recordId: applicantId,
 			req,
@@ -2058,7 +2213,7 @@ export async function rescheduleExam(req: Request, res: Response) {
 			await tx.assessment.create({
 				data: {
 					applicantId,
-					type: 'EXAM' as any,
+					type: 'WRITTEN_EXAM',
 					scheduledDate: normalizeDateToUtcNoon(new Date(examDate)),
 					venue: examVenue || null,
 					notes: 'Rescheduled',
