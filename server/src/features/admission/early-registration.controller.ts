@@ -49,6 +49,69 @@ async function queueEmail(
 	}
 }
 
+/** Flatten nested assessments array and scpDetail into the flat fields the client expects. Includes ScpConfig fallbacks. */
+async function flattenAssessmentData(application: Record<string, any>) {
+	const assessments = (application.assessments ?? []) as Array<{
+		type: string;
+		scheduledDate: string | null;
+		scheduledTime: string | null;
+		venue: string | null;
+		score: number | null;
+		result: string | null;
+		notes: string | null;
+	}>;
+
+	// Assessments are ordered by createdAt desc — first match = most recent per type
+	const primary = assessments[0] ?? null;
+	const interview = assessments.find((a) => a.type === 'INTERVIEW') ?? null;
+	const audition = assessments.find((a) => a.type === 'AUDITION') ?? null;
+	const tryout = assessments.find((a) => a.type === 'TRYOUT') ?? null;
+
+	const scpDetail = application.scpDetail ?? null;
+
+	// Fallback logic from ScpConfig
+	let fallbackType = null;
+	let fallbackDate = null;
+	let fallbackVenue = null;
+
+	if (application.applicantType !== 'REGULAR' && !primary) {
+		const scpConfig = await prisma.scpConfig.findUnique({
+			where: {
+				uq_scp_configs_school_year_scp_type: {
+					schoolYearId: application.schoolYearId,
+					scpType: application.applicantType,
+				},
+			},
+		});
+
+		if (scpConfig) {
+			fallbackType = scpConfig.assessmentType;
+			fallbackDate = scpConfig.examDate;
+			fallbackVenue = scpConfig.venue;
+		}
+	}
+
+	return {
+		...application,
+		isScpApplication: application.applicantType !== 'REGULAR',
+		scpType: scpDetail?.scpType ?? null,
+		artField: scpDetail?.artField ?? null,
+		foreignLanguage: scpDetail?.foreignLanguage ?? null,
+		sportsList: scpDetail?.sportsList ?? [],
+		assessmentType: primary?.type ?? fallbackType ?? null,
+		examDate: primary?.scheduledDate ?? fallbackDate ?? null,
+		examVenue: primary?.venue ?? fallbackVenue ?? null,
+		examScore: primary?.score ?? null,
+		examResult: primary?.result ?? null,
+		examNotes: primary?.notes ?? null,
+		interviewDate: interview?.scheduledDate ?? null,
+		interviewResult: interview?.result ?? null,
+		interviewNotes: interview?.notes ?? null,
+		auditionResult: audition?.result ?? null,
+		tryoutResult: tryout?.result ?? null,
+	};
+}
+
 // ── Valid status transitions ──
 const VALID_TRANSITIONS: Record<string, ApplicationStatus[]> = {
 	SUBMITTED: ['UNDER_REVIEW', 'EXAM_SCHEDULED', 'REJECTED', 'WITHDRAWN'],
@@ -178,6 +241,8 @@ export async function index(req: Request, res: Response, next: NextFunction) {
 					gradeLevel: true,
 					strand: true,
 					enrollment: { include: { section: true } },
+					scpDetail: true,
+					assessments: { orderBy: { createdAt: 'desc' } },
 				},
 				orderBy: { createdAt: 'desc' },
 				skip,
@@ -187,7 +252,9 @@ export async function index(req: Request, res: Response, next: NextFunction) {
 		]);
 
 		res.json({
-			applications,
+			applications: await Promise.all(
+				applications.map((app) => flattenAssessmentData(app)),
+			),
 			total,
 			page: parseInt(page as string),
 			limit: parseInt(limit as string),
@@ -265,7 +332,7 @@ export async function show(req: Request, res: Response, next: NextFunction) {
 			});
 		}
 
-		res.json(application);
+		res.json(await flattenAssessmentData(application));
 	} catch (error) {
 		next(error);
 	}
@@ -359,7 +426,7 @@ async function submitApplication(
 	if (body.isScpApplication && body.scpType) {
 		applicantType = body.scpType;
 	} else if (body.gradeLevel === '11' && body.electiveCluster === 'AC-STEM') {
-		applicantType = 'STEM_GRADE11';
+		applicantType = 'STEM_GRADE_11';
 	}
 
 	// 7. Map Learner Type
@@ -636,7 +703,7 @@ export async function track(req: Request, res: Response, next: NextFunction) {
 			);
 		}
 
-		res.json(application);
+		res.json(await flattenAssessmentData(application));
 	} catch (error) {
 		next(error);
 	}
@@ -1958,7 +2025,7 @@ export async function showDetailed(
 			orderBy: { createdAt: 'desc' },
 		});
 
-		res.json({ ...application, auditLogs });
+		res.json(await flattenAssessmentData({ ...application, auditLogs }));
 	} catch (error) {
 		next(error);
 	}

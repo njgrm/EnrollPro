@@ -275,7 +275,7 @@ export default function CurriculumTab() {
 									<BookOpen className='h-5 w-5' />
 									Grade Levels
 								</CardTitle>
-								<CardDescription>
+								<CardDescription className='font-bold'>
 									View grade levels offered by the school
 								</CardDescription>
 							</div>
@@ -283,7 +283,7 @@ export default function CurriculumTab() {
 						<CardContent>
 							<div className='grid grid-cols-1 md:grid-cols-2 gap-8'>
 								<div className='space-y-3'>
-									<p className='text-xs font-semibold uppercase tracking-wide border-b pb-1'>
+									<p className='text-sm font-bold uppercase tracking-wide border-b pb-1'>
 										Junior High School
 									</p>
 									{[...gradeLevels]
@@ -297,8 +297,10 @@ export default function CurriculumTab() {
 												className='rounded-lg border border-border px-3 py-2 hover:bg-muted transition-colors'
 											>
 												<div className='flex flex-col'>
-													<span className='text-sm font-medium'>{gl.name}</span>
-													<span className='text-[0.625rem] text-muted-foreground'>
+													<span className='text-sm font-bold'>
+														Grade {gl.name}
+													</span>
+													<span className='text-sm text-muted-foreground'>
 														{gl.sections.length} sections
 													</span>
 												</div>
@@ -306,7 +308,7 @@ export default function CurriculumTab() {
 										))}
 								</div>
 								<div className='space-y-3'>
-									<p className='text-xs font-semibold uppercase tracking-wide border-b pb-1'>
+									<p className='text-sm font-bold uppercase tracking-wide border-b pb-1'>
 										Senior High School
 									</p>
 									{[...gradeLevels]
@@ -318,8 +320,10 @@ export default function CurriculumTab() {
 												className='rounded-lg border border-border px-3 py-2 hover:bg-muted transition-colors'
 											>
 												<div className='flex flex-col'>
-													<span className='text-sm font-medium'>{gl.name}</span>
-													<span className='text-[0.625rem] text-muted-foreground'>
+													<span className='text-sm font-bold'>
+														Grade {gl.name}
+													</span>
+													<span className='text-sm text-muted-foreground'>
 														{gl.sections.length} sections
 													</span>
 												</div>
@@ -338,7 +342,7 @@ export default function CurriculumTab() {
 									<ShieldCheck className='h-5 w-5' />
 									Special Curricular Programs (SCP)
 								</CardTitle>
-								<CardDescription>
+								<CardDescription className='font-bold'>
 									Configure Early Registration criteria for STE, SPA, SPS, etc.
 								</CardDescription>
 							</div>
@@ -385,7 +389,7 @@ export default function CurriculumTab() {
 												{/* Row 1: Scheduling & Criteria — 12-col grid (4+3+2+3 = 12) */}
 												<div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-x-4 gap-y-5'>
 													<div className='space-y-1.5 lg:col-span-4'>
-														<Label className='text-xs font-semibold flex items-center gap-1.5'>
+														<Label className='text-sm font-bold flex items-center gap-1.5'>
 															Exam Date
 														</Label>
 														<DatePicker
@@ -401,11 +405,11 @@ export default function CurriculumTab() {
 																	d ? d.toISOString() : null,
 																)
 															}
-															className='h-9 text-xs font-bold'
+															className='h-9 text-sm font-bold'
 														/>
 													</div>
 													<div className='space-y-1.5 lg:col-span-3'>
-														<Label className='text-xs font-semibold flex items-center gap-1.5'>
+														<Label className='text-sm font-bold flex items-center gap-1.5'>
 															Exam Time
 														</Label>
 														<TimePicker
@@ -416,13 +420,13 @@ export default function CurriculumTab() {
 														/>
 													</div>
 													<div className='space-y-1.5 lg:col-span-3'>
-														<Label className='text-xs font-semibold flex items-center gap-1.5'>
+														<Label className='text-sm font-bold flex items-center gap-1.5'>
 															Cut-off Score
 														</Label>
 														<Input
 															type='number'
 															placeholder='Minimum passing score'
-															className='h-9 text-xs font-medium'
+															className='h-9 text-sm font-bold'
 															value={scp.cutoffScore ?? ''}
 															onChange={(e) =>
 																handleUpdateScpField(
@@ -437,7 +441,7 @@ export default function CurriculumTab() {
 													</div>
 
 													<div className='space-y-1.5 lg:col-span-2'>
-														<Label className='text-xs font-semibold flex items-center gap-1.5'>
+														<Label className='text-sm font-bold flex items-center gap-1.5'>
 															Interview
 														</Label>
 														<div className='flex items-center gap-2 h-9'>
@@ -451,7 +455,7 @@ export default function CurriculumTab() {
 																	)
 																}
 															/>
-															<span className='text-[0.625rem] text-muted-foreground'>
+															<span className='text-sm'>
 																{scp.interviewRequired !== false
 																	? 'Required'
 																	: 'Off'}
@@ -461,12 +465,12 @@ export default function CurriculumTab() {
 
 													{/* Row 2: Venue & Notes */}
 													<div className='space-y-1.5 sm:col-span-1 lg:col-span-6'>
-														<Label className='text-xs font-semibold text-muted-foreground'>
+														<Label className='text-sm font-bold'>
 															Exam Venue
 														</Label>
 														<Input
 															placeholder='e.g. Science Lab, Room 201'
-															className='h-9 text-xs'
+															className='h-9 text-sm font-bold uppercase'
 															value={scp.venue || ''}
 															onChange={(e) =>
 																handleUpdateScpField(
@@ -478,12 +482,12 @@ export default function CurriculumTab() {
 														/>
 													</div>
 													<div className='space-y-1.5 sm:col-span-1 lg:col-span-6'>
-														<Label className='text-xs font-semibold text-muted-foreground'>
+														<Label className='text-sm font-bold'>
 															Program Notes
 														</Label>
 														<Input
 															placeholder='Additional requirements, instructions, or details...'
-															className='h-9 text-xs'
+															className='h-9 text-sm font-bold'
 															value={scp.notes || ''}
 															onChange={(e) =>
 																handleUpdateScpField(
@@ -499,12 +503,12 @@ export default function CurriculumTab() {
 												{/* Conditional program-specific fields */}
 												{scp.scpType === 'SPECIAL_PROGRAM_IN_THE_ARTS' && (
 													<div className='space-y-1.5'>
-														<Label className='text-xs font-semibold text-muted-foreground'>
+														<Label className='text-sm font-bold'>
 															Art Fields
 														</Label>
 														<Input
 															placeholder='Visual Arts, Music, Theatre Arts, Creative Writing...'
-															className='h-9 text-xs'
+															className='h-9 text-sm'
 															value={scp.artFields.join(', ')}
 															onChange={(e) =>
 																handleUpdateScpField(
@@ -516,19 +520,19 @@ export default function CurriculumTab() {
 																)
 															}
 														/>
-														<p className='text-[0.625rem] text-muted-foreground/60'>
+														<p className='text-sm text-muted-foreground/60'>
 															Separate multiple fields with commas
 														</p>
 													</div>
 												)}
 												{scp.scpType === 'SPECIAL_PROGRAM_IN_SPORTS' && (
 													<div className='space-y-1.5'>
-														<Label className='text-xs font-semibold text-muted-foreground'>
+														<Label className='text-sm font-bold text-muted-foreground'>
 															Sports Offered
 														</Label>
 														<Input
 															placeholder='Basketball, Volleyball, Archery, Swimming...'
-															className='h-9 text-xs'
+															className='h-9 text-sm'
 															value={scp.sportsList.join(', ')}
 															onChange={(e) =>
 																handleUpdateScpField(
@@ -548,12 +552,12 @@ export default function CurriculumTab() {
 												{scp.scpType ===
 													'SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE' && (
 													<div className='space-y-1.5'>
-														<Label className='text-xs font-semibold text-muted-foreground'>
+														<Label className='text-sm font-bold text-muted-foreground'>
 															Languages Offered
 														</Label>
 														<Input
 															placeholder='Spanish, Japanese, French, Mandarin...'
-															className='h-9 text-xs'
+															className='h-9 text-sm'
 															value={scp.languages.join(', ')}
 															onChange={(e) =>
 																handleUpdateScpField(
@@ -617,7 +621,7 @@ export default function CurriculumTab() {
 								<div className='space-y-6'>
 									{/* Academic Track */}
 									<div className='space-y-3'>
-										<p className='text-xs font-semibold flex items-center gap-2'>
+										<p className='text-sm font-bold flex items-center gap-2'>
 											<span className='h-1 w-1 rounded-full bg-primary' />{' '}
 											ACADEMIC TRACK
 										</p>
@@ -662,7 +666,7 @@ export default function CurriculumTab() {
 
 									{/* TechPro Track */}
 									<div className='space-y-3'>
-										<p className='text-xs font-semibold flex items-center gap-2'>
+										<p className='text-sm font-bold flex items-center gap-2'>
 											<span className='h-1 w-1 rounded-full bg-primary' />{' '}
 											TECHNICAL-PROFESSIONAL (TECHPRO) TRACK
 										</p>

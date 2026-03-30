@@ -60,7 +60,7 @@ interface Application {
 }
 
 const APPLICANT_TYPES = [
-	{ value: 'ALL', label: 'All Types' },
+	{ value: 'ALL', label: 'All Curriculum Programs' },
 	...Object.entries(SCP_LABELS).map(([value, label]) => ({
 		value,
 		label,
@@ -278,7 +278,9 @@ export default function EarlyRegistration() {
 						<h1 className='text-3xl font-bold tracking-tight'>
 							Early Registration Monitoring Dashboard
 						</h1>
-						<p className='font-bold'>Applicant screening and assessment workflow</p>
+						<p className='font-bold'>
+							Applicant screening and assessment workflow
+						</p>
 					</div>
 				</div>
 
@@ -308,7 +310,7 @@ export default function EarlyRegistration() {
 										value={status}
 										onValueChange={setStatus}
 									>
-										<SelectTrigger className='h-10 md:w-48 text-sm font-bold'>
+										<SelectTrigger className='h-10 md:w-56 text-sm font-bold'>
 											<SelectValue />
 										</SelectTrigger>
 										<SelectContent>
@@ -316,7 +318,7 @@ export default function EarlyRegistration() {
 												value='ALL'
 												className='text-sm font-bold'
 											>
-												All Active Application
+												All Active Applications
 											</SelectItem>
 											<SelectItem
 												value='SUBMITTED'
@@ -378,13 +380,13 @@ export default function EarlyRegistration() {
 								</div>
 								<div className='space-y-2'>
 									<Label className='text-sm uppercase tracking-wider font-bold '>
-										Type
+										Curriculum Program
 									</Label>
 									<Select
 										value={type}
 										onValueChange={setType}
 									>
-										<SelectTrigger className='h-10 md:w-48 text-sm font-bold'>
+										<SelectTrigger className='h-10 md:w-80 text-sm font-bold'>
 											<SelectValue />
 										</SelectTrigger>
 										<SelectContent>
@@ -429,7 +431,7 @@ export default function EarlyRegistration() {
 											GRADE LEVEL
 										</TableHead>
 										<TableHead className='text-center font-bold text-primary-foreground hidden lg:table-cell text-sm'>
-											TYPE
+											CURRICULUM PROGRAM
 										</TableHead>
 										<TableHead className='text-center font-bold text-primary-foreground text-sm'>
 											STATUS

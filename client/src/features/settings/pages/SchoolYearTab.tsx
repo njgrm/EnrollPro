@@ -364,9 +364,7 @@ export default function SchoolYearTab() {
 									placeholder='e.g. 2026-2027'
 									className='font-bold'
 								/>
-								<p className='text-xs text-muted-foreground'>
-									Updated based on your start date.
-								</p>
+								<p className='text-xs '>Updated based on your start date.</p>
 							</div>
 							<div className='space-y-2'>
 								<Label>Class Opening</Label>
@@ -378,7 +376,7 @@ export default function SchoolYearTab() {
 									maxDate={openingMaxDate}
 									className='font-bold'
 								/>
-								<p className='text-xs text-muted-foreground'>
+								<p className='text-xs '>
 									Select a date through late {currentManilaYear + 1}.
 								</p>
 							</div>
@@ -392,9 +390,7 @@ export default function SchoolYearTab() {
 									maxDate={classEndMaxDate}
 									className='font-bold'
 								/>
-								<p className='text-xs text-muted-foreground'>
-									Ends in the next calendar year.
-								</p>
+								<p className='text-xs '>Ends in the next calendar year.</p>
 							</div>
 						</div>
 
@@ -514,14 +510,14 @@ export default function SchoolYearTab() {
 									variant='success'
 									className='animate-pulse'
 								>
-									● ACTIVE
+									ACTIVE
 								</Badge>
 							</div>
-							<p className='text-sm text-muted-foreground'>
+							<p className='text-sm font-bold'>
 								Classes: {formatManilaDate(activeYear.classOpeningDate)} →{' '}
 								{formatManilaDate(activeYear.classEndDate)}
 							</p>
-							<p className='text-sm text-muted-foreground'>
+							<p className='text-sm font-bold'>
 								Enrolled: {activeYear._count.enrollments} students
 							</p>
 						</div>
@@ -549,23 +545,28 @@ export default function SchoolYearTab() {
 			{/* History */}
 			{years.length > 0 && (
 				<div className='mt-8 space-y-3'>
-					<h3 className='text-sm font-semibold text-muted-foreground'>
-						History
-					</h3>
+					<h3 className='text-sm font-bold '>History</h3>
 					{years.map((y) => (
 						<div
 							key={y.id}
 							className='flex items-center justify-between p-3 rounded-lg border border-border text-sm'
 						>
 							<div className='flex items-center gap-3'>
-								<span className='font-medium'>{y.yearLabel}</span>
+								<span className='font-bold'>S.Y. {y.yearLabel}</span>
 								<span className='text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded'>
 									{y.status}
 								</span>
-								{y.isActive && <Badge variant='success'>Current</Badge>}
+								{y.isActive && (
+									<Badge
+										className='uppercase'
+										variant='success'
+									>
+										Current
+									</Badge>
+								)}
 							</div>
 							<div className='flex items-center gap-4'>
-								<span className='text-muted-foreground hidden sm:inline'>
+								<span className=' hidden sm:inline'>
 									{y._count.enrollments} Enrolled
 								</span>
 								<Button

@@ -13,30 +13,30 @@ export function SCPAssessmentBlock({ applicant }: Props) {
 		<div className='border border-primary/50 bg-primary/8 rounded-md p-3 mb-4 space-y-2'>
 			<div className='flex items-center gap-2 font-bold border-b border-primary/50 pb-2 mb-2'>
 				<span>⚡</span>
-				<span>{formatScpType(applicant.scpType)} ASSESSMENT</span>
+				<span>{formatScpType(applicant.applicantType)} ASSESSMENT</span>
 			</div>
 
 			<div className='text-sm grid grid-cols-[110px_1fr] gap-1 font-bold'>
-				<span className='text-muted-foreground'>Type:</span>
+				<span>Type:</span>
 				<span className='uppercase'>
 					{applicant.assessmentType || 'Not specified'}
 				</span>
 
-				<span className='text-muted-foreground'>Date:</span>
+				<span>Date:</span>
 				<span className='uppercase'>
 					{applicant.examDate
-						? format(new Date(applicant.examDate), 'MMM dd, yyyy')
+						? format(new Date(applicant.examDate), 'MMMM dd, yyyy')
 						: 'Not yet scheduled'}
 				</span>
 
 				{applicant.examVenue && (
 					<>
-						<span className='text-muted-foreground'>Venue:</span>
+						<span>Venue:</span>
 						<span className='uppercase'>{applicant.examVenue}</span>
 					</>
 				)}
 
-				<span className='text-muted-foreground'>Score/Result:</span>
+				<span>Score/Result:</span>
 				<span className='uppercase'>
 					{applicant.examScore !== null
 						? `${applicant.examScore} / 100`
@@ -45,21 +45,21 @@ export function SCPAssessmentBlock({ applicant }: Props) {
 
 				{applicant.auditionResult && (
 					<>
-						<span className='text-muted-foreground'>Audition:</span>
+						<span>Audition:</span>
 						<span className='uppercase'>{applicant.auditionResult}</span>
 					</>
 				)}
 
 				{applicant.tryoutResult && (
 					<>
-						<span className='text-muted-foreground'>Tryout:</span>
+						<span>Tryout:</span>
 						<span className='uppercase'>{applicant.tryoutResult}</span>
 					</>
 				)}
 
 				{applicant.examNotes && (
 					<>
-						<span className='text-muted-foreground'>Notes:</span>
+						<span>Notes:</span>
 						<span className='uppercase italic'>{applicant.examNotes}</span>
 					</>
 				)}
@@ -73,21 +73,21 @@ export function SCPAssessmentBlock({ applicant }: Props) {
 						<span>INTERVIEW</span>
 					</div>
 					<div className='text-sm grid grid-cols-[110px_1fr] gap-1 font-bold'>
-						<span className='text-muted-foreground'>Date:</span>
+						<span>Date:</span>
 						<span className='uppercase'>
 							{format(new Date(applicant.interviewDate), 'MMM dd, yyyy')}
 						</span>
 
 						{applicant.interviewResult && (
 							<>
-								<span className='text-muted-foreground'>Result:</span>
+								<span>Result:</span>
 								<span className='uppercase'>{applicant.interviewResult}</span>
 							</>
 						)}
 
 						{applicant.interviewNotes && (
 							<>
-								<span className='text-muted-foreground'>Notes:</span>
+								<span>Notes:</span>
 								<span className='uppercase italic'>
 									{applicant.interviewNotes}
 								</span>

@@ -97,17 +97,17 @@ export function TimePicker({ value, onChange, className }: TimePickerProps) {
 	return (
 		<div className={cn('flex items-center gap-2', className)}>
 			<div className='flex items-center rounded-md border border-input bg-background px-2 py-1 ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2'>
-				<Clock className='mr-2 h-3 w-3 text-muted-foreground' />
+				<Clock className='mr-2 h-3 w-3' />
 				<input
-					className='w-6 border-none bg-transparent p-0 text-center text-xs font-bold focus:outline-none'
+					className='w-6 border-none bg-transparent p-0 text-center text-sm font-bold focus:outline-none'
 					value={hour}
 					onChange={handleHourChange}
 					onBlur={() => setHour(hour.padStart(2, '0'))}
 					placeholder='HH'
 				/>
-				<span className='text-muted-foreground mx-0.5'>:</span>
+				<span className=' mx-0.5'>:</span>
 				<input
-					className='w-6 border-none bg-transparent p-0 text-center text-xs font-bold focus:outline-none'
+					className='w-6 border-none bg-transparent p-0 text-center text-sm font-bold focus:outline-none'
 					value={minute}
 					onChange={handleMinuteChange}
 					onBlur={() => setMinute(minute.padStart(2, '0'))}
@@ -118,19 +118,19 @@ export function TimePicker({ value, onChange, className }: TimePickerProps) {
 				value={period}
 				onValueChange={(v: string) => handlePeriodChange(v as 'AM' | 'PM')}
 			>
-				<SelectTrigger className='h-8 w-[65px] text-[0.625rem] font-bold'>
+				<SelectTrigger className='h-8 w-[72px] text-sm font-bold px-2'>
 					<SelectValue placeholder='AM/PM' />
 				</SelectTrigger>
 				<SelectContent>
 					<SelectItem
 						value='AM'
-						className='text-xs'
+						className='text-sm font-bold'
 					>
 						AM
 					</SelectItem>
 					<SelectItem
 						value='PM'
-						className='text-xs'
+						className='text-sm font-bold'
 					>
 						PM
 					</SelectItem>

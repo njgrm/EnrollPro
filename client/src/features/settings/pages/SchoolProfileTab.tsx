@@ -264,9 +264,7 @@ export default function SchoolProfileTab() {
 									</Button>
 								)}
 							</div>
-							<p className='text-xs text-muted-foreground'>
-								Accepted: .png, .jpg, .webp — Max 2MB
-							</p>
+							<p className='text-sm'>Accepted: .png, .jpg, .webp — Max 2MB</p>
 						</div>
 					</div>
 
@@ -275,8 +273,8 @@ export default function SchoolProfileTab() {
 					{/* Extracted Palette */}
 					{palette.length > 0 && (
 						<div className='space-y-3'>
-							<h4 className='text-sm font-medium'>Extracted Colors</h4>
-							<p className='text-xs text-muted-foreground'>
+							<h4 className='text-sm font-bold'>Extracted Colors</h4>
+							<p className='text-sm'>
 								Click a swatch to set it as the accent color. The system
 								automatically adjusts text contrast for WCAG compliance.
 							</p>
@@ -306,9 +304,7 @@ export default function SchoolProfileTab() {
 													/>
 												)}
 											</button>
-											<span className='text-[0.625rem]  text-muted-foreground'>
-												{color.hex}
-											</span>
+											<span className='text-xs'>{color.hex}</span>
 										</div>
 									);
 								})}
