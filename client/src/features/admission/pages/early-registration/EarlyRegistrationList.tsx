@@ -278,18 +278,7 @@ export default function EarlyRegistration() {
 						<h1 className='text-3xl font-bold tracking-tight'>
 							Early Registration Monitoring Dashboard
 						</h1>
-						<p className='text-[hsl(var(--muted-foreground))]'>
-							Applicant screening and assessment workflow
-						</p>
-					</div>
-					<div className='flex items-center gap-2'>
-						<Badge
-							variant='outline'
-							className='bg-blue-50 text-blue-700 text-xs'
-						>
-							<span className='hidden sm:inline'>Early Registration </span>
-							Queue: {total}
-						</Badge>
+						<p className='font-bold'>Applicant screening and assessment workflow</p>
 					</div>
 				</div>
 
@@ -297,14 +286,14 @@ export default function EarlyRegistration() {
 					<CardHeader className='px-3 sm:px-6 pb-3'>
 						<div className='flex flex-col md:flex-row gap-3 md:gap-4 items-end'>
 							<div className='flex-1 space-y-2 w-full'>
-								<Label className='text-xs uppercase tracking-wider font-bold text-[hsl(var(--muted-foreground))]'>
+								<Label className='text-sm uppercase tracking-wider font-bold'>
 									Search Applicant
 								</Label>
 								<div className='relative'>
-									<Search className='absolute left-2.5 top-2.5 h-4 w-4 text-[hsl(var(--muted-foreground))]' />
+									<Search className='absolute left-2.5 top-2.5 h-4 w-4' />
 									<Input
 										placeholder='LRN, First Name, Last Name...'
-										className='pl-9 h-10 text-xs'
+										className='pl-9 h-10 text-sm font-bold'
 										value={search}
 										onChange={(e) => setSearch(e.target.value)}
 									/>
@@ -312,75 +301,75 @@ export default function EarlyRegistration() {
 							</div>
 							<div className='grid grid-cols-2 md:flex gap-3 md:gap-4 w-full md:w-auto'>
 								<div className='space-y-2'>
-									<Label className='text-xs uppercase tracking-wider font-bold text-[hsl(var(--muted-foreground))]'>
+									<Label className='text-sm uppercase tracking-wider font-bold'>
 										Intake Status
 									</Label>
 									<Select
 										value={status}
 										onValueChange={setStatus}
 									>
-										<SelectTrigger className='h-10 md:w-48 text-xs'>
+										<SelectTrigger className='h-10 md:w-48 text-sm font-bold'>
 											<SelectValue />
 										</SelectTrigger>
 										<SelectContent>
 											<SelectItem
 												value='ALL'
-												className='text-xs'
+												className='text-sm font-bold'
 											>
 												All Active Intake
 											</SelectItem>
 											<SelectItem
 												value='SUBMITTED'
-												className='text-xs'
+												className='text-sm font-bold'
 											>
 												Submitted
 											</SelectItem>
 											<SelectItem
 												value='UNDER_REVIEW'
-												className='text-xs'
+												className='text-sm font-bold'
 											>
 												Under Review
 											</SelectItem>
 											<SelectItem
 												value='FOR_REVISION'
-												className='text-xs'
+												className='text-sm font-bold'
 											>
 												For Revision
 											</SelectItem>
 											<SelectItem
 												value='ELIGIBLE'
-												className='text-xs'
+												className='text-sm font-bold'
 											>
 												Eligible
 											</SelectItem>
 											<SelectItem
 												value='ASSESSMENT_SCHEDULED'
-												className='text-xs'
+												className='text-sm font-bold'
 											>
 												Exam Scheduled
 											</SelectItem>
 											<SelectItem
 												value='ASSESSMENT_TAKEN'
-												className='text-xs'
+												className='text-sm font-bold'
 											>
 												Exam Taken
 											</SelectItem>
 
 											<SelectItem
 												value='NOT_QUALIFIED'
-												className='text-xs'
+												className='text-sm font-bold'
 											>
 												Not Qualified
 											</SelectItem>
 											<SelectItem
 												value='REJECTED'
-												className='text-xs'
+												className='text-sm font-bold'
 											>
 												Rejected
 											</SelectItem>
 											<SelectItem
 												value='WITHDRAWN'
-												className='text-xs'
+												className='text-sm font-bold'
 											>
 												Withdrawn
 											</SelectItem>
@@ -388,14 +377,14 @@ export default function EarlyRegistration() {
 									</Select>
 								</div>
 								<div className='space-y-2'>
-									<Label className='text-xs uppercase tracking-wider font-bold text-[hsl(var(--muted-foreground))]'>
+									<Label className='text-sm uppercase tracking-wider font-bold '>
 										Type
 									</Label>
 									<Select
 										value={type}
 										onValueChange={setType}
 									>
-										<SelectTrigger className='h-10 md:w-48 text-xs'>
+										<SelectTrigger className='h-10 md:w-48 text-sm font-bold'>
 											<SelectValue />
 										</SelectTrigger>
 										<SelectContent>
@@ -403,7 +392,7 @@ export default function EarlyRegistration() {
 												<SelectItem
 													key={t.value}
 													value={t.value}
-													className='text-xs'
+													className='text-sm font-bold'
 												>
 													{t.label}
 												</SelectItem>
@@ -414,7 +403,7 @@ export default function EarlyRegistration() {
 							</div>
 							<Button
 								variant='outline'
-								className='h-10 px-3 w-full md:w-auto text-xs'
+								className='h-10 px-3 w-full md:w-auto text-sm font-bold'
 								onClick={() => {
 									setSearch('');
 									setStatus('ALL');
@@ -431,25 +420,25 @@ export default function EarlyRegistration() {
 								<TableHeader className='bg-[hsl(var(--primary))]'>
 									<TableRow>
 										<TableHead className='text-center font-bold text-primary-foreground text-sm'>
-											Applicant
+											APPLICANT
 										</TableHead>
 										<TableHead className='text-center font-bold text-primary-foreground hidden md:table-cell text-sm'>
 											LRN
 										</TableHead>
 										<TableHead className='text-center font-bold text-primary-foreground text-sm'>
-											Grade
+											GRADE LEVEL
 										</TableHead>
 										<TableHead className='text-center font-bold text-primary-foreground hidden lg:table-cell text-sm'>
-											Type
+											TYPE
 										</TableHead>
 										<TableHead className='text-center font-bold text-primary-foreground text-sm'>
-											Status
+											STATUS
 										</TableHead>
 										<TableHead className='text-center font-bold text-primary-foreground hidden xl:table-cell text-sm'>
-											Date
+											DATE
 										</TableHead>
 										<TableHead className='text-center font-bold text-primary-foreground text-sm'>
-											Actions
+											ACTIONS
 										</TableHead>
 									</TableRow>
 								</TableHeader>
@@ -498,7 +487,7 @@ export default function EarlyRegistration() {
 										<TableRow>
 											<TableCell
 												colSpan={7}
-												className='h-24 text-center text-sm text-[hsl(var(--muted-foreground))]'
+												className='h-24 text-center text-sm '
 											>
 												No applicants found.
 											</TableCell>
@@ -515,21 +504,21 @@ export default function EarlyRegistration() {
 														<span className='font-bold text-sm uppercase'>
 															{app.lastName}, {app.firstName}
 														</span>
-														<span className='text-[hsl(var(--muted-foreground))] text-sm'>
-															#{app.trackingNumber}
+														<span className='text-sm font-bold'>
+															{app.trackingNumber}
 														</span>
 													</div>
 												</TableCell>
-												<TableCell className='hidden md:table-cell text-sm'>
+												<TableCell className='hidden md:table-cell text-sm font-bold'>
 													{app.lrn}
 												</TableCell>
 												<TableCell>
 													<div className='flex flex-col'>
-														<span className='font-medium text-sm'>
-															{app.gradeLevel.name}
+														<span className='font-bold text-sm'>
+															Grade {app.gradeLevel.name}
 														</span>
 														{app.strand && (
-															<span className='text-[hsl(var(--muted-foreground))] text-sm'>
+															<span className=' text-sm'>
 																{app.strand.name}
 															</span>
 														)}
@@ -538,7 +527,7 @@ export default function EarlyRegistration() {
 												<TableCell className='hidden lg:table-cell'>
 													<Badge
 														variant='outline'
-														className='font-bold px-2 py-0.5 h-auto border-slate-300 text-slate-600 text-sm leading-tight text-center'
+														className='font-bold px-2 py-0.5 h-auto border-slate-300 text-sm leading-tight text-center'
 													>
 														{formatScpType(app.applicantType)}
 													</Badge>
@@ -546,17 +535,17 @@ export default function EarlyRegistration() {
 												<TableCell>
 													<StatusBadge
 														status={app.status}
-														className='text-sm'
+														className='text-sm font-bold'
 													/>
 												</TableCell>
-												<TableCell className='text-[hsl(var(--muted-foreground))] text-sm hidden xl:table-cell'>
+												<TableCell className=' text-sm hidden xl:table-cell font-bold'>
 													{format(new Date(app.createdAt), 'MMMM dd, yyyy')}
 												</TableCell>
 												<TableCell className='text-center'>
 													<Button
 														variant='secondary'
 														size='sm'
-														className='h-8 text-sm font-medium bg-primary/10 hover:bg-primary border-2 border-primary/20 hover:text-primary-foreground'
+														className='h-8 text-sm font-bold bg-primary/10 hover:bg-primary border-2 border-primary/20 hover:text-primary-foreground'
 														onClick={(e) => {
 															e.stopPropagation();
 															setSelectedId(app.id);
@@ -572,8 +561,8 @@ export default function EarlyRegistration() {
 							</Table>
 						</div>
 
-						<div className='flex flex-col sm:flex-row items-center justify-between gap-2 mt-4'>
-							<span className='text-xs text-[hsl(var(--muted-foreground))]'>
+						<div className='flex flex-col sm:flex-row items-center justify-between gap-2 mt-4 font-bold'>
+							<span className='text-xs '>
 								Showing {applications.length} applicants
 							</span>
 							<div className='flex items-center gap-2'>
@@ -895,7 +884,7 @@ export default function EarlyRegistration() {
 						)}
 						{actionType === 'REJECT' && (
 							<Button
-								variant='destructive'
+								variant='default'
 								onClick={handleReject}
 								disabled={!rejectionReason}
 								className='text-xs'

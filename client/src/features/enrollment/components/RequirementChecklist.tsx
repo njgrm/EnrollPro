@@ -255,9 +255,9 @@ export function RequirementChecklist({
 				</div>
 
 				{checklist?.updatedAt && (
-					<p className='text-[0.5625rem] text-right text-muted-foreground pt-2 border-t'>
+					<p className='text-xs text-right pt-2 border-t'>
 						Last updated:{' '}
-						{format(new Date(checklist.updatedAt), 'MMM dd, yyyy hh:mm a')}
+						{format(new Date(checklist.updatedAt), 'MMMM dd, yyyy hh:mm a')}
 					</p>
 				)}
 

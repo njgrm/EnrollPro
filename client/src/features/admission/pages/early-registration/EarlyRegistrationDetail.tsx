@@ -449,7 +449,7 @@ export default function EarlyRegistrationDetail() {
 										)}
 									</span>
 
-									<span className='text-muted-foreground'>Last Updated:</span>
+									<span className='text-muted-foreground '>Last Updated:</span>
 									<span>
 										{format(
 											new Date(applicant.updatedAt),

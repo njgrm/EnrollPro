@@ -104,7 +104,7 @@ async function seed() {
 		let count = 1;
 		for (const type of scpTypes) {
 			for (let i = 0; i < 3; i++) {
-				const trackingNumber = `APP-2026-${count.toString().padStart(4, '0')}`;
+				const trackingNumber = `APP-2026-${count.toString().padStart(5, '0')}`;
 				const isFemale = Math.random() > 0.5;
 				const sex = isFemale ? Sex.FEMALE : Sex.MALE;
 				const firstName = getRandom(isFemale ? firstNamesFemale : firstNamesMale);

@@ -171,7 +171,7 @@ export function ApplicationDetailPanel({
 							)}
 						</div>
 						<div className='text-center'>
-							<h3 className='font-black text-xl uppercase tracking-tight text-foreground'>
+							<h3 className='font-black text-xl uppercase tracking-tight'>
 								{applicant.lastName}, {applicant.firstName}{' '}
 								{applicant.middleName}
 							</h3>
@@ -181,23 +181,21 @@ export function ApplicationDetailPanel({
 						</div>
 					</div>
 
-					<div className='grid grid-cols-2 gap-4 border-t pt-4'>
+					<div className='grid grid-cols-2 border-t pt-4'>
 						<div>
-							<p className='text-[0.625rem] text-foreground uppercase tracking-widest'>
-								Grade Level | Applicant Type
+							<p className='text-[0.625rem] uppercase tracking-widest'>
+								Grade Level (Applicant Type)
 							</p>
-							<p className='text-sm text-foreground'>
-								{applicant.gradeLevel.name} |{' '}
-								{formatScpType(applicant.applicantType)}
+							<p className='text-sm'>
+								Grade {applicant.gradeLevel.name} <br />(
+								{formatScpType(applicant.applicantType)})
 							</p>
 						</div>
 						<div className='text-right'>
-							<p className='text-[0.625rem] text-muted-foreground uppercase tracking-widest'>
+							<p className='text-[0.625rem] uppercase tracking-widest'>
 								Learner Reference Number
 							</p>
-							<p className='text-sm text-foreground'>
-								{applicant.lrn || 'N/A'}
-							</p>
+							<p className='text-sm '>{applicant.lrn || 'N/A'}</p>
 						</div>
 					</div>
 				</div>

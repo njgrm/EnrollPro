@@ -1,10 +1,4 @@
-import {
-	Accessibility,
-	Type,
-	Minus,
-	Plus,
-	RotateCcw,
-} from 'lucide-react';
+import { Accessibility, Type, Minus, Plus, RotateCcw } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { Label } from '@/shared/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover';
@@ -43,7 +37,7 @@ export function AccessibilityMenu() {
 				</Tooltip>
 			</TooltipProvider>
 			<PopoverContent
-				className='w-64'
+				className='w-64 bg-white'
 				align='end'
 			>
 				<div className='space-y-4'>
@@ -55,7 +49,7 @@ export function AccessibilityMenu() {
 							<Button
 								variant='ghost'
 								size='sm'
-								className='h-7 px-2 text-[10px] font-bold text-primary hover:text-primary hover:bg-primary/10'
+								className='h-7 px-2 text-sm font-bold text-primary hover:text-primary hover:bg-primary/10'
 								onClick={resetAll}
 							>
 								<RotateCcw className='mr-1 size-3' /> Reset
@@ -66,10 +60,10 @@ export function AccessibilityMenu() {
 					<div className='space-y-3'>
 						<div className='space-y-2'>
 							<div className='flex items-center justify-between'>
-								<Label className='text-xs font-bold flex items-center gap-2'>
+								<Label className='text-sm font-bold flex items-center gap-2'>
 									<Type className='size-3.5' /> Text Size
 								</Label>
-								<span className='text-[10px] font-bold text-muted-foreground'>
+								<span className='text-sm font-bold text-muted-foreground'>
 									{fontSize}%
 								</span>
 							</div>

@@ -307,7 +307,7 @@ export default function TrackApplication({
 									className={cn(
 										'h-14 pl-12 text-lg font-black border-2 transition-all',
 										errors.trackingNumber
-											? 'border-destructive focus-visible:ring-destructive'
+											? 'border-primary focus-visible:ring-primary'
 											: 'border-primary/10 focus-visible:border-primary focus-visible:ring-primary/5',
 									)}
 									autoComplete='off'
@@ -315,7 +315,7 @@ export default function TrackApplication({
 								<Search className='absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground' />
 							</div>
 							{errors.trackingNumber && (
-								<p className='text-xs text-destructive font-bold'>
+								<p className='text-xs text-primary font-bold'>
 									{errors.trackingNumber.message}
 								</p>
 							)}
@@ -347,14 +347,14 @@ export default function TrackApplication({
 							<motion.div
 								initial={{ opacity: 0, y: 10 }}
 								animate={{ opacity: 1, y: 0 }}
-								className='mt-8 p-6 bg-destructive/5 border-2 border-destructive/20 rounded-2xl flex items-start gap-4'
+								className='mt-8 p-6 bg-primary/5 border-2 border-primary/20 rounded-2xl flex items-start gap-4'
 							>
-								<AlertCircle className='w-6 h-6 text-destructive shrink-0 mt-0.5' />
+								<AlertCircle className='w-6 h-6 text-primary shrink-0 mt-0.5' />
 								<div>
-									<h4 className='font-black text-destructive uppercase tracking-tight'>
+									<h4 className='font-black text-primary uppercase tracking-tight'>
 										Application Not Found
 									</h4>
-									<p className='text-sm font-medium text-destructive/80 mt-1'>
+									<p className='text-sm font-bold text-primary/80 mt-1'>
 										{error}
 									</p>
 								</div>
@@ -473,16 +473,16 @@ export default function TrackApplication({
 										status.rejectionReason && (
 											<div
 												className={cn(
-													'p-5 bg-destructive/5 border border-destructive/20 rounded-2xl space-y-1',
+													'p-5 bg-primary/5 border border-primary/20 rounded-2xl space-y-1',
 													status.isScpApplication
 														? 'md:col-span-3'
 														: 'md:col-span-2',
 												)}
 											>
-												<p className='text-[0.625rem] font-black uppercase text-destructive tracking-widest flex items-center justify-center gap-1.5'>
+												<p className='text-[0.625rem] font-black uppercase text-primary tracking-widest flex items-center justify-center gap-1.5'>
 													<AlertCircle className='w-3 h-3' /> Revision Details
 												</p>
-												<p className='font-bold text-destructive/90 italic'>
+												<p className='font-bold text-primary/90 italic'>
 													"{status.rejectionReason}"
 												</p>
 											</div>

@@ -142,7 +142,7 @@ export function ScheduleExamDialog({
 					</div>
 
 					<div className='space-y-1.5'>
-						<Label className='text-[0.625rem] uppercase tracking-widest text-muted-foreground'>
+						<Label className='font-semibold'>
 							Assessment Type
 						</Label>
 						<div className='p-2 rounded border bg-muted/30 text-sm font-bold uppercase'>
@@ -152,7 +152,7 @@ export function ScheduleExamDialog({
 
 					<div className='grid grid-cols-2 gap-4'>
 						<div className='space-y-2'>
-							<Label>Exam Date</Label>
+							<Label className='font-semibold'>Exam Date</Label>
 							<div className='p-2 rounded border bg-muted/30 text-sm font-bold uppercase'>
 								{examDate
 									? format(new Date(examDate), 'MMMM d, yyyy')
@@ -160,7 +160,7 @@ export function ScheduleExamDialog({
 							</div>
 						</div>
 						<div className='space-y-2'>
-							<Label>Exam Time</Label>
+							<Label className='font-semibold'>Exam Time</Label>
 							<div className='p-2 rounded border bg-muted/30 text-sm font-bold'>
 								{examTime
 									? new Date(`2000-01-01T${examTime}`).toLocaleTimeString(
@@ -178,7 +178,7 @@ export function ScheduleExamDialog({
 
 					<div className='grid grid-cols-2 gap-4'>
 						<div className='space-y-2'>
-							<Label>Venue</Label>
+							<Label className='font-semibold'>Venue</Label>
 							<Input
 								className='uppercase font-bold'
 								placeholder='e.g. Science Lab'
@@ -187,7 +187,7 @@ export function ScheduleExamDialog({
 							/>
 						</div>
 						<div className='space-y-2'>
-							<Label>Notes (Optional)</Label>
+							<Label className='font-semibold'>Notes (Optional)</Label>
 							<Input
 								className='uppercase font-bold'
 								placeholder='e.g. Bring pencils'

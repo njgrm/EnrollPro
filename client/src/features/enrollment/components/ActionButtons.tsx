@@ -33,7 +33,7 @@ export function ActionButtons({ applicant, ...handlers }: Props) {
 						</Button>
 						<Button
 							variant='outline'
-							className='w-full border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground'
+							className='w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground font-bold'
 							onClick={handlers.onReject}
 						>
 							Reject Application
@@ -47,7 +47,7 @@ export function ActionButtons({ applicant, ...handlers }: Props) {
 				status === 'PRE_REGISTERED') && (
 				<Button
 					variant='secondary'
-					className='w-full border-blue-300 text-blue-800 bg-blue-50 hover:bg-blue-100'
+					className='w-full border-blue-300 text-blue-800 bg-blue-50 hover:bg-blue-100 font-bold'
 					onClick={handlers.onTemporarilyEnroll}
 				>
 					Mark as Temporarily Enrolled
@@ -57,14 +57,14 @@ export function ActionButtons({ applicant, ...handlers }: Props) {
 			{isSCP && ['SUBMITTED', 'UNDER_REVIEW', 'ELIGIBLE'].includes(status) && (
 				<>
 					<Button
-						className='w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90'
+						className='w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90 font-bold'
 						onClick={handlers.onScheduleExam}
 					>
 						Verify &amp; Schedule Exam
 					</Button>
 					<Button
 						variant='outline'
-						className='w-full border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground'
+						className='w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground font-bold'
 						onClick={handlers.onReject}
 					>
 						Reject Application
@@ -75,14 +75,14 @@ export function ActionButtons({ applicant, ...handlers }: Props) {
 			{isSCP && status === 'ASSESSMENT_SCHEDULED' && (
 				<>
 					<Button
-						className='w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90'
+						className='w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90 font-bold'
 						onClick={handlers.onRecordResult}
 					>
 						Record Exam Result
 					</Button>
 					<Button
 						variant='outline'
-						className='w-full border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground'
+						className='w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground font-bold'
 						onClick={handlers.onReject}
 					>
 						Reject Application
@@ -93,14 +93,14 @@ export function ActionButtons({ applicant, ...handlers }: Props) {
 			{isSCP && status === 'ASSESSMENT_TAKEN' && (
 				<>
 					<Button
-						className='w-full bg-green-600 text-white hover:bg-green-700'
+						className='w-full bg-green-600 text-white hover:bg-green-700 font-bold'
 						onClick={handlers.onPass}
 					>
 						Mark as Passed
 					</Button>
 					<Button
 						variant='outline'
-						className='w-full border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground'
+						className='w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground font-bold'
 						onClick={handlers.onFail}
 					>
 						Mark as Failed
@@ -112,14 +112,14 @@ export function ActionButtons({ applicant, ...handlers }: Props) {
 				<>
 					{handlers.onScheduleInterview && (
 						<Button
-							className='w-full bg-amber-600 text-white hover:bg-amber-700'
+							className='w-full bg-amber-600 text-white hover:bg-amber-700 font-bold'
 							onClick={handlers.onScheduleInterview}
 						>
 							Schedule Interview
 						</Button>
 					)}
 					<Button
-						className='w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90'
+						className='w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90 font-bold'
 						onClick={handlers.onApprove}
 					>
 						Assign Section
@@ -130,14 +130,14 @@ export function ActionButtons({ applicant, ...handlers }: Props) {
 			{isSCP && status === 'NOT_QUALIFIED' && (
 				<>
 					<Button
-						className='w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90'
+						className='w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90 font-bold'
 						onClick={handlers.onOfferRegular}
 					>
 						Offer Regular Section
 					</Button>
 					<Button
 						variant='outline'
-						className='w-full border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground'
+						className='w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground font-bold'
 						onClick={handlers.onReject}
 					>
 						Reject

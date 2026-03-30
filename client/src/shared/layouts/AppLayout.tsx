@@ -42,7 +42,6 @@ import { Separator } from '@/shared/ui/separator';
 import { Button } from '@/shared/ui/button';
 import { Badge } from '@/shared/ui/badge';
 import { Skeleton } from '@/shared/ui/skeleton';
-import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover';
 
 import { useAuthStore } from '@/store/auth.slice';
 import { useSettingsStore } from '@/store/settings.slice';
@@ -584,7 +583,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 						className='mr-2 h-4!'
 					/>
 					<span className='text-sm font-medium text-muted-foreground'>
-						EnrollPro
+						
 					</span>
 					<div className='ml-auto flex items-center gap-2'>
 						<AccessibilityMenu />
