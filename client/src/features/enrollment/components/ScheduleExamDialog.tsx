@@ -166,10 +166,10 @@ export function ScheduleExamDialog({
 		>
 			<DialogContent className='max-w-2xl sm:w-full overflow-y-auto max-h-[90vh] scrollbar-thin'>
 				<DialogHeader>
-					<DialogTitle className='font-bold uppercase'>
+					<DialogTitle className='font-bold text-sm uppercase'>
 						Schedule {stepLabel}
 					</DialogTitle>
-					<DialogDescription className='font-bold text-foreground'>
+					<DialogDescription className='font-bold text-sm text-foreground'>
 						Applicant: {applicant.lastName}, {applicant.firstName} (
 						{applicant.gradeLevel.name} -{' '}
 						{formatScpType(applicant.applicantType)})
@@ -180,65 +180,62 @@ export function ScheduleExamDialog({
 					{step && (
 						<div className='rounded-lg border p-3 bg-slate-50 space-y-1'>
 							<div className='flex items-center gap-2 font-bold text-sm'>
-								<span className='text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full'>
+								<span className='text-sm bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold'>
 									Step {step.stepOrder}
 								</span>
 								<span>{stepLabel}</span>
 							</div>
 							{step.description && (
-								<p className='text-xs text-muted-foreground'>
-									{step.description}
-								</p>
+								<p className='text-sm font-bold'>{step.description}</p>
 							)}
 						</div>
 					)}
 
 					<div className='grid grid-cols-2 gap-4'>
 						<div className='space-y-2'>
-							<Label className='font-semibold'>Date</Label>
+							<Label className='font-bold text-sm'>Date</Label>
 							<Input
-								type='date'
-								value={scheduledDate}
-								onChange={(e) => setScheduledDate(e.target.value)}
+								readOnly
+								className='font-bold text-sm'
+								value={
+									scheduledDate
+										? format(new Date(scheduledDate), 'MMMM dd, yyyy')
+										: '—'
+								}
 							/>
-							{scheduledDate && (
-								<p className='text-[0.625rem] text-muted-foreground'>
-									{format(new Date(scheduledDate), 'MMMM dd, yyyy')}
-								</p>
-							)}
 						</div>
 						<div className='space-y-2'>
-							<Label className='font-semibold'>Time</Label>
+							<Label className='font-bold text-sm'>Time</Label>
 							<Input
-								type='time'
-								value={scheduledTime}
-								onChange={(e) => setScheduledTime(e.target.value)}
+								readOnly
+								className='font-bold text-sm'
+								value={scheduledTime || '—'}
 							/>
 						</div>
 					</div>
 
 					<div className='grid grid-cols-2 gap-4'>
 						<div className='space-y-2'>
-							<Label className='font-semibold'>Venue</Label>
+							<Label className='font-bold text-sm'>Venue</Label>
 							<Input
-								placeholder='e.g. Science Lab, Room 201'
-								value={venue}
-								onChange={(e) => setVenue(e.target.value)}
+								readOnly
+								className='font-bold text-sm'
+								value={venue || '—'}
 							/>
 						</div>
 						<div className='space-y-2'>
-							<Label className='font-semibold'>Notes</Label>
+							<Label className='font-bold text-sm'>Notes</Label>
 							<Input
-								placeholder='Additional instructions...'
-								value={notes}
-								onChange={(e) => setNotes(e.target.value)}
+								readOnly
+								className='font-bold text-sm'
+								value={notes || '—'}
 							/>
 						</div>
 					</div>
 
 					<Alert className='flex items-center bg-primary/5 border-primary/20 p-3 gap-3 min-h-0 [&>svg]:static [&>svg]:translate-y-0'>
 						<Info className='h-4 w-4 stroke-primary shrink-0' />
-						<AlertDescription className='!p-0 !m-0 !translate-y-0 font-bold text-primary/80 text-xs leading-tight'>
+						<AlertDescription className='!p-0 !m-0 !translate-y-0 font-bold text-primary/80 text-sm leading-tight'>
 							A confirmation email will be sent to the parent/guardian at{' '}
 							<span className='font-bold underline text-primary'>
 								{applicant.emailAddress || 'N/A'}

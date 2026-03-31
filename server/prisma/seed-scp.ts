@@ -169,7 +169,25 @@ async function seed() {
 
 		console.log(`Using School Year: ${schoolYear.yearLabel}`);
 
-		// 2. Seed SCP Configs with pipeline steps
+		// 2. Find Grade 7 Level
+		const grade7 = await prisma.gradeLevel.findFirst({
+			where: { schoolYearId: schoolYear.id, name: 'Grade 7' },
+		});
+
+		if (!grade7) {
+			throw new Error('Grade Level "Grade 7" not found for the active school year.');
+		}
+
+		// 3. Get an admin user for encoding
+		const admin = await prisma.user.findFirst({
+			where: { role: 'SYSTEM_ADMIN' },
+		});
+
+		if (!admin) {
+			throw new Error('No SYSTEM_ADMIN user found to encode applications.');
+		}
+
+		// 4. Seed SCP Configs with pipeline steps
 		const scpTypes = [
 			ApplicantType.SCIENCE_TECHNOLOGY_AND_ENGINEERING,
 			ApplicantType.SPECIAL_PROGRAM_IN_THE_ARTS,
@@ -179,8 +197,13 @@ async function seed() {
 			ApplicantType.SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION,
 		];
 
+		const firstNames = ['John', 'Jane', 'Michael', 'Emily', 'David', 'Sarah'];
+		const lastNames = ['Doe', 'Smith', 'Johnson', 'Williams', 'Brown', 'Jones'];
+
+		let globalCounter = 1;
+
 		for (const scpType of scpTypes) {
-			const existing = await prisma.scpProgramConfig.findUnique({
+			const existingConfig = await prisma.scpProgramConfig.findUnique({
 				where: {
 					uq_scp_program_configs_type: {
 						schoolYearId: schoolYear.id,
@@ -189,7 +212,9 @@ async function seed() {
 				},
 			});
 
-			if (!existing) {
+			let configId: number;
+
+			if (!existingConfig) {
 				const config = await prisma.scpProgramConfig.create({
 					data: {
 						schoolYearId: schoolYear.id,
@@ -197,6 +222,7 @@ async function seed() {
 						isOffered: true,
 					},
 				});
+				configId = config.id;
 
 				const pipeline = SCP_PIPELINES[scpType] ?? [];
 				if (pipeline.length > 0) {
@@ -216,7 +242,59 @@ async function seed() {
 					`✅ Created SCP Config for ${scpType} with ${pipeline.length} pipeline steps`,
 				);
 			} else {
+				configId = existingConfig.id;
 				console.log(`ℹ️  SCP Config for ${scpType} already exists, skipping`);
+			}
+
+			// 5. Seed 3 Students per SCP
+			for (let i = 1; i <= 3; i++) {
+				const trackingNumber = `APP-2026-${globalCounter.toString().padStart(5, '0')}`;
+				globalCounter++;
+
+				const existingApplicant = await prisma.applicant.findUnique({
+					where: { trackingNumber },
+				});
+
+				if (!existingApplicant) {
+					const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+					const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+					const sex = i % 2 === 0 ? 'FEMALE' : 'MALE';
+					
+					// Birthdate approx 12-13 years before 2026
+					const birthDate = new Date(`2014-${(i % 12 + 1).toString().padStart(2, '0')}-15`);
+
+					await prisma.applicant.create({
+						data: {
+							trackingNumber,
+							firstName,
+							lastName,
+							sex,
+							birthDate,
+							applicantType: scpType,
+							gradeLevelId: grade7.id,
+							schoolYearId: schoolYear.id,
+							status: 'SUBMITTED',
+							admissionChannel: 'F2F',
+							encodedById: admin.id,
+							programDetail: {
+								create: {
+									scpType,
+									artField: scpType === 'SPECIAL_PROGRAM_IN_THE_ARTS' ? 'DANCE' : null,
+									foreignLanguage: scpType === 'SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE' ? 'MANDARIN' : null,
+									sportsList: scpType === 'SPECIAL_PROGRAM_IN_SPORTS' ? ['BASKETBALL'] : [],
+								},
+							},
+						},
+					});
+					console.log(`   ✅ Seeded student ${i} for ${scpType}: ${trackingNumber}`);
+				} else {
+					// Ensure existing seeded students are also set to SUBMITTED
+					await prisma.applicant.update({
+						where: { id: existingApplicant.id },
+						data: { status: 'SUBMITTED' },
+					});
+					console.log(`   ℹ️  Student ${trackingNumber} already exists, updated status to SUBMITTED`);
+				}
 			}
 		}
 

@@ -19,6 +19,17 @@ export const SCP_LABELS: Record<string, string> = {
 	REGULAR: 'Regular',
 };
 
+export const SCP_ACRONYMS: Record<string, string> = {
+	SCIENCE_TECHNOLOGY_AND_ENGINEERING: 'STE',
+	SPECIAL_PROGRAM_IN_THE_ARTS: 'SPA',
+	SPECIAL_PROGRAM_IN_SPORTS: 'SPS',
+	SPECIAL_PROGRAM_IN_JOURNALISM: 'SPJ',
+	SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE: 'SPFL',
+	SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION: 'SPTVE',
+	STEM_GRADE_11: 'STEM',
+	REGULAR: 'Regular',
+};
+
 /**
  * Formats a date string or object to a human-readable format in Manila timezone.
  */

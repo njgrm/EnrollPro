@@ -10,6 +10,7 @@ import ChangePassword from '@/features/auth/pages/ChangePassword';
 import Dashboard from '@/features/dashboard/pages/Index';
 import EarlyRegistration from '@/features/admission/pages/early-registration/EarlyRegistrationList';
 import EarlyRegistrationDetail from '@/features/admission/pages/early-registration/EarlyRegistrationDetail';
+import RegistrationPipelines from '@/features/admission/pages/pipelines/RegistrationPipelines';
 import Enrollment from '@/features/enrollment/pages/Index';
 import Students from '@/features/students/pages/Index';
 import Profile from '@/features/students/pages/Profile';
@@ -84,7 +85,7 @@ export const router = createBrowserRouter([
 						path: '/applications',
 						element: (
 							<Navigate
-								to='/applications/early-registration'
+								to='/early-registration'
 								replace
 							/>
 						),
@@ -92,13 +93,48 @@ export const router = createBrowserRouter([
 					{
 						path: '/applications/early-registration',
 						element: (
+							<Navigate
+								to='/early-registration'
+								replace
+							/>
+						),
+					},
+					{
+						path: '/applications/enrollment',
+						element: (
+							<Navigate
+								to='/enrollment'
+								replace
+							/>
+						),
+					},
+					{
+						path: '/applications/admission/:id',
+						element: (
+							<Navigate
+								to='/early-registration'
+								replace
+							/>
+						),
+					},
+					{
+						path: '/early-registration',
+						element: (
 							<AppLayout>
 								<EarlyRegistration />
 							</AppLayout>
 						),
 					},
 					{
-						path: '/applications/admission/:id',
+						path: '/early-registration/pipelines',
+						element: (
+							<AppLayout>
+								<RegistrationPipelines />
+							</AppLayout>
+						),
+					},
+					{
+						path: '/early-registration/:id',
 						element: (
 							<AppLayout>
 								<EarlyRegistrationDetail />
@@ -106,7 +142,7 @@ export const router = createBrowserRouter([
 						),
 					},
 					{
-						path: '/applications/enrollment',
+						path: '/enrollment',
 						element: (
 							<AppLayout>
 								<Enrollment />

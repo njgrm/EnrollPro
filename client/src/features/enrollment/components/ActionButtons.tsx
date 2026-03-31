@@ -21,6 +21,7 @@ interface Props {
 	onScheduleStep?: (step: AssessmentStep) => void;
 	/** New: record result for a specific pipeline step */
 	onRecordStepResult?: (step: AssessmentStep) => void;
+	interviewPassChecked?: boolean;
 }
 
 function getNextPendingStep(
@@ -36,12 +37,6 @@ function getNextPendingStep(
 	});
 }
 
-function getNextScheduledStep(
-	steps: AssessmentStep[],
-): AssessmentStep | undefined {
-	return steps.find((s) => s.status === 'SCHEDULED');
-}
-
 function getStepLabel(step: AssessmentStep): string {
 	return (
 		step.label ||
@@ -50,7 +45,7 @@ function getStepLabel(step: AssessmentStep): string {
 	);
 }
 
-export function ActionButtons({ applicant, ...handlers }: Props) {
+export function ActionButtons({ applicant, interviewPassChecked, ...handlers }: Props) {
 	const { status, applicantType } = applicant;
 	const isRegular = applicantType === 'REGULAR';
 	const isSCP = !isRegular;
@@ -58,7 +53,6 @@ export function ActionButtons({ applicant, ...handlers }: Props) {
 	const steps = applicant.assessmentSteps || [];
 	const hasSteps = steps.length > 0;
 	const nextPending = hasSteps ? getNextPendingStep(steps) : undefined;
-	const nextScheduled = hasSteps ? getNextScheduledStep(steps) : undefined;
 
 	return (
 		<div className='flex flex-col gap-2 p-4 border-t bg-background mt-auto'>
@@ -123,29 +117,14 @@ export function ActionButtons({ applicant, ...handlers }: Props) {
 				</>
 			)}
 
-			{/* SCP: Assessment Scheduled — record result or schedule next step */}
+			{/* SCP: Assessment Scheduled — schedule next step */}
 			{isSCP && status === 'ASSESSMENT_SCHEDULED' && (
 				<>
-					{hasSteps && nextScheduled && handlers.onRecordStepResult ? (
-						<Button
-							className='w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90 font-bold'
-							onClick={() => handlers.onRecordStepResult!(nextScheduled)}
-						>
-							Record Result: {getStepLabel(nextScheduled)}
-						</Button>
-					) : (
-						<Button
-							className='w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90 font-bold'
-							onClick={handlers.onRecordResult}
-						>
-							Record Exam Result
-						</Button>
-					)}
 					{/* If there are more pending steps, allow scheduling the next one */}
 					{hasSteps && nextPending && handlers.onScheduleStep && (
 						<Button
 							variant='outline'
-							className='w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground font-bold'
+							className='w-full bg-primary text-primary-foreground font-bold'
 							onClick={() => handlers.onScheduleStep!(nextPending)}
 						>
 							Schedule Next: {getStepLabel(nextPending)}
@@ -189,11 +168,17 @@ export function ActionButtons({ applicant, ...handlers }: Props) {
 							Schedule Interview
 						</Button>
 					)}
+				</>
+			)}
+
+			{isSCP && status === 'INTERVIEW_SCHEDULED' && !interviewPassChecked && (
+				<>
 					<Button
-						className='w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90 font-bold'
-						onClick={handlers.onApprove}
+						variant='outline'
+						className='w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground font-bold'
+						onClick={handlers.onReject}
 					>
-						Assign Section
+						Reject Application
 					</Button>
 				</>
 			)}

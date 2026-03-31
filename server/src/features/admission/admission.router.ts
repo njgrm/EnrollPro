@@ -16,6 +16,7 @@ import {
 	scheduleAssessmentStepSchema,
 	recordStepResultSchema,
 	rescheduleAssessmentStepSchema,
+	batchProcessSchema,
 } from '@enrollpro/shared';
 import * as ctrl from './early-registration.controller.js';
 import * as docCtrl from './document.controller.js';
@@ -64,6 +65,15 @@ router.post(
 	authorize('REGISTRAR', 'SYSTEM_ADMIN'),
 	validate(applicationSubmitSchema),
 	ctrl.storeF2F,
+);
+
+// Batch processing — must be before /:id routes
+router.patch(
+	'/batch-process',
+	authenticate,
+	authorize('REGISTRAR', 'SYSTEM_ADMIN'),
+	validate(batchProcessSchema),
+	ctrl.batchProcess,
 );
 
 // Protected routes - REGISTRAR + SYSTEM_ADMIN
@@ -242,6 +252,12 @@ router.patch(
 	authorize('REGISTRAR', 'SYSTEM_ADMIN'),
 	validate(recordInterviewResultSchema),
 	ctrl.recordInterviewResult,
+);
+router.patch(
+	'/:id/mark-interview-passed',
+	authenticate,
+	authorize('REGISTRAR', 'SYSTEM_ADMIN'),
+	ctrl.markInterviewPassed,
 );
 router.patch(
 	'/:id/record-result',

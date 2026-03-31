@@ -27,6 +27,7 @@ export function StatusTimeline({ applicant }: Props) {
 			'ASSESSMENT_SCHEDULED',
 			'ASSESSMENT_TAKEN',
 			'PASSED',
+			'INTERVIEW_SCHEDULED',
 			'PRE_REGISTERED',
 			'ENROLLED',
 			'REJECTED',

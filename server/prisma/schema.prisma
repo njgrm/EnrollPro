@@ -463,6 +463,7 @@ model ScpProgramConfig {
   schoolYearId   Int             @map("school_year_id")
   scpType        ApplicantType   @map("scp_type")
   isOffered      Boolean         @default(false) @map("is_offered")
+  isTwoPhase     Boolean         @default(false) @map("is_two_phase")
   cutoffScore    Float?          @map("cutoff_score")
   notes          String?
   
@@ -560,6 +561,7 @@ enum ApplicationStatus {
   ASSESSMENT_SCHEDULED
   ASSESSMENT_TAKEN
   PASSED
+  INTERVIEW_SCHEDULED
   PRE_REGISTERED
   TEMPORARILY_ENROLLED
   NOT_QUALIFIED

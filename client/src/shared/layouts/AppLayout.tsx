@@ -238,10 +238,19 @@ function NavItemChild({
 }) {
 	let isActive = pathname === to || pathname.startsWith(to + '/');
 
-	// Specific case: Early Registration detail page should highlight Early Registration child
+	// Monitoring (/early-registration) should NOT highlight when Pipelines is active
 	if (
-		to === '/applications/early-registration' &&
-		pathname.startsWith('/applications/admission/')
+		to === '/early-registration' &&
+		pathname.startsWith('/early-registration/pipelines')
+	) {
+		isActive = false;
+	}
+
+	// Early Registration detail pages (/early-registration/:id) should highlight Monitoring
+	if (
+		to === '/early-registration' &&
+		pathname.startsWith('/early-registration/') &&
+		!pathname.startsWith('/early-registration/pipelines')
 	) {
 		isActive = true;
 	}
@@ -277,8 +286,6 @@ function AppSidebar() {
 	const [pendingCount, setPendingCount] = useState<number>(0);
 	const [activeYearLabel, setActiveYearLabel] = useState<string | null>(null);
 
-	const [activeYearStatus, setActiveYearStatus] = useState<string | null>(null);
-
 	const isAdmin = user?.role === 'SYSTEM_ADMIN';
 	const isRegistrar = user?.role === 'REGISTRAR';
 	const pathname = location.pathname;
@@ -295,7 +302,6 @@ function AppSidebar() {
 					(y: SchoolYearItem) => y.id === activeSchoolYearId,
 				);
 				setActiveYearLabel(found?.yearLabel ?? null);
-				setActiveYearStatus(found?.status ?? null);
 			})
 			.catch(() => {});
 	}, [activeSchoolYearId]);
@@ -381,29 +387,34 @@ function AppSidebar() {
 
 										<NavItemParent
 											icon={ClipboardList}
-											label='Applications'
+											label='Early Registration'
 											isActive={false}
 										>
 											<NavItemChild
-												to='/applications/early-registration'
+												to='/early-registration'
 												icon={FileText}
-												label='Early Registration'
+												label='Monitoring'
 												pathname={pathname}
 												badgeCount={pendingCount}
 											/>
 											<NavItemChild
-												to='/applications/enrollment'
-												icon={CheckCircle}
-												label='Enrollment'
+												to='/early-registration/pipelines'
+												icon={ClipboardList}
+												label='Registration Pipelines'
+												pathname={pathname}
+											/>
+											<NavItemChild
+												to='/f2f-early-registration'
+												icon={UserPlus}
+												label='Walk-in'
 												pathname={pathname}
 											/>
 										</NavItemParent>
 
-										<NavDivider label='Early Registration' />
 										<NavItem
-											to='/f2f-early-registration'
-											icon={UserPlus}
-											label='Walk-in Early Registration'
+											to='/enrollment'
+											icon={CheckCircle}
+											label='Enrollment'
 											pathname={pathname}
 										/>
 
@@ -578,9 +589,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 						orientation='vertical'
 						className='mr-2 h-4!'
 					/>
-					<span className='text-sm font-medium text-muted-foreground'>
-						
-					</span>
+					<span className='text-sm font-medium text-muted-foreground'></span>
 					<div className='ml-auto flex items-center gap-2'>
 						<AccessibilityMenu />
 						<SYSwitcher />

@@ -12,6 +12,7 @@ export const ApplicationStatusEnum = z.enum([
 	'ASSESSMENT_SCHEDULED',
 	'ASSESSMENT_TAKEN',
 	'PASSED',
+	'INTERVIEW_SCHEDULED',
 	'PRE_REGISTERED',
 	'TEMPORARILY_ENROLLED',
 	'NOT_QUALIFIED',
@@ -141,33 +142,60 @@ export interface ScpProgramStepDef {
 	isRequired: boolean;
 }
 
+// ─── STE Pipeline Variants ──────────────────────────────
+export const STE_ONE_PHASE_PIPELINE: ScpProgramStepDef[] = [
+	{
+		stepOrder: 1,
+		kind: 'QUALIFYING_EXAMINATION',
+		label: 'Qualifying Examination',
+		description:
+			'Single comprehensive written exam: English, Science, Mathematics, critical thinking, and problem-solving',
+		isRequired: true,
+	},
+	{
+		stepOrder: 2,
+		kind: 'INTERVIEW',
+		label: 'Interview',
+		description:
+			'Face-to-face or virtual interview: interest, mental alertness, readiness for rigorous curriculum',
+		isRequired: true,
+	},
+];
+
+export const STE_TWO_PHASE_PIPELINE: ScpProgramStepDef[] = [
+	{
+		stepOrder: 1,
+		kind: 'PRELIMINARY_EXAMINATION',
+		label: 'Preliminary Examination (ESM)',
+		description:
+			'Written screening test: English, Science, Mathematics — determines eligibility for final exam',
+		isRequired: true,
+	},
+	{
+		stepOrder: 2,
+		kind: 'FINAL_EXAMINATION',
+		label: 'Final Examination',
+		description:
+			'Comprehensive written exam: 21st-century skills, critical thinking, and advanced problem-solving',
+		isRequired: true,
+	},
+	{
+		stepOrder: 3,
+		kind: 'INTERVIEW',
+		label: 'Interview',
+		description:
+			'Face-to-face or virtual interview: interest, mental alertness, readiness for rigorous curriculum',
+		isRequired: true,
+	},
+];
+
+/** Return the correct STE pipeline based on the two-phase toggle. */
+export function getSteSteps(isTwoPhase: boolean): ScpProgramStepDef[] {
+	return isTwoPhase ? STE_TWO_PHASE_PIPELINE : STE_ONE_PHASE_PIPELINE;
+}
+
 export const SCP_DEFAULT_PIPELINES: Record<ScpType, ScpProgramStepDef[]> = {
-	SCIENCE_TECHNOLOGY_AND_ENGINEERING: [
-		{
-			stepOrder: 1,
-			kind: 'PRELIMINARY_EXAMINATION',
-			label: 'Preliminary Examination (ESM)',
-			description:
-				'Written screening test: English, Science, Mathematics — determines eligibility for final exam',
-			isRequired: true,
-		},
-		{
-			stepOrder: 2,
-			kind: 'FINAL_EXAMINATION',
-			label: 'Final Examination',
-			description:
-				'Comprehensive written exam: 21st-century skills, critical thinking, and advanced problem-solving',
-			isRequired: true,
-		},
-		{
-			stepOrder: 3,
-			kind: 'INTERVIEW',
-			label: 'Interview',
-			description:
-				'Face-to-face or virtual interview: interest, mental alertness, readiness for rigorous curriculum',
-			isRequired: true,
-		},
-	],
+	SCIENCE_TECHNOLOGY_AND_ENGINEERING: STE_ONE_PHASE_PIPELINE,
 	SPECIAL_PROGRAM_IN_THE_ARTS: [
 		{
 			stepOrder: 1,

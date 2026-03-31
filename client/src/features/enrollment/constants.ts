@@ -34,6 +34,10 @@ export const STATUS_CONFIG: Record<
 		label: 'Passed',
 		className: 'bg-green-100 text-green-800 border-green-300',
 	},
+	INTERVIEW_SCHEDULED: {
+		label: 'Interview Scheduled',
+		className: 'bg-violet-100 text-violet-800 border-violet-300',
+	},
 	FAILED: {
 		label: 'Failed',
 		className: 'bg-red-100 text-red-800 border-red-300',

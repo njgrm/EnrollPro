@@ -601,6 +601,18 @@ export default function Enrollment() {
 										setLoading(false);
 									}
 								}}
+								onMarkInterviewPassed={async () => {
+									try {
+										await api.patch(`/applications/${selectedId}/mark-interview-passed`);
+										sileo.success({
+											title: 'Interview Passed',
+											description: 'Applicant marked as eligible for enrollment (Pre-registered).',
+										});
+										fetchData();
+									} catch (e) {
+										toastApiError(e as never);
+									}
+								}}
 							/>
 						</div>
 					)}

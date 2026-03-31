@@ -91,13 +91,11 @@ export default function EarlyRegistration() {
 		Application | ApplicantDetail | null
 	>(null);
 	const [actionType, setActionType] = useState<
-		'APPROVE' | 'REJECT' | 'RESULT' | 'ELIGIBLE' | null
+		'APPROVE' | 'REJECT' | 'ELIGIBLE' | null
 	>(null);
 	const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
 	const [scheduleStep, setScheduleStep] = useState<AssessmentStep | null>(null);
 	const [rejectionReason, setRejectionReason] = useState('');
-	const [examScore, setExamScore] = useState('');
-	const [examResult, setExamResult] = useState('PASSED');
 	const [sections, setSections] = useState<
 		{
 			id: number;
@@ -246,39 +244,37 @@ export default function EarlyRegistration() {
 		}
 	};
 
-	const handleRecordResult = async () => {
-		if (!selectedApp) return;
+	const handleInlineSaveStepResult = async (
+		stepOrder: number,
+		kind: string,
+		score: number,
+		cutoffScore: number | null,
+	) => {
+		if (!selectedId) return;
 		try {
-			if (scheduleStep) {
-				// Pipeline-aware result recording
-				await api.patch(`/applications/${selectedApp.id}/record-step-result`, {
-					stepOrder: scheduleStep.stepOrder,
-					kind: scheduleStep.kind,
-					score: examScore ? parseFloat(examScore) : undefined,
-					result: examResult,
+			const res = await api.patch(
+				`/applications/${selectedId}/record-step-result`,
+				{
+					stepOrder,
+					kind,
+					score,
 					notes: 'Recorded from Early Registration portal',
-				});
-			} else {
-				// Legacy fallback
-				await api.patch(`/applications/${selectedApp.id}/record-result`, {
-					examScore: parseFloat(examScore),
-					examResult,
-					examNotes: 'Recorded from Early Registration portal',
-				});
-			}
+				},
+			);
 
-			if (examResult === 'PASSED') {
-				await api.patch(`/applications/${selectedApp.id}/pass`);
-			} else {
-				await api.patch(`/applications/${selectedApp.id}/fail`);
+			// Only auto-pass/fail if all required steps are done (status moved to ASSESSMENT_TAKEN)
+			if (res.data?.status === 'ASSESSMENT_TAKEN' && cutoffScore != null) {
+				if (score >= cutoffScore) {
+					await api.patch(`/applications/${selectedId}/pass`);
+				} else {
+					await api.patch(`/applications/${selectedId}/fail`);
+				}
 			}
 
 			sileo.success({
 				title: 'Result Recorded',
-				description: 'Applicant assessment result saved.',
+				description: 'Assessment result saved.',
 			});
-			setActionType(null);
-			setScheduleStep(null);
 			fetchData();
 		} catch (err) {
 			toastApiError(err as never);
@@ -370,6 +366,12 @@ export default function EarlyRegistration() {
 												className='text-sm font-bold'
 											>
 												Exam Taken
+											</SelectItem>
+											<SelectItem
+												value='INTERVIEW_SCHEDULED'
+												className='text-sm font-bold'
+											>
+												Interview Scheduled
 											</SelectItem>
 
 											<SelectItem
@@ -532,7 +534,7 @@ export default function EarlyRegistration() {
 												<TableCell>
 													<div className='flex flex-col'>
 														<span className='font-bold text-sm'>
-															Grade {app.gradeLevel.name}
+															{app.gradeLevel.name}
 														</span>
 														{app.strand && (
 															<span className=' text-sm'>
@@ -690,28 +692,8 @@ export default function EarlyRegistration() {
 										setLoading(false);
 									}
 								}}
-								onRecordStepResult={async (step: AssessmentStep) => {
-									setLoading(true);
-									try {
-										const fullRes = await api.get(
-											`/applications/${selectedId}`,
-										);
-										setSelectedApp(fullRes.data);
-										setScheduleStep(step);
-										setActionType('RESULT');
-									} catch (err) {
-										toastApiError(err as never);
-									} finally {
-										setLoading(false);
-									}
-								}}
-								onRecordResult={() => {
-									const app = applications.find((a) => a.id === selectedId);
-									if (app) {
-										setSelectedApp(app);
-										setActionType('RESULT');
-									}
-								}}
+								onSaveStepResult={handleInlineSaveStepResult}
+								onRecordResult={() => {}}
 								onPass={async () => {
 									try {
 										await api.patch(`/applications/${selectedId}/pass`);
@@ -784,6 +766,18 @@ export default function EarlyRegistration() {
 										setLoading(false);
 									}
 								}}
+								onMarkInterviewPassed={async () => {
+									try {
+										await api.patch(`/applications/${selectedId}/mark-interview-passed`);
+										sileo.success({
+											title: 'Interview Passed',
+											description: 'Applicant marked as eligible for enrollment (Pre-registered).',
+										});
+										fetchData();
+									} catch (e) {
+										toastApiError(e as never);
+									}
+								}}
 							/>
 						</div>
 					)}
@@ -801,7 +795,6 @@ export default function EarlyRegistration() {
 							{actionType === 'APPROVE' && 'Approve & Pre-register'}
 							{actionType === 'ELIGIBLE' && 'Mark as Eligible'}
 							{actionType === 'REJECT' && 'Reject Application'}
-							{actionType === 'RESULT' && 'Record Assessment Result'}
 						</DialogTitle>
 						<DialogDescription className='text-xs'>
 							Candidate: {selectedApp?.lastName}, {selectedApp?.firstName}
@@ -867,47 +860,6 @@ export default function EarlyRegistration() {
 						</div>
 					)}
 
-					{actionType === 'RESULT' && (
-						<div className='space-y-4 py-4'>
-							<div className='space-y-2'>
-								<Label className='text-xs'>Score / Rating</Label>
-								<Input
-									type='number'
-									step='0.01'
-									placeholder='e.g. 85.5'
-									value={examScore}
-									onChange={(e) => setExamScore(e.target.value)}
-									className='text-xs'
-								/>
-							</div>
-							<div className='space-y-2'>
-								<Label className='text-xs'>Final Verdict</Label>
-								<Select
-									value={examResult}
-									onValueChange={setExamResult}
-								>
-									<SelectTrigger className='text-xs'>
-										<SelectValue />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem
-											value='PASSED'
-											className='text-xs'
-										>
-											PASSED - Qualifies for Program
-										</SelectItem>
-										<SelectItem
-											value='FAILED'
-											className='text-xs'
-										>
-											FAILED - Did not meet criteria
-										</SelectItem>
-									</SelectContent>
-								</Select>
-							</div>
-						</div>
-					)}
-
 					<DialogFooter>
 						<Button
 							variant='outline'
@@ -941,14 +893,6 @@ export default function EarlyRegistration() {
 								className='text-xs'
 							>
 								Reject Application
-							</Button>
-						)}
-						{actionType === 'RESULT' && (
-							<Button
-								onClick={handleRecordResult}
-								className='text-xs'
-							>
-								Save Result
 							</Button>
 						)}
 					</DialogFooter>

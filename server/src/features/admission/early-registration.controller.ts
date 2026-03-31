@@ -81,6 +81,7 @@ async function flattenAssessmentData(application: Record<string, any>) {
 		scheduledTime: string | null;
 		venue: string | null;
 		notes: string | null;
+		cutoffScore: number | null;
 	}> = [];
 
 	if (application.applicantType !== 'REGULAR') {
@@ -105,6 +106,7 @@ async function flattenAssessmentData(application: Record<string, any>) {
 				scheduledTime: s.scheduledTime,
 				venue: s.venue,
 				notes: s.notes,
+				cutoffScore: s.cutoffScore ?? null,
 			}));
 		}
 	}
@@ -134,6 +136,7 @@ async function flattenAssessmentData(application: Record<string, any>) {
 			configTime: step.scheduledTime,
 			configVenue: step.venue,
 			configNotes: step.notes,
+			cutoffScore: step.cutoffScore ?? null,
 			// Actual assessment data
 			assessmentId: match?.id ?? null,
 			scheduledDate: match?.scheduledDate ?? null,
@@ -190,6 +193,7 @@ const VALID_TRANSITIONS: Record<string, ApplicationStatus[]> = {
 	ASSESSMENT_SCHEDULED: [
 		'ASSESSMENT_TAKEN',
 		'ASSESSMENT_SCHEDULED',
+		'INTERVIEW_SCHEDULED',
 		'WITHDRAWN',
 	],
 	ASSESSMENT_TAKEN: [
@@ -198,7 +202,13 @@ const VALID_TRANSITIONS: Record<string, ApplicationStatus[]> = {
 		'ASSESSMENT_SCHEDULED',
 		'WITHDRAWN',
 	],
-	PASSED: ['PRE_REGISTERED', 'ASSESSMENT_SCHEDULED', 'WITHDRAWN'],
+	PASSED: [
+		'PRE_REGISTERED',
+		'INTERVIEW_SCHEDULED',
+		'ASSESSMENT_SCHEDULED',
+		'WITHDRAWN',
+	],
+	INTERVIEW_SCHEDULED: ['PRE_REGISTERED', 'WITHDRAWN'],
 	PRE_REGISTERED: ['ENROLLED', 'TEMPORARILY_ENROLLED', 'WITHDRAWN'],
 	TEMPORARILY_ENROLLED: ['ENROLLED', 'WITHDRAWN'],
 	NOT_QUALIFIED: ['UNDER_REVIEW', 'WITHDRAWN', 'REJECTED'],
@@ -750,6 +760,7 @@ export async function track(req: Request, res: Response, next: NextFunction) {
 				lastName: true,
 				status: true,
 				applicantType: true,
+				schoolYearId: true,
 				createdAt: true,
 				gradeLevel: { select: { name: true } },
 				strand: { select: { name: true } },
@@ -1261,9 +1272,12 @@ export async function scheduleAssessmentStep(
 		const applicantId = parseInt(String(req.params.id));
 		const applicant = await findApplicantOrThrow(applicantId);
 
+		const targetStatus =
+			kind === 'INTERVIEW' ? 'INTERVIEW_SCHEDULED' : 'ASSESSMENT_SCHEDULED';
+
 		assertTransition(
 			applicant,
-			'ASSESSMENT_SCHEDULED',
+			targetStatus,
 			`Cannot schedule assessment for application with status "${applicant.status}".`,
 		);
 
@@ -1320,14 +1334,17 @@ export async function scheduleAssessmentStep(
 
 			return tx.applicant.update({
 				where: { id: applicantId },
-				data: { status: 'ASSESSMENT_SCHEDULED' },
+				data: { status: targetStatus },
 			});
 		});
 
 		const stepLabel = stepConfig?.label || kind;
 		await auditLog({
 			userId: req.user!.userId,
-			actionType: 'ASSESSMENT_STEP_SCHEDULED',
+			actionType:
+				kind === 'INTERVIEW'
+					? 'INTERVIEW_SCHEDULED'
+					: 'ASSESSMENT_STEP_SCHEDULED',
 			description: `Scheduled ${stepLabel} (step ${stepOrder}) for ${applicant.firstName} ${applicant.lastName} (#${applicantId}) on ${scheduledDate}${venue || stepConfig?.venue ? ` at ${venue || stepConfig?.venue}` : ''}`,
 			subjectType: 'Applicant',
 			recordId: applicantId,
@@ -1420,7 +1437,10 @@ export async function recordStepResult(
 			});
 
 			const requiredSteps = scpConfig?.steps ?? [];
-			const allRequiredDone = requiredSteps.every((step) =>
+			const requiredNonInterview = requiredSteps.filter(
+				(step) => step.kind !== 'INTERVIEW',
+			);
+			const allRequiredDone = requiredNonInterview.every((step) =>
 				allAssessments.some(
 					(a) =>
 						a.stepOrder === step.stepOrder &&
@@ -1428,8 +1448,8 @@ export async function recordStepResult(
 				),
 			);
 
-			// If all required steps have results → ASSESSMENT_TAKEN
-			// Otherwise stay at ASSESSMENT_SCHEDULED (more steps remain)
+			// If all required non-interview steps have results → ASSESSMENT_TAKEN
+			// Interview has its own separate flow (INTERVIEW_SCHEDULED → PRE_REGISTERED)
 			const newStatus = allRequiredDone
 				? 'ASSESSMENT_TAKEN'
 				: 'ASSESSMENT_SCHEDULED';
@@ -1472,7 +1492,7 @@ export async function scheduleInterview(
 
 		assertTransition(
 			applicant,
-			'ASSESSMENT_SCHEDULED',
+			'INTERVIEW_SCHEDULED',
 			`Cannot schedule interview for application with status "${applicant.status}".`,
 		);
 
@@ -1505,7 +1525,7 @@ export async function scheduleInterview(
 
 			return tx.applicant.update({
 				where: { id: applicantId },
-				data: { status: 'ASSESSMENT_SCHEDULED' },
+				data: { status: 'INTERVIEW_SCHEDULED' },
 			});
 		});
 
@@ -1630,6 +1650,67 @@ export async function recordInterviewResult(
 }
 
 // â"€â"€ Mark as passed (Clearing for section assignment) â"€â"€
+
+// -- Mark interview as passed -> PRE_REGISTERED --
+export async function markInterviewPassed(
+	req: Request,
+	res: Response,
+	next: NextFunction,
+) {
+	try {
+		const applicantId = parseInt(String(req.params.id));
+		const applicant = await findApplicantOrThrow(applicantId);
+
+		assertTransition(
+			applicant,
+			'PRE_REGISTERED',
+			`Cannot mark interview as passed. Current status: "${applicant.status}". Only INTERVIEW_SCHEDULED applications can proceed.`,
+		);
+
+		// Find the interview assessment record
+		const interviewAssessment = await prisma.applicantAssessment.findFirst({
+			where: { applicantId, type: 'INTERVIEW' },
+			orderBy: { createdAt: 'desc' },
+		});
+
+		const updated = await prisma.$transaction(async (tx) => {
+			if (interviewAssessment) {
+				await tx.applicantAssessment.update({
+					where: { id: interviewAssessment.id },
+					data: {
+						result: 'PASSED',
+						conductedAt: new Date(),
+					},
+				});
+			}
+
+			return tx.applicant.update({
+				where: { id: applicantId },
+				data: { status: 'PRE_REGISTERED' },
+			});
+		});
+
+		await auditLog({
+			userId: req.user!.userId,
+			actionType: 'INTERVIEW_PASSED',
+			description: `Interview passed for ${applicant.firstName} ${applicant.lastName} (#${applicantId}). Status moved to PRE_REGISTERED.`,
+			subjectType: 'Applicant',
+			recordId: applicantId,
+			req,
+		});
+
+		await queueEmail(
+			applicantId,
+			applicant.emailAddress,
+			`Interview Passed - ${applicant.trackingNumber}`,
+			'APPLICATION_APPROVED',
+		);
+
+		res.json(updated);
+	} catch (error) {
+		next(error);
+	}
+}
 export async function pass(req: Request, res: Response, next: NextFunction) {
 	try {
 		const applicantId = parseInt(String(req.params.id));
@@ -2196,3 +2277,117 @@ export async function rescheduleAssessmentStep(
 
 // Legacy alias
 export const rescheduleExam = rescheduleAssessmentStep;
+
+// ── Batch Process Registration ──
+
+export async function batchProcess(
+	req: Request,
+	res: Response,
+	next: NextFunction,
+) {
+	try {
+		const { ids, targetStatus } = req.body as {
+			ids: number[];
+			targetStatus: ApplicationStatus;
+		};
+
+		// Fetch all applicants in a single query
+		const applicants = await prisma.applicant.findMany({
+			where: { id: { in: ids } },
+			select: {
+				id: true,
+				status: true,
+				firstName: true,
+				lastName: true,
+				trackingNumber: true,
+			},
+		});
+
+		const foundIds = new Set(applicants.map((a) => a.id));
+
+		const succeeded: Array<{
+			id: number;
+			name: string;
+			trackingNumber: string;
+			previousStatus: string;
+		}> = [];
+		const failed: Array<{
+			id: number;
+			name: string;
+			trackingNumber: string;
+			reason: string;
+		}> = [];
+
+		// Categorize: valid transitions vs invalid
+		const validApplicants: typeof applicants = [];
+
+		for (const id of ids) {
+			if (!foundIds.has(id)) {
+				failed.push({
+					id,
+					name: 'Unknown',
+					trackingNumber: '',
+					reason: 'Applicant not found',
+				});
+				continue;
+			}
+
+			const applicant = applicants.find((a) => a.id === id)!;
+			const allowedTransitions = VALID_TRANSITIONS[applicant.status] ?? [];
+
+			if (!allowedTransitions.includes(targetStatus)) {
+				failed.push({
+					id: applicant.id,
+					name: `${applicant.lastName}, ${applicant.firstName}`,
+					trackingNumber: applicant.trackingNumber,
+					reason: `Cannot transition from "${applicant.status}" to "${targetStatus}"`,
+				});
+				continue;
+			}
+
+			validApplicants.push(applicant);
+		}
+
+		// Execute all valid transitions in a single atomic transaction
+		if (validApplicants.length > 0) {
+			await prisma.$transaction(async (tx) => {
+				for (const applicant of validApplicants) {
+					await tx.applicant.update({
+						where: { id: applicant.id },
+						data: { status: targetStatus },
+					});
+				}
+			});
+
+			// Record successes
+			for (const applicant of validApplicants) {
+				succeeded.push({
+					id: applicant.id,
+					name: `${applicant.lastName}, ${applicant.firstName}`,
+					trackingNumber: applicant.trackingNumber,
+					previousStatus: applicant.status,
+				});
+			}
+
+			// Audit log each successful transition (non-critical, outside transaction)
+			for (const applicant of validApplicants) {
+				auditLog({
+					userId: req.user!.userId,
+					actionType: 'STATUS_CHANGED',
+					description: `Batch: ${applicant.firstName} ${applicant.lastName} (#${applicant.id}) status changed from ${applicant.status} to ${targetStatus}`,
+					subjectType: 'Applicant',
+					recordId: applicant.id,
+					req,
+				}).catch(() => {});
+			}
+		}
+
+		res.json({
+			processed: ids.length,
+			succeeded,
+			failed,
+		});
+	} catch (error) {
+		next(error);
+	}
+}

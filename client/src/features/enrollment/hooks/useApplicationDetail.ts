@@ -140,6 +140,7 @@ export interface AssessmentStep {
 	configTime: string | null;
 	configVenue: string | null;
 	configNotes: string | null;
+	cutoffScore: number | null;
 	assessmentId: number | null;
 	scheduledDate: string | null;
 	scheduledTime: string | null;

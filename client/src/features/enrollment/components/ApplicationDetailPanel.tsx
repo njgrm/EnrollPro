@@ -36,6 +36,13 @@ interface Props {
 	onScheduleInterview?: () => void;
 	onScheduleStep?: (step: AssessmentStep) => void;
 	onRecordStepResult?: (step: AssessmentStep) => void;
+	onSaveStepResult?: (
+		stepOrder: number,
+		kind: string,
+		score: number,
+		cutoffScore: number | null,
+	) => Promise<void>;
+	onMarkInterviewPassed?: () => Promise<void>;
 }
 
 export function ApplicationDetailPanel({
@@ -52,6 +59,8 @@ export function ApplicationDetailPanel({
 	onScheduleInterview,
 	onScheduleStep,
 	onRecordStepResult,
+	onSaveStepResult,
+	onMarkInterviewPassed,
 }: Props) {
 	const { data: applicant, loading, error, refetch } = useApplicationDetail(id);
 
@@ -60,6 +69,7 @@ export function ApplicationDetailPanel({
 
 	const [photoError, setPhotoError] = useState(false);
 	const [isPhotoEnlarged, setIsPhotoEnlarged] = useState(false);
+	const [interviewPassChecked, setInterviewPassChecked] = useState(false);
 
 	const getImageUrl = (photo: string | null) => {
 		if (!photo) return null;
@@ -206,7 +216,27 @@ export function ApplicationDetailPanel({
 				</div>
 
 				{/* SCP Assessment Block (Only if not regular) */}
-				<SCPAssessmentBlock applicant={applicant} />
+				<SCPAssessmentBlock
+					applicant={applicant}
+					onSaveStepResult={
+						onSaveStepResult
+							? async (stepOrder, kind, score, cutoffScore) => {
+									await onSaveStepResult(stepOrder, kind, score, cutoffScore);
+									refetch();
+								}
+							: undefined
+					}
+					onMarkInterviewPassed={
+						onMarkInterviewPassed
+							? async () => {
+									await onMarkInterviewPassed();
+									refetch();
+								}
+							: undefined
+					}
+					interviewPassChecked={interviewPassChecked}
+					onInterviewPassChange={setInterviewPassChecked}
+				/>
 
 				{/* Documentary Checklist */}
 				<RequirementChecklist
@@ -230,7 +260,7 @@ export function ApplicationDetailPanel({
 				{/* Link to full details */}
 				<div className='py-2 border-t mt-4 flex justify-center'>
 					<Link
-						to={`/applications/admission/${applicant.id}`}
+						to={`/early-registration/${applicant.id}`}
 						className='text-[hsl(var(--accent-link))] hover:underline flex items-center gap-1.5 text-sm font-medium'
 						onClick={onClose}
 					>
@@ -253,6 +283,7 @@ export function ApplicationDetailPanel({
 				onScheduleInterview={onScheduleInterview}
 				onScheduleStep={onScheduleStep}
 				onRecordStepResult={onRecordStepResult}
+				interviewPassChecked={interviewPassChecked}
 			/>
 
 			{applicant.studentPhoto && (

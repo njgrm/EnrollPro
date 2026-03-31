@@ -47,12 +47,12 @@ async function main() {
 
 	// 3. Ensure Grade Levels G7-G12 exist for the active school year
 	const grades = [
-		{ name: '7', displayOrder: 7 },
-		{ name: '8', displayOrder: 8 },
-		{ name: '9', displayOrder: 9 },
-		{ name: '10', displayOrder: 10 },
-		{ name: '11', displayOrder: 11 },
-		{ name: '12', displayOrder: 12 },
+		{ name: 'Grade 7', displayOrder: 7 },
+		{ name: 'Grade 8', displayOrder: 8 },
+		{ name: 'Grade 9', displayOrder: 9 },
+		{ name: 'Grade 10', displayOrder: 10 },
+		{ name: 'Grade 11', displayOrder: 11 },
+		{ name: 'Grade 12', displayOrder: 12 },
 	];
 
 	for (const grade of grades) {

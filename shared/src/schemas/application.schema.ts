@@ -7,6 +7,7 @@ import {
 	LastSchoolTypeEnum,
 	LearnerTypeEnum,
 	AssessmentKindEnum,
+	ApplicationStatusEnum,
 } from '../constants/index.js';
 
 // ─── Shared sub-schemas ────────────────────────────────
@@ -241,4 +242,13 @@ export const scpProgramStepConfigSchema = z.object({
 	scheduledTime: z.string().optional().nullable(),
 	venue: z.string().optional().nullable(),
 	notes: z.string().optional().nullable(),
+});
+
+// ─── Batch Processing Schema ───────────────────────────
+export const batchProcessSchema = z.object({
+	ids: z
+		.array(z.number().int().positive())
+		.min(1, 'At least one applicant ID is required')
+		.max(500, 'Cannot process more than 500 applicants at once'),
+	targetStatus: ApplicationStatusEnum,
 });

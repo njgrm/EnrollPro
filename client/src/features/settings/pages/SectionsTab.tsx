@@ -278,7 +278,7 @@ export default function SectionsTab() {
 					<motion.div
 						key='loading'
 						initial={{ opacity: 0 }}
-						animate={{ opacity: 1 }}
+						animate={{ opacity: 0 }}
 						exit={{ opacity: 0 }}
 						className='flex h-64 w-full items-center justify-center'
 					>

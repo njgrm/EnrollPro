@@ -2,7 +2,11 @@ import type { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma.js';
 import { auditLog } from '../audit-logs/audit-logs.service.js';
 import { normalizeDateToUtcNoon } from '../school-year/school-year.service.js';
-import { SCP_DEFAULT_PIPELINES, type ScpType } from '@enrollpro/shared';
+import {
+	SCP_DEFAULT_PIPELINES,
+	getSteSteps,
+	type ScpType,
+} from '@enrollpro/shared';
 
 // ─── Grade Levels ─────────────────────────────────────────
 
@@ -407,6 +411,7 @@ export async function listScpConfigs(
 	// Transform options back to the flat array shape the client expects
 	const transformed = scpProgramConfigs.map((cfg) => ({
 		...cfg,
+		isTwoPhase: cfg.isTwoPhase ?? false,
 		artFields: cfg.options
 			.filter((o) => o.optionType === 'ART_FIELD')
 			.map((o) => o.value),
@@ -443,6 +448,7 @@ export async function updateScpConfigs(
 					id,
 					scpType,
 					isOffered,
+					isTwoPhase,
 					cutoffScore,
 					artFields,
 					languages,
@@ -452,6 +458,7 @@ export async function updateScpConfigs(
 
 				const scpData = {
 					isOffered: isOffered ?? false,
+					isTwoPhase: isTwoPhase ?? false,
 					cutoffScore: cutoffScore ?? null,
 				};
 
@@ -504,7 +511,11 @@ export async function updateScpConfigs(
 
 				// Build assessment step records from DepEd pipeline (immutable)
 				// Only scheduledDate, scheduledTime, venue, and notes come from the client
-				const pipeline = SCP_DEFAULT_PIPELINES[scpType as ScpType] ?? [];
+				// For STE, select the 1-phase or 2-phase pipeline based on the toggle
+				const pipeline =
+					scpType === 'SCIENCE_TECHNOLOGY_AND_ENGINEERING'
+						? getSteSteps(isTwoPhase ?? false)
+						: (SCP_DEFAULT_PIPELINES[scpType as ScpType] ?? []);
 
 				if (isOffered && pipeline.length > 0) {
 					// Build a lookup map for client-provided schedule overrides keyed by stepOrder

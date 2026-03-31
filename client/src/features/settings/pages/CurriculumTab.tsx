@@ -31,7 +31,11 @@ import {
 	ACADEMIC_CLUSTERS,
 	TECHPRO_CLUSTERS,
 } from '@/features/admission/pages/apply/types';
-import { SCP_DEFAULT_PIPELINES, type ScpType } from '@enrollpro/shared';
+import {
+	SCP_DEFAULT_PIPELINES,
+	getSteSteps,
+	type ScpType,
+} from '@enrollpro/shared';
 
 interface GradeLevel {
 	id: number;
@@ -67,6 +71,7 @@ interface ScpConfig {
 	id?: number;
 	scpType: string;
 	isOffered: boolean;
+	isTwoPhase: boolean;
 	cutoffScore: number | null;
 	artFields: string[];
 	languages: string[];
@@ -149,6 +154,7 @@ export default function CurriculumTab() {
 					return {
 						...found,
 						isOffered: found.isOffered ?? false,
+						isTwoPhase: found.isTwoPhase ?? false,
 						steps: found.steps ?? [],
 					};
 				}
@@ -156,6 +162,7 @@ export default function CurriculumTab() {
 				return {
 					scpType: type.value,
 					isOffered: false,
+					isTwoPhase: false,
 					cutoffScore: null,
 					artFields: [],
 					languages: [],
@@ -241,7 +248,10 @@ export default function CurriculumTab() {
 		// Auto-populate DepEd pipeline steps when toggling isOffered on
 		if (field === 'isOffered' && value === true) {
 			const scpType = next[index].scpType as ScpType;
-			const pipeline = SCP_DEFAULT_PIPELINES[scpType];
+			const isSte = scpType === 'SCIENCE_TECHNOLOGY_AND_ENGINEERING';
+			const pipeline = isSte
+				? getSteSteps(next[index].isTwoPhase)
+				: SCP_DEFAULT_PIPELINES[scpType];
 			if (pipeline && next[index].steps.length === 0) {
 				next[index] = {
 					...next[index],
@@ -259,6 +269,26 @@ export default function CurriculumTab() {
 					})),
 				};
 			}
+		}
+
+		// STE: switch pipeline steps when toggling examination phase
+		if (field === 'isTwoPhase') {
+			const pipeline = getSteSteps(value as boolean);
+			next[index] = {
+				...next[index],
+				steps: pipeline.map((s) => ({
+					stepOrder: s.stepOrder,
+					kind: s.kind,
+					label: s.label,
+					description: s.description,
+					isRequired: s.isRequired,
+					scheduledDate: null,
+					scheduledTime: null,
+					venue: null,
+					notes: null,
+					cutoffScore: null,
+				})),
+			};
 		}
 
 		setScpConfigs(next);
@@ -284,6 +314,7 @@ export default function CurriculumTab() {
 			// Normalize text fields to uppercase for database consistency
 			const uppercasedConfigs = scpConfigs.map((scp) => ({
 				...scp,
+				isTwoPhase: scp.isTwoPhase ?? false,
 				artFields: scp.artFields.map((f) => f.trim().toUpperCase()),
 				languages: scp.languages.map((l) => l.trim().toUpperCase()),
 				sportsList: scp.sportsList.map((s) => s.trim().toUpperCase()),
@@ -369,9 +400,7 @@ export default function CurriculumTab() {
 												className='rounded-lg border border-border px-3 py-2 hover:bg-muted transition-colors'
 											>
 												<div className='flex flex-col'>
-													<span className='text-sm font-bold'>
-														{gl.name}
-													</span>
+													<span className='text-sm font-bold'>{gl.name}</span>
 													<span className='text-sm '>
 														{gl.sections.length} sections
 													</span>
@@ -392,9 +421,7 @@ export default function CurriculumTab() {
 												className='rounded-lg border border-border px-3 py-2 hover:bg-muted transition-colors'
 											>
 												<div className='flex flex-col'>
-													<span className='text-sm font-bold'>
-														{gl.name}
-													</span>
+													<span className='text-sm font-bold'>{gl.name}</span>
 													<span className='text-sm '>
 														{gl.sections.length} sections
 													</span>
@@ -458,6 +485,51 @@ export default function CurriculumTab() {
 
 										{scp.isOffered && (
 											<div className='p-5 space-y-5 animate-in fade-in slide-in-from-top-2 duration-300'>
+												{' '}
+												{/* STE: Examination Phase Toggle */}
+												{scp.scpType ===
+													'SCIENCE_TECHNOLOGY_AND_ENGINEERING' && (
+													<div className='flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3'>
+														<Label className='text-sm font-bold'>
+															Examination Phase
+														</Label>
+														<div className='flex items-center gap-2'>
+															<span
+																className={`text-xs font-bold ${
+																	!scp.isTwoPhase
+																		? 'text-primary'
+																		: 'text-muted-foreground'
+																}`}
+															>
+																1 Phase
+															</span>
+															<Switch
+																checked={scp.isTwoPhase}
+																onCheckedChange={(checked) =>
+																	handleUpdateScpField(
+																		idx,
+																		'isTwoPhase',
+																		checked,
+																	)
+																}
+															/>
+															<span
+																className={`text-xs font-bold ${
+																	scp.isTwoPhase
+																		? 'text-primary'
+																		: 'text-muted-foreground'
+																}`}
+															>
+																2 Phase
+															</span>
+														</div>
+														<span className='text-xs text-muted-foreground ml-auto'>
+															{scp.isTwoPhase
+																? 'Preliminary Exam → Final Exam → Interview'
+																: 'Qualifying Exam → Interview'}
+														</span>
+													</div>
+												)}
 												{/* Assessment Pipeline — DepEd-mandated, read-only structure */}
 												<div className='space-y-3'>
 													<div className='flex items-center justify-between'>
@@ -635,7 +707,6 @@ export default function CurriculumTab() {
 														))}
 													</div>
 												</div>
-
 												{/* Conditional program-specific fields */}
 												{scp.scpType === 'SPECIAL_PROGRAM_IN_THE_ARTS' && (
 													<div className='space-y-1.5'>
