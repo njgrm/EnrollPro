@@ -382,11 +382,7 @@ function AppSidebar() {
 										<NavItemParent
 											icon={ClipboardList}
 											label='Applications'
-											isActive={
-												pathname.startsWith('/applications') &&
-												activeYearStatus !== 'UPCOMING' &&
-												activeYearStatus !== 'ACTIVE'
-											}
+											isActive={false}
 										>
 											<NavItemChild
 												to='/applications/early-registration'

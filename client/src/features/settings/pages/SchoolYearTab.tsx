@@ -363,7 +363,9 @@ export default function SchoolYearTab() {
 									placeholder='e.g. 2026-2027'
 									className='font-bold'
 								/>
-								<p className='text-xs '>Updated based on your start date.</p>
+								<p className='text-sm font-bold'>
+									Updated based on your start date.
+								</p>
 							</div>
 							<div className='space-y-2'>
 								<Label>Class Opening</Label>
@@ -375,7 +377,7 @@ export default function SchoolYearTab() {
 									maxDate={openingMaxDate}
 									className='font-bold'
 								/>
-								<p className='text-xs '>
+								<p className='text-sm font-bold'>
 									Select a date through late {currentManilaYear + 1}.
 								</p>
 							</div>
@@ -389,7 +391,9 @@ export default function SchoolYearTab() {
 									maxDate={classEndMaxDate}
 									className='font-bold'
 								/>
-								<p className='text-xs '>Ends in the next calendar year.</p>
+								<p className='text-sm font-bold'>
+									Ends in the next calendar year.
+								</p>
 							</div>
 						</div>
 

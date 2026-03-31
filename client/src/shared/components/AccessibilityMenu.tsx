@@ -71,22 +71,22 @@ export function AccessibilityMenu() {
 								<Button
 									variant='outline'
 									size='xs'
-									className='flex-1'
+									className='flex-1 bg-primary hover:bg-primary/90 text-primary-foreground'
 									onClick={() => setFontSize(Math.max(80, fontSize - 10))}
 									disabled={fontSize <= 80}
 									aria-label='Decrease text size'
 								>
-									<Minus className='size-3' />
+									<Minus className='size-4 font-black' />
 								</Button>
 								<Button
 									variant='outline'
 									size='xs'
-									className='flex-1'
+									className='flex-1 bg-primary hover:bg-primary/90 text-primary-foreground'
 									onClick={() => setFontSize(Math.min(150, fontSize + 10))}
 									disabled={fontSize >= 150}
 									aria-label='Increase text size'
 								>
-									<Plus className='size-3' />
+									<Plus className='size-4 font-black' />
 								</Button>
 							</div>
 						</div>

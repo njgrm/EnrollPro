@@ -412,7 +412,7 @@ CREATE TABLE "scp_program_configs" (
 -- CreateTable
 CREATE TABLE "scp_program_steps" (
     "id" SERIAL NOT NULL,
-    "scp_config_id" INTEGER NOT NULL,
+    "scp_program_config_id" INTEGER NOT NULL,
     "step_order" INTEGER NOT NULL,
     "assessment_kind" "assessment_kind" NOT NULL,
     "label" TEXT NOT NULL,
@@ -430,7 +430,7 @@ CREATE TABLE "scp_program_steps" (
 -- CreateTable
 CREATE TABLE "scp_program_options" (
     "id" SERIAL NOT NULL,
-    "scp_config_id" INTEGER NOT NULL,
+    "scp_program_config_id" INTEGER NOT NULL,
     "option_type" "scp_option_type" NOT NULL,
     "value" TEXT NOT NULL,
 
@@ -539,10 +539,10 @@ CREATE INDEX "idx_email_logs_status" ON "email_logs"("status");
 CREATE INDEX "idx_email_logs_trigger" ON "email_logs"("trigger");
 
 -- CreateIndex
-CREATE INDEX "health_records_applicant_id_idx" ON "health_records"("applicant_id");
+CREATE INDEX "idx_health_records_applicant_id" ON "health_records"("applicant_id");
 
 -- CreateIndex
-CREATE INDEX "health_records_applicant_id_school_year_id_idx" ON "health_records"("applicant_id", "school_year_id");
+CREATE INDEX "idx_health_records_applicant_sy" ON "health_records"("applicant_id", "school_year_id");
 
 -- CreateIndex
 CREATE INDEX "idx_health_records_recorded_by_id" ON "health_records"("recorded_by_id");
@@ -554,16 +554,16 @@ CREATE UNIQUE INDEX "health_records_applicant_id_school_year_id_assessment_perio
 CREATE UNIQUE INDEX "scp_program_configs_school_year_id_scp_type_key" ON "scp_program_configs"("school_year_id", "scp_type");
 
 -- CreateIndex
-CREATE INDEX "idx_scp_program_steps_config_id" ON "scp_program_steps"("scp_config_id");
+CREATE INDEX "idx_scp_program_steps_config_id" ON "scp_program_steps"("scp_program_config_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "scp_program_steps_scp_config_id_step_order_key" ON "scp_program_steps"("scp_config_id", "step_order");
+CREATE UNIQUE INDEX "scp_program_steps_scp_program_config_id_step_order_key" ON "scp_program_steps"("scp_program_config_id", "step_order");
 
 -- CreateIndex
-CREATE INDEX "idx_scp_program_options_config_id" ON "scp_program_options"("scp_config_id");
+CREATE INDEX "idx_scp_program_options_config_id" ON "scp_program_options"("scp_program_config_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "scp_program_options_scp_config_id_option_type_value_key" ON "scp_program_options"("scp_config_id", "option_type", "value");
+CREATE UNIQUE INDEX "scp_program_options_scp_program_config_id_option_type_value_key" ON "scp_program_options"("scp_program_config_id", "option_type", "value");
 
 -- CreateIndex
 CREATE INDEX "idx_teacher_subjects_teacher_id" ON "teacher_subjects"("teacher_id");
@@ -662,10 +662,10 @@ ALTER TABLE "health_records" ADD CONSTRAINT "health_records_recorded_by_id_fkey"
 ALTER TABLE "scp_program_configs" ADD CONSTRAINT "scp_program_configs_school_year_id_fkey" FOREIGN KEY ("school_year_id") REFERENCES "school_years"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "scp_program_steps" ADD CONSTRAINT "scp_program_steps_scp_config_id_fkey" FOREIGN KEY ("scp_config_id") REFERENCES "scp_program_configs"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "scp_program_steps" ADD CONSTRAINT "scp_program_steps_scp_program_config_id_fkey" FOREIGN KEY ("scp_program_config_id") REFERENCES "scp_program_configs"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "scp_program_options" ADD CONSTRAINT "scp_program_options_scp_config_id_fkey" FOREIGN KEY ("scp_config_id") REFERENCES "scp_program_configs"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "scp_program_options" ADD CONSTRAINT "scp_program_options_scp_program_config_id_fkey" FOREIGN KEY ("scp_program_config_id") REFERENCES "scp_program_configs"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "strand_grade_levels" ADD CONSTRAINT "strand_grade_levels_strand_id_fkey" FOREIGN KEY ("strand_id") REFERENCES "strands"("id") ON DELETE CASCADE ON UPDATE CASCADE;

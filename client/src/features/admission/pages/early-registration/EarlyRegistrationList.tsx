@@ -504,7 +504,7 @@ export default function EarlyRegistration() {
 										<TableRow>
 											<TableCell
 												colSpan={7}
-												className='h-24 text-center text-sm '
+												className='h-24 text-center text-sm font-bold'
 											>
 												No applicants found.
 											</TableCell>

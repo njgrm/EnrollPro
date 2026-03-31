@@ -8,7 +8,9 @@ import {
 	Check,
 	Edit2,
 	CalendarDays,
+	Loader2,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import api from '@/shared/api/axiosInstance';
 import { useSettingsStore } from '@/store/settings.slice';
 import { toastApiError } from '@/shared/hooks/useApiToast';
@@ -130,8 +132,6 @@ export default function SectionsTab() {
 		fetchData();
 	}, [fetchData]);
 
-	if (loading) return null;
-
 	const toggleAddMode = (glId: number) => {
 		if (addGlId === glId) {
 			setAddGlId(null);
@@ -213,7 +213,7 @@ export default function SectionsTab() {
 		}
 	};
 
-	if (!ayId) {
+	if (!ayId && !loading) {
 		return (
 			<div className='flex h-[calc(100vh-20rem)] w-full items-center justify-center'>
 				<Card className='max-w-md w-full border-dashed shadow-none bg-muted/20'>
@@ -243,233 +243,283 @@ export default function SectionsTab() {
 				onValueChange={setActiveLevel}
 				className='w-full'
 			>
-				<TabsList className='w-full flex flex-wrap h-auto gap-1 mb-4'>
+				<TabsList className='w-full flex flex-wrap h-auto gap-1 mb-4 relative'>
 					<TabsTrigger
 						value='JHS'
-						className='flex-1 min-w-25'
+						className='flex-1 min-w-25 relative z-10 data-[state=active]:bg-transparent data-[state=active]:shadow-none transition-colors'
 					>
-						Junior High School
+						{activeLevel === 'JHS' && (
+							<motion.div
+								layoutId='active-pill'
+								className='absolute inset-0 bg-primary rounded-md'
+								transition={{ type: 'spring', bounce: 0.15, duration: 0.3 }}
+							/>
+						)}
+						<span className='relative z-20'>Junior High School</span>
 					</TabsTrigger>
 					<TabsTrigger
 						value='SHS'
-						className='flex-1 min-w-25'
+						className='flex-1 min-w-25 relative z-10 data-[state=active]:bg-transparent data-[state=active]:shadow-none transition-colors'
 					>
-						Senior High School
+						{activeLevel === 'SHS' && (
+							<motion.div
+								layoutId='active-pill'
+								className='absolute inset-0 bg-primary rounded-md'
+								transition={{ type: 'spring', bounce: 0.15, duration: 0.3 }}
+							/>
+						)}
+						<span className='relative z-20'>Senior High School</span>
 					</TabsTrigger>
 				</TabsList>
 			</Tabs>
 
-			{/* Capacity Heatmap overview */}
-			<Card>
-				<CardHeader>
-					<CardTitle className='flex items-center gap-2 text-xl'>
-						<Grid3X3 className='h-5 w-5' />
-						Capacity Heatmap
-					</CardTitle>
-					<CardDescription>
-						Visual overview of section fill rates. 🟢 &lt;50% · 🟡 50-74% · 🟠
-						75-89% · 🔴 90%+
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-					{groups.length === 0 ? (
-						<p className='text-sm text-muted-foreground text-center py-4'>
-							No grade levels with sections found.
-						</p>
-					) : (
-						<div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-							{groups.flatMap((g) =>
-								g.sections.map((s) => (
-									<div
-										key={s.id}
-										className='flex items-center gap-3 rounded-lg border border-border p-3'
-									>
-										<span className='text-lg'>{fillEmoji(s.fillPercent)}</span>
-										<div className='flex-1 min-w-0'>
-											<p className='text-sm font-medium truncate'>
-												{g.gradeLevelName} — {s.name}
-											</p>
-											<div className='mt-1 h-2 w-full rounded-full bg-muted'>
-												<div
-													className={`h-2 rounded-full transition-all ${fillColor(s.fillPercent)}`}
-													style={{
-														width: `${Math.min(s.fillPercent, 100)}%`,
-													}}
-												/>
-											</div>
-										</div>
-										<span className='text-xs  text-muted-foreground whitespace-nowrap'>
-											{s.enrolledCount}/{s.maxCapacity}
-										</span>
-									</div>
-								)),
-							)}
-							{groups.every((g) => g.sections.length === 0) && (
-								<p className='col-span-full text-sm text-muted-foreground text-center py-4'>
-									No sections created yet. Add sections to grade levels below.
-								</p>
-							)}
+			<AnimatePresence mode='wait'>
+				{loading ? (
+					<motion.div
+						key='loading'
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						exit={{ opacity: 0 }}
+						className='flex h-64 w-full items-center justify-center'
+					>
+						<div className='flex flex-col items-center gap-2'>
+							<Loader2 className='h-8 w-8 animate-spin text-primary' />
+							<p className='text-sm text-muted-foreground animate-pulse'>
+								Loading sections...
+							</p>
 						</div>
-					)}
-				</CardContent>
-			</Card>
-
-			{/* Sections grouped by grade level */}
-			<div className='grid gap-6 md:grid-cols-2'>
-				{groups.map((g) => (
-					<Card key={g.gradeLevelId}>
-						<CardHeader>
-							<div className='flex items-center justify-between'>
-								<CardTitle className='text-lg'>{g.gradeLevelName}</CardTitle>
-								<Button
-									size='sm'
-									variant={addGlId === g.gradeLevelId ? 'ghost' : 'outline'}
-									onClick={() => toggleAddMode(g.gradeLevelId)}
-								>
-									{addGlId === g.gradeLevelId ? (
-										<>
-											<X className='mr-1 h-3 w-3' /> Cancel
-										</>
-									) : (
-										<>
-											<Plus className='mr-1 h-3 w-3' /> Add Section
-										</>
-									)}
-								</Button>
-							</div>
-						</CardHeader>
-						<CardContent className='space-y-4'>
-							{addGlId === g.gradeLevelId && (
-								<div className='space-y-4 animate-in fade-in slide-in-from-top-2 duration-300'>
-									<div className='grid grid-cols-2 gap-4'>
-										<div className='space-y-2'>
-											<Label className='text-xs'>Section Name</Label>
-											<Input
-												placeholder='e.g. Section A'
-												value={sectionName}
-												onChange={(e) => setSectionName(e.target.value)}
-												className='h-9 text-sm'
-												autoFocus
-											/>
-										</div>
-										<div className='space-y-2'>
-											<Label className='text-xs'>Max Capacity</Label>
-											<Input
-												type='number'
-												min='1'
-												value={sectionCap}
-												onChange={(e) => setSectionCap(e.target.value)}
-												className='h-9 text-sm'
-											/>
-										</div>
-										<div className='space-y-2 col-span-2'>
-											<Label className='text-xs'>
-												Advising Teacher (Optional)
-											</Label>
-											<Select
-												value={advisingTeacherId}
-												onValueChange={setAdvisingTeacherId}
-											>
-												<SelectTrigger className='h-9 text-sm'>
-													<SelectValue placeholder='Select teacher' />
-												</SelectTrigger>
-												<SelectContent>
-													<SelectItem value='none'>
-														No Advising Teacher
-													</SelectItem>
-													{teachers.map((t) => (
-														<SelectItem
-															key={t.id}
-															value={t.id.toString()}
-														>
-															{t.firstName} {t.lastName}
-														</SelectItem>
-													))}
-												</SelectContent>
-											</Select>
-										</div>
-									</div>
-									<Button
-										size='sm'
-										className='w-full'
-										onClick={handleAdd}
-										disabled={adding || !sectionName.trim()}
-									>
-										{adding ? (
-											'Adding...'
-										) : (
-											<>
-												<Check className='mr-1 h-3 w-3' /> Save Section
-											</>
-										)}
-									</Button>
-									<Separator />
-								</div>
-							)}
-
-							{g.sections.length === 0 ? (
-								<p className='text-sm text-muted-foreground text-center py-2'>
-									No sections
-								</p>
-							) : (
-								<div className='space-y-2'>
-									{g.sections.map((s) => (
-										<div
-											key={s.id}
-											className='flex items-center gap-3 rounded-lg border border-border px-3 py-2'
-										>
-											<span className='text-sm'>
-												{fillEmoji(s.fillPercent)}
-											</span>
-											<span className='flex-1 text-sm font-medium'>
-												{s.name}
-											</span>
-											{s.advisingTeacher && (
-												<span
-													className='text-xs text-muted-foreground truncate max-w-25'
-													title={`${s.advisingTeacher.firstName} ${s.advisingTeacher.lastName}`}
+					</motion.div>
+				) : (
+					<motion.div
+						key={activeLevel}
+						initial={{ opacity: 0, y: 10 }}
+						animate={{ opacity: 1, y: 0 }}
+						exit={{ opacity: 0, y: -10 }}
+						transition={{ type: 'spring', bounce: 0.15, duration: 0.3 }}
+						className='space-y-6'
+					>
+						{/* Capacity Heatmap overview */}
+						<Card>
+							<CardHeader>
+								<CardTitle className='flex items-center gap-2 text-xl'>
+									<Grid3X3 className='h-5 w-5' />
+									Capacity Heatmap
+								</CardTitle>
+								<CardDescription>
+									Visual overview of section fill rates. 🟢 &lt;50% · 🟡 50-74%
+									· 🟠 75-89% · 🔴 90%+
+								</CardDescription>
+							</CardHeader>
+							<CardContent>
+								{groups.length === 0 ? (
+									<p className='text-sm text-muted-foreground text-center py-4'>
+										No grade levels with sections found.
+									</p>
+								) : (
+									<div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+										{groups.flatMap((g) =>
+											g.sections.map((s) => (
+												<div
+													key={s.id}
+													className='flex items-center gap-3 rounded-lg border border-border p-3'
 												>
-													{s.advisingTeacher.firstName}{' '}
-													{s.advisingTeacher.lastName}
-												</span>
-											)}
-											<span className='text-xs  text-muted-foreground'>
-												{s.enrolledCount}/{s.maxCapacity} ({s.fillPercent}%)
-											</span>
+													<span className='text-lg'>
+														{fillEmoji(s.fillPercent)}
+													</span>
+													<div className='flex-1 min-w-0'>
+														<p className='text-sm font-medium truncate'>
+															{g.gradeLevelName} — {s.name}
+														</p>
+														<div className='mt-1 h-2 w-full rounded-full bg-muted'>
+															<div
+																className={`h-2 rounded-full transition-all ${fillColor(s.fillPercent)}`}
+																style={{
+																	width: `${Math.min(s.fillPercent, 100)}%`,
+																}}
+															/>
+														</div>
+													</div>
+													<span className='text-xs  text-muted-foreground whitespace-nowrap'>
+														{s.enrolledCount}/{s.maxCapacity}
+													</span>
+												</div>
+											)),
+										)}
+										{groups.every((g) => g.sections.length === 0) && (
+											<p className='col-span-full text-sm text-muted-foreground text-center py-4'>
+												No sections created yet. Add sections to grade levels
+												below.
+											</p>
+										)}
+									</div>
+								)}
+							</CardContent>
+						</Card>
+
+						{/* Sections grouped by grade level */}
+						<div className='grid gap-6 md:grid-cols-2'>
+							{groups.map((g) => (
+								<Card key={g.gradeLevelId}>
+									<CardHeader>
+										<div className='flex items-center justify-between'>
+											<CardTitle className='text-lg'>
+												{g.gradeLevelName}
+											</CardTitle>
 											<Button
 												size='sm'
-												variant='ghost'
-												className='h-7 w-7 p-0'
-												onClick={() => openEdit(s)}
-												title='Edit section'
-											>
-												<Edit2 className='h-3.5 w-3.5' />
-											</Button>
-											<Button
-												size='sm'
-												variant='ghost'
-												className='h-7 w-7 p-0 text-destructive'
-												onClick={() => {
-													setDeleteId(s.id);
-													setDeleteName(s.name);
-												}}
-												disabled={s.enrolledCount > 0}
-												title={
-													s.enrolledCount > 0
-														? 'Cannot delete — has enrolled students'
-														: 'Delete section'
+												variant={
+													addGlId === g.gradeLevelId ? 'ghost' : 'outline'
 												}
+												onClick={() => toggleAddMode(g.gradeLevelId)}
 											>
-												<Trash2 className='h-3.5 w-3.5' />
+												{addGlId === g.gradeLevelId ? (
+													<>
+														<X className='mr-1 h-3 w-3' /> Cancel
+													</>
+												) : (
+													<>
+														<Plus className='mr-1 h-3 w-3' /> Add Section
+													</>
+												)}
 											</Button>
 										</div>
-									))}
-								</div>
-							)}
-						</CardContent>
-					</Card>
-				))}
-			</div>
+									</CardHeader>
+									<CardContent className='space-y-4'>
+										{addGlId === g.gradeLevelId && (
+											<div className='space-y-4 animate-in fade-in slide-in-from-top-2 duration-300'>
+												<div className='grid grid-cols-2 gap-4'>
+													<div className='space-y-2'>
+														<Label className='text-xs'>Section Name</Label>
+														<Input
+															placeholder='e.g. Section A'
+															value={sectionName}
+															onChange={(e) => setSectionName(e.target.value)}
+															className='h-9 text-sm'
+															autoFocus
+														/>
+													</div>
+													<div className='space-y-2'>
+														<Label className='text-xs'>Max Capacity</Label>
+														<Input
+															type='number'
+															min='1'
+															value={sectionCap}
+															onChange={(e) => setSectionCap(e.target.value)}
+															className='h-9 text-sm'
+														/>
+													</div>
+													<div className='space-y-2 col-span-2'>
+														<Label className='text-xs'>
+															Advising Teacher (Optional)
+														</Label>
+														<Select
+															value={advisingTeacherId}
+															onValueChange={setAdvisingTeacherId}
+														>
+															<SelectTrigger className='h-9 text-sm'>
+																<SelectValue placeholder='Select teacher' />
+															</SelectTrigger>
+															<SelectContent>
+																<SelectItem value='none'>
+																	No Advising Teacher
+																</SelectItem>
+																{teachers.map((t) => (
+																	<SelectItem
+																		key={t.id}
+																		value={t.id.toString()}
+																	>
+																		{t.firstName} {t.lastName}
+																	</SelectItem>
+																))}
+															</SelectContent>
+														</Select>
+													</div>
+												</div>
+												<Button
+													size='sm'
+													className='w-full'
+													onClick={handleAdd}
+													disabled={adding || !sectionName.trim()}
+												>
+													{adding ? (
+														'Adding...'
+													) : (
+														<>
+															<Check className='mr-1 h-3 w-3' /> Save Section
+														</>
+													)}
+												</Button>
+												<Separator />
+											</div>
+										)}
+
+										{g.sections.length === 0 ? (
+											<p className='text-sm text-muted-foreground text-center py-2'>
+												No sections
+											</p>
+										) : (
+											<div className='space-y-2'>
+												{g.sections.map((s) => (
+													<div
+														key={s.id}
+														className='flex items-center gap-3 rounded-lg border border-border px-3 py-2'
+													>
+														<span className='text-sm'>
+															{fillEmoji(s.fillPercent)}
+														</span>
+														<span className='flex-1 text-sm font-medium'>
+															{s.name}
+														</span>
+														{s.advisingTeacher && (
+															<span
+																className='text-xs text-muted-foreground truncate max-w-25'
+																title={`${s.advisingTeacher.firstName} ${s.advisingTeacher.lastName}`}
+															>
+																{s.advisingTeacher.firstName}{' '}
+																{s.advisingTeacher.lastName}
+															</span>
+														)}
+														<span className='text-xs  text-muted-foreground'>
+															{s.enrolledCount}/{s.maxCapacity} ({s.fillPercent}
+															%)
+														</span>
+														<Button
+															size='sm'
+															variant='ghost'
+															className='h-7 w-7 p-0'
+															onClick={() => openEdit(s)}
+															title='Edit section'
+														>
+															<Edit2 className='h-3.5 w-3.5' />
+														</Button>
+														<Button
+															size='sm'
+															variant='ghost'
+															className='h-7 w-7 p-0 text-destructive'
+															onClick={() => {
+																setDeleteId(s.id);
+																setDeleteName(s.name);
+															}}
+															disabled={s.enrolledCount > 0}
+															title={
+																s.enrolledCount > 0
+																	? 'Cannot delete — has enrolled students'
+																	: 'Delete section'
+															}
+														>
+															<Trash2 className='h-3.5 w-3.5' />
+														</Button>
+													</div>
+												))}
+											</div>
+										)}
+									</CardContent>
+								</Card>
+							))}
+						</div>
+					</motion.div>
+				)}
+			</AnimatePresence>
 
 			{/* Edit Section Dialog */}
 			<Dialog

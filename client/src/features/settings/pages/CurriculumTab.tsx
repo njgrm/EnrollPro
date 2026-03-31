@@ -370,7 +370,7 @@ export default function CurriculumTab() {
 											>
 												<div className='flex flex-col'>
 													<span className='text-sm font-bold'>
-														Grade {gl.name}
+														{gl.name}
 													</span>
 													<span className='text-sm '>
 														{gl.sections.length} sections
@@ -393,7 +393,7 @@ export default function CurriculumTab() {
 											>
 												<div className='flex flex-col'>
 													<span className='text-sm font-bold'>
-														Grade {gl.name}
+														{gl.name}
 													</span>
 													<span className='text-sm '>
 														{gl.sections.length} sections
