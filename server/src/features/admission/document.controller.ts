@@ -59,7 +59,7 @@ export async function upload(req: Request, res: Response) {
 			});
 		}
 
-		const document = await prisma.document.create({
+		const document = await prisma.applicantDocument.create({
 			data: {
 				applicantId,
 				documentType,
@@ -95,7 +95,7 @@ export async function remove(req: Request, res: Response) {
 			return res.status(400).json({ message: 'Invalid document id' });
 		}
 
-		const document = await prisma.document.findUnique({
+		const document = await prisma.applicantDocument.findUnique({
 			where: { id: documentId },
 			include: { applicant: true },
 		});
@@ -129,7 +129,7 @@ export async function remove(req: Request, res: Response) {
 			}
 		}
 
-		await prisma.document.delete({
+		await prisma.applicantDocument.delete({
 			where: { id: documentId },
 		});
 

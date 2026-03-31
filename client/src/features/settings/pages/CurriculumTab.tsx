@@ -6,6 +6,7 @@ import {
 	CheckCircle2,
 	Circle,
 	CalendarDays,
+	Lock,
 } from 'lucide-react';
 import { sileo } from 'sileo';
 import api from '@/shared/api/axiosInstance';
@@ -59,6 +60,7 @@ interface ScpStepConfig {
 	scheduledTime: string | null;
 	venue: string | null;
 	notes: string | null;
+	cutoffScore: number | null;
 }
 
 interface ScpConfig {
@@ -140,7 +142,7 @@ export default function CurriculumTab() {
 			setCurriculumDirty(false);
 
 			// Merge official SCP types with fetched configs
-			const fetched = scpRes.data.scpConfigs as ScpConfig[];
+			const fetched = scpRes.data.scpProgramConfigs as ScpConfig[];
 			const merged = SCP_TYPES.map((type) => {
 				const found = fetched.find((f) => f.scpType === type.value);
 				if (found) {
@@ -253,6 +255,7 @@ export default function CurriculumTab() {
 						scheduledTime: null,
 						venue: null,
 						notes: null,
+						cutoffScore: null,
 					})),
 				};
 			}
@@ -290,11 +293,12 @@ export default function CurriculumTab() {
 					scheduledTime: step.scheduledTime,
 					venue: step.venue?.trim().toUpperCase() || null,
 					notes: step.notes,
+					cutoffScore: step.cutoffScore ?? null,
 				})),
 			}));
 
 			await api.put(`/curriculum/${ayId}/scp-config`, {
-				scpConfigs: uppercasedConfigs,
+				scpProgramConfigs: uppercasedConfigs,
 			});
 			sileo.success({
 				title: 'SCP Configuration Saved',
@@ -483,20 +487,22 @@ export default function CurriculumTab() {
 																	<span className='text-sm font-bold text-foreground'>
 																		{step.label}
 																	</span>
-																	<Badge
-																		variant='outline'
-																		className='ml-auto text-sm px-1.5 py-0 h-4'
-																	>
-																		Required
-																	</Badge>
+																	{step.isRequired ? (
+																		<Badge
+																			variant='outline'
+																			className='ml-auto text-sm px-1.5 py-0 h-4'
+																		>
+																			Required
+																		</Badge>
+																	) : (
+																		<Badge
+																			variant='outline'
+																			className='ml-auto text-sm px-1.5 py-0 h-4 text-muted-foreground'
+																		>
+																			Optional
+																		</Badge>
+																	)}
 																</div>
-
-																{/* Step description */}
-																{step.description && (
-																	<p className='px-3 pt-2 text-sm font-bold leading-relaxed'>
-																		{step.description}
-																	</p>
-																)}
 
 																{/* Editable schedule fields */}
 																<div className='px-3 py-2.5 grid grid-cols-1 sm:grid-cols-3 gap-2'>
@@ -533,10 +539,14 @@ export default function CurriculumTab() {
 																	/>
 																</div>
 
-																{/* Qualifying Exam specific settings: Cut-off, Venue, and Notes */}
-																{step.kind === 'QUALIFYING_EXAMINATION' && (
-																	<div className='px-3 pb-3 pt-2 border-t border-border/50 grid grid-cols-1 sm:grid-cols-12 gap-3 items-end'>
-																		<div className='sm:col-span-3 space-y-1'>
+																{/* Exam-specific: Cut-off Score with auto-pass/fail */}
+																{[
+																	'QUALIFYING_EXAMINATION',
+																	'PRELIMINARY_EXAMINATION',
+																	'FINAL_EXAMINATION',
+																].includes(step.kind) && (
+																	<div className='px-3 pt-2 border-t border-border/50'>
+																		<div className='max-w-[200px] space-y-1'>
 																			<Label className='text-sm font-bold uppercase'>
 																				Cut-off Score
 																			</Label>
@@ -544,10 +554,11 @@ export default function CurriculumTab() {
 																				type='number'
 																				placeholder='Min Score'
 																				className='h-8 text-sm font-bold'
-																				value={scp.cutoffScore ?? ''}
+																				value={step.cutoffScore ?? ''}
 																				onChange={(e) =>
-																					handleUpdateScpField(
+																					handleUpdateStep(
 																						idx,
+																						stepIdx,
 																						'cutoffScore',
 																						e.target.value
 																							? parseFloat(e.target.value)
@@ -555,45 +566,71 @@ export default function CurriculumTab() {
 																					)
 																				}
 																			/>
-																		</div>
-																		<div className='sm:col-span-3 space-y-1'>
-																			<Label className='text-sm font-bold uppercase'>
-																				Exam Venue
-																			</Label>
-																			<Input
-																				placeholder='Venue (optional)'
-																				className='h-8 text-sm font-bold uppercase'
-																				value={step.venue || ''}
-																				onChange={(e) =>
-																					handleUpdateStep(
-																						idx,
-																						stepIdx,
-																						'venue',
-																						e.target.value || null,
-																					)
-																				}
-																			/>
-																		</div>
-																		<div className='sm:col-span-6 space-y-1'>
-																			<Label className='text-sm font-bold uppercase'>
-																				Step Notes
-																			</Label>
-																			<Input
-																				placeholder='Additional requirements...'
-																				className='h-8 text-sm font-bold uppercase'
-																				value={step.notes || ''}
-																				onChange={(e) =>
-																					handleUpdateStep(
-																						idx,
-																						stepIdx,
-																						'notes',
-																						e.target.value,
-																					)
-																				}
-																			/>
+																			<p className='text-xs text-muted-foreground'>
+																				Auto-determines pass / fail
+																			</p>
 																		</div>
 																	</div>
 																)}
+
+																{/* Gating hint for steps that depend on a prior step passing */}
+																{stepIdx > 0 &&
+																	scp.steps
+																		.slice(0, stepIdx)
+																		.some((prev) => prev.isRequired) && (
+																		<p className='px-3 pb-1 flex items-center gap-1 text-xs text-muted-foreground'>
+																			<Lock className='h-3 w-3' />
+																			Gated — requires passing{' '}
+																			{scp.steps
+																				.filter(
+																					(prev) =>
+																						prev.stepOrder < step.stepOrder &&
+																						prev.isRequired,
+																				)
+																				.map((prev) => prev.label)
+																				.join(', ')}
+																		</p>
+																	)}
+
+																{/* Venue & Notes — available for all step types */}
+																<div className='px-3 pb-3 pt-2 border-t border-border/50 grid grid-cols-1 sm:grid-cols-2 gap-3'>
+																	<div className='space-y-1'>
+																		<Label className='text-sm font-bold uppercase'>
+																			Venue
+																		</Label>
+																		<Input
+																			placeholder='Venue (optional)'
+																			className='h-8 text-sm font-bold uppercase'
+																			value={step.venue || ''}
+																			onChange={(e) =>
+																				handleUpdateStep(
+																					idx,
+																					stepIdx,
+																					'venue',
+																					e.target.value || null,
+																				)
+																			}
+																		/>
+																	</div>
+																	<div className='space-y-1'>
+																		<Label className='text-sm font-bold uppercase'>
+																			Notes
+																		</Label>
+																		<Input
+																			placeholder='Additional requirements...'
+																			className='h-8 text-sm font-bold uppercase'
+																			value={step.notes || ''}
+																			onChange={(e) =>
+																				handleUpdateStep(
+																					idx,
+																					stepIdx,
+																					'notes',
+																					e.target.value,
+																				)
+																			}
+																		/>
+																	</div>
+																</div>
 															</div>
 														))}
 													</div>

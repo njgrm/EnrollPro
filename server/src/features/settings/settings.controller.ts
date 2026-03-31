@@ -12,11 +12,11 @@ import { auditLog } from '../audit-logs/audit-logs.service.js';
 import { getEnrollmentPhase } from './enrollment-gate.service.js';
 
 async function getOrCreateSettings() {
-	let settings = await prisma.schoolSettings.findFirst({
+	let settings = await prisma.schoolSetting.findFirst({
 		include: { activeSchoolYear: true },
 	});
 	if (!settings) {
-		settings = await prisma.schoolSettings.create({
+		settings = await prisma.schoolSetting.create({
 			data: { schoolName: 'My School' },
 			include: { activeSchoolYear: true },
 		});
@@ -51,7 +51,7 @@ export async function updateIdentity(
 	const { schoolName } = req.body;
 	const settings = await getOrCreateSettings();
 
-	const updated = await prisma.schoolSettings.update({
+	const updated = await prisma.schoolSetting.update({
 		where: { id: settings.id },
 		data: { schoolName },
 	});
@@ -101,7 +101,7 @@ export async function uploadLogo(req: Request, res: Response): Promise<void> {
 		extracted_at: new Date().toISOString(),
 	} as unknown as Prisma.InputJsonValue;
 
-	const updated = await prisma.schoolSettings.update({
+	const updated = await prisma.schoolSetting.update({
 		where: { id: settings.id },
 		data: {
 			logoPath: absolutePath,
@@ -166,7 +166,7 @@ export async function selectAccentColor(
 	// Remove legacy accent_hsl from JSON (selectedAccentHsl column is canonical)
 	delete (updatedColorScheme as Record<string, unknown>).accent_hsl;
 
-	const updated = await prisma.schoolSettings.update({
+	const updated = await prisma.schoolSetting.update({
 		where: { id: settings.id },
 		data: {
 			selectedAccentHsl: accentHsl,
@@ -198,7 +198,7 @@ export async function removeLogo(req: Request, res: Response): Promise<void> {
 		}
 	}
 
-	const updated = await prisma.schoolSettings.update({
+	const updated = await prisma.schoolSetting.update({
 		where: { id: settings.id },
 		data: {
 			logoPath: null,
@@ -224,24 +224,24 @@ export async function removeLogo(req: Request, res: Response): Promise<void> {
 }
 
 export async function getScpConfig(req: Request, res: Response): Promise<void> {
-	const settings = await prisma.schoolSettings.findFirst({
+	const settings = await prisma.schoolSetting.findFirst({
 		select: { activeSchoolYearId: true },
 	});
 
 	if (!settings?.activeSchoolYearId) {
-		res.json({ scpConfigs: [] });
+		res.json({ scpProgramConfigs: [] });
 		return;
 	}
 
-	const scpConfigs = await prisma.scpConfig.findMany({
+	const scpProgramConfigs = await prisma.scpProgramConfig.findMany({
 		where: { schoolYearId: settings.activeSchoolYearId, isOffered: true },
 	});
 
-	res.json({ scpConfigs });
+	res.json({ scpProgramConfigs });
 }
 
 export async function getShsConfig(req: Request, res: Response): Promise<void> {
-	const settings = await prisma.schoolSettings.findFirst({
+	const settings = await prisma.schoolSetting.findFirst({
 		select: { activeSchoolYearId: true },
 	});
 

@@ -69,7 +69,7 @@ export function ScheduleExamDialog({
 			api
 				.get(`/curriculum/${applicant.schoolYearId}/scp-config`)
 				.then((res) => {
-					const configs: ScpConfig[] = res.data?.scpConfigs ?? [];
+					const configs: ScpConfig[] = res.data?.scpProgramConfigs ?? [];
 					const match = configs.find(
 						(c) => c.scpType === applicant.applicantType,
 					);

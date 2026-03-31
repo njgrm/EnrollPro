@@ -6,7 +6,7 @@ import {
 	LearnerType,
 	ApplicationStatus,
 	AssessmentKind,
-} from '@prisma/client';
+} from '../src/generated/prisma';
 import { PrismaPg } from '@prisma/adapter-pg';
 import * as pg from 'pg';
 
@@ -28,13 +28,22 @@ const SCP_PIPELINES: Record<
 	SCIENCE_TECHNOLOGY_AND_ENGINEERING: [
 		{
 			stepOrder: 1,
-			kind: 'QUALIFYING_EXAMINATION',
-			label: 'Qualifying Examination (ESM)',
-			description: 'Written admission test: English, Science, Mathematics',
+			kind: 'PRELIMINARY_EXAMINATION',
+			label: 'Preliminary Examination (ESM)',
+			description:
+				'Written screening test: English, Science, Mathematics — determines eligibility for final exam',
 			isRequired: true,
 		},
 		{
 			stepOrder: 2,
+			kind: 'FINAL_EXAMINATION',
+			label: 'Final Examination',
+			description:
+				'Comprehensive written exam: 21st-century skills, critical thinking, and advanced problem-solving',
+			isRequired: true,
+		},
+		{
+			stepOrder: 3,
 			kind: 'INTERVIEW',
 			label: 'Interview',
 			description:
@@ -311,9 +320,9 @@ async function seed() {
 		];
 
 		for (const scpType of scpTypes) {
-			const existing = await prisma.scpConfig.findUnique({
+			const existing = await prisma.scpProgramConfig.findUnique({
 				where: {
-					uq_scp_configs_school_year_scp_type: {
+					uq_scp_program_configs_type: {
 						schoolYearId: schoolYear.id,
 						scpType,
 					},
@@ -321,7 +330,7 @@ async function seed() {
 			});
 
 			if (!existing) {
-				const config = await prisma.scpConfig.create({
+				const config = await prisma.scpProgramConfig.create({
 					data: {
 						schoolYearId: schoolYear.id,
 						scpType,
@@ -331,9 +340,9 @@ async function seed() {
 
 				const pipeline = SCP_PIPELINES[scpType] ?? [];
 				if (pipeline.length > 0) {
-					await prisma.scpAssessmentStep.createMany({
+					await prisma.scpProgramStep.createMany({
 						data: pipeline.map((step) => ({
-							scpConfigId: config.id,
+							scpProgramConfigId: config.id,
 							stepOrder: step.stepOrder,
 							kind: step.kind,
 							label: step.label,

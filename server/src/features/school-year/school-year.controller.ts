@@ -177,9 +177,9 @@ export async function createSchoolYear(
 		},
 	});
 
-	const settings = await prisma.schoolSettings.findFirst();
+	const settings = await prisma.schoolSetting.findFirst();
 	if (settings) {
-		await prisma.schoolSettings.update({
+		await prisma.schoolSetting.update({
 			where: { id: settings.id },
 			data: { activeSchoolYearId: year.id },
 		});
@@ -192,7 +192,7 @@ export async function createSchoolYear(
 			include: {
 				gradeLevels: { include: { sections: true } },
 				strands: { include: { gradeLevels: true } },
-				scpConfigs: {
+				scpProgramConfigs: {
 					include: { options: true, steps: { orderBy: { stepOrder: 'asc' } } },
 				},
 			},
@@ -243,8 +243,8 @@ export async function createSchoolYear(
 				}
 			}
 
-			for (const scp of source.scpConfigs) {
-				const newScp = await prisma.scpConfig.create({
+			for (const scp of source.scpProgramConfigs) {
+				const newScp = await prisma.scpProgramConfig.create({
 					data: {
 						schoolYearId: year.id,
 						scpType: scp.scpType,
@@ -254,9 +254,9 @@ export async function createSchoolYear(
 				});
 				// Clone SCP config options
 				if (scp.options.length > 0) {
-					await prisma.scpConfigOption.createMany({
+					await prisma.scpProgramOption.createMany({
 						data: scp.options.map((opt) => ({
-							scpConfigId: newScp.id,
+							scpProgramConfigId: newScp.id,
 							optionType: opt.optionType,
 							value: opt.value,
 						})),
@@ -264,9 +264,9 @@ export async function createSchoolYear(
 				}
 				// Clone SCP assessment pipeline steps
 				if (scp.steps.length > 0) {
-					await prisma.scpAssessmentStep.createMany({
+					await prisma.scpProgramStep.createMany({
 						data: scp.steps.map((step) => ({
-							scpConfigId: newScp.id,
+							scpProgramConfigId: newScp.id,
 							stepOrder: step.stepOrder,
 							kind: step.kind,
 							label: step.label,
@@ -457,9 +457,9 @@ export async function transitionSchoolYear(
 		await ensureDefaultGradeLevels(id);
 
 		// Also update SchoolSettings
-		const settings = await prisma.schoolSettings.findFirst();
+		const settings = await prisma.schoolSetting.findFirst();
 		if (settings) {
-			await prisma.schoolSettings.update({
+			await prisma.schoolSetting.update({
 				where: { id: settings.id },
 				data: { activeSchoolYearId: id },
 			});
@@ -474,9 +474,9 @@ export async function transitionSchoolYear(
 
 		// If was active, clear settings
 		if (year.status === 'ACTIVE') {
-			const settings = await prisma.schoolSettings.findFirst();
+			const settings = await prisma.schoolSetting.findFirst();
 			if (settings && settings.activeSchoolYearId === id) {
-				await prisma.schoolSettings.update({
+				await prisma.schoolSetting.update({
 					where: { id: settings.id },
 					data: { activeSchoolYearId: null },
 				});
@@ -525,9 +525,9 @@ export async function deleteSchoolYear(
 	await prisma.schoolYear.delete({ where: { id } });
 
 	if (wasActive) {
-		const settings = await prisma.schoolSettings.findFirst();
+		const settings = await prisma.schoolSetting.findFirst();
 		if (settings && settings.activeSchoolYearId === id) {
-			await prisma.schoolSettings.update({
+			await prisma.schoolSetting.update({
 				where: { id: settings.id },
 				data: { activeSchoolYearId: null },
 			});

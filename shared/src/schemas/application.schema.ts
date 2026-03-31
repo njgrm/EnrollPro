@@ -230,7 +230,7 @@ export const recordInterviewResultSchema = z.object({
 });
 
 // ─── SCP Assessment Step Config Schema (for CurriculumTab) ───
-export const scpAssessmentStepConfigSchema = z.object({
+export const scpProgramStepConfigSchema = z.object({
 	id: z.number().optional(),
 	stepOrder: z.number().int().min(1),
 	kind: AssessmentKindEnum,

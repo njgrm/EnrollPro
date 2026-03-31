@@ -26,7 +26,14 @@ interface Props {
 function getNextPendingStep(
 	steps: AssessmentStep[],
 ): AssessmentStep | undefined {
-	return steps.find((s) => s.status === 'PENDING');
+	return steps.find((s) => {
+		if (s.status !== 'PENDING') return false;
+		// Gate: all previous required steps must be PASSED
+		const previousRequired = steps.filter(
+			(prev) => prev.stepOrder < s.stepOrder && prev.isRequired,
+		);
+		return previousRequired.every((prev) => prev.result === 'PASSED');
+	});
 }
 
 function getNextScheduledStep(

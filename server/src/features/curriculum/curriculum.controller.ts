@@ -396,7 +396,7 @@ export async function listScpConfigs(
 	res: Response,
 ): Promise<void> {
 	const ayId = parseInt(req.params.ayId as string);
-	const scpConfigs = await prisma.scpConfig.findMany({
+	const scpProgramConfigs = await prisma.scpProgramConfig.findMany({
 		where: { schoolYearId: ayId },
 		include: {
 			options: true,
@@ -405,7 +405,7 @@ export async function listScpConfigs(
 	});
 
 	// Transform options back to the flat array shape the client expects
-	const transformed = scpConfigs.map((cfg) => ({
+	const transformed = scpProgramConfigs.map((cfg) => ({
 		...cfg,
 		artFields: cfg.options
 			.filter((o) => o.optionType === 'ART_FIELD')
@@ -419,7 +419,7 @@ export async function listScpConfigs(
 		options: undefined,
 	}));
 
-	res.json({ scpConfigs: transformed });
+	res.json({ scpProgramConfigs: transformed });
 }
 
 export async function updateScpConfigs(
@@ -427,10 +427,10 @@ export async function updateScpConfigs(
 	res: Response,
 ): Promise<void> {
 	const ayId = parseInt(req.params.ayId as string);
-	const { scpConfigs } = req.body;
+	const { scpProgramConfigs } = req.body;
 
-	if (!Array.isArray(scpConfigs)) {
-		res.status(400).json({ message: 'scpConfigs must be an array' });
+	if (!Array.isArray(scpProgramConfigs)) {
+		res.status(400).json({ message: 'scpProgramConfigs must be an array' });
 		return;
 	}
 
@@ -438,7 +438,7 @@ export async function updateScpConfigs(
 		const updatedConfigs = await prisma.$transaction(async (tx) => {
 			const results = [];
 
-			for (const config of scpConfigs) {
+			for (const config of scpProgramConfigs) {
 				const {
 					id,
 					scpType,
@@ -455,20 +455,22 @@ export async function updateScpConfigs(
 					cutoffScore: cutoffScore ?? null,
 				};
 
-				let scpConfig;
+				let scpProgramConfig;
 				if (id) {
-					scpConfig = await tx.scpConfig.update({
+					scpProgramConfig = await tx.scpProgramConfig.update({
 						where: { id },
 						data: scpData,
 					});
 					// Delete existing options for this config and re-create
-					await tx.scpConfigOption.deleteMany({ where: { scpConfigId: id } });
+					await tx.scpProgramOption.deleteMany({
+						where: { scpProgramConfigId: id },
+					});
 					// Delete existing steps and re-create
-					await tx.scpAssessmentStep.deleteMany({
-						where: { scpConfigId: id },
+					await tx.scpProgramStep.deleteMany({
+						where: { scpProgramConfigId: id },
 					});
 				} else {
-					scpConfig = await tx.scpConfig.create({
+					scpProgramConfig = await tx.scpProgramConfig.create({
 						data: { schoolYearId: ayId, scpType, ...scpData },
 					});
 				}
@@ -477,27 +479,27 @@ export async function updateScpConfigs(
 				const optionData: any[] = [];
 				for (const v of artFields ?? []) {
 					optionData.push({
-						scpConfigId: scpConfig.id,
+						scpProgramConfigId: scpProgramConfig.id,
 						optionType: 'ART_FIELD',
 						value: v,
 					});
 				}
 				for (const v of languages ?? []) {
 					optionData.push({
-						scpConfigId: scpConfig.id,
+						scpProgramConfigId: scpProgramConfig.id,
 						optionType: 'LANGUAGE',
 						value: v,
 					});
 				}
 				for (const v of sportsList ?? []) {
 					optionData.push({
-						scpConfigId: scpConfig.id,
+						scpProgramConfigId: scpProgramConfig.id,
 						optionType: 'SPORT',
 						value: v,
 					});
 				}
 				if (optionData.length > 0) {
-					await tx.scpConfigOption.createMany({ data: optionData });
+					await tx.scpProgramOption.createMany({ data: optionData });
 				}
 
 				// Build assessment step records from DepEd pipeline (immutable)
@@ -514,6 +516,7 @@ export async function updateScpConfigs(
 							scheduledTime?: string;
 							venue?: string;
 							notes?: string;
+							cutoffScore?: number;
 						}
 					>();
 					for (const s of clientSteps) {
@@ -525,7 +528,7 @@ export async function updateScpConfigs(
 					const stepData = pipeline.map((pipelineStep) => {
 						const override = scheduleMap.get(pipelineStep.stepOrder);
 						return {
-							scpConfigId: scpConfig.id,
+							scpProgramConfigId: scpProgramConfig.id,
 							stepOrder: pipelineStep.stepOrder,
 							kind: pipelineStep.kind as any,
 							label: pipelineStep.label,
@@ -537,12 +540,13 @@ export async function updateScpConfigs(
 							scheduledTime: override?.scheduledTime ?? null,
 							venue: override?.venue ?? null,
 							notes: override?.notes ?? null,
+							cutoffScore: override?.cutoffScore ?? null,
 						};
 					});
-					await tx.scpAssessmentStep.createMany({ data: stepData });
+					await tx.scpProgramStep.createMany({ data: stepData });
 				}
 
-				results.push(scpConfig);
+				results.push(scpProgramConfig);
 			}
 
 			return results;
@@ -557,7 +561,7 @@ export async function updateScpConfigs(
 			req,
 		});
 
-		res.json({ scpConfigs: updatedConfigs });
+		res.json({ scpProgramConfigs: updatedConfigs });
 	} catch (error: any) {
 		res
 			.status(500)

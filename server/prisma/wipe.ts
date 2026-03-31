@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../src/generated/prisma';
 import { PrismaPg } from '@prisma/adapter-pg';
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
@@ -25,10 +25,10 @@ async function main() {
 		await prisma.enrollment.deleteMany({});
 		console.log('âœ… Enrollments cleared.');
 
-		await prisma.document.deleteMany({});
-		console.log('âœ… Documents cleared.');
+		await prisma.applicantDocument.deleteMany({});
+		console.log('✅ Documents cleared.');
 
-		await prisma.requirementChecklist.deleteMany({});
+		await prisma.applicantChecklist.deleteMany({});
 		console.log('âœ… Requirement checklists cleared.');
 
 		// 3. Delete Applicants
@@ -41,7 +41,7 @@ async function main() {
 
 		// 5. Delete Curriculum/Setup data (preserving SchoolYear if referenced might be tricky, but we'll try)
 		// Note: ScpConfig, Strand, GradeLevel have onDelete: Cascade or foreign keys to SchoolYear.
-		await prisma.scpConfig.deleteMany({});
+		await prisma.scpProgramConfig.deleteMany({});
 		await prisma.strand.deleteMany({});
 		await prisma.gradeLevel.deleteMany({});
 		await prisma.department.deleteMany({});
@@ -53,7 +53,7 @@ async function main() {
 		// otherwise the activeSchoolYearId will point to nothing.
 		// However, if the user wants a "fresh migration" feel, they usually want to clear SYs.
 		// Let's check if any SchoolYear is currently set as active.
-		const settings = await prisma.schoolSettings.findFirst();
+		const settings = await prisma.schoolSetting.findFirst();
 		if (settings?.activeSchoolYearId) {
 			console.log(
 				'â„¹ï¸ Preserving SchoolYears to maintain SchoolSettings integrity.',

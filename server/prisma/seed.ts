@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../src/generated/prisma';
 import { PrismaPg } from '@prisma/adapter-pg';
 import * as bcrypt from 'bcryptjs';
 
@@ -8,10 +8,10 @@ const prisma = new PrismaClient({ adapter });
 
 async function main() {
 	// 1. Ensure school settings row exists
-	let settings = await prisma.schoolSettings.findFirst();
+	let settings = await prisma.schoolSetting.findFirst();
 	if (!settings) {
-		settings = await prisma.schoolSettings.create({
-			data: { schoolName: 'EnrollPro High School' },
+		settings = await prisma.schoolSetting.create({
+			data: { schoolName: 'EnrollPro' },
 		});
 		console.log('Created default SchoolSettings row.');
 	} else {
@@ -39,7 +39,7 @@ async function main() {
 		console.log(`✅ Created Active School Year: ${activeYear.yearLabel}`);
 
 		// Update settings to point to this active year
-		await prisma.schoolSettings.update({
+		await prisma.schoolSetting.update({
 			where: { id: settings.id },
 			data: { activeSchoolYearId: activeYear.id },
 		});

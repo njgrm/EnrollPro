@@ -68,7 +68,7 @@ async function flattenAssessmentData(application: Record<string, any>) {
 		conductedAt: string | null;
 	}>;
 
-	const scpDetail = application.scpDetail ?? null;
+	const scpDetail = application.programDetail ?? null;
 
 	// Load pipeline step config for SCP applicants
 	let pipelineSteps: Array<{
@@ -84,9 +84,9 @@ async function flattenAssessmentData(application: Record<string, any>) {
 	}> = [];
 
 	if (application.applicantType !== 'REGULAR') {
-		const scpConfig = await prisma.scpConfig.findUnique({
+		const scpConfig = await prisma.scpProgramConfig.findUnique({
 			where: {
-				uq_scp_configs_school_year_scp_type: {
+				uq_scp_program_configs_type: {
 					schoolYearId: application.schoolYearId,
 					scpType: application.applicantType,
 				},
@@ -282,7 +282,7 @@ export async function index(req: Request, res: Response, next: NextFunction) {
 		const where: Prisma.ApplicantWhereInput = {};
 
 		// Scope to active School Year by default
-		const settings = await prisma.schoolSettings.findFirst({
+		const settings = await prisma.schoolSetting.findFirst({
 			select: { activeSchoolYearId: true },
 		});
 		if (settings?.activeSchoolYearId) {
@@ -310,7 +310,7 @@ export async function index(req: Request, res: Response, next: NextFunction) {
 					gradeLevel: true,
 					strand: true,
 					enrollment: { include: { section: true } },
-					scpDetail: true,
+					programDetail: true,
 					assessments: { orderBy: { createdAt: 'desc' } },
 				},
 				orderBy: { createdAt: 'desc' },
@@ -346,7 +346,7 @@ export async function show(req: Request, res: Response, next: NextFunction) {
 				familyMembers: true,
 				previousSchool: true,
 				assessments: { orderBy: { createdAt: 'desc' } },
-				scpDetail: true,
+				programDetail: true,
 				documents: {
 					include: {
 						uploadedBy: {
@@ -420,7 +420,7 @@ async function submitApplication(
 	options: SubmitOptions,
 ): Promise<string> {
 	// 1. Find active School Year
-	const settings = await prisma.schoolSettings.findFirst({
+	const settings = await prisma.schoolSetting.findFirst({
 		include: { activeSchoolYear: true },
 	});
 
@@ -623,7 +623,7 @@ async function submitApplication(
 						},
 					}
 				: undefined,
-			scpDetail:
+			programDetail:
 				body.isScpApplication && body.scpType
 					? {
 							create: {
@@ -768,7 +768,7 @@ export async function track(req: Request, res: Response, next: NextFunction) {
 					take: 1,
 				},
 				rejectionReason: true,
-				scpDetail: { select: { scpType: true } },
+				programDetail: { select: { scpType: true } },
 			},
 		});
 
@@ -1034,11 +1034,11 @@ export async function updateChecklist(
 		}
 
 		// Get current state for auditing
-		const currentChecklist = await prisma.requirementChecklist.findUnique({
+		const currentChecklist = await prisma.applicantChecklist.findUnique({
 			where: { applicantId },
 		});
 
-		const updated = await prisma.requirementChecklist.upsert({
+		const updated = await prisma.applicantChecklist.upsert({
 			where: { applicantId },
 			update: { ...filteredData, updatedById: req.user!.userId },
 			create: { ...filteredData, applicantId, updatedById: req.user!.userId },
@@ -1268,9 +1268,9 @@ export async function scheduleAssessmentStep(
 		);
 
 		// Fetch pipeline step config for defaults
-		const scpConfig = await prisma.scpConfig.findUnique({
+		const scpConfig = await prisma.scpProgramConfig.findUnique({
 			where: {
-				uq_scp_configs_school_year_scp_type: {
+				uq_scp_program_configs_type: {
 					schoolYearId: applicant.schoolYearId,
 					scpType: applicant.applicantType as any,
 				},
@@ -1280,8 +1280,33 @@ export async function scheduleAssessmentStep(
 
 		const stepConfig = scpConfig?.steps.find((s) => s.stepOrder === stepOrder);
 
+		// Prerequisite gating: all previous required steps must have result = 'PASSED'
+		if (scpConfig && stepOrder > 1) {
+			const previousRequiredSteps = scpConfig.steps.filter(
+				(s) => s.stepOrder < stepOrder && s.isRequired,
+			);
+			if (previousRequiredSteps.length > 0) {
+				const existingAssessments = await prisma.applicantAssessment.findMany({
+					where: { applicantId },
+				});
+				const unmet = previousRequiredSteps.filter(
+					(prev) =>
+						!existingAssessments.some(
+							(a) => a.stepOrder === prev.stepOrder && a.result === 'PASSED',
+						),
+				);
+				if (unmet.length > 0) {
+					const labels = unmet.map((s) => s.label).join(', ');
+					throw new AppError(
+						400,
+						`Cannot schedule step ${stepOrder}: prerequisite step(s) not passed — ${labels}.`,
+					);
+				}
+			}
+		}
+
 		const updated = await prisma.$transaction(async (tx) => {
-			await tx.assessment.create({
+			await tx.applicantAssessment.create({
 				data: {
 					applicantId,
 					type: kind as any,
@@ -1343,7 +1368,7 @@ export async function recordStepResult(
 		);
 
 		// Find the assessment record for this step
-		const assessment = await prisma.assessment.findFirst({
+		const assessment = await prisma.applicantAssessment.findFirst({
 			where: { applicantId, stepOrder, type: kind as any },
 			orderBy: { createdAt: 'desc' },
 		});
@@ -1356,9 +1381,9 @@ export async function recordStepResult(
 		}
 
 		// Load pipeline config to determine if all required steps are done
-		const scpConfig = await prisma.scpConfig.findUnique({
+		const scpConfig = await prisma.scpProgramConfig.findUnique({
 			where: {
-				uq_scp_configs_school_year_scp_type: {
+				uq_scp_program_configs_type: {
 					schoolYearId: applicant.schoolYearId,
 					scpType: applicant.applicantType as any,
 				},
@@ -1369,19 +1394,28 @@ export async function recordStepResult(
 		});
 
 		const updated = await prisma.$transaction(async (tx) => {
+			// Auto-determine result from step-level cutoff score if configured
+			const stepConfig = scpConfig?.steps.find(
+				(s) => s.stepOrder === stepOrder,
+			);
+			let finalResult = result ?? null;
+			if (stepConfig?.cutoffScore != null && score != null) {
+				finalResult = score >= stepConfig.cutoffScore ? 'PASSED' : 'FAILED';
+			}
+
 			// Update the specific assessment record
-			await tx.assessment.update({
+			await tx.applicantAssessment.update({
 				where: { id: assessment.id },
 				data: {
 					score: score ?? null,
-					result: result ?? null,
+					result: finalResult,
 					notes: notes ?? null,
 					conductedAt: new Date(),
 				},
 			});
 
 			// Check if all required pipeline steps have results
-			const allAssessments = await tx.assessment.findMany({
+			const allAssessments = await tx.applicantAssessment.findMany({
 				where: { applicantId },
 			});
 
@@ -1443,9 +1477,9 @@ export async function scheduleInterview(
 		);
 
 		// Find the interview step in the pipeline
-		const scpConfig = await prisma.scpConfig.findUnique({
+		const scpConfig = await prisma.scpProgramConfig.findUnique({
 			where: {
-				uq_scp_configs_school_year_scp_type: {
+				uq_scp_program_configs_type: {
 					schoolYearId: applicant.schoolYearId,
 					scpType: applicant.applicantType as any,
 				},
@@ -1457,7 +1491,7 @@ export async function scheduleInterview(
 		const stepOrder = interviewStep?.stepOrder ?? 99;
 
 		const updated = await prisma.$transaction(async (tx) => {
-			await tx.assessment.create({
+			await tx.applicantAssessment.create({
 				data: {
 					applicantId,
 					type: 'INTERVIEW',
@@ -1520,7 +1554,7 @@ export async function recordInterviewResult(
 		);
 
 		// Find the interview assessment
-		const interviewAssessment = await prisma.assessment.findFirst({
+		const interviewAssessment = await prisma.applicantAssessment.findFirst({
 			where: { applicantId, type: 'INTERVIEW' },
 			orderBy: { createdAt: 'desc' },
 		});
@@ -1533,9 +1567,9 @@ export async function recordInterviewResult(
 		}
 
 		// Load pipeline config for all-steps-done check
-		const scpConfig = await prisma.scpConfig.findUnique({
+		const scpConfig = await prisma.scpProgramConfig.findUnique({
 			where: {
-				uq_scp_configs_school_year_scp_type: {
+				uq_scp_program_configs_type: {
 					schoolYearId: applicant.schoolYearId,
 					scpType: applicant.applicantType as any,
 				},
@@ -1546,7 +1580,7 @@ export async function recordInterviewResult(
 		});
 
 		const updated = await prisma.$transaction(async (tx) => {
-			await tx.assessment.update({
+			await tx.applicantAssessment.update({
 				where: { id: interviewAssessment.id },
 				data: {
 					score: interviewScore ?? null,
@@ -1557,7 +1591,7 @@ export async function recordInterviewResult(
 			});
 
 			// Check if all required steps are done
-			const allAssessments = await tx.assessment.findMany({
+			const allAssessments = await tx.applicantAssessment.findMany({
 				where: { applicantId },
 			});
 
@@ -1650,12 +1684,12 @@ export async function fail(req: Request, res: Response, next: NextFunction) {
 		// Store failure notes on the latest assessment and update status
 		const updated = await prisma.$transaction(async (tx) => {
 			if (examNotes) {
-				const latestAssessment = await tx.assessment.findFirst({
+				const latestAssessment = await tx.applicantAssessment.findFirst({
 					where: { applicantId },
 					orderBy: { createdAt: 'desc' },
 				});
 				if (latestAssessment) {
-					await tx.assessment.update({
+					await tx.applicantAssessment.update({
 						where: { id: latestAssessment.id },
 						data: { notes: examNotes },
 					});
@@ -1824,7 +1858,7 @@ export async function navigate(
 		const where: Prisma.ApplicantWhereInput = {};
 
 		// Scope to active School Year by default
-		const settings = await prisma.schoolSettings.findFirst({
+		const settings = await prisma.schoolSetting.findFirst({
 			select: { activeSchoolYearId: true },
 		});
 		if (settings?.activeSchoolYearId) {
@@ -2053,7 +2087,7 @@ export async function showDetailed(
 				familyMembers: true,
 				previousSchool: true,
 				assessments: { orderBy: { createdAt: 'desc' } },
-				scpDetail: true,
+				programDetail: true,
 				documents: {
 					include: {
 						uploadedBy: {
@@ -2127,7 +2161,7 @@ export async function rescheduleAssessmentStep(
 
 		// Create a new assessment record for the reschedule
 		const updated = await prisma.$transaction(async (tx) => {
-			await tx.assessment.create({
+			await tx.applicantAssessment.create({
 				data: {
 					applicantId,
 					type: (kind || 'QUALIFYING_EXAMINATION') as any,

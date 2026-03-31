@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { CheckCircle2, Clock, Circle } from 'lucide-react';
+import { CheckCircle2, Clock, Circle, Lock } from 'lucide-react';
 import type { ApplicantDetail } from '@/features/enrollment/hooks/useApplicationDetail';
 import { formatScpType } from '@/shared/lib/utils';
 import { ASSESSMENT_KIND_LABELS } from '@enrollpro/shared';
@@ -35,6 +35,14 @@ const STATUS_CONFIG = {
 		badge: 'bg-muted text-muted-foreground',
 		line: 'bg-border',
 	},
+	LOCKED: {
+		icon: Lock,
+		color: 'text-muted-foreground/50',
+		bg: 'bg-muted/20',
+		border: 'border-border',
+		badge: 'bg-muted text-muted-foreground/60',
+		line: 'bg-border',
+	},
 } as const;
 
 export function SCPAssessmentBlock({ applicant }: Props) {
@@ -59,7 +67,16 @@ export function SCPAssessmentBlock({ applicant }: Props) {
 			{hasSteps ? (
 				<div className='relative space-y-0'>
 					{steps.map((step, idx) => {
-						const cfg = STATUS_CONFIG[step.status];
+						// Determine if this PENDING step is locked behind unmet prerequisites
+						const isLocked =
+							step.status === 'PENDING' &&
+							steps
+								.filter(
+									(prev) => prev.stepOrder < step.stepOrder && prev.isRequired,
+								)
+								.some((prev) => prev.result !== 'PASSED');
+						const effectiveStatus = isLocked ? 'LOCKED' : step.status;
+						const cfg = STATUS_CONFIG[effectiveStatus];
 						const Icon = cfg.icon;
 						const isLast = idx === steps.length - 1;
 
@@ -88,7 +105,7 @@ export function SCPAssessmentBlock({ applicant }: Props) {
 											variant='outline'
 											className={`text-[0.6rem] px-1.5 py-0 h-4 font-bold ${cfg.badge}`}
 										>
-											{step.status}
+											{isLocked ? 'LOCKED' : step.status}
 										</Badge>
 										{!step.isRequired && (
 											<span className='text-[0.6rem] text-muted-foreground italic'>

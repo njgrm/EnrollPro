@@ -84,6 +84,8 @@ export const FamilyRelationshipEnum = z.enum(['MOTHER', 'FATHER', 'GUARDIAN']);
 export const AssessmentKindEnum = z.enum([
 	'INTERVIEW',
 	'QUALIFYING_EXAMINATION',
+	'PRELIMINARY_EXAMINATION',
+	'FINAL_EXAMINATION',
 	'GENERAL_ADMISSION_TEST',
 	'TALENT_AUDITION',
 	'PHYSICAL_FITNESS_TEST',
@@ -118,6 +120,8 @@ export type ScpType = z.infer<typeof ScpTypeEnum>;
 export const ASSESSMENT_KIND_LABELS: Record<AssessmentKind, string> = {
 	INTERVIEW: 'Interview',
 	QUALIFYING_EXAMINATION: 'Qualifying Examination',
+	PRELIMINARY_EXAMINATION: 'Preliminary Examination',
+	FINAL_EXAMINATION: 'Final Examination',
 	GENERAL_ADMISSION_TEST: 'General Admission Test',
 	TALENT_AUDITION: 'Talent Audition / Performance',
 	PHYSICAL_FITNESS_TEST: 'Physical Fitness Test (PFT)',
@@ -129,7 +133,7 @@ export const ASSESSMENT_KIND_LABELS: Record<AssessmentKind, string> = {
 };
 
 // ─── Default DepEd SCP Assessment Pipelines ─────────────
-export interface ScpAssessmentStepDef {
+export interface ScpProgramStepDef {
 	stepOrder: number;
 	kind: AssessmentKind;
 	label: string;
@@ -137,18 +141,26 @@ export interface ScpAssessmentStepDef {
 	isRequired: boolean;
 }
 
-export const SCP_DEFAULT_PIPELINES: Record<ScpType, ScpAssessmentStepDef[]> = {
+export const SCP_DEFAULT_PIPELINES: Record<ScpType, ScpProgramStepDef[]> = {
 	SCIENCE_TECHNOLOGY_AND_ENGINEERING: [
 		{
 			stepOrder: 1,
-			kind: 'QUALIFYING_EXAMINATION',
-			label: 'Qualifying Examination (ESM)',
+			kind: 'PRELIMINARY_EXAMINATION',
+			label: 'Preliminary Examination (ESM)',
 			description:
-				'Written admission test: English, Science, Mathematics — 21st-century skills and critical thinking',
+				'Written screening test: English, Science, Mathematics — determines eligibility for final exam',
 			isRequired: true,
 		},
 		{
 			stepOrder: 2,
+			kind: 'FINAL_EXAMINATION',
+			label: 'Final Examination',
+			description:
+				'Comprehensive written exam: 21st-century skills, critical thinking, and advanced problem-solving',
+			isRequired: true,
+		},
+		{
+			stepOrder: 3,
 			kind: 'INTERVIEW',
 			label: 'Interview',
 			description:
