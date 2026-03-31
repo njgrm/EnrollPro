@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { Link } from 'react-router';
 import { ExternalLink, User } from 'lucide-react';
 import { useApplicationDetail } from '@/features/enrollment/hooks/useApplicationDetail';
+import type { AssessmentStep } from '@/features/enrollment/hooks/useApplicationDetail';
 import { StatusBadge } from './StatusBadge';
 import { ActionButtons } from './ActionButtons';
 import { SCPAssessmentBlock } from './SCPAssessmentBlock';
@@ -33,6 +34,8 @@ interface Props {
 	onOfferRegular: () => void;
 	onTemporarilyEnroll: () => void;
 	onScheduleInterview?: () => void;
+	onScheduleStep?: (step: AssessmentStep) => void;
+	onRecordStepResult?: (step: AssessmentStep) => void;
 }
 
 export function ApplicationDetailPanel({
@@ -47,6 +50,8 @@ export function ApplicationDetailPanel({
 	onOfferRegular,
 	onTemporarilyEnroll,
 	onScheduleInterview,
+	onScheduleStep,
+	onRecordStepResult,
 }: Props) {
 	const { data: applicant, loading, error, refetch } = useApplicationDetail(id);
 
@@ -246,6 +251,8 @@ export function ApplicationDetailPanel({
 				onOfferRegular={onOfferRegular}
 				onTemporarilyEnroll={onTemporarilyEnroll}
 				onScheduleInterview={onScheduleInterview}
+				onScheduleStep={onScheduleStep}
+				onRecordStepResult={onRecordStepResult}
 			/>
 
 			{applicant.studentPhoto && (

@@ -130,7 +130,6 @@ interface SYItem {
 	id: number;
 	yearLabel: string;
 	status: string;
-	isActive: boolean;
 	classOpeningDate: string | null;
 	classEndDate: string | null;
 	_count: {
@@ -251,7 +250,7 @@ export default function SchoolYearTab() {
 		}
 	}, [editClassEnd, editClassOpening]);
 
-	const activeYear = years.find((y) => y.isActive);
+	const activeYear = years.find((y) => y.status === 'ACTIVE');
 
 	const handleClassOpeningChange = (date?: Date) => {
 		setClassOpening(date ? normalizeDateToManila(date) : undefined);
@@ -556,7 +555,7 @@ export default function SchoolYearTab() {
 								<span className='text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded'>
 									{y.status}
 								</span>
-								{y.isActive && (
+								{y.status === 'ACTIVE' && (
 									<Badge
 										className='uppercase'
 										variant='success'

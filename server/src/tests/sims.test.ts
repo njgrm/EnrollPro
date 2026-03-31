@@ -19,10 +19,10 @@ async function runTests() {
 		// Ensure we can create a test applicant and test the schema.
 		const activeYear =
 			(await prisma.schoolYear.findFirst({
-				where: { isActive: true },
+				where: { status: 'ACTIVE' },
 			})) ||
 			(await prisma.schoolYear.create({
-				data: { yearLabel: 'TEST-2026', status: 'ACTIVE', isActive: true },
+				data: { yearLabel: 'TEST-2026', status: 'ACTIVE' },
 			}));
 
 		const gradeLevel =

@@ -88,7 +88,7 @@ router.put(
 router.get(
 	'/:ayId/scp-config',
 	authenticate,
-	authorize('SYSTEM_ADMIN'),
+	authorize('REGISTRAR', 'SYSTEM_ADMIN'),
 	listScpConfigs,
 );
 router.put(

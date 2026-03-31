@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router';
 import { ArrowLeft, User } from 'lucide-react';
 import { useApplicationDetail } from '@/features/enrollment/hooks/useApplicationDetail';
+import type { AssessmentStep } from '@/features/enrollment/hooks/useApplicationDetail';
 import { StatusBadge } from '@/features/enrollment/components/StatusBadge';
 import { SCPAssessmentBlock } from '@/features/enrollment/components/SCPAssessmentBlock';
 import { StatusTimeline } from '@/features/enrollment/components/StatusTimeline';
@@ -20,7 +21,6 @@ import { DocumentManagement } from '@/features/enrollment/components/DocumentMan
 import { RequirementChecklist } from '@/features/enrollment/components/RequirementChecklist';
 import { ActionButtons } from '@/features/enrollment/components/ActionButtons';
 import { ScheduleExamDialog } from '@/features/enrollment/components/ScheduleExamDialog';
-import { ScheduleInterviewDialog } from '@/features/enrollment/components/ScheduleInterviewDialog';
 import { toastApiError } from '@/shared/hooks/useApiToast';
 import api from '@/shared/api/axiosInstance';
 import { sileo } from 'sileo';
@@ -34,7 +34,7 @@ export default function EarlyRegistrationDetail() {
 	const navigate = useNavigate();
 	const [activeTab, setActiveTab] = useState('overview');
 	const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
-	const [isInterviewDialogOpen, setIsInterviewDialogOpen] = useState(false);
+	const [scheduleStep, setScheduleStep] = useState<AssessmentStep | null>(null);
 	const {
 		data: applicant,
 		loading,
@@ -145,11 +145,22 @@ export default function EarlyRegistrationDetail() {
 	};
 
 	const handleScheduleExam = async () => {
+		setScheduleStep(null);
+		setIsScheduleDialogOpen(true);
+	};
+
+	const handleScheduleStep = (step: AssessmentStep) => {
+		setScheduleStep(step);
 		setIsScheduleDialogOpen(true);
 	};
 
 	const handleScheduleInterview = () => {
-		setIsInterviewDialogOpen(true);
+		// Find interview step in pipeline
+		const interviewStep = applicant?.assessmentSteps?.find(
+			(s) => s.kind === 'INTERVIEW' && s.status !== 'COMPLETED',
+		);
+		setScheduleStep(interviewStep || null);
+		setIsScheduleDialogOpen(true);
 	};
 
 	const handleRecordResult = async () => {
@@ -424,6 +435,7 @@ export default function EarlyRegistrationDetail() {
 							onOfferRegular={handleOfferRegular}
 							onTemporarilyEnroll={handleTemporarilyEnroll}
 							onScheduleInterview={handleScheduleInterview}
+							onScheduleStep={handleScheduleStep}
 						/>
 					</Card>
 
@@ -496,12 +508,7 @@ export default function EarlyRegistrationDetail() {
 				open={isScheduleDialogOpen}
 				onOpenChange={setIsScheduleDialogOpen}
 				applicant={applicant}
-				onSuccess={refetch}
-			/>
-			<ScheduleInterviewDialog
-				open={isInterviewDialogOpen}
-				onOpenChange={setIsInterviewDialogOpen}
-				applicant={applicant}
+				step={scheduleStep}
 				onSuccess={refetch}
 			/>
 

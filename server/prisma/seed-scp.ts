@@ -1,5 +1,12 @@
 import 'dotenv/config';
-import { PrismaClient, ApplicantType, Sex, LearnerType, ApplicationStatus } from '@prisma/client';
+import {
+	PrismaClient,
+	ApplicantType,
+	Sex,
+	LearnerType,
+	ApplicationStatus,
+	AssessmentKind,
+} from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import * as pg from 'pg';
 
@@ -7,10 +14,218 @@ const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-const lastNames = ["SANTOS", "REYES", "CRUZ", "BAUTISTA", "GARCIA", "MENDOZA", "PASCUAL", "CASTILLO", "VILLANUEVA", "RAMOS", "DELA CRUZ", "SANTIAGO", "AQUINO", "BERNARDO", "TOLENTINO", "SORIANO", "CORTEZ", "LOPEZ", "FERNANDEZ", "GONZALES"];
-const firstNamesFemale = ["MARIA", "ANGEL", "JASMINE", "BEA", "NICOLE", "LIZA", "JANINE", "PATRICIA", "SAMANTHA", "ALYSSA", "SOFIA", "ANDREA", "CHLOE", "DANIELLE", "ERIKA", "FRANCESCA", "GISELLE", "HANNAH", "ISABELLA", "JOYCE"];
-const firstNamesMale = ["JOSE", "JUAN", "CARLO", "MARK", "ANGELO", "MIGUEL", "PAOLO", "CHRISTIAN", "GABRIEL", "RAFAEL", "JOSHUA", "DANIEL", "NATHAN", "ETHAN", "ALEXANDER", "SEBASTIAN", "ADRIAN", "JUSTIN", "RYAN", "KEVIN"];
-const middleNames = ["DE LEON", "SALVADOR", "VALDEZ", "ESPINOSA", "MERCADO", "ROXAS", "QUIMPO", "NAVARRO", "DOMINGO", "AGUILAR"];
+// ── Default DepEd SCP Assessment Pipelines ──
+const SCP_PIPELINES: Record<
+	string,
+	Array<{
+		stepOrder: number;
+		kind: AssessmentKind;
+		label: string;
+		description: string;
+		isRequired: boolean;
+	}>
+> = {
+	SCIENCE_TECHNOLOGY_AND_ENGINEERING: [
+		{
+			stepOrder: 1,
+			kind: 'QUALIFYING_EXAMINATION',
+			label: 'Qualifying Examination (ESM)',
+			description: 'Written admission test: English, Science, Mathematics',
+			isRequired: true,
+		},
+		{
+			stepOrder: 2,
+			kind: 'INTERVIEW',
+			label: 'Interview',
+			description:
+				'Interest, mental alertness, readiness for rigorous curriculum',
+			isRequired: true,
+		},
+	],
+	SPECIAL_PROGRAM_IN_THE_ARTS: [
+		{
+			stepOrder: 1,
+			kind: 'GENERAL_ADMISSION_TEST',
+			label: 'General Admission Test',
+			description: 'Written exam covering general knowledge and aptitude',
+			isRequired: true,
+		},
+		{
+			stepOrder: 2,
+			kind: 'TALENT_AUDITION',
+			label: 'Talent Audition / Performance',
+			description: 'Live performance or portfolio per chosen art field',
+			isRequired: true,
+		},
+		{
+			stepOrder: 3,
+			kind: 'INTERVIEW',
+			label: 'Interview',
+			description: 'Assess passion for the arts',
+			isRequired: true,
+		},
+	],
+	SPECIAL_PROGRAM_IN_SPORTS: [
+		{
+			stepOrder: 1,
+			kind: 'PHYSICAL_FITNESS_TEST',
+			label: 'Physical Fitness Test (PFT)',
+			description: 'Agility, strength, and endurance tests',
+			isRequired: true,
+		},
+		{
+			stepOrder: 2,
+			kind: 'SPORTS_SKILLS_TRYOUT',
+			label: 'Sports Skills Demonstration (Tryout)',
+			description: 'Sport-specific proficiency tryout',
+			isRequired: true,
+		},
+		{
+			stepOrder: 3,
+			kind: 'INTERVIEW',
+			label: 'Interview',
+			description: 'Discipline, sportsmanship, and parental support',
+			isRequired: true,
+		},
+	],
+	SPECIAL_PROGRAM_IN_JOURNALISM: [
+		{
+			stepOrder: 1,
+			kind: 'QUALIFYING_EXAMINATION',
+			label: 'Qualifying Test',
+			description:
+				'English and Filipino proficiency, grammar, basic news writing',
+			isRequired: true,
+		},
+		{
+			stepOrder: 2,
+			kind: 'SKILLS_ASSESSMENT',
+			label: 'Skills Assessment (Writing Trials)',
+			description:
+				'On-the-spot writing: news lead, editorial, or feature story',
+			isRequired: true,
+		},
+		{
+			stepOrder: 3,
+			kind: 'INTERVIEW',
+			label: 'Interview',
+			description: 'Communication skills and ethical awareness',
+			isRequired: true,
+		},
+	],
+	SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE: [
+		{
+			stepOrder: 1,
+			kind: 'STANDARDIZED_ADMISSION_TOOL',
+			label: 'Standardized Admission Tool',
+			description: 'Linguistic aptitude and readiness test',
+			isRequired: true,
+		},
+		{
+			stepOrder: 2,
+			kind: 'INTERVIEW',
+			label: 'Interview (with Parent/Guardian)',
+			description: 'Validate documents and gauge commitment',
+			isRequired: true,
+		},
+	],
+	SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION: [
+		{
+			stepOrder: 1,
+			kind: 'APTITUDE_TEST',
+			label: 'Aptitude Test',
+			description:
+				'Inclination towards IT, Agriculture, Home Economics, or Industrial Arts',
+			isRequired: true,
+		},
+		{
+			stepOrder: 2,
+			kind: 'INTEREST_INVENTORY',
+			label: 'Interest Inventory / Interview',
+			description: 'Align student interests with specific shop offerings',
+			isRequired: true,
+		},
+	],
+};
+
+const lastNames = [
+	'SANTOS',
+	'REYES',
+	'CRUZ',
+	'BAUTISTA',
+	'GARCIA',
+	'MENDOZA',
+	'PASCUAL',
+	'CASTILLO',
+	'VILLANUEVA',
+	'RAMOS',
+	'DELA CRUZ',
+	'SANTIAGO',
+	'AQUINO',
+	'BERNARDO',
+	'TOLENTINO',
+	'SORIANO',
+	'CORTEZ',
+	'LOPEZ',
+	'FERNANDEZ',
+	'GONZALES',
+];
+const firstNamesFemale = [
+	'MARIA',
+	'ANGEL',
+	'JASMINE',
+	'BEA',
+	'NICOLE',
+	'LIZA',
+	'JANINE',
+	'PATRICIA',
+	'SAMANTHA',
+	'ALYSSA',
+	'SOFIA',
+	'ANDREA',
+	'CHLOE',
+	'DANIELLE',
+	'ERIKA',
+	'FRANCESCA',
+	'GISELLE',
+	'HANNAH',
+	'ISABELLA',
+	'JOYCE',
+];
+const firstNamesMale = [
+	'JOSE',
+	'JUAN',
+	'CARLO',
+	'MARK',
+	'ANGELO',
+	'MIGUEL',
+	'PAOLO',
+	'CHRISTIAN',
+	'GABRIEL',
+	'RAFAEL',
+	'JOSHUA',
+	'DANIEL',
+	'NATHAN',
+	'ETHAN',
+	'ALEXANDER',
+	'SEBASTIAN',
+	'ADRIAN',
+	'JUSTIN',
+	'RYAN',
+	'KEVIN',
+];
+const middleNames = [
+	'DE LEON',
+	'SALVADOR',
+	'VALDEZ',
+	'ESPINOSA',
+	'MERCADO',
+	'ROXAS',
+	'QUIMPO',
+	'NAVARRO',
+	'DOMINGO',
+	'AGUILAR',
+];
 
 function getRandom(arr: string[]) {
 	return arr[Math.floor(Math.random() * arr.length)];
@@ -19,7 +234,9 @@ function getRandom(arr: string[]) {
 function generateLRN() {
 	// 12 digit LRN starting with 1 or 4 (common for public schools)
 	const prefix = Math.random() > 0.5 ? '10' : '40';
-	const rest = Math.floor(Math.random() * 10000000000).toString().padStart(10, '0');
+	const rest = Math.floor(Math.random() * 10000000000)
+		.toString()
+		.padStart(10, '0');
 	return prefix + rest;
 }
 
@@ -36,7 +253,7 @@ async function seed() {
 				data: {
 					yearLabel: '2026-2027',
 					status: 'ACTIVE',
-					isActive: true,
+
 					classOpeningDate: new Date('2026-06-15'),
 					classEndDate: new Date('2027-03-31'),
 					enrollOpenDate: new Date('2026-01-01'),
@@ -81,8 +298,9 @@ async function seed() {
 			if (grade.name === '7') grade7Id = g.id;
 		}
 
-		if (!grade7Id) throw new Error("Grade 7 not found/created");
+		if (!grade7Id) throw new Error('Grade 7 not found/created');
 
+		// 3. Seed SCP Configs with pipeline steps
 		const scpTypes = [
 			ApplicantType.SCIENCE_TECHNOLOGY_AND_ENGINEERING,
 			ApplicantType.SPECIAL_PROGRAM_IN_THE_ARTS,
@@ -92,13 +310,58 @@ async function seed() {
 			ApplicantType.SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION,
 		];
 
-		console.log('Wiping existing SCP applicants to re-seed with 3 students per type...');
+		for (const scpType of scpTypes) {
+			const existing = await prisma.scpConfig.findUnique({
+				where: {
+					uq_scp_configs_school_year_scp_type: {
+						schoolYearId: schoolYear.id,
+						scpType,
+					},
+				},
+			});
+
+			if (!existing) {
+				const config = await prisma.scpConfig.create({
+					data: {
+						schoolYearId: schoolYear.id,
+						scpType,
+						isOffered: true,
+					},
+				});
+
+				const pipeline = SCP_PIPELINES[scpType] ?? [];
+				if (pipeline.length > 0) {
+					await prisma.scpAssessmentStep.createMany({
+						data: pipeline.map((step) => ({
+							scpConfigId: config.id,
+							stepOrder: step.stepOrder,
+							kind: step.kind,
+							label: step.label,
+							description: step.description,
+							isRequired: step.isRequired,
+						})),
+					});
+				}
+
+				console.log(
+					`✅ Created SCP Config for ${scpType} with ${pipeline.length} pipeline steps`,
+				);
+			} else {
+				console.log(`ℹ️  SCP Config for ${scpType} already exists, skipping`);
+			}
+		}
+
+		// 4. Seed SCP Applicants
+
+		console.log(
+			'Wiping existing SCP applicants to re-seed with 3 students per type...',
+		);
 		await prisma.applicant.deleteMany({
 			where: {
 				schoolYearId: schoolYear.id,
 				gradeLevelId: grade7Id,
 				applicantType: { in: scpTypes },
-			}
+			},
 		});
 
 		let count = 1;
@@ -107,7 +370,9 @@ async function seed() {
 				const trackingNumber = `APP-2026-${count.toString().padStart(5, '0')}`;
 				const isFemale = Math.random() > 0.5;
 				const sex = isFemale ? Sex.FEMALE : Sex.MALE;
-				const firstName = getRandom(isFemale ? firstNamesFemale : firstNamesMale);
+				const firstName = getRandom(
+					isFemale ? firstNamesFemale : firstNamesMale,
+				);
 				const lastName = getRandom(lastNames);
 				const middleName = getRandom(middleNames);
 				const lrn = generateLRN();
@@ -118,7 +383,7 @@ async function seed() {
 						firstName,
 						lastName,
 						middleName,
-						birthDate: new Date('2014-01-01'), 
+						birthDate: new Date('2014-01-01'),
 						sex,
 						trackingNumber,
 						status: ApplicationStatus.SUBMITTED,
@@ -133,20 +398,26 @@ async function seed() {
 								barangay: 'Barangay ' + (Math.floor(Math.random() * 10) + 1),
 								cityMunicipality: 'City',
 								province: 'Province',
-							}
+							},
 						},
 						familyMembers: {
 							create: {
 								relationship: 'MOTHER',
 								firstName: getRandom(firstNamesFemale),
 								lastName: lastName,
-								contactNumber: '09' + Math.floor(Math.random() * 1000000000).toString().padStart(9, '0'),
-							}
-						}
+								contactNumber:
+									'09' +
+									Math.floor(Math.random() * 1000000000)
+										.toString()
+										.padStart(9, '0'),
+							},
+						},
 					},
 				});
 
-				console.log(`✅ [${count}] Created Grade 7 applicant for ${type}: ${firstName} ${middleName} ${lastName} (LRN: ${lrn}, Tracking: ${trackingNumber})`);
+				console.log(
+					`✅ [${count}] Created Grade 7 applicant for ${type}: ${firstName} ${middleName} ${lastName} (LRN: ${lrn}, Tracking: ${trackingNumber})`,
+				);
 				count++;
 			}
 		}

@@ -1,4 +1,7 @@
-export const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+export const STATUS_CONFIG: Record<
+	string,
+	{ label: string; className: string }
+> = {
 	SUBMITTED: {
 		label: 'Submitted',
 		className: 'bg-slate-100 text-slate-700 border-slate-300',
@@ -19,17 +22,9 @@ export const STATUS_CONFIG: Record<string, { label: string; className: string }>
 		label: 'Pending',
 		className: 'bg-amber-100 text-amber-800 border-amber-300',
 	},
-	EXAM_SCHEDULED: {
-		label: 'Exam Scheduled',
-		className: 'bg-amber-100 text-amber-800 border-amber-300',
-	},
 	ASSESSMENT_SCHEDULED: {
 		label: 'Exam Scheduled',
 		className: 'bg-amber-100 text-amber-800 border-amber-300',
-	},
-	EXAM_TAKEN: {
-		label: 'Exam Taken',
-		className: 'bg-indigo-100 text-indigo-800 border-indigo-300',
 	},
 	ASSESSMENT_TAKEN: {
 		label: 'Exam Taken',

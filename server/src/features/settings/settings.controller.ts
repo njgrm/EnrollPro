@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../generated/prisma';
 import { prisma } from '../../lib/prisma.js';
 import {
 	extractPalette,
@@ -97,7 +97,6 @@ export async function uploadLogo(req: Request, res: Response): Promise<void> {
 		})?.hsl ?? '221 83% 53%';
 
 	const colorScheme = {
-		accent_hsl: accentHsl,
 		palette,
 		extracted_at: new Date().toISOString(),
 	} as unknown as Prisma.InputJsonValue;
@@ -157,14 +156,15 @@ export async function selectAccentColor(
 	const l = parseInt(parts[2]);
 	const foreground = contrastForeground(h, s, l);
 
-	// Update colorScheme.accent_hsl too
+	// Update colorScheme foreground
 	const colorSchemeData =
 		(settings.colorScheme as Record<string, unknown>) ?? {};
 	const updatedColorScheme = {
 		...colorSchemeData,
-		accent_hsl: accentHsl,
 		accent_foreground: foreground,
 	};
+	// Remove legacy accent_hsl from JSON (selectedAccentHsl column is canonical)
+	delete (updatedColorScheme as Record<string, unknown>).accent_hsl;
 
 	const updated = await prisma.schoolSettings.update({
 		where: { id: settings.id },

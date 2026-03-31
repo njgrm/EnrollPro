@@ -10,7 +10,9 @@ async function main() {
 	// 1. Ensure school settings row exists
 	let settings = await prisma.schoolSettings.findFirst();
 	if (!settings) {
-		settings = await prisma.schoolSettings.create({ data: { schoolName: 'EnrollPro High School' } });
+		settings = await prisma.schoolSettings.create({
+			data: { schoolName: 'EnrollPro High School' },
+		});
 		console.log('Created default SchoolSettings row.');
 	} else {
 		console.log('SchoolSettings already exists.');
@@ -26,7 +28,6 @@ async function main() {
 			data: {
 				yearLabel: '2026-2027',
 				status: 'ACTIVE',
-				isActive: true,
 				classOpeningDate: new Date('2026-06-15'),
 				classEndDate: new Date('2027-03-31'),
 				earlyRegOpenDate: new Date('2026-01-01'),
@@ -36,11 +37,11 @@ async function main() {
 			},
 		});
 		console.log(`✅ Created Active School Year: ${activeYear.yearLabel}`);
-		
+
 		// Update settings to point to this active year
 		await prisma.schoolSettings.update({
 			where: { id: settings.id },
-			data: { activeSchoolYearId: activeYear.id }
+			data: { activeSchoolYearId: activeYear.id },
 		});
 	}
 

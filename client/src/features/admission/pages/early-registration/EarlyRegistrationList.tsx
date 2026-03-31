@@ -36,12 +36,14 @@ import { Label } from '@/shared/ui/label';
 import { format } from 'date-fns';
 import { ApplicationDetailPanel } from '@/features/enrollment/components/ApplicationDetailPanel';
 import { ScheduleExamDialog } from '@/features/enrollment/components/ScheduleExamDialog';
-import { ScheduleInterviewDialog } from '@/features/enrollment/components/ScheduleInterviewDialog';
 import { StatusBadge } from '@/features/enrollment/components/StatusBadge';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { useDelayedLoading } from '@/shared/hooks/useDelayedLoading';
 import { formatScpType, SCP_LABELS } from '@/shared/lib/utils';
-import type { ApplicantDetail } from '@/features/enrollment/hooks/useApplicationDetail';
+import type {
+	ApplicantDetail,
+	AssessmentStep,
+} from '@/features/enrollment/hooks/useApplicationDetail';
 
 interface Application {
 	id: number;
@@ -92,7 +94,7 @@ export default function EarlyRegistration() {
 		'APPROVE' | 'REJECT' | 'RESULT' | 'ELIGIBLE' | null
 	>(null);
 	const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
-	const [isInterviewDialogOpen, setIsInterviewDialogOpen] = useState(false);
+	const [scheduleStep, setScheduleStep] = useState<AssessmentStep | null>(null);
 	const [rejectionReason, setRejectionReason] = useState('');
 	const [examScore, setExamScore] = useState('');
 	const [examResult, setExamResult] = useState('PASSED');
@@ -247,11 +249,23 @@ export default function EarlyRegistration() {
 	const handleRecordResult = async () => {
 		if (!selectedApp) return;
 		try {
-			await api.patch(`/applications/${selectedApp.id}/record-result`, {
-				examScore: parseFloat(examScore),
-				examResult,
-				examNotes: 'Recorded from Early Registration portal',
-			});
+			if (scheduleStep) {
+				// Pipeline-aware result recording
+				await api.patch(`/applications/${selectedApp.id}/record-step-result`, {
+					stepOrder: scheduleStep.stepOrder,
+					kind: scheduleStep.kind,
+					score: examScore ? parseFloat(examScore) : undefined,
+					result: examResult,
+					notes: 'Recorded from Early Registration portal',
+				});
+			} else {
+				// Legacy fallback
+				await api.patch(`/applications/${selectedApp.id}/record-result`, {
+					examScore: parseFloat(examScore),
+					examResult,
+					examNotes: 'Recorded from Early Registration portal',
+				});
+			}
 
 			if (examResult === 'PASSED') {
 				await api.patch(`/applications/${selectedApp.id}/pass`);
@@ -264,6 +278,7 @@ export default function EarlyRegistration() {
 				description: 'Applicant assessment result saved.',
 			});
 			setActionType(null);
+			setScheduleStep(null);
 			fetchData();
 		} catch (err) {
 			toastApiError(err as never);
@@ -651,12 +666,43 @@ export default function EarlyRegistration() {
 												`/applications/${selectedId}`,
 											);
 											setSelectedApp(fullRes.data);
+											setScheduleStep(null);
 											setIsScheduleDialogOpen(true);
 										} catch (err) {
 											toastApiError(err as never);
 										} finally {
 											setLoading(false);
 										}
+									}
+								}}
+								onScheduleStep={async (step: AssessmentStep) => {
+									setLoading(true);
+									try {
+										const fullRes = await api.get(
+											`/applications/${selectedId}`,
+										);
+										setSelectedApp(fullRes.data);
+										setScheduleStep(step);
+										setIsScheduleDialogOpen(true);
+									} catch (err) {
+										toastApiError(err as never);
+									} finally {
+										setLoading(false);
+									}
+								}}
+								onRecordStepResult={async (step: AssessmentStep) => {
+									setLoading(true);
+									try {
+										const fullRes = await api.get(
+											`/applications/${selectedId}`,
+										);
+										setSelectedApp(fullRes.data);
+										setScheduleStep(step);
+										setActionType('RESULT');
+									} catch (err) {
+										toastApiError(err as never);
+									} finally {
+										setLoading(false);
 									}
 								}}
 								onRecordResult={() => {
@@ -719,20 +765,23 @@ export default function EarlyRegistration() {
 									}
 								}}
 								onScheduleInterview={async () => {
-									const app = applications.find((a) => a.id === selectedId);
-									if (app) {
-										setLoading(true);
-										try {
-											const fullRes = await api.get(
-												`/applications/${selectedId}`,
-											);
-											setSelectedApp(fullRes.data);
-											setIsInterviewDialogOpen(true);
-										} catch (err) {
-											toastApiError(err as never);
-										} finally {
-											setLoading(false);
-										}
+									setLoading(true);
+									try {
+										const fullRes = await api.get(
+											`/applications/${selectedId}`,
+										);
+										const fullApp = fullRes.data as ApplicantDetail;
+										setSelectedApp(fullApp);
+										// Find interview step in pipeline
+										const interviewStep = fullApp.assessmentSteps?.find(
+											(s) => s.kind === 'INTERVIEW' && s.status !== 'COMPLETED',
+										);
+										setScheduleStep(interviewStep || null);
+										setIsScheduleDialogOpen(true);
+									} catch (err) {
+										toastApiError(err as never);
+									} finally {
+										setLoading(false);
 									}
 								}}
 							/>
@@ -909,14 +958,9 @@ export default function EarlyRegistration() {
 				open={isScheduleDialogOpen}
 				onOpenChange={isScheduleDialogOpen ? setIsScheduleDialogOpen : () => {}}
 				applicant={selectedApp as ApplicantDetail | null}
+				step={scheduleStep}
 				onSuccess={fetchData}
 				onCloseSheet={() => setSelectedId(null)}
-			/>
-			<ScheduleInterviewDialog
-				open={isInterviewDialogOpen}
-				onOpenChange={setIsInterviewDialogOpen}
-				applicant={selectedApp as ApplicantDetail | null}
-				onSuccess={fetchData}
 			/>
 		</div>
 	);

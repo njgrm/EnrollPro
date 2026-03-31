@@ -6,7 +6,11 @@ import { isEnrollmentOpen } from '../settings/enrollment-gate.service.js';
 import { normalizeDateToUtcNoon } from '../school-year/school-year.service.js';
 import { getRequiredDocuments } from '../enrollment/enrollment-requirement.service.js';
 import { AppError } from '../../lib/AppError.js';
-import type { ApplicationStatus, Prisma, Applicant } from '@prisma/client';
+import type {
+	ApplicationStatus,
+	Prisma,
+	Applicant,
+} from '../../generated/prisma';
 
 // ── Helpers ──
 
@@ -49,32 +53,37 @@ async function queueEmail(
 	}
 }
 
-/** Flatten nested assessments array and scpDetail into the flat fields the client expects. Includes ScpConfig fallbacks. */
+/** Flatten nested assessments array and scpDetail into a pipeline-aware response the client expects. */
 async function flattenAssessmentData(application: Record<string, any>) {
 	const assessments = (application.assessments ?? []) as Array<{
+		id: number;
 		type: string;
+		stepOrder: number | null;
 		scheduledDate: string | null;
 		scheduledTime: string | null;
 		venue: string | null;
 		score: number | null;
 		result: string | null;
 		notes: string | null;
+		conductedAt: string | null;
 	}>;
-
-	// Assessments are ordered by createdAt desc — first match = most recent per type
-	const primary = assessments[0] ?? null;
-	const interview = assessments.find((a) => a.type === 'INTERVIEW') ?? null;
-	const audition = assessments.find((a) => a.type === 'AUDITION') ?? null;
-	const tryout = assessments.find((a) => a.type === 'TRYOUT') ?? null;
 
 	const scpDetail = application.scpDetail ?? null;
 
-	// Fallback logic from ScpConfig
-	let fallbackType = null;
-	let fallbackDate = null;
-	let fallbackVenue = null;
+	// Load pipeline step config for SCP applicants
+	let pipelineSteps: Array<{
+		stepOrder: number;
+		kind: string;
+		label: string;
+		description: string | null;
+		isRequired: boolean;
+		scheduledDate: string | null;
+		scheduledTime: string | null;
+		venue: string | null;
+		notes: string | null;
+	}> = [];
 
-	if (application.applicantType !== 'REGULAR' && !primary) {
+	if (application.applicantType !== 'REGULAR') {
 		const scpConfig = await prisma.scpConfig.findUnique({
 			where: {
 				uq_scp_configs_school_year_scp_type: {
@@ -82,14 +91,65 @@ async function flattenAssessmentData(application: Record<string, any>) {
 					scpType: application.applicantType,
 				},
 			},
+			include: { steps: { orderBy: { stepOrder: 'asc' } } },
 		});
 
 		if (scpConfig) {
-			fallbackType = scpConfig.assessmentType;
-			fallbackDate = scpConfig.examDate;
-			fallbackVenue = scpConfig.venue;
+			pipelineSteps = scpConfig.steps.map((s) => ({
+				stepOrder: s.stepOrder,
+				kind: s.kind,
+				label: s.label,
+				description: s.description,
+				isRequired: s.isRequired,
+				scheduledDate: s.scheduledDate?.toISOString() ?? null,
+				scheduledTime: s.scheduledTime,
+				venue: s.venue,
+				notes: s.notes,
+			}));
 		}
 	}
+
+	// Build steps array: merge pipeline config with actual assessment records
+	const steps = pipelineSteps.map((step) => {
+		// Find matching assessment by stepOrder (preferred) or kind fallback
+		const match =
+			assessments.find((a) => a.stepOrder === step.stepOrder) ??
+			assessments.find((a) => a.type === step.kind);
+
+		let stepStatus: 'PENDING' | 'SCHEDULED' | 'COMPLETED' = 'PENDING';
+		if (match?.conductedAt || match?.result != null || match?.score != null) {
+			stepStatus = 'COMPLETED';
+		} else if (match?.scheduledDate) {
+			stepStatus = 'SCHEDULED';
+		}
+
+		return {
+			stepOrder: step.stepOrder,
+			kind: step.kind,
+			label: step.label,
+			description: step.description,
+			isRequired: step.isRequired,
+			// Config defaults
+			configDate: step.scheduledDate,
+			configTime: step.scheduledTime,
+			configVenue: step.venue,
+			configNotes: step.notes,
+			// Actual assessment data
+			assessmentId: match?.id ?? null,
+			scheduledDate: match?.scheduledDate ?? null,
+			scheduledTime: match?.scheduledTime ?? null,
+			venue: match?.venue ?? null,
+			score: match?.score ?? null,
+			result: match?.result ?? null,
+			notes: match?.notes ?? null,
+			conductedAt: match?.conductedAt ?? null,
+			status: stepStatus,
+		};
+	});
+
+	// Backward-compat flat fields (from first/primary assessment)
+	const primary = assessments[0] ?? null;
+	const interview = assessments.find((a) => a.type === 'INTERVIEW') ?? null;
 
 	return {
 		...application,
@@ -98,38 +158,47 @@ async function flattenAssessmentData(application: Record<string, any>) {
 		artField: scpDetail?.artField ?? null,
 		foreignLanguage: scpDetail?.foreignLanguage ?? null,
 		sportsList: scpDetail?.sportsList ?? [],
-		assessmentType: primary?.type ?? fallbackType ?? null,
-		examDate: primary?.scheduledDate ?? fallbackDate ?? null,
-		examVenue: primary?.venue ?? fallbackVenue ?? null,
+		// Pipeline-aware data
+		assessmentSteps: steps,
+		// Legacy flat fields for backward compat
+		assessmentType: primary?.type ?? null,
+		examDate: primary?.scheduledDate ?? null,
+		examVenue: primary?.venue ?? null,
 		examScore: primary?.score ?? null,
 		examResult: primary?.result ?? null,
 		examNotes: primary?.notes ?? null,
 		interviewDate: interview?.scheduledDate ?? null,
 		interviewResult: interview?.result ?? null,
 		interviewNotes: interview?.notes ?? null,
-		auditionResult: audition?.result ?? null,
-		tryoutResult: tryout?.result ?? null,
 	};
 }
 
 // ── Valid status transitions ──
 const VALID_TRANSITIONS: Record<string, ApplicationStatus[]> = {
-	SUBMITTED: ['UNDER_REVIEW', 'EXAM_SCHEDULED', 'REJECTED', 'WITHDRAWN'],
+	SUBMITTED: ['UNDER_REVIEW', 'ASSESSMENT_SCHEDULED', 'REJECTED', 'WITHDRAWN'],
 	UNDER_REVIEW: [
 		'FOR_REVISION',
 		'ELIGIBLE',
-		'EXAM_SCHEDULED',
+		'ASSESSMENT_SCHEDULED',
 		'PRE_REGISTERED',
 		'TEMPORARILY_ENROLLED',
 		'REJECTED',
 		'WITHDRAWN',
 	],
 	FOR_REVISION: ['UNDER_REVIEW', 'WITHDRAWN'],
-	ELIGIBLE: ['EXAM_SCHEDULED', 'PRE_REGISTERED', 'WITHDRAWN'],
-	EXAM_SCHEDULED: ['ASSESSMENT_TAKEN', 'WITHDRAWN'],
-	ASSESSMENT_TAKEN: ['PASSED', 'NOT_QUALIFIED', 'WITHDRAWN'],
+	ELIGIBLE: ['ASSESSMENT_SCHEDULED', 'PRE_REGISTERED', 'WITHDRAWN'],
+	ASSESSMENT_SCHEDULED: [
+		'ASSESSMENT_TAKEN',
+		'ASSESSMENT_SCHEDULED',
+		'WITHDRAWN',
+	],
+	ASSESSMENT_TAKEN: [
+		'PASSED',
+		'NOT_QUALIFIED',
+		'ASSESSMENT_SCHEDULED',
+		'WITHDRAWN',
+	],
 	PASSED: ['PRE_REGISTERED', 'ASSESSMENT_SCHEDULED', 'WITHDRAWN'],
-	ASSESSMENT_SCHEDULED: ['ASSESSMENT_TAKEN', 'WITHDRAWN'],
 	PRE_REGISTERED: ['ENROLLED', 'TEMPORARILY_ENROLLED', 'WITHDRAWN'],
 	TEMPORARILY_ENROLLED: ['ENROLLED', 'WITHDRAWN'],
 	NOT_QUALIFIED: ['UNDER_REVIEW', 'WITHDRAWN', 'REJECTED'],
@@ -430,13 +499,20 @@ async function submitApplication(
 	}
 
 	// 7. Map Learner Type
-	let lType: 'NEW_ENROLLEE' | 'TRANSFEREE' | 'RETURNING' | 'CONTINUING' =
-		'NEW_ENROLLEE';
+	let lType:
+		| 'NEW_ENROLLEE'
+		| 'TRANSFEREE'
+		| 'RETURNING'
+		| 'CONTINUING'
+		| 'OSCYA'
+		| 'ALS' = 'NEW_ENROLLEE';
 	const bodyLType = String(body.learnerType).toUpperCase();
 	if (bodyLType === 'TRANSFEREE') lType = 'TRANSFEREE';
 	else if (bodyLType === 'RETURNING' || bodyLType === 'BALIK_ARAL')
 		lType = 'RETURNING';
 	else if (bodyLType === 'CONTINUING') lType = 'CONTINUING';
+	else if (bodyLType === 'OSCYA') lType = 'OSCYA';
+	else if (bodyLType === 'ALS') lType = 'ALS';
 
 	const emailAddress: string | null = body.email || null;
 
@@ -1173,24 +1249,25 @@ export async function markEligible(
 	}
 }
 
-// — Schedule assessment (SCP flow) —
-export async function scheduleExam(
+// — Schedule assessment step (pipeline-aware SCP flow) —
+export async function scheduleAssessmentStep(
 	req: Request,
 	res: Response,
 	next: NextFunction,
 ) {
 	try {
-		const { examDate, examTime } = req.body;
+		const { stepOrder, kind, scheduledDate, scheduledTime, venue, notes } =
+			req.body;
 		const applicantId = parseInt(String(req.params.id));
 		const applicant = await findApplicantOrThrow(applicantId);
 
 		assertTransition(
 			applicant,
-			'EXAM_SCHEDULED',
+			'ASSESSMENT_SCHEDULED',
 			`Cannot schedule assessment for application with status "${applicant.status}".`,
 		);
 
-		// Fetch assessmentType from ScpConfig for this school year and scpType
+		// Fetch pipeline step config for defaults
 		const scpConfig = await prisma.scpConfig.findUnique({
 			where: {
 				uq_scp_configs_school_year_scp_type: {
@@ -1198,39 +1275,35 @@ export async function scheduleExam(
 					scpType: applicant.applicantType as any,
 				},
 			},
+			include: { steps: { orderBy: { stepOrder: 'asc' } } },
 		});
 
-		const assessmentType = scpConfig?.assessmentType || 'WRITTEN EXAM';
+		const stepConfig = scpConfig?.steps.find((s) => s.stepOrder === stepOrder);
 
-		// Determine assessment kind from config
-		let assessmentKind = 'WRITTEN_EXAM';
-		if (assessmentType.includes('INTERVIEW')) assessmentKind = 'INTERVIEW';
-		if (assessmentType.includes('AUDITION')) assessmentKind = 'AUDITION';
-		if (assessmentType.includes('TRYOUT')) assessmentKind = 'TRYOUT';
-
-		// Create Assessment record + update status in one transaction
 		const updated = await prisma.$transaction(async (tx) => {
 			await tx.assessment.create({
 				data: {
 					applicantId,
-					type: assessmentKind as any,
-					scheduledDate: normalizeDateToUtcNoon(new Date(examDate)),
-					scheduledTime: examTime || null,
-					venue: scpConfig?.venue || null,
-					notes: scpConfig?.notes || null,
+					type: kind as any,
+					stepOrder,
+					scheduledDate: normalizeDateToUtcNoon(new Date(scheduledDate)),
+					scheduledTime: scheduledTime || stepConfig?.scheduledTime || null,
+					venue: venue || stepConfig?.venue || null,
+					notes: notes || stepConfig?.notes || null,
 				},
 			});
 
 			return tx.applicant.update({
 				where: { id: applicantId },
-				data: { status: 'EXAM_SCHEDULED' },
+				data: { status: 'ASSESSMENT_SCHEDULED' },
 			});
 		});
 
+		const stepLabel = stepConfig?.label || kind;
 		await auditLog({
 			userId: req.user!.userId,
-			actionType: 'EXAM_SCHEDULED',
-			description: `Scheduled ${assessmentType} for ${applicant.firstName} ${applicant.lastName} (#${applicantId}) on ${examDate}${scpConfig?.venue ? ` at ${scpConfig.venue}` : ''}`,
+			actionType: 'ASSESSMENT_STEP_SCHEDULED',
+			description: `Scheduled ${stepLabel} (step ${stepOrder}) for ${applicant.firstName} ${applicant.lastName} (#${applicantId}) on ${scheduledDate}${venue || stepConfig?.venue ? ` at ${venue || stepConfig?.venue}` : ''}`,
 			subjectType: 'Applicant',
 			recordId: applicantId,
 			req,
@@ -1239,7 +1312,7 @@ export async function scheduleExam(
 		await queueEmail(
 			applicantId,
 			applicant.emailAddress,
-			`Exam Scheduled - ${applicant.trackingNumber}`,
+			`Assessment Scheduled - ${applicant.trackingNumber}`,
 			'EXAM_SCHEDULED',
 		);
 
@@ -1249,113 +1322,94 @@ export async function scheduleExam(
 	}
 }
 
-// — Record assessment result —
-export async function recordResult(
+// Keep legacy alias for backward compat
+export const scheduleExam = scheduleAssessmentStep;
+
+// — Record assessment step result (pipeline-aware) —
+export async function recordStepResult(
 	req: Request,
 	res: Response,
 	next: NextFunction,
 ) {
 	try {
-		const body = toUpperCaseRecursive(req.body) as {
-			examScore?: number;
-			examResult?: string;
-			examNotes?: string;
-			interviewResult?: string;
-			interviewNotes?: string;
-			auditionResult?: string;
-			tryoutResult?: string;
-			natScore?: number;
-		};
-		const {
-			examScore,
-			examResult,
-			examNotes,
-			interviewResult,
-			interviewNotes,
-			auditionResult,
-			tryoutResult,
-			natScore,
-		} = body;
-		// Parse interview date if provided
-		const interviewDate = req.body.interviewDate
-			? normalizeDateToUtcNoon(new Date(req.body.interviewDate))
-			: null;
+		const { stepOrder, kind, score, result, notes } = req.body;
 		const applicantId = parseInt(String(req.params.id));
 		const applicant = await findApplicantOrThrow(applicantId);
 
 		assertTransition(
 			applicant,
 			'ASSESSMENT_TAKEN',
-			`Cannot record result for application with status "${applicant.status}". Only EXAM_SCHEDULED applications can record results.`,
+			`Cannot record result for application with status "${applicant.status}".`,
 		);
 
-		// Build Assessment records for each result type provided
-		const assessmentCreates: Prisma.AssessmentCreateManyInput[] = [];
+		// Find the assessment record for this step
+		const assessment = await prisma.assessment.findFirst({
+			where: { applicantId, stepOrder, type: kind as any },
+			orderBy: { createdAt: 'desc' },
+		});
 
-		if (examScore !== undefined || examResult !== undefined) {
-			assessmentCreates.push({
-				applicantId,
-				type: 'WRITTEN_EXAM',
-				score: examScore ?? null,
-				result: examResult ?? null,
-				notes: examNotes ?? null,
-				conductedAt: new Date(),
-			});
+		if (!assessment) {
+			throw new AppError(
+				404,
+				`No scheduled assessment found for step ${stepOrder} (${kind}). Schedule the step first.`,
+			);
 		}
 
-		if (interviewResult !== undefined) {
-			assessmentCreates.push({
-				applicantId,
-				type: 'INTERVIEW' as const,
-				scheduledDate: interviewDate,
-				result: interviewResult ?? null,
-				notes: interviewNotes ?? null,
-				conductedAt: new Date(),
-			});
-		}
+		// Load pipeline config to determine if all required steps are done
+		const scpConfig = await prisma.scpConfig.findUnique({
+			where: {
+				uq_scp_configs_school_year_scp_type: {
+					schoolYearId: applicant.schoolYearId,
+					scpType: applicant.applicantType as any,
+				},
+			},
+			include: {
+				steps: { where: { isRequired: true }, orderBy: { stepOrder: 'asc' } },
+			},
+		});
 
-		if (auditionResult !== undefined) {
-			assessmentCreates.push({
-				applicantId,
-				type: 'AUDITION' as const,
-				result: auditionResult ?? null,
-				conductedAt: new Date(),
-			});
-		}
-
-		if (tryoutResult !== undefined) {
-			assessmentCreates.push({
-				applicantId,
-				type: 'TRYOUT' as const,
-				result: tryoutResult ?? null,
-				conductedAt: new Date(),
-			});
-		}
-
-		// Store NAT score on PreviousSchool if provided
 		const updated = await prisma.$transaction(async (tx) => {
-			if (assessmentCreates.length > 0) {
-				await tx.assessment.createMany({ data: assessmentCreates });
-			}
+			// Update the specific assessment record
+			await tx.assessment.update({
+				where: { id: assessment.id },
+				data: {
+					score: score ?? null,
+					result: result ?? null,
+					notes: notes ?? null,
+					conductedAt: new Date(),
+				},
+			});
 
-			if (natScore !== undefined && natScore !== null) {
-				await tx.previousSchool.upsert({
-					where: { applicantId },
-					update: { natScore },
-					create: { applicantId, natScore },
-				});
-			}
+			// Check if all required pipeline steps have results
+			const allAssessments = await tx.assessment.findMany({
+				where: { applicantId },
+			});
+
+			const requiredSteps = scpConfig?.steps ?? [];
+			const allRequiredDone = requiredSteps.every((step) =>
+				allAssessments.some(
+					(a) =>
+						a.stepOrder === step.stepOrder &&
+						(a.conductedAt != null || a.result != null || a.score != null),
+				),
+			);
+
+			// If all required steps have results → ASSESSMENT_TAKEN
+			// Otherwise stay at ASSESSMENT_SCHEDULED (more steps remain)
+			const newStatus = allRequiredDone
+				? 'ASSESSMENT_TAKEN'
+				: 'ASSESSMENT_SCHEDULED';
 
 			return tx.applicant.update({
 				where: { id: applicantId },
-				data: { status: 'ASSESSMENT_TAKEN' },
+				data: { status: newStatus },
 			});
 		});
 
 		await auditLog({
 			userId: req.user!.userId,
-			actionType: 'EXAM_RESULT_RECORDED',
-			description: `Recorded assessment result for ${applicant.firstName} ${applicant.lastName} (#${applicantId}): ${examResult || 'N/A'} (Score: ${examScore ?? natScore ?? 'N/A'})`,
+			actionType: 'STEP_RESULT_RECORDED',
+			description: `Recorded result for step ${stepOrder} (${kind}) for ${applicant.firstName} ${applicant.lastName} (#${applicantId}): ${result || 'N/A'} (Score: ${score ?? 'N/A'})`,
 			subjectType: 'Applicant',
 			recordId: applicantId,
 			req,
@@ -1367,7 +1421,10 @@ export async function recordResult(
 	}
 }
 
-// — Schedule interview (SCP flow — after exam pass) —
+// Legacy alias
+export const recordResult = recordStepResult;
+
+// — Schedule interview (legacy alias — redirects to scheduleAssessmentStep) —
 export async function scheduleInterview(
 	req: Request,
 	res: Response,
@@ -1379,20 +1436,13 @@ export async function scheduleInterview(
 		const applicantId = parseInt(String(req.params.id));
 		const applicant = await findApplicantOrThrow(applicantId);
 
-		if (applicant.applicantType === 'REGULAR') {
-			throw new AppError(
-				422,
-				'Interviews are only applicable to SCP applicants.',
-			);
-		}
-
 		assertTransition(
 			applicant,
 			'ASSESSMENT_SCHEDULED',
-			`Cannot schedule interview for application with status "${applicant.status}". Only PASSED applications can proceed to interview.`,
+			`Cannot schedule interview for application with status "${applicant.status}".`,
 		);
 
-		// Verify the SCP config requires an interview
+		// Find the interview step in the pipeline
 		const scpConfig = await prisma.scpConfig.findUnique({
 			where: {
 				uq_scp_configs_school_year_scp_type: {
@@ -1400,20 +1450,18 @@ export async function scheduleInterview(
 					scpType: applicant.applicantType as any,
 				},
 			},
+			include: { steps: { orderBy: { stepOrder: 'asc' } } },
 		});
 
-		if (!scpConfig?.interviewRequired) {
-			throw new AppError(
-				422,
-				'This SCP program does not require an interview. Proceed directly to section assignment.',
-			);
-		}
+		const interviewStep = scpConfig?.steps.find((s) => s.kind === 'INTERVIEW');
+		const stepOrder = interviewStep?.stepOrder ?? 99;
 
 		const updated = await prisma.$transaction(async (tx) => {
 			await tx.assessment.create({
 				data: {
 					applicantId,
 					type: 'INTERVIEW',
+					stepOrder,
 					scheduledDate: normalizeDateToUtcNoon(new Date(interviewDate)),
 					scheduledTime: interviewTime || null,
 					venue: interviewVenue || null,
@@ -1430,7 +1478,7 @@ export async function scheduleInterview(
 		await auditLog({
 			userId: req.user!.userId,
 			actionType: 'INTERVIEW_SCHEDULED',
-			description: `Scheduled interview for ${applicant.firstName} ${applicant.lastName} (#${applicantId}) on ${interviewDate}${interviewVenue ? ` at ${interviewVenue}` : ''}`,
+			description: `Scheduled interview (step ${stepOrder}) for ${applicant.firstName} ${applicant.lastName} (#${applicantId}) on ${interviewDate}`,
 			subjectType: 'Applicant',
 			recordId: applicantId,
 			req,
@@ -1440,7 +1488,7 @@ export async function scheduleInterview(
 			applicantId,
 			applicant.emailAddress,
 			`Interview Scheduled - ${applicant.trackingNumber}`,
-			'INTERVIEW_SCHEDULED',
+			'EXAM_SCHEDULED',
 		);
 
 		res.json(updated);
@@ -1449,7 +1497,7 @@ export async function scheduleInterview(
 	}
 }
 
-// — Record interview result —
+// — Record interview result (legacy alias — redirects to recordStepResult) —
 export async function recordInterviewResult(
 	req: Request,
 	res: Response,
@@ -1468,21 +1516,38 @@ export async function recordInterviewResult(
 		assertTransition(
 			applicant,
 			'ASSESSMENT_TAKEN',
-			`Cannot record interview result for application with status "${applicant.status}". Only ASSESSMENT_SCHEDULED applications can record results.`,
+			`Cannot record interview result for application with status "${applicant.status}".`,
 		);
 
-		// Ensure the latest assessment is an INTERVIEW
-		const latestAssessment = applicant.assessments[0];
-		if (!latestAssessment || latestAssessment.type !== 'INTERVIEW') {
+		// Find the interview assessment
+		const interviewAssessment = await prisma.assessment.findFirst({
+			where: { applicantId, type: 'INTERVIEW' },
+			orderBy: { createdAt: 'desc' },
+		});
+
+		if (!interviewAssessment) {
 			throw new AppError(
 				422,
 				'No pending interview assessment found. Schedule an interview first.',
 			);
 		}
 
+		// Load pipeline config for all-steps-done check
+		const scpConfig = await prisma.scpConfig.findUnique({
+			where: {
+				uq_scp_configs_school_year_scp_type: {
+					schoolYearId: applicant.schoolYearId,
+					scpType: applicant.applicantType as any,
+				},
+			},
+			include: {
+				steps: { where: { isRequired: true }, orderBy: { stepOrder: 'asc' } },
+			},
+		});
+
 		const updated = await prisma.$transaction(async (tx) => {
 			await tx.assessment.update({
-				where: { id: latestAssessment.id },
+				where: { id: interviewAssessment.id },
 				data: {
 					score: interviewScore ?? null,
 					result: interviewResult ?? null,
@@ -1491,9 +1556,27 @@ export async function recordInterviewResult(
 				},
 			});
 
+			// Check if all required steps are done
+			const allAssessments = await tx.assessment.findMany({
+				where: { applicantId },
+			});
+
+			const requiredSteps = scpConfig?.steps ?? [];
+			const allRequiredDone = requiredSteps.every((step) =>
+				allAssessments.some(
+					(a) =>
+						a.stepOrder === step.stepOrder &&
+						(a.conductedAt != null || a.result != null || a.score != null),
+				),
+			);
+
+			const newStatus = allRequiredDone
+				? 'ASSESSMENT_TAKEN'
+				: 'ASSESSMENT_SCHEDULED';
+
 			return tx.applicant.update({
 				where: { id: applicantId },
-				data: { status: 'ASSESSMENT_TAKEN' },
+				data: { status: newStatus },
 			});
 		});
 
@@ -2032,48 +2115,40 @@ export async function showDetailed(
 }
 
 // — Reschedule assessment —
-export async function rescheduleExam(
+export async function rescheduleAssessmentStep(
 	req: Request,
 	res: Response,
 	next: NextFunction,
 ) {
 	try {
-		const { examDate } = req.body;
+		const { stepOrder, kind, scheduledDate, scheduledTime, venue } = req.body;
 		const applicantId = parseInt(String(req.params.id));
 		const applicant = await findApplicantOrThrow(applicantId);
 
-		// Fetch venue from ScpConfig
-		const scpConfig = await prisma.scpConfig.findUnique({
-			where: {
-				uq_scp_configs_school_year_scp_type: {
-					schoolYearId: applicant.schoolYearId,
-					scpType: applicant.applicantType as any,
-				},
-			},
-		});
-
-		// Create a new assessment record for the reschedule and update status
+		// Create a new assessment record for the reschedule
 		const updated = await prisma.$transaction(async (tx) => {
 			await tx.assessment.create({
 				data: {
 					applicantId,
-					type: 'WRITTEN_EXAM',
-					scheduledDate: normalizeDateToUtcNoon(new Date(examDate)),
-					venue: scpConfig?.venue || null,
+					type: (kind || 'QUALIFYING_EXAMINATION') as any,
+					stepOrder: stepOrder ?? null,
+					scheduledDate: normalizeDateToUtcNoon(new Date(scheduledDate)),
+					scheduledTime: scheduledTime || null,
+					venue: venue || null,
 					notes: 'Rescheduled',
 				},
 			});
 
 			return tx.applicant.update({
 				where: { id: applicantId },
-				data: { status: 'EXAM_SCHEDULED' },
+				data: { status: 'ASSESSMENT_SCHEDULED' },
 			});
 		});
 
 		await auditLog({
 			userId: req.user!.userId,
-			actionType: 'EXAM_RESCHEDULED',
-			description: `Rescheduled assessment for ${applicant.firstName} ${applicant.lastName} (#${applicantId}) to ${examDate}${scpConfig?.venue ? ` at ${scpConfig.venue}` : ''}`,
+			actionType: 'ASSESSMENT_RESCHEDULED',
+			description: `Rescheduled step ${stepOrder ?? '?'} (${kind || 'WRITTEN_EXAM'}) for ${applicant.firstName} ${applicant.lastName} (#${applicantId}) to ${scheduledDate}`,
 			subjectType: 'Applicant',
 			recordId: applicantId,
 			req,
@@ -2084,3 +2159,6 @@ export async function rescheduleExam(
 		next(error);
 	}
 }
+
+// Legacy alias
+export const rescheduleExam = rescheduleAssessmentStep;

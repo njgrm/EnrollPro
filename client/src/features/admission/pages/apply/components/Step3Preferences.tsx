@@ -420,9 +420,10 @@ export default function Step3Preferences() {
 						value={watch('learnerType')}
 						onValueChange={(
 							val:
-								| 'Regular'
-								| 'Transferee'
-								| 'Returning Learner'
+								| 'NEW_ENROLLEE'
+								| 'TRANSFEREE'
+								| 'RETURNING'
+								| 'CONTINUING'
 								| 'OSCYA'
 								| 'ALS',
 						) => setValue('learnerType', val)}
@@ -431,11 +432,12 @@ export default function Step3Preferences() {
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value='Regular'>Regular</SelectItem>
-							<SelectItem value='Transferee'>Transferee</SelectItem>
-							<SelectItem value='Returning Learner'>
+							<SelectItem value='NEW_ENROLLEE'>New Enrollee</SelectItem>
+							<SelectItem value='TRANSFEREE'>Transferee</SelectItem>
+							<SelectItem value='RETURNING'>
 								Returning Learner (Balik-Aral)
 							</SelectItem>
+							<SelectItem value='CONTINUING'>Continuing</SelectItem>
 							<SelectItem value='OSCYA'>
 								Out-of-School Children Youth & Adults (OSCYA)
 							</SelectItem>

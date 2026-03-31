@@ -39,7 +39,7 @@ const DEFAULT_VALUES = {
 	isLearnerWithDisability: false,
 	isPermanentSameAsCurrent: true,
 	isScpApplication: false,
-	learnerType: 'Regular',
+	learnerType: 'NEW_ENROLLEE',
 	isCertifiedTrue: false,
 } as const;
 

@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { prisma } from '../../lib/prisma.js';
 import { auditLog } from '../audit-logs/audit-logs.service.js';
 import { normalizeDateToUtcNoon } from '../school-year/school-year.service.js';
+import { SCP_DEFAULT_PIPELINES, type ScpType } from '@enrollpro/shared';
 
 // ─── Grade Levels ─────────────────────────────────────────
 
@@ -397,7 +398,10 @@ export async function listScpConfigs(
 	const ayId = parseInt(req.params.ayId as string);
 	const scpConfigs = await prisma.scpConfig.findMany({
 		where: { schoolYearId: ayId },
-		include: { options: true },
+		include: {
+			options: true,
+			steps: { orderBy: { stepOrder: 'asc' } },
+		},
 	});
 
 	// Transform options back to the flat array shape the client expects
@@ -440,28 +444,15 @@ export async function updateScpConfigs(
 					scpType,
 					isOffered,
 					cutoffScore,
-					assessmentType,
-					examDate,
-					examTime,
-					interviewRequired,
-					venue,
 					artFields,
 					languages,
 					sportsList,
-					notes,
+					steps,
 				} = config;
 
 				const scpData = {
 					isOffered: isOffered ?? false,
 					cutoffScore: cutoffScore ?? null,
-					assessmentType: assessmentType ?? null,
-					examDate: examDate
-						? normalizeDateToUtcNoon(new Date(examDate))
-						: null,
-					examTime: examTime ?? null,
-					interviewRequired: interviewRequired ?? true,
-					venue: venue ?? null,
-					notes: notes ?? null,
 				};
 
 				let scpConfig;
@@ -472,6 +463,10 @@ export async function updateScpConfigs(
 					});
 					// Delete existing options for this config and re-create
 					await tx.scpConfigOption.deleteMany({ where: { scpConfigId: id } });
+					// Delete existing steps and re-create
+					await tx.scpAssessmentStep.deleteMany({
+						where: { scpConfigId: id },
+					});
 				} else {
 					scpConfig = await tx.scpConfig.create({
 						data: { schoolYearId: ayId, scpType, ...scpData },
@@ -503,6 +498,48 @@ export async function updateScpConfigs(
 				}
 				if (optionData.length > 0) {
 					await tx.scpConfigOption.createMany({ data: optionData });
+				}
+
+				// Build assessment step records from DepEd pipeline (immutable)
+				// Only scheduledDate, scheduledTime, venue, and notes come from the client
+				const pipeline = SCP_DEFAULT_PIPELINES[scpType as ScpType] ?? [];
+
+				if (isOffered && pipeline.length > 0) {
+					// Build a lookup map for client-provided schedule overrides keyed by stepOrder
+					const clientSteps = Array.isArray(steps) ? steps : [];
+					const scheduleMap = new Map<
+						number,
+						{
+							scheduledDate?: string;
+							scheduledTime?: string;
+							venue?: string;
+							notes?: string;
+						}
+					>();
+					for (const s of clientSteps) {
+						if (s.stepOrder) {
+							scheduleMap.set(s.stepOrder, s);
+						}
+					}
+
+					const stepData = pipeline.map((pipelineStep) => {
+						const override = scheduleMap.get(pipelineStep.stepOrder);
+						return {
+							scpConfigId: scpConfig.id,
+							stepOrder: pipelineStep.stepOrder,
+							kind: pipelineStep.kind as any,
+							label: pipelineStep.label,
+							description: pipelineStep.description,
+							isRequired: pipelineStep.isRequired,
+							scheduledDate: override?.scheduledDate
+								? normalizeDateToUtcNoon(new Date(override.scheduledDate))
+								: null,
+							scheduledTime: override?.scheduledTime ?? null,
+							venue: override?.venue ?? null,
+							notes: override?.notes ?? null,
+						};
+					});
+					await tx.scpAssessmentStep.createMany({ data: stepData });
 				}
 
 				results.push(scpConfig);

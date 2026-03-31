@@ -1,5 +1,10 @@
 import { Button } from '@/shared/ui/button';
-import type { ApplicantDetail } from '@/features/enrollment/hooks/useApplicationDetail';
+import type {
+	ApplicantDetail,
+	AssessmentStep,
+} from '@/features/enrollment/hooks/useApplicationDetail';
+import { ASSESSMENT_KIND_LABELS } from '@enrollpro/shared';
+import type { AssessmentKind } from '@enrollpro/shared';
 
 interface Props {
 	applicant: ApplicantDetail;
@@ -12,12 +17,41 @@ interface Props {
 	onOfferRegular: () => void;
 	onTemporarilyEnroll: () => void;
 	onScheduleInterview?: () => void;
+	/** New: schedule a specific pipeline step */
+	onScheduleStep?: (step: AssessmentStep) => void;
+	/** New: record result for a specific pipeline step */
+	onRecordStepResult?: (step: AssessmentStep) => void;
+}
+
+function getNextPendingStep(
+	steps: AssessmentStep[],
+): AssessmentStep | undefined {
+	return steps.find((s) => s.status === 'PENDING');
+}
+
+function getNextScheduledStep(
+	steps: AssessmentStep[],
+): AssessmentStep | undefined {
+	return steps.find((s) => s.status === 'SCHEDULED');
+}
+
+function getStepLabel(step: AssessmentStep): string {
+	return (
+		step.label ||
+		ASSESSMENT_KIND_LABELS[step.kind as AssessmentKind] ||
+		step.kind
+	);
 }
 
 export function ActionButtons({ applicant, ...handlers }: Props) {
 	const { status, applicantType } = applicant;
 	const isRegular = applicantType === 'REGULAR';
 	const isSCP = !isRegular;
+
+	const steps = applicant.assessmentSteps || [];
+	const hasSteps = steps.length > 0;
+	const nextPending = hasSteps ? getNextPendingStep(steps) : undefined;
+	const nextScheduled = hasSteps ? getNextScheduledStep(steps) : undefined;
 
 	return (
 		<div className='flex flex-col gap-2 p-4 border-t bg-background mt-auto'>
@@ -54,14 +88,24 @@ export function ActionButtons({ applicant, ...handlers }: Props) {
 				</Button>
 			)}
 
+			{/* SCP: Verify & Schedule first step (pipeline-aware) */}
 			{isSCP && ['SUBMITTED', 'UNDER_REVIEW', 'ELIGIBLE'].includes(status) && (
 				<>
-					<Button
-						className='w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90 font-bold'
-						onClick={handlers.onScheduleExam}
-					>
-						Verify &amp; Schedule Exam
-					</Button>
+					{hasSteps && nextPending && handlers.onScheduleStep ? (
+						<Button
+							className='w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90 font-bold'
+							onClick={() => handlers.onScheduleStep!(nextPending)}
+						>
+							Verify &amp; Schedule: {getStepLabel(nextPending)}
+						</Button>
+					) : (
+						<Button
+							className='w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90 font-bold'
+							onClick={handlers.onScheduleExam}
+						>
+							Verify &amp; Schedule Exam
+						</Button>
+					)}
 					<Button
 						variant='outline'
 						className='w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground font-bold'
@@ -72,14 +116,34 @@ export function ActionButtons({ applicant, ...handlers }: Props) {
 				</>
 			)}
 
+			{/* SCP: Assessment Scheduled — record result or schedule next step */}
 			{isSCP && status === 'ASSESSMENT_SCHEDULED' && (
 				<>
-					<Button
-						className='w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90 font-bold'
-						onClick={handlers.onRecordResult}
-					>
-						Record Exam Result
-					</Button>
+					{hasSteps && nextScheduled && handlers.onRecordStepResult ? (
+						<Button
+							className='w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90 font-bold'
+							onClick={() => handlers.onRecordStepResult!(nextScheduled)}
+						>
+							Record Result: {getStepLabel(nextScheduled)}
+						</Button>
+					) : (
+						<Button
+							className='w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90 font-bold'
+							onClick={handlers.onRecordResult}
+						>
+							Record Exam Result
+						</Button>
+					)}
+					{/* If there are more pending steps, allow scheduling the next one */}
+					{hasSteps && nextPending && handlers.onScheduleStep && (
+						<Button
+							variant='outline'
+							className='w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground font-bold'
+							onClick={() => handlers.onScheduleStep!(nextPending)}
+						>
+							Schedule Next: {getStepLabel(nextPending)}
+						</Button>
+					)}
 					<Button
 						variant='outline'
 						className='w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground font-bold'

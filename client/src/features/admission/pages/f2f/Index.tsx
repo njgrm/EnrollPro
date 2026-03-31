@@ -115,7 +115,7 @@ export default function F2FEarlyRegistration() {
 			isLearnerWithDisability: false,
 			isPermanentSameAsCurrent: true,
 			isScpApplication: false,
-			learnerType: 'Regular',
+			learnerType: 'NEW_ENROLLEE',
 			isCertifiedTrue: false,
 			dateAccomplished: new Date(),
 		},
@@ -146,7 +146,7 @@ export default function F2FEarlyRegistration() {
 			isLearnerWithDisability: false,
 			isPermanentSameAsCurrent: true,
 			isScpApplication: false,
-			learnerType: 'Regular',
+			learnerType: 'NEW_ENROLLEE',
 			isCertifiedTrue: false,
 			dateAccomplished: new Date(),
 		});

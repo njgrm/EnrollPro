@@ -30,6 +30,7 @@ import {
 	ACADEMIC_CLUSTERS,
 	TECHPRO_CLUSTERS,
 } from '@/features/admission/pages/apply/types';
+import { SCP_DEFAULT_PIPELINES, type ScpType } from '@enrollpro/shared';
 
 interface GradeLevel {
 	id: number;
@@ -47,19 +48,28 @@ interface Strand {
 	track: 'ACADEMIC' | 'TECHPRO' | null;
 }
 
+interface ScpStepConfig {
+	id?: number;
+	stepOrder: number;
+	kind: string;
+	label: string;
+	description: string | null;
+	isRequired: boolean;
+	scheduledDate: string | null;
+	scheduledTime: string | null;
+	venue: string | null;
+	notes: string | null;
+}
+
 interface ScpConfig {
 	id?: number;
 	scpType: string;
 	isOffered: boolean;
 	cutoffScore: number | null;
-	examDate: string | null;
-	examTime: string | null;
-	interviewRequired: boolean;
-	venue: string | null;
 	artFields: string[];
 	languages: string[];
 	sportsList: string[];
-	notes: string | null;
+	steps: ScpStepConfig[];
 }
 
 const SCP_TYPES = [
@@ -94,6 +104,16 @@ export default function CurriculumTab() {
 	const { activeSchoolYearId, viewingSchoolYearId } = useSettingsStore();
 	const ayId = viewingSchoolYearId ?? activeSchoolYearId;
 
+	// Use Manila timezone for current year restriction
+	const currentYearInManila = parseInt(
+		new Date().toLocaleDateString('en-US', {
+			timeZone: 'Asia/Manila',
+			year: 'numeric',
+		}),
+	);
+	const scpYearStart = new Date(currentYearInManila, 0, 1);
+	const scpYearEnd = new Date(currentYearInManila, 11, 31);
+
 	const [gradeLevels, setGradeLevels] = useState<GradeLevel[]>([]);
 	const [strands, setStrands] = useState<Strand[]>([]);
 	const [scpConfigs, setScpConfigs] = useState<ScpConfig[]>([]);
@@ -126,9 +146,8 @@ export default function CurriculumTab() {
 				if (found) {
 					return {
 						...found,
-						// If the record exists but interviewRequired is not set, default to true
-						interviewRequired: found.interviewRequired ?? true,
 						isOffered: found.isOffered ?? false,
+						steps: found.steps ?? [],
 					};
 				}
 				// Default configuration for new programs
@@ -136,14 +155,10 @@ export default function CurriculumTab() {
 					scpType: type.value,
 					isOffered: false,
 					cutoffScore: null,
-					examDate: null,
-					examTime: null,
-					interviewRequired: true,
-					venue: null,
 					artFields: [],
 					languages: [],
 					sportsList: [],
-					notes: null,
+					steps: [],
 				};
 			});
 			setScpConfigs(merged);
@@ -220,6 +235,42 @@ export default function CurriculumTab() {
 	) => {
 		const next = [...scpConfigs];
 		next[index] = { ...next[index], [field]: value };
+
+		// Auto-populate DepEd pipeline steps when toggling isOffered on
+		if (field === 'isOffered' && value === true) {
+			const scpType = next[index].scpType as ScpType;
+			const pipeline = SCP_DEFAULT_PIPELINES[scpType];
+			if (pipeline && next[index].steps.length === 0) {
+				next[index] = {
+					...next[index],
+					steps: pipeline.map((s) => ({
+						stepOrder: s.stepOrder,
+						kind: s.kind,
+						label: s.label,
+						description: s.description,
+						isRequired: s.isRequired,
+						scheduledDate: null,
+						scheduledTime: null,
+						venue: null,
+						notes: null,
+					})),
+				};
+			}
+		}
+
+		setScpConfigs(next);
+	};
+
+	const handleUpdateStep = (
+		scpIndex: number,
+		stepIndex: number,
+		field: keyof ScpStepConfig,
+		value: string | boolean | number | null,
+	) => {
+		const next = [...scpConfigs];
+		const steps = [...next[scpIndex].steps];
+		steps[stepIndex] = { ...steps[stepIndex], [field]: value };
+		next[scpIndex] = { ...next[scpIndex], steps };
 		setScpConfigs(next);
 	};
 
@@ -227,7 +278,24 @@ export default function CurriculumTab() {
 		if (!ayId) return;
 		setSavingScp(true);
 		try {
-			await api.put(`/curriculum/${ayId}/scp-config`, { scpConfigs });
+			// Normalize text fields to uppercase for database consistency
+			const uppercasedConfigs = scpConfigs.map((scp) => ({
+				...scp,
+				artFields: scp.artFields.map((f) => f.trim().toUpperCase()),
+				languages: scp.languages.map((l) => l.trim().toUpperCase()),
+				sportsList: scp.sportsList.map((s) => s.trim().toUpperCase()),
+				steps: scp.steps.map((step) => ({
+					stepOrder: step.stepOrder,
+					scheduledDate: step.scheduledDate,
+					scheduledTime: step.scheduledTime,
+					venue: step.venue?.trim().toUpperCase() || null,
+					notes: step.notes,
+				})),
+			}));
+
+			await api.put(`/curriculum/${ayId}/scp-config`, {
+				scpConfigs: uppercasedConfigs,
+			});
 			sileo.success({
 				title: 'SCP Configuration Saved',
 				description: 'Special programs updated for this year.',
@@ -300,7 +368,7 @@ export default function CurriculumTab() {
 													<span className='text-sm font-bold'>
 														Grade {gl.name}
 													</span>
-													<span className='text-sm text-muted-foreground'>
+													<span className='text-sm '>
 														{gl.sections.length} sections
 													</span>
 												</div>
@@ -323,7 +391,7 @@ export default function CurriculumTab() {
 													<span className='text-sm font-bold'>
 														Grade {gl.name}
 													</span>
-													<span className='text-sm text-muted-foreground'>
+													<span className='text-sm '>
 														{gl.sections.length} sections
 													</span>
 												</div>
@@ -386,117 +454,148 @@ export default function CurriculumTab() {
 
 										{scp.isOffered && (
 											<div className='p-5 space-y-5 animate-in fade-in slide-in-from-top-2 duration-300'>
-												{/* Row 1: Scheduling & Criteria — 12-col grid (4+3+2+3 = 12) */}
-												<div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-x-4 gap-y-5'>
-													<div className='space-y-1.5 lg:col-span-4'>
-														<Label className='text-sm font-bold flex items-center gap-1.5'>
-															Exam Date
+												{/* Assessment Pipeline — DepEd-mandated, read-only structure */}
+												<div className='space-y-3'>
+													<div className='flex items-center justify-between'>
+														<Label className='text-sm font-bold uppercase tracking-wide'>
+															Admission Steps
 														</Label>
-														<DatePicker
-															date={
-																scp.examDate
-																	? new Date(scp.examDate)
-																	: undefined
-															}
-															setDate={(d) =>
-																handleUpdateScpField(
-																	idx,
-																	'examDate',
-																	d ? d.toISOString() : null,
-																)
-															}
-															className='h-9 text-sm font-bold'
-														/>
-													</div>
-													<div className='space-y-1.5 lg:col-span-3'>
-														<Label className='text-sm font-bold flex items-center gap-1.5'>
-															Exam Time
-														</Label>
-														<TimePicker
-															value={scp.examTime}
-															onChange={(v) =>
-																handleUpdateScpField(idx, 'examTime', v)
-															}
-														/>
-													</div>
-													<div className='space-y-1.5 lg:col-span-3'>
-														<Label className='text-sm font-bold flex items-center gap-1.5'>
-															Cut-off Score
-														</Label>
-														<Input
-															type='number'
-															placeholder='Minimum passing score'
-															className='h-9 text-sm font-bold'
-															value={scp.cutoffScore ?? ''}
-															onChange={(e) =>
-																handleUpdateScpField(
-																	idx,
-																	'cutoffScore',
-																	e.target.value
-																		? parseFloat(e.target.value)
-																		: null,
-																)
-															}
-														/>
 													</div>
 
-													<div className='space-y-1.5 lg:col-span-2'>
-														<Label className='text-sm font-bold flex items-center gap-1.5'>
-															Interview
-														</Label>
-														<div className='flex items-center gap-2 h-9'>
-															<Switch
-																checked={scp.interviewRequired !== false}
-																onCheckedChange={(v) =>
-																	handleUpdateScpField(
-																		idx,
-																		'interviewRequired',
-																		v,
-																	)
-																}
-															/>
-															<span className='text-sm'>
-																{scp.interviewRequired !== false
-																	? 'Required'
-																	: 'Off'}
-															</span>
-														</div>
-													</div>
+													{scp.steps.length === 0 && (
+														<p className='text-sm  italic py-2'>
+															No assessment pipeline defined for this program
+															type.
+														</p>
+													)}
 
-													{/* Row 2: Venue & Notes */}
-													<div className='space-y-1.5 sm:col-span-1 lg:col-span-6'>
-														<Label className='text-sm font-bold'>
-															Exam Venue
-														</Label>
-														<Input
-															placeholder='e.g. Science Lab, Room 201'
-															className='h-9 text-sm font-bold uppercase'
-															value={scp.venue || ''}
-															onChange={(e) =>
-																handleUpdateScpField(
-																	idx,
-																	'venue',
-																	e.target.value,
-																)
-															}
-														/>
-													</div>
-													<div className='space-y-1.5 sm:col-span-1 lg:col-span-6'>
-														<Label className='text-sm font-bold'>
-															Program Notes
-														</Label>
-														<Input
-															placeholder='Additional requirements, instructions, or details...'
-															className='h-9 text-sm font-bold'
-															value={scp.notes || ''}
-															onChange={(e) =>
-																handleUpdateScpField(
-																	idx,
-																	'notes',
-																	e.target.value,
-																)
-															}
-														/>
+													<div className='grid grid-cols-1 lg:grid-cols-2 gap-3'>
+														{scp.steps.map((step, stepIdx) => (
+															<div
+																key={stepIdx}
+																className='rounded-lg border border-border overflow-hidden bg-muted/20'
+															>
+																{/* Step header — read-only */}
+																<div className='flex items-center gap-2 px-3 py-2 bg-muted/50 border-b border-border'>
+																	<span className='flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary text-sm font-bold shrink-0'>
+																		{step.stepOrder}
+																	</span>
+																	<span className='text-sm font-bold text-foreground'>
+																		{step.label}
+																	</span>
+																	<Badge
+																		variant='outline'
+																		className='ml-auto text-sm px-1.5 py-0 h-4'
+																	>
+																		Required
+																	</Badge>
+																</div>
+
+																{/* Step description */}
+																{step.description && (
+																	<p className='px-3 pt-2 text-sm font-bold leading-relaxed'>
+																		{step.description}
+																	</p>
+																)}
+
+																{/* Editable schedule fields */}
+																<div className='px-3 py-2.5 grid grid-cols-1 sm:grid-cols-3 gap-2'>
+																	<DatePicker
+																		date={
+																			step.scheduledDate
+																				? new Date(step.scheduledDate)
+																				: undefined
+																		}
+																		setDate={(date) =>
+																			handleUpdateStep(
+																				idx,
+																				stepIdx,
+																				'scheduledDate',
+																				date ? date.toISOString() : null,
+																			)
+																		}
+																		minDate={scpYearStart}
+																		maxDate={scpYearEnd}
+																		showYearSelect={false}
+																		className='h-8 text-sm font-bold uppercase'
+																	/>
+																	<TimePicker
+																		value={step.scheduledTime}
+																		onChange={(time) =>
+																			handleUpdateStep(
+																				idx,
+																				stepIdx,
+																				'scheduledTime',
+																				time,
+																			)
+																		}
+																		className='h-8'
+																	/>
+																</div>
+
+																{/* Qualifying Exam specific settings: Cut-off, Venue, and Notes */}
+																{step.kind === 'QUALIFYING_EXAMINATION' && (
+																	<div className='px-3 pb-3 pt-2 border-t border-border/50 grid grid-cols-1 sm:grid-cols-12 gap-3 items-end'>
+																		<div className='sm:col-span-3 space-y-1'>
+																			<Label className='text-sm font-bold uppercase'>
+																				Cut-off Score
+																			</Label>
+																			<Input
+																				type='number'
+																				placeholder='Min Score'
+																				className='h-8 text-sm font-bold'
+																				value={scp.cutoffScore ?? ''}
+																				onChange={(e) =>
+																					handleUpdateScpField(
+																						idx,
+																						'cutoffScore',
+																						e.target.value
+																							? parseFloat(e.target.value)
+																							: null,
+																					)
+																				}
+																			/>
+																		</div>
+																		<div className='sm:col-span-3 space-y-1'>
+																			<Label className='text-sm font-bold uppercase'>
+																				Exam Venue
+																			</Label>
+																			<Input
+																				placeholder='Venue (optional)'
+																				className='h-8 text-sm font-bold uppercase'
+																				value={step.venue || ''}
+																				onChange={(e) =>
+																					handleUpdateStep(
+																						idx,
+																						stepIdx,
+																						'venue',
+																						e.target.value || null,
+																					)
+																				}
+																			/>
+																		</div>
+																		<div className='sm:col-span-6 space-y-1'>
+																			<Label className='text-sm font-bold uppercase'>
+																				Step Notes
+																			</Label>
+																			<Input
+																				placeholder='Additional requirements...'
+																				className='h-8 text-sm font-bold uppercase'
+																				value={step.notes || ''}
+																				onChange={(e) =>
+																					handleUpdateStep(
+																						idx,
+																						stepIdx,
+																						'notes',
+																						e.target.value,
+																					)
+																				}
+																			/>
+																		</div>
+																	</div>
+																)}
+															</div>
+														))}
 													</div>
 												</div>
 
@@ -520,14 +619,14 @@ export default function CurriculumTab() {
 																)
 															}
 														/>
-														<p className='text-sm text-muted-foreground/60'>
+														<p className='text-sm /60'>
 															Separate multiple fields with commas
 														</p>
 													</div>
 												)}
 												{scp.scpType === 'SPECIAL_PROGRAM_IN_SPORTS' && (
 													<div className='space-y-1.5'>
-														<Label className='text-sm font-bold text-muted-foreground'>
+														<Label className='text-sm font-bold '>
 															Sports Offered
 														</Label>
 														<Input
@@ -544,7 +643,7 @@ export default function CurriculumTab() {
 																)
 															}
 														/>
-														<p className='text-[0.625rem] text-muted-foreground/60'>
+														<p className='text-sm /60'>
 															Separate multiple sports with commas
 														</p>
 													</div>
@@ -552,7 +651,7 @@ export default function CurriculumTab() {
 												{scp.scpType ===
 													'SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE' && (
 													<div className='space-y-1.5'>
-														<Label className='text-sm font-bold text-muted-foreground'>
+														<Label className='text-sm font-bold '>
 															Languages Offered
 														</Label>
 														<Input
@@ -569,7 +668,7 @@ export default function CurriculumTab() {
 																)
 															}
 														/>
-														<p className='text-[0.625rem] text-muted-foreground/60'>
+														<p className='text-sm /60'>
 															Separate multiple languages with commas
 														</p>
 													</div>
@@ -598,7 +697,7 @@ export default function CurriculumTab() {
 								<div className='flex items-center gap-2'>
 									<Badge
 										variant='outline'
-										className=' text-[0.625rem]'
+										className=' text-sm'
 									>
 										<span className='hidden sm:inline'>DEPED</span> DM 012, S.
 										2026
@@ -610,7 +709,7 @@ export default function CurriculumTab() {
 							{/* DM 012 Curriculum (Grade 11) */}
 							<div className='space-y-6'>
 								<div className='flex items-center justify-between'>
-									<h3 className='text-sm font-bold uppercase tracking-wider text-muted-foreground'>
+									<h3 className='text-sm font-bold uppercase tracking-wider '>
 										Grade 11: Elective Clusters
 									</h3>
 									<Badge className='bg-primary/10 text-primary hover:bg-primary/10 border-primary/20'>

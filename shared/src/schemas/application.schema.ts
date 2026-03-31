@@ -174,6 +174,32 @@ export const rescheduleExamSchema = z.object({
 	examDate: z.string().or(z.date()),
 });
 
+// ─── Pipeline-Aware Assessment Schemas ──────────────────
+export const scheduleAssessmentStepSchema = z.object({
+	stepOrder: z.number().int().min(1),
+	kind: AssessmentKindEnum,
+	scheduledDate: z.string().or(z.date()),
+	scheduledTime: z.string().optional().nullable(),
+	venue: z.string().optional().nullable(),
+	notes: z.string().optional().nullable(),
+});
+
+export const recordStepResultSchema = z.object({
+	stepOrder: z.number().int().min(1),
+	kind: AssessmentKindEnum,
+	score: z.number().optional().nullable(),
+	result: z.string().optional().nullable(),
+	notes: z.string().optional().nullable(),
+});
+
+export const rescheduleAssessmentStepSchema = z.object({
+	stepOrder: z.number().int().min(1),
+	kind: AssessmentKindEnum,
+	scheduledDate: z.string().or(z.date()),
+	scheduledTime: z.string().optional().nullable(),
+	venue: z.string().optional().nullable(),
+});
+
 export const updateChecklistSchema = z.object({
 	isPsaBirthCertPresented: z.boolean().optional(),
 	isOriginalPsaBcCollected: z.boolean().optional(),
@@ -189,6 +215,7 @@ export const requestRevisionSchema = z.object({
 	message: z.string().optional(),
 });
 
+// Legacy interview schemas — kept for backward compatibility
 export const scheduleInterviewSchema = z.object({
 	interviewDate: z.string().or(z.date()),
 	interviewTime: z.string().optional().nullable(),
@@ -200,4 +227,18 @@ export const recordInterviewResultSchema = z.object({
 	interviewScore: z.number().optional().nullable(),
 	interviewResult: z.string().optional().nullable(),
 	interviewNotes: z.string().optional().nullable(),
+});
+
+// ─── SCP Assessment Step Config Schema (for CurriculumTab) ───
+export const scpAssessmentStepConfigSchema = z.object({
+	id: z.number().optional(),
+	stepOrder: z.number().int().min(1),
+	kind: AssessmentKindEnum,
+	label: z.string().min(1),
+	description: z.string().optional().nullable(),
+	isRequired: z.boolean().default(true),
+	scheduledDate: z.string().or(z.date()).optional().nullable(),
+	scheduledTime: z.string().optional().nullable(),
+	venue: z.string().optional().nullable(),
+	notes: z.string().optional().nullable(),
 });

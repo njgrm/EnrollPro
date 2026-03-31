@@ -191,7 +191,8 @@ export default function Step5Enrollment() {
 													{[
 														{
 															id: 'SCIENCE_TECHNOLOGY_AND_ENGINEERING',
-															label: SCP_LABELS.SCIENCE_TECHNOLOGY_AND_ENGINEERING,
+															label:
+																SCP_LABELS.SCIENCE_TECHNOLOGY_AND_ENGINEERING,
 															desc: 'Written entrance exam + Interview.',
 														},
 														{
@@ -211,7 +212,8 @@ export default function Step5Enrollment() {
 														},
 														{
 															id: 'SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE',
-															label: SCP_LABELS.SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE,
+															label:
+																SCP_LABELS.SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE,
 															desc: 'Based on NAT English score.',
 														},
 														{
@@ -597,9 +599,9 @@ export default function Step5Enrollment() {
 					<div className='grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3'>
 						{(
 							[
-								{ value: 'Regular', label: 'Regular' },
-								{ value: 'Transferee', label: 'Transferee' },
-								{ value: 'Returning Learner', label: 'Returning Learner' },
+								{ value: 'NEW_ENROLLEE', label: 'New Enrollee' },
+								{ value: 'TRANSFEREE', label: 'Transferee' },
+								{ value: 'RETURNING', label: 'Returning Learner' },
 								{
 									value: 'OSCYA',
 									label: 'Out-of-School Children, Youth, and Adults (OSCYA)',

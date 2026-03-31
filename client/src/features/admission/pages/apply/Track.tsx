@@ -104,17 +104,11 @@ const statusConfig: Record<
 		color: 'text-cyan-600 bg-cyan-50 border-cyan-200',
 		desc: 'Basic screening is complete. You are cleared for the next step.',
 	},
-	EXAM_SCHEDULED: {
-		label: 'Exam Scheduled',
-		icon: Calendar,
-		color: 'text-amber-600 bg-amber-50 border-amber-200',
-		desc: 'An entrance exam has been scheduled for you. Please check the details below.',
-	},
 	ASSESSMENT_SCHEDULED: {
-		label: 'Interview Scheduled',
+		label: 'Assessment Scheduled',
 		icon: Calendar,
 		color: 'text-amber-600 bg-amber-50 border-amber-200',
-		desc: 'A follow-up interview has been scheduled for you. Please check the details below.',
+		desc: 'An assessment has been scheduled for you. Please check the details below.',
 	},
 	ASSESSMENT_TAKEN: {
 		label: 'Assessment Taken',
@@ -447,48 +441,45 @@ export default function TrackApplication({
 										</div>
 									)}
 
-									{(status.status === 'EXAM_SCHEDULED' ||
-										status.status === 'ASSESSMENT_SCHEDULED') &&
-										examDate && (
-											<>
-												<div className='p-5 bg-purple-50 border border-purple-200 rounded-2xl space-y-1'>
-													<p className='text-[0.625rem] font-black uppercase text-purple-600 tracking-widest flex items-center justify-center gap-1.5'>
-														<Calendar className='w-3 h-3' /> Scheduled Date
-													</p>
-													<p className='font-black text-purple-900 uppercase'>
-														{format(new Date(examDate), 'MMMM dd, yyyy')}
-													</p>
-													<p className='text-[0.625rem] font-bold text-purple-700/70 uppercase'>
-														{examTime
-															? new Date(
-																	`2000-01-01T${examTime}`,
-																).toLocaleTimeString('en-US', {
-																	hour: 'numeric',
-																	minute: '2-digit',
-																	hour12: true,
-																})
-															: format(new Date(examDate), 'hh:mm a')}
-													</p>
-												</div>
-												<div className='p-5 bg-purple-50 border border-purple-200 rounded-2xl space-y-1'>
-													<p className='text-[0.625rem] font-black uppercase text-purple-600 tracking-widest flex items-center justify-center gap-1.5'>
-														<MapPin className='w-3 h-3' /> Exam Location
-													</p>
-													<p className='font-black text-purple-900 uppercase'>
-														{examVenue || 'TO BE ANNOUNCED'}
-													</p>
-												</div>
-												<div className='p-5 bg-purple-50 border border-purple-200 rounded-2xl space-y-1'>
-													<p className='text-[0.625rem] font-black uppercase text-purple-600 tracking-widest flex items-center justify-center gap-1.5'>
-														<ClipboardList className='w-3 h-3' /> Additional
-														Notes
-													</p>
-													<p className='font-bold text-purple-900/80 text-[0.625rem] uppercase italic leading-tight line-clamp-2'>
-														{examNotes || 'No special instructions'}
-													</p>
-												</div>
-											</>
-										)}
+									{status.status === 'ASSESSMENT_SCHEDULED' && examDate && (
+										<>
+											<div className='p-5 bg-purple-50 border border-purple-200 rounded-2xl space-y-1'>
+												<p className='text-[0.625rem] font-black uppercase text-purple-600 tracking-widest flex items-center justify-center gap-1.5'>
+													<Calendar className='w-3 h-3' /> Scheduled Date
+												</p>
+												<p className='font-black text-purple-900 uppercase'>
+													{format(new Date(examDate), 'MMMM dd, yyyy')}
+												</p>
+												<p className='text-[0.625rem] font-bold text-purple-700/70 uppercase'>
+													{examTime
+														? new Date(
+																`2000-01-01T${examTime}`,
+															).toLocaleTimeString('en-US', {
+																hour: 'numeric',
+																minute: '2-digit',
+																hour12: true,
+															})
+														: format(new Date(examDate), 'hh:mm a')}
+												</p>
+											</div>
+											<div className='p-5 bg-purple-50 border border-purple-200 rounded-2xl space-y-1'>
+												<p className='text-[0.625rem] font-black uppercase text-purple-600 tracking-widest flex items-center justify-center gap-1.5'>
+													<MapPin className='w-3 h-3' /> Exam Location
+												</p>
+												<p className='font-black text-purple-900 uppercase'>
+													{examVenue || 'TO BE ANNOUNCED'}
+												</p>
+											</div>
+											<div className='p-5 bg-purple-50 border border-purple-200 rounded-2xl space-y-1'>
+												<p className='text-[0.625rem] font-black uppercase text-purple-600 tracking-widest flex items-center justify-center gap-1.5'>
+													<ClipboardList className='w-3 h-3' /> Additional Notes
+												</p>
+												<p className='font-bold text-purple-900/80 text-[0.625rem] uppercase italic leading-tight line-clamp-2'>
+													{examNotes || 'No special instructions'}
+												</p>
+											</div>
+										</>
+									)}
 
 									{status.status === 'FOR_REVISION' &&
 										status.rejectionReason && (

@@ -151,6 +151,10 @@ export function RequirementChecklist({
 				return 'Returning (Balik-Aral)';
 			case 'CONTINUING':
 				return 'Continuing';
+			case 'OSCYA':
+				return 'OSCYA';
+			case 'ALS':
+				return 'ALS';
 			default:
 				return type;
 		}

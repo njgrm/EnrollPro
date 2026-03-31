@@ -27,9 +27,10 @@ export const SchoolYearStatusEnum = z.enum([
 	'ARCHIVED',
 ]);
 export const LearnerTypeEnum = z.enum([
-	'REGULAR',
+	'NEW_ENROLLEE',
 	'TRANSFEREE',
-	'RETURNING LEARNER',
+	'RETURNING',
+	'CONTINUING',
 	'OSCYA',
 	'ALS',
 ]);
@@ -81,10 +82,16 @@ export const AssessmentPeriodEnum = z.enum(['BOSY', 'EOSY']);
 export const AddressTypeEnum = z.enum(['CURRENT', 'PERMANENT']);
 export const FamilyRelationshipEnum = z.enum(['MOTHER', 'FATHER', 'GUARDIAN']);
 export const AssessmentKindEnum = z.enum([
-	'WRITTEN_EXAM',
 	'INTERVIEW',
-	'AUDITION',
-	'TRYOUT',
+	'QUALIFYING_EXAMINATION',
+	'GENERAL_ADMISSION_TEST',
+	'TALENT_AUDITION',
+	'PHYSICAL_FITNESS_TEST',
+	'SPORTS_SKILLS_TRYOUT',
+	'SKILLS_ASSESSMENT',
+	'STANDARDIZED_ADMISSION_TOOL',
+	'APTITUDE_TEST',
+	'INTEREST_INVENTORY',
 ]);
 export const ScpOptionTypeEnum = z.enum(['ART_FIELD', 'LANGUAGE', 'SPORT']);
 export const LastSchoolTypeEnum = z.enum([
@@ -102,3 +109,163 @@ export const ScpTypeEnum = z.enum([
 	'SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE',
 	'SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION',
 ]);
+
+// ─── Types derived from enums ───────────────────────────
+export type AssessmentKind = z.infer<typeof AssessmentKindEnum>;
+export type ScpType = z.infer<typeof ScpTypeEnum>;
+
+// ─── Assessment Kind Labels ─────────────────────────────
+export const ASSESSMENT_KIND_LABELS: Record<AssessmentKind, string> = {
+	INTERVIEW: 'Interview',
+	QUALIFYING_EXAMINATION: 'Qualifying Examination',
+	GENERAL_ADMISSION_TEST: 'General Admission Test',
+	TALENT_AUDITION: 'Talent Audition / Performance',
+	PHYSICAL_FITNESS_TEST: 'Physical Fitness Test (PFT)',
+	SPORTS_SKILLS_TRYOUT: 'Sports Skills Demonstration',
+	SKILLS_ASSESSMENT: 'Skills Assessment',
+	STANDARDIZED_ADMISSION_TOOL: 'Standardized Admission Tool',
+	APTITUDE_TEST: 'Aptitude Test',
+	INTEREST_INVENTORY: 'Interest Inventory / Interview',
+};
+
+// ─── Default DepEd SCP Assessment Pipelines ─────────────
+export interface ScpAssessmentStepDef {
+	stepOrder: number;
+	kind: AssessmentKind;
+	label: string;
+	description: string;
+	isRequired: boolean;
+}
+
+export const SCP_DEFAULT_PIPELINES: Record<ScpType, ScpAssessmentStepDef[]> = {
+	SCIENCE_TECHNOLOGY_AND_ENGINEERING: [
+		{
+			stepOrder: 1,
+			kind: 'QUALIFYING_EXAMINATION',
+			label: 'Qualifying Examination (ESM)',
+			description:
+				'Written admission test: English, Science, Mathematics — 21st-century skills and critical thinking',
+			isRequired: true,
+		},
+		{
+			stepOrder: 2,
+			kind: 'INTERVIEW',
+			label: 'Interview',
+			description:
+				'Face-to-face or virtual interview: interest, mental alertness, readiness for rigorous curriculum',
+			isRequired: true,
+		},
+	],
+	SPECIAL_PROGRAM_IN_THE_ARTS: [
+		{
+			stepOrder: 1,
+			kind: 'GENERAL_ADMISSION_TEST',
+			label: 'General Admission Test',
+			description: 'Written exam covering general knowledge and aptitude',
+			isRequired: true,
+		},
+		{
+			stepOrder: 2,
+			kind: 'TALENT_AUDITION',
+			label: 'Talent Audition / Performance',
+			description:
+				'Live performance, on-the-spot drawing/portfolio, creative writing task, or audition per chosen art field',
+			isRequired: true,
+		},
+		{
+			stepOrder: 3,
+			kind: 'INTERVIEW',
+			label: 'Interview',
+			description:
+				'Assess passion for the arts and commitment to the 4-year program',
+			isRequired: true,
+		},
+	],
+	SPECIAL_PROGRAM_IN_SPORTS: [
+		{
+			stepOrder: 1,
+			kind: 'PHYSICAL_FITNESS_TEST',
+			label: 'Physical Fitness Test (PFT)',
+			description:
+				'Battery of tests measuring agility, strength, and endurance',
+			isRequired: true,
+		},
+		{
+			stepOrder: 2,
+			kind: 'SPORTS_SKILLS_TRYOUT',
+			label: 'Sports Skills Demonstration (Tryout)',
+			description:
+				'Demonstrate proficiency in specific sport (e.g. Basketball, Swimming, Athletics)',
+			isRequired: true,
+		},
+		{
+			stepOrder: 3,
+			kind: 'INTERVIEW',
+			label: 'Interview',
+			description: 'Assess discipline, sportsmanship, and parental support',
+			isRequired: true,
+		},
+	],
+	SPECIAL_PROGRAM_IN_JOURNALISM: [
+		{
+			stepOrder: 1,
+			kind: 'QUALIFYING_EXAMINATION',
+			label: 'Qualifying Test',
+			description:
+				'Written exam: English and Filipino proficiency, grammar, basic news writing',
+			isRequired: true,
+		},
+		{
+			stepOrder: 2,
+			kind: 'SKILLS_ASSESSMENT',
+			label: 'Skills Assessment (Writing Trials)',
+			description:
+				'On-the-spot writing: news lead, editorial, or feature story',
+			isRequired: true,
+		},
+		{
+			stepOrder: 3,
+			kind: 'INTERVIEW',
+			label: 'Interview',
+			description:
+				'Screening committee: communication skills and ethical awareness',
+			isRequired: true,
+		},
+	],
+	SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE: [
+		{
+			stepOrder: 1,
+			kind: 'STANDARDIZED_ADMISSION_TOOL',
+			label: 'Standardized Admission Tool',
+			description:
+				'Written test assessing linguistic aptitude and readiness for foreign language acquisition',
+			isRequired: true,
+		},
+		{
+			stepOrder: 2,
+			kind: 'INTERVIEW',
+			label: 'Interview (with Parent/Guardian)',
+			description:
+				'Validate documents and gauge commitment to the extra hours required',
+			isRequired: true,
+		},
+	],
+	SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION: [
+		{
+			stepOrder: 1,
+			kind: 'APTITUDE_TEST',
+			label: 'Aptitude Test',
+			description:
+				'Written exam: inclination towards IT, Agriculture, Home Economics, or Industrial Arts',
+			isRequired: true,
+		},
+		{
+			stepOrder: 2,
+			kind: 'INTEREST_INVENTORY',
+			label: 'Interest Inventory / Interview',
+			description:
+				'Align student interests with specific shop offerings (specializations)',
+			isRequired: true,
+		},
+	],
+};

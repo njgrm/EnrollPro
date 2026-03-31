@@ -160,14 +160,13 @@ export async function createSchoolYear(
 	// Deactivate others
 	await prisma.schoolYear.updateMany({
 		where: { status: 'ACTIVE' },
-		data: { status: 'ARCHIVED', isActive: false },
+		data: { status: 'ARCHIVED' },
 	});
 
 	const year = await prisma.schoolYear.create({
 		data: {
 			yearLabel: schedule.yearLabel,
 			status: 'ACTIVE',
-			isActive: true,
 			classOpeningDate: schedule.classOpeningDate,
 			classEndDate: schedule.classEndDate,
 			earlyRegOpenDate: schedule.earlyRegOpenDate,
@@ -193,7 +192,9 @@ export async function createSchoolYear(
 			include: {
 				gradeLevels: { include: { sections: true } },
 				strands: { include: { gradeLevels: true } },
-				scpConfigs: { include: { options: true } },
+				scpConfigs: {
+					include: { options: true, steps: { orderBy: { stepOrder: 'asc' } } },
+				},
 			},
 		});
 
@@ -249,8 +250,6 @@ export async function createSchoolYear(
 						scpType: scp.scpType,
 						isOffered: scp.isOffered,
 						cutoffScore: scp.cutoffScore,
-						examDate: scp.examDate,
-						notes: scp.notes,
 					},
 				});
 				// Clone SCP config options
@@ -260,6 +259,19 @@ export async function createSchoolYear(
 							scpConfigId: newScp.id,
 							optionType: opt.optionType,
 							value: opt.value,
+						})),
+					});
+				}
+				// Clone SCP assessment pipeline steps
+				if (scp.steps.length > 0) {
+					await prisma.scpAssessmentStep.createMany({
+						data: scp.steps.map((step) => ({
+							scpConfigId: newScp.id,
+							stepOrder: step.stepOrder,
+							kind: step.kind,
+							label: step.label,
+							description: step.description,
+							isRequired: step.isRequired,
 						})),
 					});
 				}
@@ -433,12 +445,12 @@ export async function transitionSchoolYear(
 	if (status === 'ACTIVE') {
 		await prisma.schoolYear.updateMany({
 			where: { status: 'ACTIVE', id: { not: id } },
-			data: { status: 'ARCHIVED', isActive: false },
+			data: { status: 'ARCHIVED' },
 		});
 
 		await prisma.schoolYear.update({
 			where: { id },
-			data: { status: 'ACTIVE', isActive: true },
+			data: { status: 'ACTIVE' },
 		});
 
 		// Ensure baseline grades are available immediately
@@ -457,12 +469,11 @@ export async function transitionSchoolYear(
 			where: { id },
 			data: {
 				status,
-				isActive: false,
 			},
 		});
 
 		// If was active, clear settings
-		if (year.isActive) {
+		if (year.status === 'ACTIVE') {
 			const settings = await prisma.schoolSettings.findFirst();
 			if (settings && settings.activeSchoolYearId === id) {
 				await prisma.schoolSettings.update({
@@ -509,7 +520,7 @@ export async function deleteSchoolYear(
 		return;
 	}
 
-	const wasActive = year.status === 'ACTIVE' || year.isActive;
+	const wasActive = year.status === 'ACTIVE';
 
 	await prisma.schoolYear.delete({ where: { id } });
 

@@ -87,7 +87,9 @@ export type LearnerType =
 	| 'NEW_ENROLLEE'
 	| 'TRANSFEREE'
 	| 'RETURNING'
-	| 'CONTINUING';
+	| 'CONTINUING'
+	| 'OSCYA'
+	| 'ALS';
 
 export interface AuditLog {
 	id: number;
@@ -126,6 +128,27 @@ export interface HealthRecord {
 	schoolYear?: { id: number; yearLabel: string } | null;
 	createdAt: string;
 	updatedAt: string;
+}
+
+export interface AssessmentStep {
+	stepOrder: number;
+	kind: string;
+	label: string;
+	description: string | null;
+	isRequired: boolean;
+	configDate: string | null;
+	configTime: string | null;
+	configVenue: string | null;
+	configNotes: string | null;
+	assessmentId: number | null;
+	scheduledDate: string | null;
+	scheduledTime: string | null;
+	venue: string | null;
+	score: number | null;
+	result: string | null;
+	notes: string | null;
+	conductedAt: string | null;
+	status: 'PENDING' | 'SCHEDULED' | 'COMPLETED';
 }
 
 export interface ApplicantDetail {
@@ -188,6 +211,7 @@ export interface ApplicantDetail {
 	interviewNotes: string | null;
 	auditionResult: string | null;
 	tryoutResult: string | null;
+	assessmentSteps: AssessmentStep[];
 	natScore: number | null;
 	grade10ScienceGrade: number | null;
 	grade10MathGrade: number | null;

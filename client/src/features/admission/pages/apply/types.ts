@@ -132,9 +132,10 @@ export const EarlyRegistrationSchema = z.object({
 
 	// Section 9.2: Learner Type
 	learnerType: z.enum([
-		'Regular',
-		'Transferee',
-		'Returning Learner',
+		'NEW_ENROLLEE',
+		'TRANSFEREE',
+		'RETURNING',
+		'CONTINUING',
 		'OSCYA',
 		'ALS',
 	]),

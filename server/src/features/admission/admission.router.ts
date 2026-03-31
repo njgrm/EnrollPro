@@ -13,6 +13,9 @@ import {
 	requestRevisionSchema,
 	scheduleInterviewSchema,
 	recordInterviewResultSchema,
+	scheduleAssessmentStepSchema,
+	recordStepResultSchema,
+	rescheduleAssessmentStepSchema,
 } from '@enrollpro/shared';
 import * as ctrl from './early-registration.controller.js';
 import * as docCtrl from './document.controller.js';
@@ -182,7 +185,7 @@ router.patch(
 	ctrl.offerRegular,
 );
 
-// SCP routes
+// SCP routes — pipeline-aware
 router.patch(
 	'/:id/mark-eligible',
 	authenticate,
@@ -190,17 +193,40 @@ router.patch(
 	ctrl.markEligible,
 );
 router.patch(
+	'/:id/schedule-assessment',
+	authenticate,
+	authorize('REGISTRAR', 'SYSTEM_ADMIN'),
+	validate(scheduleAssessmentStepSchema),
+	ctrl.scheduleAssessmentStep,
+);
+router.patch(
+	'/:id/record-step-result',
+	authenticate,
+	authorize('REGISTRAR', 'SYSTEM_ADMIN'),
+	validate(recordStepResultSchema),
+	ctrl.recordStepResult,
+);
+router.patch(
+	'/:id/reschedule-assessment',
+	authenticate,
+	authorize('REGISTRAR', 'SYSTEM_ADMIN'),
+	validate(rescheduleAssessmentStepSchema),
+	ctrl.rescheduleAssessmentStep,
+);
+
+// Legacy SCP routes (backward compat — same handlers)
+router.patch(
 	'/:id/schedule-exam',
 	authenticate,
 	authorize('REGISTRAR', 'SYSTEM_ADMIN'),
-	validate(scheduleExamSchema),
+	validate(scheduleAssessmentStepSchema),
 	ctrl.scheduleExam,
 );
 router.patch(
 	'/:id/reschedule-exam',
 	authenticate,
 	authorize('REGISTRAR', 'SYSTEM_ADMIN'),
-	validate(rescheduleExamSchema),
+	validate(rescheduleAssessmentStepSchema),
 	ctrl.rescheduleExam,
 );
 router.patch(
@@ -221,7 +247,7 @@ router.patch(
 	'/:id/record-result',
 	authenticate,
 	authorize('REGISTRAR', 'SYSTEM_ADMIN'),
-	validate(recordResultSchema),
+	validate(recordStepResultSchema),
 	ctrl.recordResult,
 );
 router.patch(

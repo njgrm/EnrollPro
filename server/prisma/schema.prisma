@@ -1,5 +1,7 @@
 generator client {
   provider = "prisma-client-js"
+  binaryTargets = ["native", "windows"]
+  output = "../src/generated/prisma"
 }
 
 datasource db {
@@ -77,7 +79,6 @@ model SchoolYear {
   id                 Int              @id @default(autoincrement())
   yearLabel          String           @unique(map: "uq_school_years_year_label") @map("year_label")
   status             SchoolYearStatus @default(DRAFT)
-  isActive           Boolean          @default(false) @map("is_active")
   classOpeningDate   DateTime?        @db.Date @map("class_opening_date")
   classEndDate       DateTime?        @db.Date @map("class_end_date")
   earlyRegOpenDate   DateTime?        @db.Date @map("early_reg_open_date")
@@ -210,6 +211,7 @@ model Applicant {
   @@index([lrn], name: "idx_applicants_lrn")
   @@index([applicantType, status], name: "idx_applicants_type_status")
   @@index([trackingNumber], name: "idx_applicants_tracking_number")
+  @@index([encodedById], name: "idx_applicants_encoded_by_id")
   @@map("applicants")
 }
 
@@ -274,6 +276,7 @@ model Assessment {
   id            Int            @id @default(autoincrement())
   applicantId   Int            @map("applicant_id")
   type          AssessmentKind @map("assessment_kind")
+  stepOrder     Int?           @map("step_order")
   scheduledDate DateTime?      @db.Date @map("scheduled_date")
   scheduledTime String?        @map("scheduled_time")
   venue         String?
@@ -322,6 +325,7 @@ model Document {
   uploadedBy       User?          @relation("DocumentUploadedBy", fields: [uploadedById], references: [id])
 
   @@index([applicantId], name: "idx_documents_applicant_id")
+  @@index([applicantId, documentType], name: "idx_documents_applicant_type")
   @@map("documents")
 }
 
@@ -388,6 +392,7 @@ model AuditLog {
 
   @@index([actionType], name: "idx_audit_logs_action_type")
   @@index([createdAt], name: "idx_audit_logs_created_at")
+  @@index([userId], name: "idx_audit_logs_user_id")
   @@map("audit_logs")
 }
 
@@ -430,6 +435,7 @@ model HealthRecord {
   @@unique([applicantId, schoolYearId, assessmentPeriod], name: "uq_health_records_period")
   @@index([applicantId])
   @@index([applicantId, schoolYearId])
+  @@index([recordedById], name: "idx_health_records_recorded_by_id")
   @@map("health_records")
 }
 
@@ -440,17 +446,32 @@ model ScpConfig {
   scpType        ApplicantType   @map("scp_type")
   isOffered      Boolean         @default(false) @map("is_offered")
   cutoffScore    Float?          @map("cutoff_score")
-  assessmentType     String?         @map("assessment_type")
-  examDate           DateTime?       @db.Date @map("exam_date")
-  examTime           String?         @map("exam_time")
-  interviewRequired  Boolean         @default(true) @map("interview_required")
-  venue              String?
-  notes              String?
-  schoolYear         SchoolYear      @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  schoolYear     SchoolYear      @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
   options        ScpConfigOption[]
+  steps          ScpAssessmentStep[]
 
   @@unique([schoolYearId, scpType], name: "uq_scp_configs_school_year_scp_type")
   @@map("scp_configs")
+}
+
+/// Ordered assessment step in an SCP admission pipeline (e.g. Step 1: Documentary Evaluation, Step 2: Qualifying Exam)
+model ScpAssessmentStep {
+  id            Int            @id @default(autoincrement())
+  scpConfigId   Int            @map("scp_config_id")
+  stepOrder     Int            @map("step_order")
+  kind          AssessmentKind @map("assessment_kind")
+  label         String
+  description   String?
+  isRequired    Boolean        @default(true) @map("is_required")
+  scheduledDate DateTime?      @db.Date @map("scheduled_date")
+  scheduledTime String?        @map("scheduled_time")
+  venue         String?
+  notes         String?
+  scpConfig     ScpConfig      @relation(fields: [scpConfigId], references: [id], onDelete: Cascade)
+
+  @@unique([scpConfigId, stepOrder], name: "uq_scp_steps_config_order")
+  @@index([scpConfigId], name: "idx_scp_steps_config_id")
+  @@map("scp_assessment_steps")
 }
 
 /// Options for SCP configuration: art fields, languages, and sports per SCP config
@@ -511,7 +532,6 @@ enum ApplicationStatus {
   UNDER_REVIEW
   FOR_REVISION
   ELIGIBLE
-  EXAM_SCHEDULED
   ASSESSMENT_SCHEDULED
   ASSESSMENT_TAKEN
   PASSED
@@ -571,7 +591,6 @@ enum EmailTrigger {
   APPLICATION_APPROVED
   APPLICATION_REJECTED
   EXAM_SCHEDULED
-  INTERVIEW_SCHEDULED
   ASSESSMENT_PASSED
   ASSESSMENT_FAILED
 
@@ -631,6 +650,8 @@ enum LearnerType {
   TRANSFEREE
   RETURNING
   CONTINUING
+  OSCYA
+  ALS
 
   @@map("learner_type")
 }
@@ -660,12 +681,18 @@ enum FamilyRelationship {
   @@map("family_relationship")
 }
 
-/// Assessment event type for SCP admission pipeline
+/// DepEd SCP assessment types per program admission pipeline
 enum AssessmentKind {
-  WRITTEN_EXAM
   INTERVIEW
-  AUDITION
-  TRYOUT
+  QUALIFYING_EXAMINATION
+  GENERAL_ADMISSION_TEST
+  TALENT_AUDITION
+  PHYSICAL_FITNESS_TEST
+  SPORTS_SKILLS_TRYOUT
+  SKILLS_ASSESSMENT
+  STANDARDIZED_ADMISSION_TOOL
+  APTITUDE_TEST
+  INTEREST_INVENTORY
 
   @@map("assessment_kind")
 }

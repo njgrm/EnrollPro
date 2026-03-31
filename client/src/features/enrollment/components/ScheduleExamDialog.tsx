@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import api from '@/shared/api/axiosInstance';
 import { toastApiError } from '@/shared/hooks/useApiToast';
 import { Button } from '@/shared/ui/button';
+import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import {
 	Dialog,
@@ -15,13 +16,33 @@ import {
 } from '@/shared/ui/dialog';
 import { Alert, AlertDescription } from '@/shared/ui/alert';
 import { sileo } from 'sileo';
-import type { ApplicantDetail } from '@/features/enrollment/hooks/useApplicationDetail';
+import type {
+	ApplicantDetail,
+	AssessmentStep,
+} from '@/features/enrollment/hooks/useApplicationDetail';
 import { formatScpType } from '@/shared/lib/utils';
+import { ASSESSMENT_KIND_LABELS } from '@enrollpro/shared';
+import type { AssessmentKind } from '@enrollpro/shared';
+
+interface ScpStepConfig {
+	stepOrder: number;
+	scheduledDate: string | null;
+	scheduledTime: string | null;
+	venue: string | null;
+	notes: string | null;
+}
+
+interface ScpConfig {
+	scpType: string;
+	steps: ScpStepConfig[];
+}
 
 interface Props {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	applicant: ApplicantDetail | null;
+	/** The specific pipeline step to schedule. When null, falls back to legacy behavior. */
+	step?: AssessmentStep | null;
 	onSuccess: () => void;
 	onCloseSheet?: () => void;
 }
@@ -30,73 +51,111 @@ export function ScheduleExamDialog({
 	open,
 	onOpenChange,
 	applicant,
+	step,
 	onSuccess,
 	onCloseSheet,
 }: Props) {
-	const [examDate, setExamDate] = useState('');
-	const [examTime, setExamTime] = useState('');
-	const [scpConfig, setScpConfig] = useState<{
-		scpType: string;
-		examRequired: boolean;
-		documentsRequired: string[];
-		assessmentType?: string;
-		examDate?: string;
-		examTime?: string;
-		venue?: string;
-		notes?: string;
-	} | null>(null);
-	const [loading, setLoading] = useState(false);
+	const [scheduledDate, setScheduledDate] = useState('');
+	const [scheduledTime, setScheduledTime] = useState('');
+	const [venue, setVenue] = useState('');
+	const [notes, setNotes] = useState('');
+	const [submitting, setSubmitting] = useState(false);
 
 	useEffect(() => {
-		if (open && applicant) {
-			const fetchScpConfig = async () => {
-				setLoading(true);
-				try {
-					const scpRes = await api.get(`/settings/scp-config`);
-					const config = scpRes.data.scpConfigs.find(
-						(c: { scpType: string }) => c.scpType === applicant.applicantType,
+		if (!open || !applicant) return;
+
+		if (step) {
+			// Fetch fresh config defaults from the SCP assessment step table
+			api
+				.get(`/curriculum/${applicant.schoolYearId}/scp-config`)
+				.then((res) => {
+					const configs: ScpConfig[] = res.data?.scpConfigs ?? [];
+					const match = configs.find(
+						(c) => c.scpType === applicant.applicantType,
 					);
-					setScpConfig(config || null);
-
-					if (config?.examDate) {
-						setExamDate(format(new Date(config.examDate), 'yyyy-MM-dd'));
+					const stepConfig = match?.steps?.find(
+						(s) => s.stepOrder === step.stepOrder,
+					);
+					if (stepConfig) {
+						setScheduledDate(
+							stepConfig.scheduledDate
+								? format(new Date(stepConfig.scheduledDate), 'yyyy-MM-dd')
+								: '',
+						);
+						setScheduledTime(stepConfig.scheduledTime || '');
+						setVenue(stepConfig.venue || '');
+						setNotes(stepConfig.notes || '');
 					} else {
-						setExamDate('');
+						// Fallback to step prop data
+						setScheduledDate(
+							step.configDate
+								? format(new Date(step.configDate), 'yyyy-MM-dd')
+								: '',
+						);
+						setScheduledTime(step.configTime || '');
+						setVenue(step.configVenue || '');
+						setNotes(step.configNotes || '');
 					}
-
-					if (config?.examTime) {
-						setExamTime(config.examTime);
-					} else {
-						setExamTime('');
-					}
-				} catch (err) {
-					toastApiError(err as never);
-				} finally {
-					setLoading(false);
-				}
-			};
-			fetchScpConfig();
+				})
+				.catch(() => {
+					// Fallback to step prop data on error
+					setScheduledDate(
+						step.configDate
+							? format(new Date(step.configDate), 'yyyy-MM-dd')
+							: '',
+					);
+					setScheduledTime(step.configTime || '');
+					setVenue(step.configVenue || '');
+					setNotes(step.configNotes || '');
+				});
+		} else {
+			setScheduledDate('');
+			setScheduledTime('');
+			setVenue('');
+			setNotes('');
 		}
-	}, [open, applicant]);
+	}, [open, step, applicant]);
 
 	if (!applicant) return null;
 
+	const stepLabel = step
+		? step.label ||
+			ASSESSMENT_KIND_LABELS[step.kind as AssessmentKind] ||
+			step.kind
+		: 'Assessment';
+
 	const handleSchedule = async () => {
-		if (!examDate) return;
+		if (!scheduledDate) return;
+		setSubmitting(true);
 		try {
-			await api.patch(`/applications/${applicant.id}/schedule-exam`, {
-				examDate,
-				examTime,
-			});
+			if (step) {
+				// Pipeline-aware endpoint
+				await api.patch(`/applications/${applicant.id}/schedule-assessment`, {
+					stepOrder: step.stepOrder,
+					kind: step.kind,
+					scheduledDate,
+					scheduledTime: scheduledTime || undefined,
+					venue: venue || undefined,
+					notes: notes || undefined,
+				});
+			} else {
+				// Legacy fallback
+				await api.patch(`/applications/${applicant.id}/schedule-exam`, {
+					examDate: scheduledDate,
+					examTime: scheduledTime || undefined,
+				});
+			}
 			sileo.success({
 				title: 'Scheduled',
-				description: 'Exam scheduled successfully.',
+				description: `${stepLabel} scheduled successfully.`,
 			});
 			onOpenChange(false);
 			onSuccess();
 			if (onCloseSheet) onCloseSheet();
 		} catch (err) {
 			toastApiError(err as never);
+		} finally {
+			setSubmitting(false);
 		}
 	};
 
@@ -108,7 +167,7 @@ export function ScheduleExamDialog({
 			<DialogContent className='max-w-2xl sm:w-full overflow-y-auto max-h-[90vh] scrollbar-thin'>
 				<DialogHeader>
 					<DialogTitle className='font-bold uppercase'>
-						Schedule Exam
+						Schedule {stepLabel}
 					</DialogTitle>
 					<DialogDescription className='font-bold text-foreground'>
 						Applicant: {applicant.lastName}, {applicant.firstName} (
@@ -118,62 +177,62 @@ export function ScheduleExamDialog({
 				</DialogHeader>
 
 				<div className='space-y-4 py-2'>
-					<div className='rounded-lg border p-3 bg-slate-50 space-y-2'>
-						<div className='flex items-center gap-2 text-emerald-700 font-bold text-sm'>
-							<span>✓</span>
-							<span>Documents Verified</span>
+					{step && (
+						<div className='rounded-lg border p-3 bg-slate-50 space-y-1'>
+							<div className='flex items-center gap-2 font-bold text-sm'>
+								<span className='text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full'>
+									Step {step.stepOrder}
+								</span>
+								<span>{stepLabel}</span>
+							</div>
+							{step.description && (
+								<p className='text-xs text-muted-foreground'>
+									{step.description}
+								</p>
+							)}
 						</div>
-						<p className='text-xs text-foreground leading-relaxed font-bold'>
-							SF9 (Grade 6 Report Card) and PSA Birth Certificate have been
-							checked and filed.
-						</p>
-					</div>
-
-					<div className='space-y-1.5'>
-						<Label className='font-semibold'>Assessment Type</Label>
-						<div className='p-2 rounded border bg-muted/30 text-sm font-bold uppercase'>
-							{scpConfig?.assessmentType || 'Written Entrance Exam'}
-						</div>
-					</div>
+					)}
 
 					<div className='grid grid-cols-2 gap-4'>
 						<div className='space-y-2'>
-							<Label className='font-semibold'>Exam Date</Label>
-							<div className='p-2 rounded border bg-muted/30 text-sm font-bold uppercase'>
-								{examDate
-									? format(new Date(examDate), 'MMMM d, yyyy')
-									: '-----'}
-							</div>
+							<Label className='font-semibold'>Date</Label>
+							<Input
+								type='date'
+								value={scheduledDate}
+								onChange={(e) => setScheduledDate(e.target.value)}
+							/>
+							{scheduledDate && (
+								<p className='text-[0.625rem] text-muted-foreground'>
+									{format(new Date(scheduledDate), 'MMMM dd, yyyy')}
+								</p>
+							)}
 						</div>
 						<div className='space-y-2'>
-							<Label className='font-semibold'>Exam Time</Label>
-							<div className='p-2 rounded border bg-muted/30 text-sm font-bold'>
-								{examTime
-									? new Date(`2000-01-01T${examTime}`).toLocaleTimeString(
-											'en-US',
-											{
-												hour: 'numeric',
-												minute: '2-digit',
-												hour12: true,
-											},
-										)
-									: '-----'}
-							</div>
+							<Label className='font-semibold'>Time</Label>
+							<Input
+								type='time'
+								value={scheduledTime}
+								onChange={(e) => setScheduledTime(e.target.value)}
+							/>
 						</div>
 					</div>
 
 					<div className='grid grid-cols-2 gap-4'>
 						<div className='space-y-2'>
 							<Label className='font-semibold'>Venue</Label>
-							<div className='p-2 rounded border bg-muted/30 text-sm font-bold uppercase'>
-								{scpConfig?.venue || '-----'}
-							</div>
+							<Input
+								placeholder='e.g. Science Lab, Room 201'
+								value={venue}
+								onChange={(e) => setVenue(e.target.value)}
+							/>
 						</div>
 						<div className='space-y-2'>
 							<Label className='font-semibold'>Notes</Label>
-							<div className='p-2 rounded border bg-muted/30 text-sm font-bold uppercase'>
-								{scpConfig?.notes || '-----'}
-							</div>
+							<Input
+								placeholder='Additional instructions...'
+								value={notes}
+								onChange={(e) => setNotes(e.target.value)}
+							/>
 						</div>
 					</div>
 
@@ -184,7 +243,7 @@ export function ScheduleExamDialog({
 							<span className='font-bold underline text-primary'>
 								{applicant.emailAddress || 'N/A'}
 							</span>{' '}
-							with the exam schedule.
+							with the schedule details.
 						</AlertDescription>
 					</Alert>
 				</div>
@@ -200,7 +259,7 @@ export function ScheduleExamDialog({
 					<Button
 						className='font-bold'
 						onClick={handleSchedule}
-						disabled={!examDate || loading}
+						disabled={!scheduledDate || submitting}
 					>
 						Confirm Schedule
 					</Button>
