@@ -175,7 +175,9 @@ async function seed() {
 		});
 
 		if (!grade7) {
-			throw new Error('Grade Level "Grade 7" not found for the active school year.');
+			throw new Error(
+				'Grade Level "Grade 7" not found for the active school year.',
+			);
 		}
 
 		// 3. Get an admin user for encoding
@@ -197,8 +199,50 @@ async function seed() {
 			ApplicantType.SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION,
 		];
 
-		const firstNames = ['John', 'Jane', 'Michael', 'Emily', 'David', 'Sarah'];
-		const lastNames = ['Doe', 'Smith', 'Johnson', 'Williams', 'Brown', 'Jones'];
+		const philippineFirstNames = [
+			'Juan',
+			'Maria',
+			'Jose',
+			'Angelica',
+			'Miguel',
+			'Princess',
+			'Carlo',
+			'Jasmine',
+			'Rafael',
+			'Nicole',
+			'Paolo',
+			'Gabriela',
+		];
+
+		const philippineMiddleNames = [
+			'Santos',
+			'Reyes',
+			'Garcia',
+			'Cruz',
+			'Mendoza',
+			'Aquino',
+			'Flores',
+			'Navarro',
+			'Torres',
+			'Bautista',
+			'Castro',
+			'Valdez',
+		];
+
+		const philippineLastNames = [
+			'Dela Cruz',
+			'Reyes',
+			'Santos',
+			'Garcia',
+			'Mendoza',
+			'Fernandez',
+			'Navarro',
+			'Ramos',
+			'Bautista',
+			'Gonzales',
+			'Torres',
+			'Villanueva',
+		];
 
 		let globalCounter = 1;
 
@@ -248,25 +292,41 @@ async function seed() {
 
 			// 5. Seed 3 Students per SCP
 			for (let i = 1; i <= 3; i++) {
-				const trackingNumber = `APP-2026-${globalCounter.toString().padStart(5, '0')}`;
+				const seedNumber = globalCounter;
+				const trackingNumber = `APP-2026-${seedNumber.toString().padStart(5, '0')}`;
 				globalCounter++;
+
+				const firstName =
+					philippineFirstNames[(seedNumber - 1) % philippineFirstNames.length];
+				const middleName =
+					philippineMiddleNames[
+						(seedNumber - 1) % philippineMiddleNames.length
+					];
+				const lastName =
+					philippineLastNames[(seedNumber - 1) % philippineLastNames.length];
+				const lrn = `190000${seedNumber.toString().padStart(6, '0')}`;
+				const sex = seedNumber % 2 === 0 ? 'FEMALE' : 'MALE';
+
+				// Birthdate approx 12-13 years before 2026
+				const birthMonth = (seedNumber % 12) + 1;
+				const birthDay = ((seedNumber * 3) % 28) + 1;
+				const birthDate = new Date(
+					`2014-${birthMonth.toString().padStart(2, '0')}-${birthDay
+						.toString()
+						.padStart(2, '0')}`,
+				);
 
 				const existingApplicant = await prisma.applicant.findUnique({
 					where: { trackingNumber },
 				});
 
 				if (!existingApplicant) {
-					const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
-					const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
-					const sex = i % 2 === 0 ? 'FEMALE' : 'MALE';
-					
-					// Birthdate approx 12-13 years before 2026
-					const birthDate = new Date(`2014-${(i % 12 + 1).toString().padStart(2, '0')}-15`);
-
 					await prisma.applicant.create({
 						data: {
 							trackingNumber,
+							lrn,
 							firstName,
+							middleName,
 							lastName,
 							sex,
 							birthDate,
@@ -279,21 +339,38 @@ async function seed() {
 							programDetail: {
 								create: {
 									scpType,
-									artField: scpType === 'SPECIAL_PROGRAM_IN_THE_ARTS' ? 'DANCE' : null,
-									foreignLanguage: scpType === 'SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE' ? 'MANDARIN' : null,
-									sportsList: scpType === 'SPECIAL_PROGRAM_IN_SPORTS' ? ['BASKETBALL'] : [],
+									artField:
+										scpType === 'SPECIAL_PROGRAM_IN_THE_ARTS' ? 'DANCE' : null,
+									foreignLanguage:
+										scpType === 'SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE'
+											? 'MANDARIN'
+											: null,
+									sportsList:
+										scpType === 'SPECIAL_PROGRAM_IN_SPORTS'
+											? ['BASKETBALL']
+											: [],
 								},
 							},
 						},
 					});
-					console.log(`   ✅ Seeded student ${i} for ${scpType}: ${trackingNumber}`);
+					console.log(
+						`   ✅ Seeded student ${i} for ${scpType}: ${trackingNumber}`,
+					);
 				} else {
-					// Ensure existing seeded students are also set to SUBMITTED
+					// Ensure existing seeded students are SUBMITTED and have LRN/full PH name
 					await prisma.applicant.update({
 						where: { id: existingApplicant.id },
-						data: { status: 'SUBMITTED' },
+						data: {
+							status: 'SUBMITTED',
+							lrn,
+							firstName,
+							middleName,
+							lastName,
+						},
 					});
-					console.log(`   ℹ️  Student ${trackingNumber} already exists, updated status to SUBMITTED`);
+					console.log(
+						`   ℹ️  Student ${trackingNumber} already exists, updated status/profile`,
+					);
 				}
 			}
 		}

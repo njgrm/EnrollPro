@@ -4,6 +4,9 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '../../lib/prisma.js';
 import { auditLog } from '../audit-logs/audit-logs.service.js';
 
+const JWT_EXPIRES_IN: jwt.SignOptions['expiresIn'] =
+	(process.env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn']) ?? '7d';
+
 export async function login(req: Request, res: Response): Promise<void> {
 	const { email, password } = req.body;
 
@@ -34,7 +37,7 @@ export async function login(req: Request, res: Response): Promise<void> {
 			mustChangePassword: user.mustChangePassword,
 		},
 		process.env.JWT_SECRET!,
-		{ expiresIn: '8h' },
+		{ expiresIn: JWT_EXPIRES_IN },
 	);
 
 	await prisma.user.update({
@@ -126,7 +129,7 @@ export async function changePassword(
 	const token = jwt.sign(
 		{ userId: updated.id, role: updated.role, mustChangePassword: false },
 		process.env.JWT_SECRET!,
-		{ expiresIn: '8h' },
+		{ expiresIn: JWT_EXPIRES_IN },
 	);
 
 	res.json({ token, user: updated });

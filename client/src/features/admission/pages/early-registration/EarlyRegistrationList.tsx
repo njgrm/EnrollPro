@@ -61,6 +61,13 @@ interface Application {
 	createdAt: string;
 }
 
+type CohortFilter = 'ALL_INCOMING' | 'G7' | 'G11';
+
+interface GradeLevelGroup {
+	gradeLevelId: number;
+	gradeLevelName: string;
+}
+
 const APPLICANT_TYPES = [
 	{ value: 'ALL', label: 'All Curriculum Programs' },
 	...Object.entries(SCP_LABELS).map(([value, label]) => ({
@@ -68,6 +75,39 @@ const APPLICANT_TYPES = [
 		label,
 	})),
 ];
+
+const COHORT_OPTIONS: Array<{ value: CohortFilter; label: string }> = [
+	{ value: 'ALL_INCOMING', label: 'All Incoming (G7 + G11)' },
+	{ value: 'G7', label: 'Grade 7' },
+	{ value: 'G11', label: 'Grade 11' },
+];
+
+const STAGE_QUICK_FILTERS = [
+	{ value: 'ALL', label: 'All Active' },
+	{ value: 'SUBMITTED', label: 'Submitted' },
+	{ value: 'UNDER_REVIEW', label: 'Under Review' },
+	{ value: 'ELIGIBLE', label: 'Eligible' },
+	{ value: 'ASSESSMENT_SCHEDULED', label: 'Exam Scheduled' },
+	{ value: 'INTERVIEW_SCHEDULED', label: 'Interview Scheduled' },
+];
+
+const NEXT_ACTION_BY_STATUS: Record<string, string> = {
+	SUBMITTED: 'Review Documents',
+	UNDER_REVIEW: 'Continue Review',
+	FOR_REVISION: 'Wait for Revision',
+	ELIGIBLE: 'Schedule Assessment',
+	ASSESSMENT_SCHEDULED: 'Record Results',
+	ASSESSMENT_TAKEN: 'Pass or Fail',
+	INTERVIEW_SCHEDULED: 'Finalize Interview',
+	PASSED: 'Pre-register',
+	PRE_REGISTERED: 'Finalize Enrollment',
+	TEMPORARILY_ENROLLED: 'Complete Enrollment',
+	NOT_QUALIFIED: 'Resolve Decision',
+	REJECTED: 'Review Appeal',
+	WITHDRAWN: 'No Action',
+};
+
+const DESKTOP_PANEL_BREAKPOINT = 1024;
 
 export default function EarlyRegistration() {
 	const { activeSchoolYearId, viewingSchoolYearId } = useSettingsStore();
@@ -84,7 +124,12 @@ export default function EarlyRegistration() {
 	const [search, setSearch] = useState('');
 	const [status, setStatus] = useState('ALL');
 	const [type, setType] = useState('ALL');
+	const [cohort, setCohort] = useState<CohortFilter>('ALL_INCOMING');
 	const [page, setPage] = useState(1);
+	const [incomingGradeIds, setIncomingGradeIds] = useState<{
+		g7: number | null;
+		g11: number | null;
+	}>({ g7: null, g11: null });
 
 	// Detail/Action state
 	const [selectedApp, setSelectedApp] = useState<
@@ -111,17 +156,37 @@ export default function EarlyRegistration() {
 	// --- Resizable Panel Logic (Fluid Percentage) ---
 	const [panelPercentage, setPanelPercentage] = useState(45); // Default 45vw
 	const isResizing = useRef(false);
+	const [isDesktopViewport, setIsDesktopViewport] = useState(() =>
+		typeof window !== 'undefined'
+			? window.innerWidth >= DESKTOP_PANEL_BREAKPOINT
+			: true,
+	);
 
-	const handleMouseMove = useCallback((e: MouseEvent) => {
-		if (!isResizing.current) return;
-		const newWidthPercent =
-			((window.innerWidth - e.clientX) / window.innerWidth) * 100;
+	useEffect(() => {
+		if (typeof window === 'undefined') return;
 
-		// Constraints: Between 20% and 95%
-		if (newWidthPercent > 20 && newWidthPercent < 95) {
-			setPanelPercentage(newWidthPercent);
-		}
+		const handleResize = () => {
+			setIsDesktopViewport(window.innerWidth >= DESKTOP_PANEL_BREAKPOINT);
+		};
+
+		handleResize();
+		window.addEventListener('resize', handleResize);
+		return () => window.removeEventListener('resize', handleResize);
 	}, []);
+
+	const handleMouseMove = useCallback(
+		(e: MouseEvent) => {
+			if (!isResizing.current || !isDesktopViewport) return;
+			const newWidthPercent =
+				((window.innerWidth - e.clientX) / window.innerWidth) * 100;
+
+			// Constraints: Between 20% and 95%
+			if (newWidthPercent > 20 && newWidthPercent < 95) {
+				setPanelPercentage(newWidthPercent);
+			}
+		},
+		[isDesktopViewport],
+	);
 
 	const stopResizing = useCallback(() => {
 		isResizing.current = false;
@@ -132,13 +197,39 @@ export default function EarlyRegistration() {
 	}, [handleMouseMove]);
 
 	const startResizing = useCallback(() => {
+		if (!isDesktopViewport) return;
 		isResizing.current = true;
 		document.addEventListener('mousemove', handleMouseMove);
 		document.addEventListener('mouseup', stopResizing);
 		document.body.style.cursor = 'col-resize';
 		document.body.style.userSelect = 'none';
-	}, [handleMouseMove, stopResizing]);
+	}, [handleMouseMove, isDesktopViewport, stopResizing]);
 	// ------------------------------------------------
+
+	useEffect(() => {
+		if (!ayId) return;
+
+		const fetchIncomingGradeIds = async () => {
+			try {
+				const res = await api.get(`/sections/${ayId}`);
+				const gradeLevels = (res.data.gradeLevels ?? []) as GradeLevelGroup[];
+
+				const findGradeId = (needle: string) =>
+					gradeLevels.find((g) =>
+						g.gradeLevelName.toUpperCase().includes(needle),
+					)?.gradeLevelId ?? null;
+
+				setIncomingGradeIds({
+					g7: findGradeId('GRADE 7'),
+					g11: findGradeId('GRADE 11'),
+				});
+			} catch {
+				setIncomingGradeIds({ g7: null, g11: null });
+			}
+		};
+
+		fetchIncomingGradeIds();
+	}, [ayId]);
 
 	const fetchData = useCallback(async () => {
 		if (!ayId) {
@@ -154,6 +245,15 @@ export default function EarlyRegistration() {
 				params.append('status', status);
 			}
 
+			const selectedGradeId =
+				cohort === 'G7'
+					? incomingGradeIds.g7
+					: cohort === 'G11'
+						? incomingGradeIds.g11
+						: null;
+			if (selectedGradeId)
+				params.append('gradeLevelId', String(selectedGradeId));
+
 			if (type !== 'ALL') params.append('applicantType', type);
 			params.append('page', String(page));
 			params.append('limit', '50');
@@ -168,19 +268,41 @@ export default function EarlyRegistration() {
 				);
 			}
 
+			if (cohort === 'ALL_INCOMING') {
+				const incomingIds = [incomingGradeIds.g7, incomingGradeIds.g11].filter(
+					(id): id is number => id !== null,
+				);
+
+				filteredApps = filteredApps.filter((app: Application) => {
+					if (incomingIds.length > 0) {
+						return incomingIds.includes(app.gradeLevelId);
+					}
+
+					const gradeName = app.gradeLevel.name.toUpperCase();
+					return (
+						gradeName.includes('GRADE 7') || gradeName.includes('GRADE 11')
+					);
+				});
+			}
+
 			setApplications(filteredApps);
-			setTotal(
-				status === 'ALL'
-					? res.data.total -
-							(res.data.applications.length - filteredApps.length)
-					: res.data.total,
-			);
+			const removedCount = res.data.applications.length - filteredApps.length;
+			setTotal(Math.max(0, res.data.total - removedCount));
 		} catch (err) {
 			toastApiError(err as never);
 		} finally {
 			setLoading(false);
 		}
-	}, [ayId, search, status, type, page]);
+	}, [
+		ayId,
+		search,
+		status,
+		type,
+		page,
+		cohort,
+		incomingGradeIds.g7,
+		incomingGradeIds.g11,
+	]);
 
 	useEffect(() => {
 		fetchData();
@@ -281,15 +403,29 @@ export default function EarlyRegistration() {
 		}
 	};
 
+	const stageCounts = STAGE_QUICK_FILTERS.reduce<Record<string, number>>(
+		(acc, stage) => {
+			acc[stage.value] =
+				stage.value === 'ALL'
+					? applications.length
+					: applications.filter((app) => app.status === stage.value).length;
+			return acc;
+		},
+		{},
+	);
+
+	const getNextAction = (currentStatus: string) =>
+		NEXT_ACTION_BY_STATUS[currentStatus] ?? 'Review Applicant';
+
 	return (
 		<div className='flex h-[calc(100vh-2rem)] overflow-hidden'>
-			<div className='flex-1 flex flex-col space-y-4 sm:space-y-6 overflow-auto px-2 sm:px-0'>
+			<div className='flex-1 flex flex-col space-y-4 sm:space-y-6 overflow-auto px-2 sm:px-4 lg:px-0'>
 				<div className='flex flex-col md:flex-row md:items-center justify-between gap-4'>
 					<div>
-						<h1 className='text-3xl font-bold tracking-tight'>
+						<h1 className='text-2xl sm:text-3xl font-bold tracking-tight'>
 							Early Registration Monitoring Dashboard
 						</h1>
-						<p className='font-bold'>
+						<p className='text-sm sm:text-base font-bold text-muted-foreground'>
 							Applicant screening and assessment workflow
 						</p>
 					</div>
@@ -297,9 +433,53 @@ export default function EarlyRegistration() {
 
 				<Card className='border-none shadow-sm bg-[hsl(var(--card))]'>
 					<CardHeader className='px-3 sm:px-6 pb-3'>
-						<div className='flex flex-col md:flex-row gap-3 md:gap-4 items-end'>
+						<div className='space-y-3'>
+							<div className='flex items-center gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0'>
+								{COHORT_OPTIONS.map((option) => (
+									<Button
+										key={option.value}
+										type='button'
+										size='sm'
+										variant={cohort === option.value ? 'default' : 'outline'}
+										className='h-9 sm:h-8 text-xs font-bold whitespace-nowrap shrink-0'
+										onClick={() => {
+											setCohort(option.value);
+											setPage(1);
+										}}
+									>
+										{option.label}
+									</Button>
+								))}
+							</div>
+
+							<div className='flex items-center gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0'>
+								{STAGE_QUICK_FILTERS.map((stage) => (
+									<Button
+										key={stage.value}
+										type='button'
+										size='sm'
+										variant={status === stage.value ? 'default' : 'outline'}
+										className='h-9 sm:h-8 text-xs font-bold whitespace-nowrap shrink-0'
+										onClick={() => {
+											setStatus(stage.value);
+											setPage(1);
+										}}
+									>
+										{stage.label}
+										<Badge
+											variant='secondary'
+											className='ml-2 h-5 px-1.5 text-[10px] shrink-0'
+										>
+											{stageCounts[stage.value] ?? 0}
+										</Badge>
+									</Button>
+								))}
+							</div>
+						</div>
+
+						<div className='flex flex-col md:flex-row gap-3 md:gap-4 items-stretch md:items-end'>
 							<div className='flex-1 space-y-2 w-full'>
-								<Label className='text-sm uppercase tracking-wider font-bold'>
+								<Label className='text-xs sm:text-sm uppercase tracking-wider font-bold'>
 									Search Applicant
 								</Label>
 								<div className='relative'>
@@ -308,102 +488,26 @@ export default function EarlyRegistration() {
 										placeholder='LRN, First Name, Last Name...'
 										className='pl-9 h-10 text-sm font-bold'
 										value={search}
-										onChange={(e) => setSearch(e.target.value)}
+										onChange={(e) => {
+											setSearch(e.target.value);
+											setPage(1);
+										}}
 									/>
 								</div>
 							</div>
-							<div className='grid grid-cols-2 md:flex gap-3 md:gap-4 w-full md:w-auto'>
+							<div className='grid grid-cols-1 md:flex gap-3 md:gap-4 w-full md:w-auto'>
 								<div className='space-y-2'>
-									<Label className='text-sm uppercase tracking-wider font-bold'>
-										Application Status
-									</Label>
-									<Select
-										value={status}
-										onValueChange={setStatus}
-									>
-										<SelectTrigger className='h-10 md:w-56 text-sm font-bold'>
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem
-												value='ALL'
-												className='text-sm font-bold'
-											>
-												All Active Applications
-											</SelectItem>
-											<SelectItem
-												value='SUBMITTED'
-												className='text-sm font-bold'
-											>
-												Submitted
-											</SelectItem>
-											<SelectItem
-												value='UNDER_REVIEW'
-												className='text-sm font-bold'
-											>
-												Under Review
-											</SelectItem>
-											<SelectItem
-												value='FOR_REVISION'
-												className='text-sm font-bold'
-											>
-												For Revision
-											</SelectItem>
-											<SelectItem
-												value='ELIGIBLE'
-												className='text-sm font-bold'
-											>
-												Eligible
-											</SelectItem>
-											<SelectItem
-												value='ASSESSMENT_SCHEDULED'
-												className='text-sm font-bold'
-											>
-												Exam Scheduled
-											</SelectItem>
-											<SelectItem
-												value='ASSESSMENT_TAKEN'
-												className='text-sm font-bold'
-											>
-												Exam Taken
-											</SelectItem>
-											<SelectItem
-												value='INTERVIEW_SCHEDULED'
-												className='text-sm font-bold'
-											>
-												Interview Scheduled
-											</SelectItem>
-
-											<SelectItem
-												value='NOT_QUALIFIED'
-												className='text-sm font-bold'
-											>
-												Not Qualified
-											</SelectItem>
-											<SelectItem
-												value='REJECTED'
-												className='text-sm font-bold'
-											>
-												Rejected
-											</SelectItem>
-											<SelectItem
-												value='WITHDRAWN'
-												className='text-sm font-bold'
-											>
-												Withdrawn
-											</SelectItem>
-										</SelectContent>
-									</Select>
-								</div>
-								<div className='space-y-2'>
-									<Label className='text-sm uppercase tracking-wider font-bold '>
+									<Label className='text-xs sm:text-sm uppercase tracking-wider font-bold '>
 										Curriculum Program
 									</Label>
 									<Select
 										value={type}
-										onValueChange={setType}
+										onValueChange={(value) => {
+											setType(value);
+											setPage(1);
+										}}
 									>
-										<SelectTrigger className='h-10 md:w-80 text-sm font-bold'>
+										<SelectTrigger className='h-10 w-full md:w-72 lg:w-80 text-sm font-bold'>
 											<SelectValue />
 										</SelectTrigger>
 										<SelectContent>
@@ -420,21 +524,112 @@ export default function EarlyRegistration() {
 									</Select>
 								</div>
 							</div>
-							<Button
-								variant='outline'
-								className='h-10 px-3 w-full md:w-auto text-sm font-bold'
-								onClick={() => {
-									setSearch('');
-									setStatus('ALL');
-									setType('ALL');
-								}}
-							>
-								Reset
-							</Button>
+							<div className='flex w-full md:w-auto items-center gap-2'>
+								<Button
+									variant='outline'
+									className='h-10 px-3 text-sm font-bold w-full md:w-auto'
+									onClick={() => {
+										setSearch('');
+										setStatus('ALL');
+										setType('ALL');
+										setCohort('ALL_INCOMING');
+										setPage(1);
+									}}
+								>
+									Reset
+								</Button>
+							</div>
 						</div>
 					</CardHeader>
 					<CardContent className='px-3 sm:px-6'>
-						<div className='rounded-xl border overflow-hidden'>
+						<div className='md:hidden space-y-3'>
+							{showSkeleton ? (
+								Array.from({ length: 4 }).map((_, i) => (
+									<div
+										key={i}
+										className='rounded-xl border p-3 space-y-3'
+									>
+										<div className='flex items-start justify-between gap-2'>
+											<div className='space-y-2 flex-1'>
+												<Skeleton className='h-4 w-40' />
+												<Skeleton className='h-3 w-28' />
+											</div>
+											<Skeleton className='h-6 w-20 rounded-full' />
+										</div>
+										<Skeleton className='h-9 w-full' />
+									</div>
+								))
+							) : applications.length === 0 ? (
+								<div className='rounded-xl border p-6 text-center text-sm font-bold'>
+									No applicants found.
+								</div>
+							) : (
+								applications.map((app) => (
+									<div
+										key={app.id}
+										className={`rounded-xl border bg-[hsl(var(--card))] p-3 transition-colors cursor-pointer ${
+											selectedId === app.id
+												? 'ring-2 ring-primary/30 border-primary/40'
+												: 'hover:bg-[hsl(var(--muted))]'
+										}`}
+										onClick={() => setSelectedId(app.id)}
+									>
+										<div className='flex items-start justify-between gap-2'>
+											<div className='min-w-0'>
+												<p className='font-bold text-sm uppercase leading-tight break-words'>
+													{app.lastName}, {app.firstName}
+												</p>
+												<p className='text-xs font-bold text-muted-foreground truncate'>
+													{app.trackingNumber}
+												</p>
+											</div>
+											<StatusBadge
+												status={app.status}
+												className='text-xs font-bold shrink-0'
+											/>
+										</div>
+
+										<div className='mt-2 flex items-start justify-between gap-2'>
+											<div className='min-w-0'>
+												<p className='text-xs font-bold'>
+													{app.gradeLevel.name}
+													{app.strand ? ` • ${app.strand.name}` : ''}
+												</p>
+												<p className='text-[11px] text-muted-foreground truncate'>
+													{formatScpType(app.applicantType)}
+												</p>
+											</div>
+											<Badge
+												variant='secondary'
+												className='text-[10px] font-bold shrink-0'
+											>
+												{getNextAction(app.status)}
+											</Badge>
+										</div>
+
+										<p className='mt-2 text-[11px] text-muted-foreground font-bold'>
+											Submitted{' '}
+											{format(new Date(app.createdAt), 'MMMM dd, yyyy')}
+										</p>
+
+										<Button
+											variant='secondary'
+											size='sm'
+											className='mt-3 h-9 w-full text-xs font-bold bg-primary/10 hover:bg-primary border-2 border-primary/20 hover:text-primary-foreground'
+											onClick={(e) => {
+												e.stopPropagation();
+												setSelectedId(app.id);
+											}}
+										>
+											<Eye className='h-3.5 w-3.5 mr-1.5' />
+											View Applicant
+										</Button>
+									</div>
+								))
+							)}
+						</div>
+
+						<div className='hidden md:block rounded-xl border overflow-hidden'>
 							<Table className='border-collapse'>
 								<TableHeader className='bg-[hsl(var(--primary))]'>
 									<TableRow>
@@ -452,6 +647,9 @@ export default function EarlyRegistration() {
 										</TableHead>
 										<TableHead className='text-center font-bold text-primary-foreground text-sm'>
 											STATUS
+										</TableHead>
+										<TableHead className='text-center font-bold text-primary-foreground hidden lg:table-cell text-sm'>
+											NEXT ACTION
 										</TableHead>
 										<TableHead className='text-center font-bold text-primary-foreground hidden xl:table-cell text-sm'>
 											DATE
@@ -490,6 +688,11 @@ export default function EarlyRegistration() {
 														<Skeleton className='h-6 w-20 rounded-full' />
 													</div>
 												</TableCell>
+												<TableCell className='hidden lg:table-cell text-sm'>
+													<div className='flex justify-center'>
+														<Skeleton className='h-4 w-24' />
+													</div>
+												</TableCell>
 												<TableCell className='hidden xl:table-cell text-sm'>
 													<div className='flex justify-center'>
 														<Skeleton className='h-4 w-24' />
@@ -505,7 +708,7 @@ export default function EarlyRegistration() {
 									) : applications.length === 0 ? (
 										<TableRow>
 											<TableCell
-												colSpan={7}
+												colSpan={8}
 												className='h-24 text-center text-sm font-bold'
 											>
 												No applicants found.
@@ -557,6 +760,14 @@ export default function EarlyRegistration() {
 														className='text-sm font-bold'
 													/>
 												</TableCell>
+												<TableCell className='hidden lg:table-cell'>
+													<Badge
+														variant='secondary'
+														className='text-xs font-bold'
+													>
+														{getNextAction(app.status)}
+													</Badge>
+												</TableCell>
 												<TableCell className=' text-sm hidden xl:table-cell font-bold'>
 													{format(new Date(app.createdAt), 'MMMM dd, yyyy')}
 												</TableCell>
@@ -580,17 +791,17 @@ export default function EarlyRegistration() {
 							</Table>
 						</div>
 
-						<div className='flex flex-col sm:flex-row items-center justify-between gap-2 mt-4 font-bold'>
-							<span className='text-xs '>
+						<div className='flex flex-col md:flex-row md:items-center md:justify-between gap-3 mt-4 font-bold'>
+							<span className='text-xs sm:text-sm text-center md:text-left'>
 								Showing {applications.length} applicants
 							</span>
-							<div className='flex items-center gap-2'>
+							<div className='flex w-full md:w-auto items-center justify-center gap-2'>
 								<Button
 									variant='outline'
 									size='sm'
-									className='h-9 sm:h-8 text-xs'
+									className='h-9 text-xs'
 									onClick={() => setPage((p) => Math.max(1, p - 1))}
-									disabled={page === 1}
+									disabled={page === 1 || loading}
 								>
 									Previous
 								</Button>
@@ -603,9 +814,9 @@ export default function EarlyRegistration() {
 								<Button
 									variant='outline'
 									size='sm'
-									className='h-9 sm:h-8 text-xs'
+									className='h-9 text-xs'
 									onClick={() => setPage((p) => p + 1)}
-									disabled={page * 50 >= total}
+									disabled={page * 50 >= total || loading}
 								>
 									Next
 								</Button>
@@ -624,17 +835,15 @@ export default function EarlyRegistration() {
 			>
 				<SheetContent
 					side='right'
-					className='p-0 flex flex-row border-l overflow-visible w-screen sm:w-auto sm:max-w-none'
+					className='p-0 flex flex-row border-l-0 sm:border-l overflow-visible w-screen sm:w-auto sm:max-w-none'
 					style={
-						typeof window !== 'undefined' && window.innerWidth >= 640
-							? { width: `${panelPercentage}vw` }
-							: undefined
+						isDesktopViewport ? { width: `${panelPercentage}vw` } : undefined
 					}
 				>
 					{/* Resize Handle — hidden on mobile */}
 					<div
 						onMouseDown={startResizing}
-						className='absolute left-[-4px] top-0 bottom-0 w-[8px] cursor-col-resize z-50 hover:bg-primary/30 transition-colors hidden sm:flex items-center justify-center group'
+						className='absolute left-[-4px] top-0 bottom-0 w-[8px] cursor-col-resize z-50 hover:bg-primary/30 transition-colors hidden lg:flex items-center justify-center group'
 					>
 						<div className='h-8 w-1.5 rounded-full bg-muted-foreground/20 group-hover:bg-primary/50' />
 					</div>
@@ -768,10 +977,13 @@ export default function EarlyRegistration() {
 								}}
 								onMarkInterviewPassed={async () => {
 									try {
-										await api.patch(`/applications/${selectedId}/mark-interview-passed`);
+										await api.patch(
+											`/applications/${selectedId}/mark-interview-passed`,
+										);
 										sileo.success({
 											title: 'Interview Passed',
-											description: 'Applicant marked as eligible for enrollment (Pre-registered).',
+											description:
+												'Applicant marked as eligible for enrollment (Pre-registered).',
 										});
 										fetchData();
 									} catch (e) {
@@ -789,21 +1001,21 @@ export default function EarlyRegistration() {
 				open={actionType !== null}
 				onOpenChange={(open) => !open && setActionType(null)}
 			>
-				<DialogContent className='sm:max-w-md'>
+				<DialogContent className='w-[calc(100vw-1rem)] max-w-md max-h-[85vh] overflow-y-auto'>
 					<DialogHeader>
-						<DialogTitle className='text-xs'>
+						<DialogTitle className='text-sm sm:text-base font-bold'>
 							{actionType === 'APPROVE' && 'Approve & Pre-register'}
 							{actionType === 'ELIGIBLE' && 'Mark as Eligible'}
 							{actionType === 'REJECT' && 'Reject Application'}
 						</DialogTitle>
-						<DialogDescription className='text-xs'>
+						<DialogDescription className='text-xs sm:text-sm'>
 							Candidate: {selectedApp?.lastName}, {selectedApp?.firstName}
 						</DialogDescription>
 					</DialogHeader>
 
 					{actionType === 'ELIGIBLE' && (
 						<div className='py-4'>
-							<p className='text-xs'>
+							<p className='text-xs sm:text-sm'>
 								Marking this applicant as{' '}
 								<span className='font-bold text-cyan-700'>ELIGIBLE</span> means
 								their documents are verified and they are cleared for assessment
@@ -814,19 +1026,19 @@ export default function EarlyRegistration() {
 
 					{actionType === 'APPROVE' && (
 						<div className='space-y-4 py-4'>
-							<p className='text-xs text-emerald-700 font-medium'>
+							<p className='text-xs sm:text-sm text-emerald-700 font-medium'>
 								This candidate will be moved to the Enrollment phase and
 								assigned to a section.
 							</p>
 							<div className='space-y-2'>
-								<Label className='text-xs'>
+								<Label className='text-xs sm:text-sm'>
 									Select Section for {selectedApp?.gradeLevel.name}
 								</Label>
 								<Select
 									value={selectedSectionId}
 									onValueChange={setSelectedSectionId}
 								>
-									<SelectTrigger className='text-xs'>
+									<SelectTrigger className='h-9 text-xs sm:text-sm'>
 										<SelectValue placeholder='Choose a section...' />
 									</SelectTrigger>
 									<SelectContent>
@@ -835,7 +1047,7 @@ export default function EarlyRegistration() {
 												key={s.id}
 												value={String(s.id)}
 												disabled={s._count.enrollments >= s.maxCapacity}
-												className='text-xs'
+												className='text-xs sm:text-sm'
 											>
 												{s.name} ({s._count.enrollments}/{s.maxCapacity})
 											</SelectItem>
@@ -849,9 +1061,11 @@ export default function EarlyRegistration() {
 					{actionType === 'REJECT' && (
 						<div className='space-y-4 py-4'>
 							<div className='space-y-2'>
-								<Label className='text-xs'>Reason for Rejection</Label>
+								<Label className='text-xs sm:text-sm'>
+									Reason for Rejection
+								</Label>
 								<textarea
-									className='w-full min-h-[100px] rounded-md border border-input bg-transparent px-3 py-2 text-xs shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+									className='w-full min-h-[96px] sm:min-h-[120px] rounded-md border border-input bg-transparent px-3 py-2 text-xs sm:text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
 									placeholder='Explain why this application is being rejected...'
 									value={rejectionReason}
 									onChange={(e) => setRejectionReason(e.target.value)}
@@ -864,13 +1078,13 @@ export default function EarlyRegistration() {
 						<Button
 							variant='outline'
 							onClick={() => setActionType(null)}
-							className='text-xs'
+							className='text-xs sm:text-sm h-9'
 						>
 							Cancel
 						</Button>
 						{actionType === 'ELIGIBLE' && (
 							<Button
-								className='bg-cyan-600 hover:bg-cyan-700 text-xs'
+								className='bg-cyan-600 hover:bg-cyan-700 text-xs sm:text-sm h-9'
 								onClick={handleMarkEligible}
 							>
 								Confirm Eligibility
@@ -878,7 +1092,7 @@ export default function EarlyRegistration() {
 						)}
 						{actionType === 'APPROVE' && (
 							<Button
-								className='bg-emerald-600 hover:bg-emerald-700 text-xs'
+								className='bg-emerald-600 hover:bg-emerald-700 text-xs sm:text-sm h-9'
 								onClick={handleApprove}
 								disabled={!selectedSectionId}
 							>
@@ -890,7 +1104,7 @@ export default function EarlyRegistration() {
 								variant='default'
 								onClick={handleReject}
 								disabled={!rejectionReason}
-								className='text-xs'
+								className='text-xs sm:text-sm h-9'
 							>
 								Reject Application
 							</Button>

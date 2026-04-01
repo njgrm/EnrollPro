@@ -1,28 +1,118 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { Skeleton } from '@/shared/ui/skeleton';
+import { Badge } from '@/shared/ui/badge';
 import { useScpConfigs } from '@/features/admission/hooks/useScpConfigs';
-import { SCP_ACRONYMS } from '@/shared/lib/utils';
+import api from '@/shared/api/axiosInstance';
+import { SCP_ACRONYMS, SCP_LABELS } from '@/shared/lib/utils';
 import PipelineBatchView from '@/features/admission/components/PipelineBatchView';
+
+const EXCLUDED_ACTIVE_STATUSES = ['ENROLLED', 'PRE_REGISTERED'];
 
 export default function RegistrationPipelines() {
 	const { configs, loading, error } = useScpConfigs();
 	const [searchParams, setSearchParams] = useSearchParams();
 	const activeTab = searchParams.get('tab') || 'REGULAR';
+	const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
+
+	const tabs = useMemo(
+		() => [
+			{
+				key: 'REGULAR',
+				label: 'Regular',
+				fullLabel: SCP_LABELS.REGULAR ?? 'Regular',
+				cutoffScore: null as number | null,
+				hasAssessment: false,
+			},
+			...configs.map((c) => ({
+				key: c.scpType,
+				label: SCP_ACRONYMS[c.scpType] || c.scpType,
+				fullLabel: SCP_LABELS[c.scpType] || c.scpType,
+				cutoffScore:
+					c.cutoffScore ??
+					c.steps.find((s) => s.cutoffScore != null)?.cutoffScore ??
+					null,
+				hasAssessment: c.steps.length > 0,
+			})),
+		],
+		[configs],
+	);
+
+	const fetchCount = useCallback(
+		async (applicantType: string, status: string) => {
+			const params = new URLSearchParams();
+			params.append('status', status);
+			params.append('page', '1');
+			params.append('limit', '1');
+			params.append('applicantType', applicantType);
+
+			const res = await api.get(`/applications?${params.toString()}`);
+			return Number(res.data?.total ?? 0);
+		},
+		[],
+	);
+
+	const refreshTabCounts = useCallback(async () => {
+		try {
+			const countEntries = await Promise.all(
+				tabs.map(async (tab) => {
+					const [allCount, ...excludedCounts] = await Promise.all([
+						fetchCount(tab.key, 'ALL'),
+						...EXCLUDED_ACTIVE_STATUSES.map((status) =>
+							fetchCount(tab.key, status),
+						),
+					]);
+
+					const activeCount = Math.max(
+						0,
+						allCount - excludedCounts.reduce((sum, n) => sum + n, 0),
+					);
+
+					return [tab.key, activeCount] as const;
+				}),
+			);
+
+			const nextCounts = Object.fromEntries(countEntries);
+			setTabCounts((prev) => {
+				const prevKeys = Object.keys(prev);
+				const nextKeys = Object.keys(nextCounts);
+
+				if (prevKeys.length !== nextKeys.length) {
+					return nextCounts;
+				}
+
+				for (const key of nextKeys) {
+					if (prev[key] !== nextCounts[key]) {
+						return nextCounts;
+					}
+				}
+
+				return prev;
+			});
+		} catch {
+			setTabCounts((prev) => (Object.keys(prev).length > 0 ? {} : prev));
+		}
+	}, [fetchCount, tabs]);
 
 	const handleTabChange = (value: string) => {
 		setSearchParams({ tab: value }, { replace: true });
 	};
 
-	// Build tab entries: Regular first, then each offered SCP
-	const tabs = [
-		{ key: 'REGULAR', label: 'Regular' },
-		...configs.map((c) => ({
-			key: c.scpType,
-			label: SCP_ACRONYMS[c.scpType] || c.scpType,
-		})),
-	];
+	useEffect(() => {
+		if (!tabs.some((tab) => tab.key === activeTab)) {
+			setSearchParams({ tab: 'REGULAR' }, { replace: true });
+		}
+	}, [activeTab, tabs, setSearchParams]);
+
+	useEffect(() => {
+		const run = async () => {
+			await refreshTabCounts();
+		};
+
+		void run();
+	}, [refreshTabCounts]);
 
 	if (loading) {
 		return (
@@ -31,7 +121,7 @@ export default function RegistrationPipelines() {
 					<h1 className='text-3xl font-bold text-foreground tracking-tight'>
 						Registration Pipelines
 					</h1>
-					<p className='text-sm font-bold text-muted-foreground'>
+					<p className='text-sm font-bold'>
 						Batch-process applicants by curriculum program
 					</p>
 				</div>
@@ -69,7 +159,7 @@ export default function RegistrationPipelines() {
 				<h1 className='text-3xl font-bold text-foreground tracking-tight'>
 					Registration Pipelines
 				</h1>
-				<p className='text-sm font-bold text-muted-foreground'>
+				<p className='text-sm font-bold'>
 					Batch-process applicants by curriculum program
 				</p>
 			</div>
@@ -79,52 +169,54 @@ export default function RegistrationPipelines() {
 				onValueChange={handleTabChange}
 				className='w-full'
 			>
-				<TabsList className='w-full flex flex-wrap h-auto gap-1 mb-6 p-1 bg-white border-border relative'>
-					{tabs.map((tab) => (
-						<TabsTrigger
-							key={tab.key}
-							value={tab.key}
-							className='flex-1 min-w-25 font-bold transition-all relative z-10 data-[state=active]:bg-transparent data-[state=active]:shadow-none'
-						>
-							{activeTab === tab.key && (
-								<motion.div
-									layoutId='pipeline-active-pill'
-									className='absolute inset-0 bg-primary rounded-md'
-									transition={{
-										type: 'spring',
-										bounce: 0.15,
-										duration: 0.5,
-									}}
-								/>
-							)}
-							<span className='relative z-20'>{tab.label}</span>
-						</TabsTrigger>
-					))}
-				</TabsList>
-
-				<AnimatePresence mode='wait'>
-					{tabs.map(
-						(tab) =>
-							activeTab === tab.key && (
-								<motion.div
-									key={tab.key}
-									initial={{ opacity: 0, y: 10 }}
-									animate={{ opacity: 1, y: 0 }}
-									exit={{ opacity: 0, y: -10 }}
-									transition={{ duration: 0.2 }}
-									className='w-full'
-								>
-									<TabsContent
-										value={tab.key}
-										forceMount
-										className='mt-0 focus-visible:outline-none ring-0'
+				<div className='mb-6 overflow-x-auto pb-1'>
+					<TabsList className='inline-flex min-w-max h-auto gap-1 p-1 bg-white border border-border relative'>
+						{tabs.map((tab) => (
+							<TabsTrigger
+								key={tab.key}
+								value={tab.key}
+								title={tab.fullLabel}
+								className='shrink-0 font-bold transition-all relative z-10 data-[state=active]:bg-transparent data-[state=active]:shadow-none'
+							>
+								{activeTab === tab.key && (
+									<motion.div
+										layoutId='pipeline-active-pill'
+										className='absolute inset-0 bg-primary rounded-md'
+										transition={{
+											type: 'spring',
+											bounce: 0.15,
+											duration: 0.5,
+										}}
+									/>
+								)}
+								<span className='relative z-20 inline-flex items-center gap-2'>
+									{tab.label}
+									<Badge
+										variant={activeTab === tab.key ? 'secondary' : 'outline'}
+										className='h-5 px-1.5 text-[10px] font-bold'
 									>
-										<PipelineBatchView applicantType={tab.key} />
-									</TabsContent>
-								</motion.div>
-							),
-					)}
-				</AnimatePresence>
+										{tabCounts[tab.key] ?? 0}
+									</Badge>
+								</span>
+							</TabsTrigger>
+						))}
+					</TabsList>
+				</div>
+
+				{tabs.map((tab) => (
+					<TabsContent
+						key={tab.key}
+						value={tab.key}
+						forceMount
+						className='mt-0 focus-visible:outline-none ring-0 data-[state=inactive]:hidden'
+					>
+						<PipelineBatchView
+							applicantType={tab.key}
+							cutoffScore={tab.cutoffScore}
+							hasAssessment={tab.hasAssessment}
+						/>
+					</TabsContent>
+				))}
 			</Tabs>
 		</div>
 	);

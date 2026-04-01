@@ -164,12 +164,12 @@ export function ScheduleExamDialog({
 			open={open}
 			onOpenChange={onOpenChange}
 		>
-			<DialogContent className='max-w-2xl sm:w-full overflow-y-auto max-h-[90vh] scrollbar-thin'>
+			<DialogContent className='w-[calc(100vw-1rem)] max-w-2xl overflow-y-auto max-h-[85vh] scrollbar-thin p-4 sm:p-6'>
 				<DialogHeader>
-					<DialogTitle className='font-bold text-sm uppercase'>
+					<DialogTitle className='font-bold text-sm sm:text-base uppercase'>
 						Schedule {stepLabel}
 					</DialogTitle>
-					<DialogDescription className='font-bold text-sm text-foreground'>
+					<DialogDescription className='font-bold text-xs sm:text-sm text-foreground'>
 						Applicant: {applicant.lastName}, {applicant.firstName} (
 						{applicant.gradeLevel.name} -{' '}
 						{formatScpType(applicant.applicantType)})
@@ -179,24 +179,26 @@ export function ScheduleExamDialog({
 				<div className='space-y-4 py-2'>
 					{step && (
 						<div className='rounded-lg border p-3 bg-slate-50 space-y-1'>
-							<div className='flex items-center gap-2 font-bold text-sm'>
-								<span className='text-sm bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold'>
+							<div className='flex items-center gap-2 font-bold text-xs sm:text-sm'>
+								<span className='text-xs sm:text-sm bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold'>
 									Step {step.stepOrder}
 								</span>
 								<span>{stepLabel}</span>
 							</div>
 							{step.description && (
-								<p className='text-sm font-bold'>{step.description}</p>
+								<p className='text-xs sm:text-sm font-bold'>
+									{step.description}
+								</p>
 							)}
 						</div>
 					)}
 
-					<div className='grid grid-cols-2 gap-4'>
+					<div className='grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4'>
 						<div className='space-y-2'>
-							<Label className='font-bold text-sm'>Date</Label>
+							<Label className='font-bold text-xs sm:text-sm'>Date</Label>
 							<Input
 								readOnly
-								className='font-bold text-sm'
+								className='font-bold text-xs sm:text-sm'
 								value={
 									scheduledDate
 										? format(new Date(scheduledDate), 'MMMM dd, yyyy')
@@ -205,29 +207,29 @@ export function ScheduleExamDialog({
 							/>
 						</div>
 						<div className='space-y-2'>
-							<Label className='font-bold text-sm'>Time</Label>
+							<Label className='font-bold text-xs sm:text-sm'>Time</Label>
 							<Input
 								readOnly
-								className='font-bold text-sm'
+								className='font-bold text-xs sm:text-sm'
 								value={scheduledTime || '—'}
 							/>
 						</div>
 					</div>
 
-					<div className='grid grid-cols-2 gap-4'>
+					<div className='grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4'>
 						<div className='space-y-2'>
-							<Label className='font-bold text-sm'>Venue</Label>
+							<Label className='font-bold text-xs sm:text-sm'>Venue</Label>
 							<Input
 								readOnly
-								className='font-bold text-sm'
+								className='font-bold text-xs sm:text-sm'
 								value={venue || '—'}
 							/>
 						</div>
 						<div className='space-y-2'>
-							<Label className='font-bold text-sm'>Notes</Label>
+							<Label className='font-bold text-xs sm:text-sm'>Notes</Label>
 							<Input
 								readOnly
-								className='font-bold text-sm'
+								className='font-bold text-xs sm:text-sm'
 								value={notes || '—'}
 							/>
 						</div>
@@ -235,7 +237,7 @@ export function ScheduleExamDialog({
 
 					<Alert className='flex items-center bg-primary/5 border-primary/20 p-3 gap-3 min-h-0 [&>svg]:static [&>svg]:translate-y-0'>
 						<Info className='h-4 w-4 stroke-primary shrink-0' />
-						<AlertDescription className='!p-0 !m-0 !translate-y-0 font-bold text-primary/80 text-sm leading-tight'>
+						<AlertDescription className='!p-0 !m-0 !translate-y-0 font-bold text-primary/80 text-xs sm:text-sm leading-tight'>
 							A confirmation email will be sent to the parent/guardian at{' '}
 							<span className='font-bold underline text-primary'>
 								{applicant.emailAddress || 'N/A'}
@@ -245,16 +247,16 @@ export function ScheduleExamDialog({
 					</Alert>
 				</div>
 
-				<DialogFooter>
+				<DialogFooter className='gap-2'>
 					<Button
-						className='font-bold'
+						className='font-bold w-full sm:w-auto'
 						variant='outline'
 						onClick={() => onOpenChange(false)}
 					>
 						Cancel
 					</Button>
 					<Button
-						className='font-bold'
+						className='font-bold w-full sm:w-auto'
 						onClick={handleSchedule}
 						disabled={!scheduledDate || submitting}
 					>

@@ -2,6 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import api from '@/shared/api/axiosInstance';
 import { useSettingsStore } from '@/store/settings.slice';
 
+export interface ScpStep {
+	id: number;
+	stepOrder: number;
+	kind: string;
+	label: string;
+	isRequired: boolean;
+	cutoffScore: number | null;
+}
+
 export interface ScpConfig {
 	id: number;
 	scpType: string;
@@ -9,6 +18,7 @@ export interface ScpConfig {
 	isTwoPhase: boolean;
 	cutoffScore: number | null;
 	notes: string | null;
+	steps: ScpStep[];
 }
 
 export function useScpConfigs() {

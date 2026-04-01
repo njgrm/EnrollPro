@@ -84,14 +84,14 @@ export function ApplicationDetailPanel({
 	if (showSkeleton) {
 		return (
 			<div className='flex flex-col h-full overflow-hidden bg-background'>
-				<div className='flex items-center justify-between p-4 border-b shrink-0'>
+				<div className='flex items-center justify-between p-3 sm:p-4 border-b shrink-0'>
 					<div>
-						<SheetTitle className='text-lg font-bold tracking-tight uppercase'>
+						<SheetTitle className='text-base sm:text-lg font-bold tracking-tight uppercase'>
 							<Skeleton className='h-6 w-40' />
 						</SheetTitle>
 						<SheetDescription
 							asChild
-							className='text-xs text-muted-foreground mt-1'
+							className='text-[11px] sm:text-xs text-muted-foreground mt-1'
 						>
 							<div>
 								<Skeleton className='h-3 w-24' />
@@ -99,7 +99,7 @@ export function ApplicationDetailPanel({
 						</SheetDescription>
 					</div>
 				</div>
-				<div className='flex-1 p-6 space-y-4 overflow-y-auto'>
+				<div className='flex-1 p-3 sm:p-6 space-y-4 overflow-y-auto'>
 					<Skeleton className='h-32 w-full' />
 					<Skeleton className='h-[200px] w-full mt-8' />
 					<Skeleton className='h-[100px] w-full mt-4' />
@@ -111,15 +111,15 @@ export function ApplicationDetailPanel({
 	if (error || !applicant) {
 		return (
 			<div className='flex flex-col h-full overflow-hidden bg-background'>
-				<div className='flex items-center justify-between p-4 border-b shrink-0'>
-					<SheetTitle className='text-lg font-bold tracking-tight uppercase'>
+				<div className='flex items-center justify-between p-3 sm:p-4 border-b shrink-0'>
+					<SheetTitle className='text-base sm:text-lg font-bold tracking-tight uppercase'>
 						Error
 					</SheetTitle>
 					<SheetDescription className='hidden'>
 						Failed to load application
 					</SheetDescription>
 				</div>
-				<div className='h-full flex flex-col p-6 items-center justify-center text-center'>
+				<div className='h-full flex flex-col p-4 sm:p-6 items-center justify-center text-center'>
 					<p className='text-destructive mb-4'>
 						{error || 'Application not found'}
 					</p>
@@ -137,32 +137,32 @@ export function ApplicationDetailPanel({
 	return (
 		<div className='flex flex-col h-full overflow-hidden bg-background'>
 			{/* Header */}
-			<div className='flex items-center justify-between p-4 border-b shrink-0 bg-primary font-black'>
+			<div className='flex items-center justify-between p-3 sm:p-4 border-b shrink-0 bg-primary font-black'>
 				<div>
-					<SheetTitle className='text-lg text-primary-foreground font-black tracking-tight uppercase'>
+					<SheetTitle className='text-base sm:text-lg text-primary-foreground font-black tracking-tight uppercase'>
 						Application Detail
 					</SheetTitle>
-					<SheetDescription className='text-xs text-primary-foreground flex items-center gap-1.5'>
+					<SheetDescription className='text-[11px] sm:text-xs text-primary-foreground flex flex-wrap items-center gap-x-1.5 gap-y-0.5'>
 						<span>#{applicant.trackingNumber}</span>
-						<span>|</span>
+						<span className='hidden sm:inline'>|</span>
 						<span>
 							{applicant.admissionChannel === 'F2F Applicant'
 								? 'F2F Applicant'
 								: 'Online Applicant'}
 						</span>
-						<span>|</span>
+						<span className='hidden sm:inline'>|</span>
 						<span>{format(new Date(applicant.createdAt), 'MMMM d, yyyy')}</span>
 					</SheetDescription>
 				</div>
 			</div>
 
 			{/* Scrollable Content */}
-			<div className='flex-1 overflow-y-auto p-4 space-y-4 font-bold'>
+			<div className='flex-1 overflow-y-auto p-3 sm:p-4 space-y-4 font-bold'>
 				{/* Summary Block */}
-				<div className='bg-[hsl(var(--muted))] p-4 rounded-md border'>
+				<div className='bg-[hsl(var(--muted))] p-3 sm:p-4 rounded-md border'>
 					<div className='flex flex-col items-center mb-6 pt-2'>
 						<div
-							className={`w-32 h-32 rounded-xl border-2 border-primary border-dashed shadow-md overflow-hidden bg-background flex items-center justify-center mb-4 ${applicant.studentPhoto && !photoError ? 'cursor-zoom-in hover:border-solid transition-all' : ''}`}
+							className={`w-24 h-24 sm:w-32 sm:h-32 rounded-xl border-2 border-primary border-dashed shadow-md overflow-hidden bg-background flex items-center justify-center mb-4 ${applicant.studentPhoto && !photoError ? 'cursor-zoom-in hover:border-solid transition-all' : ''}`}
 							onClick={() =>
 								applicant.studentPhoto &&
 								!photoError &&
@@ -186,7 +186,7 @@ export function ApplicationDetailPanel({
 							)}
 						</div>
 						<div className='text-center'>
-							<h3 className='font-black text-xl uppercase tracking-tight'>
+							<h3 className='font-black text-lg sm:text-xl uppercase tracking-tight break-words'>
 								{applicant.lastName}, {applicant.firstName}{' '}
 								{applicant.middleName}
 							</h3>
@@ -196,21 +196,21 @@ export function ApplicationDetailPanel({
 						</div>
 					</div>
 
-					<div className='grid grid-cols-2 border-t pt-4'>
+					<div className='grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-0 border-t pt-4'>
 						<div>
-							<p className='text-[0.625rem] uppercase tracking-widest'>
+							<p className='text-[10px] sm:text-[0.625rem] uppercase tracking-widest'>
 								Grade Level (Applicant Type)
 							</p>
-							<p className='text-sm'>
+							<p className='text-xs sm:text-sm'>
 								Grade {applicant.gradeLevel.name} <br />(
 								{formatScpType(applicant.applicantType)})
 							</p>
 						</div>
-						<div className='text-right'>
-							<p className='text-[0.625rem] uppercase tracking-widest'>
+						<div className='text-left sm:text-right'>
+							<p className='text-[10px] sm:text-[0.625rem] uppercase tracking-widest'>
 								Learner Reference Number
 							</p>
-							<p className='text-sm '>{applicant.lrn || 'N/A'}</p>
+							<p className='text-xs sm:text-sm '>{applicant.lrn || 'N/A'}</p>
 						</div>
 					</div>
 				</div>
@@ -261,7 +261,7 @@ export function ApplicationDetailPanel({
 				<div className='py-2 border-t mt-4 flex justify-center'>
 					<Link
 						to={`/early-registration/${applicant.id}`}
-						className='text-[hsl(var(--accent-link))] hover:underline flex items-center gap-1.5 text-sm font-medium'
+						className='text-[hsl(var(--accent-link))] hover:underline flex items-center gap-1.5 text-xs sm:text-sm font-medium'
 						onClick={onClose}
 					>
 						View Full Details <ExternalLink className='h-3 w-3' />

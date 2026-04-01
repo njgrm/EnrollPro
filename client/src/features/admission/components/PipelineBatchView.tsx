@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Search, Loader2, CheckSquare, Square } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Search, Loader2, CheckSquare, Square, Save } from 'lucide-react';
+import { sileo } from 'sileo';
 import api from '@/shared/api/axiosInstance';
 import { useSettingsStore } from '@/store/settings.slice';
 import { toastApiError } from '@/shared/hooks/useApiToast';
@@ -25,6 +26,14 @@ import {
 } from '@/shared/ui/select';
 import { Checkbox } from '@/shared/ui/checkbox';
 import { Skeleton } from '@/shared/ui/skeleton';
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from '@/shared/ui/dialog';
 import { StatusBadge } from '@/features/enrollment/components/StatusBadge';
 import { useDelayedLoading } from '@/shared/hooks/useDelayedLoading';
 import { format } from 'date-fns';
@@ -46,37 +55,93 @@ interface Application {
 	createdAt: string;
 }
 
-const STATUS_OPTIONS = [
-	{ value: 'ALL', label: 'All Active Applications' },
-	{ value: 'SUBMITTED', label: 'Submitted' },
-	{ value: 'UNDER_REVIEW', label: 'Under Review' },
-	{ value: 'FOR_REVISION', label: 'For Revision' },
-	{ value: 'ELIGIBLE', label: 'Eligible' },
-	{ value: 'ASSESSMENT_SCHEDULED', label: 'Exam Scheduled' },
-	{ value: 'ASSESSMENT_TAKEN', label: 'Exam Taken' },
-	{ value: 'INTERVIEW_SCHEDULED', label: 'Interview Scheduled' },
-	{ value: 'PASSED', label: 'Passed' },
-	{ value: 'NOT_QUALIFIED', label: 'Not Qualified' },
-	{ value: 'REJECTED', label: 'Rejected' },
-	{ value: 'WITHDRAWN', label: 'Withdrawn' },
-];
+type CohortFilter = 'ALL_INCOMING' | 'G7' | 'G11';
+
+interface GradeLevelGroup {
+	gradeLevelId: number;
+	gradeLevelName: string;
+}
 
 const TARGET_STATUS_OPTIONS = [
 	{ value: 'UNDER_REVIEW', label: 'Under Review' },
 	{ value: 'ELIGIBLE', label: 'Eligible' },
 	{ value: 'ASSESSMENT_SCHEDULED', label: 'Exam Scheduled' },
 	{ value: 'PASSED', label: 'Passed' },
-	{ value: 'PRE_REGISTERED', label: 'Pre-Registered' },
 	{ value: 'NOT_QUALIFIED', label: 'Not Qualified' },
 	{ value: 'REJECTED', label: 'Rejected' },
 	{ value: 'WITHDRAWN', label: 'Withdrawn' },
 ];
 
+const COHORT_OPTIONS: Array<{ value: CohortFilter; label: string }> = [
+	{ value: 'ALL_INCOMING', label: 'All Incoming (G7 + G11)' },
+	{ value: 'G7', label: 'Grade 7' },
+	{ value: 'G11', label: 'Grade 11' },
+];
+
+const STAGE_QUICK_FILTERS = [
+	{ value: 'ALL', label: 'All Active' },
+	{ value: 'SUBMITTED', label: 'Submitted' },
+	{ value: 'UNDER_REVIEW', label: 'Under Review' },
+	{ value: 'ELIGIBLE', label: 'Eligible' },
+	{ value: 'ASSESSMENT_SCHEDULED', label: 'Exam Scheduled' },
+	{ value: 'INTERVIEW_SCHEDULED', label: 'Interview Scheduled' },
+];
+
+const VALID_TRANSITIONS: Record<string, string[]> = {
+	SUBMITTED: ['UNDER_REVIEW', 'ASSESSMENT_SCHEDULED', 'REJECTED', 'WITHDRAWN'],
+	UNDER_REVIEW: [
+		'FOR_REVISION',
+		'ELIGIBLE',
+		'ASSESSMENT_SCHEDULED',
+		'PRE_REGISTERED',
+		'TEMPORARILY_ENROLLED',
+		'REJECTED',
+		'WITHDRAWN',
+	],
+	FOR_REVISION: ['UNDER_REVIEW', 'WITHDRAWN'],
+	ELIGIBLE: ['ASSESSMENT_SCHEDULED', 'PRE_REGISTERED', 'WITHDRAWN'],
+	ASSESSMENT_SCHEDULED: [
+		'ASSESSMENT_TAKEN',
+		'ASSESSMENT_SCHEDULED',
+		'INTERVIEW_SCHEDULED',
+		'WITHDRAWN',
+	],
+	ASSESSMENT_TAKEN: [
+		'PASSED',
+		'NOT_QUALIFIED',
+		'ASSESSMENT_SCHEDULED',
+		'WITHDRAWN',
+	],
+	PASSED: [
+		'PRE_REGISTERED',
+		'INTERVIEW_SCHEDULED',
+		'ASSESSMENT_SCHEDULED',
+		'WITHDRAWN',
+	],
+	INTERVIEW_SCHEDULED: ['PRE_REGISTERED', 'WITHDRAWN'],
+	PRE_REGISTERED: ['ENROLLED', 'TEMPORARILY_ENROLLED', 'WITHDRAWN'],
+	TEMPORARILY_ENROLLED: ['ENROLLED', 'WITHDRAWN'],
+	NOT_QUALIFIED: ['UNDER_REVIEW', 'WITHDRAWN', 'REJECTED'],
+	ENROLLED: ['WITHDRAWN'],
+	REJECTED: ['UNDER_REVIEW', 'WITHDRAWN'],
+	WITHDRAWN: [],
+};
+
+const SAFE_BATCH_TARGETS = new Set(
+	TARGET_STATUS_OPTIONS.map((opt) => opt.value),
+);
+
 interface Props {
 	applicantType: string;
+	cutoffScore?: number | null;
+	hasAssessment?: boolean;
 }
 
-export default function PipelineBatchView({ applicantType }: Props) {
+export default function PipelineBatchView({
+	applicantType,
+	cutoffScore,
+	hasAssessment = false,
+}: Props) {
 	const { activeSchoolYearId, viewingSchoolYearId } = useSettingsStore();
 	const ayId = viewingSchoolYearId ?? activeSchoolYearId;
 
@@ -88,8 +153,15 @@ export default function PipelineBatchView({ applicantType }: Props) {
 	// Filters
 	const [search, setSearch] = useState('');
 	const [status, setStatus] = useState('ALL');
+	const [cohort, setCohort] = useState<CohortFilter>('ALL_INCOMING');
 	const [page, setPage] = useState(1);
+	const [incomingGradeIds, setIncomingGradeIds] = useState<{
+		g7: number | null;
+		g11: number | null;
+	}>({ g7: null, g11: null });
 	const limit = 50;
+
+	const showAssessment = hasAssessment && status === 'ASSESSMENT_SCHEDULED';
 
 	// Selection
 	const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -97,7 +169,37 @@ export default function PipelineBatchView({ applicantType }: Props) {
 	// Batch processing
 	const [targetStatus, setTargetStatus] = useState('');
 	const [isBatchProcessing, setIsBatchProcessing] = useState(false);
+	const [isPreflightOpen, setIsPreflightOpen] = useState(false);
 	const [batchResults, setBatchResults] = useState<BatchResults | null>(null);
+
+	// Assessment scores
+	const [scores, setScores] = useState<Record<number, string>>({});
+	const [savingId, setSavingId] = useState<number | null>(null);
+
+	useEffect(() => {
+		if (!ayId) return;
+
+		const fetchIncomingGradeIds = async () => {
+			try {
+				const res = await api.get(`/sections/${ayId}`);
+				const gradeLevels = (res.data.gradeLevels ?? []) as GradeLevelGroup[];
+
+				const findGradeId = (needle: string) =>
+					gradeLevels.find((g) =>
+						g.gradeLevelName.toUpperCase().includes(needle),
+					)?.gradeLevelId ?? null;
+
+				setIncomingGradeIds({
+					g7: findGradeId('GRADE 7'),
+					g11: findGradeId('GRADE 11'),
+				});
+			} catch {
+				setIncomingGradeIds({ g7: null, g11: null });
+			}
+		};
+
+		fetchIncomingGradeIds();
+	}, [ayId]);
 
 	const fetchData = useCallback(async () => {
 		if (!ayId) {
@@ -109,6 +211,17 @@ export default function PipelineBatchView({ applicantType }: Props) {
 			const params = new URLSearchParams();
 			if (search) params.append('search', search);
 			if (status !== 'ALL') params.append('status', status);
+
+			const selectedGradeId =
+				cohort === 'G7'
+					? incomingGradeIds.g7
+					: cohort === 'G11'
+						? incomingGradeIds.g11
+						: null;
+			if (selectedGradeId) {
+				params.append('gradeLevelId', String(selectedGradeId));
+			}
+
 			if (applicantType !== 'ALL')
 				params.append('applicantType', applicantType);
 			params.append('page', String(page));
@@ -124,19 +237,41 @@ export default function PipelineBatchView({ applicantType }: Props) {
 				);
 			}
 
+			if (cohort === 'ALL_INCOMING') {
+				const incomingIds = [incomingGradeIds.g7, incomingGradeIds.g11].filter(
+					(id): id is number => id !== null,
+				);
+
+				filteredApps = filteredApps.filter((app: Application) => {
+					if (incomingIds.length > 0) {
+						return incomingIds.includes(app.gradeLevelId);
+					}
+
+					const gradeName = app.gradeLevel?.name?.toUpperCase() ?? '';
+					return (
+						gradeName.includes('GRADE 7') || gradeName.includes('GRADE 11')
+					);
+				});
+			}
+
 			setApplications(filteredApps);
-			setTotal(
-				status === 'ALL'
-					? res.data.total -
-							(res.data.applications.length - filteredApps.length)
-					: res.data.total,
-			);
+			const removedCount = res.data.applications.length - filteredApps.length;
+			setTotal(Math.max(0, res.data.total - removedCount));
 		} catch (err) {
 			toastApiError(err as never);
 		} finally {
 			setLoading(false);
 		}
-	}, [ayId, search, status, applicantType, page]);
+	}, [
+		ayId,
+		search,
+		status,
+		cohort,
+		incomingGradeIds.g7,
+		incomingGradeIds.g11,
+		applicantType,
+		page,
+	]);
 
 	useEffect(() => {
 		fetchData();
@@ -145,7 +280,83 @@ export default function PipelineBatchView({ applicantType }: Props) {
 	// Reset selection when filters change
 	useEffect(() => {
 		setSelectedIds(new Set());
-	}, [status, search, applicantType, page]);
+	}, [status, search, cohort, applicantType, page]);
+
+	const selectedApplications = useMemo(
+		() => applications.filter((app) => selectedIds.has(app.id)),
+		[applications, selectedIds],
+	);
+
+	const selectedStatuses = useMemo(
+		() => Array.from(new Set(selectedApplications.map((app) => app.status))),
+		[selectedApplications],
+	);
+
+	const availableTargetStatuses = useMemo(() => {
+		if (selectedStatuses.length === 0) {
+			return TARGET_STATUS_OPTIONS.map((opt) => opt.value);
+		}
+
+		return TARGET_STATUS_OPTIONS.map((opt) => opt.value).filter((target) =>
+			selectedStatuses.every((currentStatus) =>
+				(VALID_TRANSITIONS[currentStatus] ?? []).includes(target),
+			),
+		);
+	}, [selectedStatuses]);
+
+	const preflightSummary = useMemo(() => {
+		if (!targetStatus || selectedApplications.length === 0) {
+			return null;
+		}
+
+		const eligible: Application[] = [];
+		const ineligible: Array<{ app: Application; reason: string }> = [];
+
+		for (const app of selectedApplications) {
+			const allowedTargets = VALID_TRANSITIONS[app.status] ?? [];
+			if (!SAFE_BATCH_TARGETS.has(targetStatus)) {
+				ineligible.push({
+					app,
+					reason: 'Target status is not allowed for bulk processing.',
+				});
+				continue;
+			}
+
+			if (!allowedTargets.includes(targetStatus)) {
+				ineligible.push({
+					app,
+					reason: `${app.status.replaceAll('_', ' ')} cannot move to ${targetStatus.replaceAll('_', ' ')}.`,
+				});
+				continue;
+			}
+
+			eligible.push(app);
+		}
+
+		const reasonGroups = ineligible.reduce<Record<string, number>>(
+			(acc, item) => {
+				acc[item.reason] = (acc[item.reason] ?? 0) + 1;
+				return acc;
+			},
+			{},
+		);
+
+		return {
+			eligible,
+			ineligible,
+			reasonGroups,
+		};
+	}, [selectedApplications, targetStatus]);
+
+	useEffect(() => {
+		if (
+			targetStatus &&
+			selectedIds.size > 0 &&
+			!availableTargetStatuses.includes(targetStatus)
+		) {
+			setTargetStatus('');
+		}
+	}, [targetStatus, selectedIds, availableTargetStatuses]);
 
 	const toggleSelect = (id: number) => {
 		setSelectedIds((prev) => {
@@ -164,18 +375,70 @@ export default function PipelineBatchView({ applicantType }: Props) {
 		}
 	};
 
-	const handleBatchProcess = async () => {
+	const selectCurrentPage = () => {
+		setSelectedIds(new Set(applications.map((app) => app.id)));
+	};
+
+	const clearSelection = () => {
+		setSelectedIds(new Set());
+	};
+
+	const invertCurrentPageSelection = () => {
+		setSelectedIds((prev) => {
+			const next = new Set(prev);
+			for (const app of applications) {
+				if (next.has(app.id)) {
+					next.delete(app.id);
+				} else {
+					next.add(app.id);
+				}
+			}
+			return next;
+		});
+	};
+
+	const handleBatchProcess = () => {
 		if (selectedIds.size === 0 || !targetStatus) return;
+		setIsPreflightOpen(true);
+	};
+
+	const handleConfirmBatchProcess = async () => {
+		if (!preflightSummary || !targetStatus) return;
+
+		const eligibleIds = preflightSummary.eligible.map((app) => app.id);
+		const skippedAsFailed = preflightSummary.ineligible.map((item) => ({
+			id: item.app.id,
+			name: `${item.app.lastName}, ${item.app.firstName}`,
+			trackingNumber: item.app.trackingNumber,
+			reason: item.reason,
+		}));
+
+		if (eligibleIds.length === 0) {
+			setBatchResults({
+				processed: selectedIds.size,
+				succeeded: [],
+				failed: skippedAsFailed,
+			});
+			setIsPreflightOpen(false);
+			return;
+		}
 
 		setIsBatchProcessing(true);
 		try {
 			const res = await api.patch('/applications/batch-process', {
-				ids: Array.from(selectedIds),
+				ids: eligibleIds,
 				targetStatus,
 			});
 
-			setBatchResults(res.data);
-			setSelectedIds(new Set());
+			const failed = [...skippedAsFailed, ...(res.data.failed ?? [])];
+			setBatchResults({
+				processed: selectedIds.size,
+				succeeded: res.data.succeeded ?? [],
+				failed,
+			});
+
+			setSelectedIds(new Set(failed.map((item) => item.id)));
+			setIsPreflightOpen(false);
 		} catch (err) {
 			toastApiError(err as never);
 		} finally {
@@ -188,13 +451,121 @@ export default function PipelineBatchView({ applicantType }: Props) {
 		fetchData();
 	};
 
+	const handleSaveResult = async (appId: number) => {
+		const raw = scores[appId];
+		if (!raw || isNaN(Number(raw))) return;
+
+		const score = Number(raw);
+		setSavingId(appId);
+		try {
+			const res = await api.patch(`/applications/${appId}/record-step-result`, {
+				stepOrder: 1,
+				kind: 'EXAM',
+				score,
+				notes: 'Recorded from Registration Pipelines',
+			});
+
+			if (res.data?.status === 'ASSESSMENT_TAKEN' && cutoffScore != null) {
+				if (score >= cutoffScore) {
+					await api.patch(`/applications/${appId}/pass`);
+				} else {
+					await api.patch(`/applications/${appId}/fail`);
+				}
+			}
+
+			sileo.success({
+				title: 'Result Recorded',
+				description: 'Assessment result saved.',
+			});
+			setScores((prev) => {
+				const next = { ...prev };
+				delete next[appId];
+				return next;
+			});
+			fetchData();
+		} catch (err) {
+			toastApiError(err as never);
+		} finally {
+			setSavingId(null);
+		}
+	};
+
+	const getRemarkByScore = (appId: number): string => {
+		const raw = scores[appId];
+		if (
+			raw == null ||
+			raw.trim() === '' ||
+			isNaN(Number(raw)) ||
+			cutoffScore == null
+		) {
+			return '---';
+		}
+
+		return Number(raw) >= cutoffScore ? 'PASSED' : 'FAILED';
+	};
+
 	const allSelected =
 		applications.length > 0 && selectedIds.size === applications.length;
+
+	const stageCounts = STAGE_QUICK_FILTERS.reduce<Record<string, number>>(
+		(acc, stage) => {
+			acc[stage.value] =
+				stage.value === 'ALL'
+					? applications.length
+					: applications.filter((app) => app.status === stage.value).length;
+			return acc;
+		},
+		{},
+	);
 
 	return (
 		<>
 			<Card className='border-none shadow-sm bg-[hsl(var(--card))]'>
 				<CardHeader className='px-3 sm:px-6 pb-3'>
+					<div className='space-y-3 mb-3'>
+						<div className='flex flex-wrap items-center gap-2'>
+							{COHORT_OPTIONS.map((option) => (
+								<Button
+									key={option.value}
+									type='button'
+									size='sm'
+									variant={cohort === option.value ? 'default' : 'outline'}
+									className='h-8 text-xs font-bold'
+									onClick={() => {
+										setCohort(option.value);
+										setPage(1);
+									}}
+								>
+									{option.label}
+								</Button>
+							))}
+						</div>
+
+						<div className='flex flex-wrap items-center gap-2'>
+							{STAGE_QUICK_FILTERS.map((stage) => (
+								<Button
+									key={stage.value}
+									type='button'
+									size='sm'
+									variant={status === stage.value ? 'default' : 'outline'}
+									className='h-8 text-xs font-bold'
+									onClick={() => {
+										setStatus(stage.value);
+										setPage(1);
+									}}
+								>
+									{stage.label}
+									<Badge
+										variant='secondary'
+										className='ml-2 h-5 px-1.5 text-[10px]'
+									>
+										{stageCounts[stage.value] ?? 0}
+									</Badge>
+								</Button>
+							))}
+						</div>
+					</div>
+
 					<div className='flex flex-col md:flex-row gap-3 md:gap-4 items-end'>
 						<div className='flex-1 space-y-2 w-full'>
 							<Label className='text-sm uppercase tracking-wider font-bold'>
@@ -213,39 +584,13 @@ export default function PipelineBatchView({ applicantType }: Props) {
 								/>
 							</div>
 						</div>
-						<div className='space-y-2'>
-							<Label className='text-sm uppercase tracking-wider font-bold'>
-								Application Status
-							</Label>
-							<Select
-								value={status}
-								onValueChange={(v) => {
-									setStatus(v);
-									setPage(1);
-								}}
-							>
-								<SelectTrigger className='h-10 md:w-56 text-sm font-bold'>
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									{STATUS_OPTIONS.map((opt) => (
-										<SelectItem
-											key={opt.value}
-											value={opt.value}
-											className='text-sm font-bold'
-										>
-											{opt.label}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
 						<Button
 							variant='outline'
 							className='h-10 px-3 w-full md:w-auto text-sm font-bold'
 							onClick={() => {
 								setSearch('');
 								setStatus('ALL');
+								setCohort('ALL_INCOMING');
 								setPage(1);
 							}}
 						>
@@ -255,58 +600,111 @@ export default function PipelineBatchView({ applicantType }: Props) {
 				</CardHeader>
 				<CardContent className='px-3 sm:px-6'>
 					{/* Batch Action Toolbar */}
-					{selectedIds.size > 0 && (
-						<div className='flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3'>
-							<span className='text-sm font-bold'>
-								{selectedIds.size} selected
-							</span>
+					<div className='sticky top-0 z-20 rounded-xl border border-primary/20 bg-background/95 backdrop-blur px-3 py-3 mb-3'>
+						<div className='flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between'>
+							<div className='flex flex-wrap items-center gap-2'>
+								<Badge
+									variant='secondary'
+									className='h-8 px-3 text-xs font-bold'
+								>
+									{selectedIds.size} selected
+								</Badge>
+								<Button
+									variant='outline'
+									size='sm'
+									className='h-8 text-xs font-bold'
+									onClick={selectCurrentPage}
+									disabled={applications.length === 0 || isBatchProcessing}
+								>
+									Select Page
+								</Button>
+								<Button
+									variant='outline'
+									size='sm'
+									className='h-8 text-xs font-bold'
+									onClick={invertCurrentPageSelection}
+									disabled={applications.length === 0 || isBatchProcessing}
+								>
+									Invert Page
+								</Button>
+								<Button
+									variant='ghost'
+									size='sm'
+									className='h-8 text-xs font-bold text-muted-foreground'
+									onClick={clearSelection}
+									disabled={selectedIds.size === 0 || isBatchProcessing}
+								>
+									Clear
+								</Button>
+							</div>
 
-							<Select
-								value={targetStatus}
-								onValueChange={setTargetStatus}
-							>
-								<SelectTrigger className='h-9 w-56 text-sm font-bold'>
-									<SelectValue placeholder='Target status...' />
-								</SelectTrigger>
-								<SelectContent>
-									{TARGET_STATUS_OPTIONS.map((opt) => (
-										<SelectItem
-											key={opt.value}
-											value={opt.value}
-											className='text-sm font-bold'
-										>
-											{opt.label}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
+							<div className='flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end lg:w-auto'>
+								<Select
+									value={targetStatus}
+									onValueChange={setTargetStatus}
+								>
+									<SelectTrigger className='h-9 sm:w-56 text-sm font-bold'>
+										<SelectValue placeholder='Target status...' />
+									</SelectTrigger>
+									<SelectContent>
+										{TARGET_STATUS_OPTIONS.map((opt) => {
+											const isAvailableForSelection =
+												selectedIds.size === 0 ||
+												availableTargetStatuses.includes(opt.value);
+											return (
+												<SelectItem
+													key={opt.value}
+													value={opt.value}
+													disabled={!isAvailableForSelection}
+													className='text-sm font-bold'
+												>
+													{opt.label}
+													{!isAvailableForSelection
+														? ' (not valid for selection)'
+														: ''}
+												</SelectItem>
+											);
+										})}
+									</SelectContent>
+								</Select>
 
-							<Button
-								size='sm'
-								disabled={!targetStatus || isBatchProcessing}
-								onClick={handleBatchProcess}
-								className='font-bold'
-							>
-								{isBatchProcessing ? (
-									<>
-										<Loader2 className='size-4 animate-spin mr-1.5' />
-										Processing...
-									</>
-								) : (
-									`Process ${selectedIds.size} Applicant${selectedIds.size > 1 ? 's' : ''}`
-								)}
-							</Button>
-
-							<Button
-								variant='ghost'
-								size='sm'
-								onClick={() => setSelectedIds(new Set())}
-								className='font-bold text-muted-foreground'
-							>
-								Deselect All
-							</Button>
+								<Button
+									size='sm'
+									disabled={
+										selectedIds.size === 0 ||
+										!targetStatus ||
+										isBatchProcessing ||
+										(preflightSummary?.eligible.length ?? 0) === 0
+									}
+									onClick={handleBatchProcess}
+									className='font-bold'
+								>
+									{isBatchProcessing ? (
+										<>
+											<Loader2 className='size-4 animate-spin mr-1.5' />
+											Processing...
+										</>
+									) : (
+										`Review ${selectedIds.size} Applicant${selectedIds.size > 1 ? 's' : ''}`
+									)}
+								</Button>
+							</div>
 						</div>
-					)}
+
+						{selectedIds.size > 0 && availableTargetStatuses.length === 0 && (
+							<p className='mt-2 text-xs font-bold text-destructive'>
+								No shared safe target is available for this selection. Group
+								applicants by status first.
+							</p>
+						)}
+						{selectedIds.size > 0 && targetStatus && preflightSummary && (
+							<p className='mt-2 text-xs font-bold text-muted-foreground'>
+								{preflightSummary.eligible.length} ready to process,{' '}
+								{preflightSummary.ineligible.length} blocked by transition
+								rules.
+							</p>
+						)}
+					</div>
 
 					{/* Table */}
 					<div className='rounded-xl border overflow-hidden'>
@@ -342,6 +740,19 @@ export default function PipelineBatchView({ applicantType }: Props) {
 									<TableHead className='text-center font-bold text-primary-foreground hidden xl:table-cell text-sm'>
 										DATE
 									</TableHead>
+									{showAssessment && (
+										<>
+											<TableHead className='text-center font-bold text-primary-foreground text-sm'>
+												ASSESSMENT SCORE
+											</TableHead>
+											<TableHead className='text-center font-bold text-primary-foreground text-sm'>
+												REMARKS
+											</TableHead>
+											<TableHead className='text-center font-bold text-primary-foreground text-sm'>
+												ACTIONS
+											</TableHead>
+										</>
+									)}
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -375,12 +786,31 @@ export default function PipelineBatchView({ applicantType }: Props) {
 													<Skeleton className='h-4 w-24' />
 												</div>
 											</TableCell>
+											{showAssessment && (
+												<>
+													<TableCell className='text-sm'>
+														<div className='flex justify-center'>
+															<Skeleton className='h-8 w-28' />
+														</div>
+													</TableCell>
+													<TableCell className='text-sm'>
+														<div className='flex justify-center'>
+															<Skeleton className='h-4 w-16' />
+														</div>
+													</TableCell>
+													<TableCell className='text-sm'>
+														<div className='flex justify-center'>
+															<Skeleton className='h-8 w-16' />
+														</div>
+													</TableCell>
+												</>
+											)}
 										</TableRow>
 									))
 								) : applications.length === 0 ? (
 									<TableRow>
 										<TableCell
-											colSpan={6}
+											colSpan={showAssessment ? 9 : 6}
 											className='h-24 text-center text-sm font-bold'
 										>
 											No applicants found.
@@ -434,6 +864,67 @@ export default function PipelineBatchView({ applicantType }: Props) {
 											<TableCell className='text-sm hidden xl:table-cell font-bold'>
 												{format(new Date(app.createdAt), 'MMMM dd, yyyy')}
 											</TableCell>
+											{showAssessment && (
+												<>
+													<TableCell>
+														<div className='flex flex-col items-center justify-center gap-1'>
+															<Input
+																type='number'
+																min={0}
+																placeholder='0'
+																className='h-8 w-20 text-center text-sm font-bold'
+																value={scores[app.id] ?? ''}
+																onChange={(e) =>
+																	setScores((prev) => ({
+																		...prev,
+																		[app.id]: e.target.value,
+																	}))
+																}
+																onClick={(e) => e.stopPropagation()}
+															/>
+															<span className='text-xs font-bold mt-1'>
+																Cut-off score: {cutoffScore ?? 'N/A'}
+															</span>
+														</div>
+													</TableCell>
+													<TableCell className='text-center'>
+														<span
+															className={`text-xs font-bold ${
+																getRemarkByScore(app.id) === 'PASSED'
+																	? 'text-emerald-700'
+																	: getRemarkByScore(app.id) === 'FAILED'
+																		? 'text-destructive'
+																		: 'text-muted-foreground'
+															}`}
+														>
+															{getRemarkByScore(app.id)}
+														</span>
+													</TableCell>
+													<TableCell className='text-center'>
+														<Button
+															variant='secondary'
+															size='sm'
+															className='h-8 text-sm font-bold bg-primary/10 hover:bg-primary border-2 border-primary/20 hover:text-primary-foreground'
+															disabled={
+																savingId === app.id ||
+																!scores[app.id] ||
+																isNaN(Number(scores[app.id]))
+															}
+															onClick={(e) => {
+																e.stopPropagation();
+																handleSaveResult(app.id);
+															}}
+														>
+															{savingId === app.id ? (
+																<Loader2 className='h-3 w-3 animate-spin mr-1' />
+															) : (
+																<Save className='h-3 w-3 mr-1' />
+															)}
+															Save Result
+														</Button>
+													</TableCell>
+												</>
+											)}
 										</TableRow>
 									))
 								)}
@@ -476,9 +967,104 @@ export default function PipelineBatchView({ applicantType }: Props) {
 				</CardContent>
 			</Card>
 
+			<Dialog
+				open={isPreflightOpen}
+				onOpenChange={(open) => {
+					if (!isBatchProcessing) {
+						setIsPreflightOpen(open);
+					}
+				}}
+			>
+				<DialogContent className='max-w-xl'>
+					<DialogHeader>
+						<DialogTitle className='text-base font-bold'>
+							Confirm Batch Processing
+						</DialogTitle>
+						<DialogDescription className='text-sm font-bold'>
+							Selected target status:{' '}
+							{targetStatus.replaceAll('_', ' ') || 'N/A'}
+						</DialogDescription>
+					</DialogHeader>
+
+					{preflightSummary && (
+						<div className='space-y-3'>
+							<div className='grid grid-cols-3 gap-2'>
+								<div className='rounded-lg border border-primary/20 bg-primary/5 px-3 py-2'>
+									<p className='text-xs text-muted-foreground font-bold'>
+										Selected
+									</p>
+									<p className='text-lg font-bold'>{selectedIds.size}</p>
+								</div>
+								<div className='rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2'>
+									<p className='text-xs text-emerald-700 font-bold'>Eligible</p>
+									<p className='text-lg font-bold text-emerald-700'>
+										{preflightSummary.eligible.length}
+									</p>
+								</div>
+								<div className='rounded-lg border border-red-200 bg-red-50 px-3 py-2'>
+									<p className='text-xs text-red-700 font-bold'>Blocked</p>
+									<p className='text-lg font-bold text-red-700'>
+										{preflightSummary.ineligible.length}
+									</p>
+								</div>
+							</div>
+
+							{preflightSummary.ineligible.length > 0 && (
+								<div className='rounded-lg border border-red-200 bg-red-50/40 p-3 space-y-2'>
+									<p className='text-sm font-bold text-red-700'>
+										Blocked groups
+									</p>
+									<div className='space-y-1 max-h-32 overflow-auto'>
+										{Object.entries(preflightSummary.reasonGroups).map(
+											([reason, count]) => (
+												<p
+													key={reason}
+													className='text-xs font-bold text-red-700'
+												>
+													{count}x {reason}
+												</p>
+											),
+										)}
+									</div>
+								</div>
+							)}
+						</div>
+					)}
+
+					<DialogFooter className='gap-2'>
+						<Button
+							variant='outline'
+							onClick={() => setIsPreflightOpen(false)}
+							disabled={isBatchProcessing}
+							className='font-bold'
+						>
+							Cancel
+						</Button>
+						<Button
+							onClick={handleConfirmBatchProcess}
+							disabled={
+								isBatchProcessing ||
+								(preflightSummary?.eligible.length ?? 0) === 0
+							}
+							className='font-bold'
+						>
+							{isBatchProcessing ? (
+								<>
+									<Loader2 className='size-4 animate-spin mr-1.5' />
+									Processing...
+								</>
+							) : (
+								`Process ${preflightSummary?.eligible.length ?? 0} Eligible`
+							)}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
 			{/* Batch Results Modal */}
 			<BatchResultsModal
 				results={batchResults}
+				onReselectFailed={(ids) => setSelectedIds(new Set(ids))}
 				onClose={handleResultsClose}
 			/>
 		</>

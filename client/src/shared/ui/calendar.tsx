@@ -183,7 +183,10 @@ function Calendar({
 					);
 				},
 				Dropdown: ({ value, onChange, options, className }) => {
-					const isYear = options?.[0]?.value > 12;
+					const firstOptionValue = options?.[0]?.value;
+					const parsedFirstValue = Number(firstOptionValue);
+					const isYear =
+						Number.isFinite(parsedFirstValue) && parsedFirstValue > 12;
 					const selectedOption = options?.find(
 						(option) => option.value === value,
 					);

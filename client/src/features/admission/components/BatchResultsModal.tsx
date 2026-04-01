@@ -27,10 +27,15 @@ export interface BatchResults {
 
 interface Props {
 	results: BatchResults | null;
+	onReselectFailed?: (ids: number[]) => void;
 	onClose: () => void;
 }
 
-export default function BatchResultsModal({ results, onClose }: Props) {
+export default function BatchResultsModal({
+	results,
+	onReselectFailed,
+	onClose,
+}: Props) {
 	if (!results) return null;
 
 	const { processed, succeeded, failed } = results;
@@ -128,6 +133,18 @@ export default function BatchResultsModal({ results, onClose }: Props) {
 				</div>
 
 				<DialogFooter>
+					{failed.length > 0 && onReselectFailed && (
+						<Button
+							variant='outline'
+							onClick={() => {
+								onReselectFailed(failed.map((item) => item.id));
+								onClose();
+							}}
+							className='font-bold'
+						>
+							Re-select Failed & Close
+						</Button>
+					)}
 					<Button
 						onClick={onClose}
 						className='font-bold'

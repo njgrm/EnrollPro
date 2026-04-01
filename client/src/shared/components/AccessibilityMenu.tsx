@@ -26,7 +26,7 @@ export function AccessibilityMenu() {
 							<Button
 								variant='outline'
 								size='sm'
-								className='h-8 w-8 p-0'
+								className='h-8 w-8 p-0 text-primary hover:bg-primary/10	hover:text-primary'
 								aria-label='Accessibility options'
 							>
 								<Accessibility className='size-4' />
@@ -63,30 +63,28 @@ export function AccessibilityMenu() {
 								<Label className='text-sm font-bold flex items-center gap-2'>
 									<Type className='size-3.5' /> Text Size
 								</Label>
-								<span className='text-sm font-bold text-muted-foreground'>
-									{fontSize}%
-								</span>
+								<span className='text-sm font-bold'>{fontSize}%</span>
 							</div>
 							<div className='flex items-center gap-2'>
 								<Button
 									variant='outline'
 									size='xs'
-									className='flex-1 bg-primary hover:bg-primary/90 text-primary-foreground'
+									className='flex-1 bg-primary hover:bg-primary/90'
 									onClick={() => setFontSize(Math.max(80, fontSize - 10))}
 									disabled={fontSize <= 80}
 									aria-label='Decrease text size'
 								>
-									<Minus className='size-4 font-black' />
+									<Minus className='size-4 font-black text-primary-foreground' />
 								</Button>
 								<Button
 									variant='outline'
 									size='xs'
-									className='flex-1 bg-primary hover:bg-primary/90 text-primary-foreground'
+									className='flex-1 bg-primary hover:bg-primary/90'
 									onClick={() => setFontSize(Math.min(150, fontSize + 10))}
 									disabled={fontSize >= 150}
 									aria-label='Increase text size'
 								>
-									<Plus className='size-4 font-black' />
+									<Plus className='size-4 font-black text-primary-foreground' />
 								</Button>
 							</div>
 						</div>

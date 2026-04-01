@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
 	Search,
 	Eye,
@@ -125,7 +125,6 @@ export default function Students() {
 	const [debouncedSearch, setDebouncedSearch] = useState('');
 	const [gradeLevelFilter, setGradeLevelFilter] = useState<string>('all');
 	const [sectionFilter, setSectionFilter] = useState<string>('all');
-	const [statusFilter, setStatusFilter] = useState<string>('all');
 	const [page, setPage] = useState(1);
 	const [totalPages, setTotalPages] = useState(1);
 	const [total, setTotal] = useState(0);
@@ -221,6 +220,7 @@ export default function Students() {
 		try {
 			const params: Record<string, string | number> = {
 				schoolYearId: ayId,
+				status: 'ENROLLED',
 				page,
 				limit: 15,
 				sortBy,
@@ -229,7 +229,6 @@ export default function Students() {
 			if (debouncedSearch) params.search = debouncedSearch;
 			if (gradeLevelFilter !== 'all') params.gradeLevelId = gradeLevelFilter;
 			if (sectionFilter !== 'all') params.sectionId = sectionFilter;
-			if (statusFilter !== 'all') params.status = statusFilter;
 
 			const res = await api.get('/students', { params });
 			setStudents(res.data.students || []);
@@ -248,7 +247,6 @@ export default function Students() {
 		debouncedSearch,
 		gradeLevelFilter,
 		sectionFilter,
-		statusFilter,
 		sortBy,
 		sortOrder,
 		initialLoad,
@@ -272,37 +270,11 @@ export default function Students() {
 		}
 	};
 
-	const getStatusBadge = (status: string) => {
-		switch (status) {
-			case 'ENROLLED':
-				return (
-					<Badge className='bg-green-100 text-green-700 hover:bg-green-100 border-green-200'>
-						Enrolled
-					</Badge>
-				);
-			case 'PRE_REGISTERED':
-				return (
-					<Badge className='bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200'>
-						Pre-registered
-					</Badge>
-				);
-			case 'SUBMITTED':
-			case 'UNDER_REVIEW':
-				return (
-					<Badge className='bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200'>
-						Processing
-					</Badge>
-				);
-			case 'REJECTED':
-				return (
-					<Badge className='bg-red-100 text-red-700 hover:bg-red-100 border-red-200'>
-						Rejected
-					</Badge>
-				);
-			default:
-				return <Badge variant='outline'>{status.replace('_', ' ')}</Badge>;
-		}
-	};
+	const getEnrolledBadge = () => (
+		<Badge className='bg-green-100 text-green-700 hover:bg-green-100 border-green-200'>
+			Enrolled
+		</Badge>
+	);
 
 	const formatDate = (dateString: string) => {
 		return formatManilaDate(dateString, {
@@ -325,6 +297,14 @@ export default function Students() {
 		}
 		return age;
 	};
+
+	const visibleSectionCount = useMemo(() => {
+		const unique = new Set<string>();
+		students.forEach((student) => {
+			if (student.section) unique.add(student.section);
+		});
+		return unique.size;
+	}, [students]);
 
 	if (!ayId) {
 		return (
@@ -352,147 +332,265 @@ export default function Students() {
 	return (
 		<div className='space-y-6'>
 			{/* Header */}
-			<div>
-				<h1 className='text-3xl font-bold flex items-center gap-2'>
+			<div className='space-y-1'>
+				<h1 className='text-2xl sm:text-3xl font-bold flex items-center gap-2'>
 					<Users className='h-8 w-8' />
-					Students
+					Enrolled Students
 				</h1>
-				<p className='text-sm text-[hsl(var(--muted-foreground))]'>
-					Search and manage enrolled student records
+				<p className='text-sm font-medium text-[hsl(var(--muted-foreground))]'>
+					Manage officially enrolled learner records for the selected school
+					year.
 				</p>
 			</div>
 
 			{/* Stats Cards */}
-			<div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-				<Card>
+			<div className='grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4'>
+				<Card className='border-none shadow-sm bg-[hsl(var(--card))]'>
 					<CardHeader className='pb-2'>
-						<CardDescription>Total Records</CardDescription>
-						<CardTitle className='text-2xl'>{total}</CardTitle>
+						<CardDescription className='text-xs uppercase tracking-wider font-bold'>
+							Total Enrolled
+						</CardDescription>
+						<CardTitle className='text-2xl font-extrabold'>{total}</CardTitle>
 					</CardHeader>
 				</Card>
-				<Card>
+				<Card className='border-none shadow-sm bg-[hsl(var(--card))]'>
 					<CardHeader className='pb-2'>
-						<CardDescription>Official Enrollment</CardDescription>
-						<CardTitle className='text-2xl text-green-600'>
-							{students.filter((s) => s.status === 'ENROLLED').length}
+						<CardDescription className='text-xs uppercase tracking-wider font-bold'>
+							Showing On Current Page
+						</CardDescription>
+						<CardTitle className='text-2xl font-extrabold text-green-600'>
+							{students.length}
 						</CardTitle>
 					</CardHeader>
 				</Card>
-				<Card>
+				<Card className='border-none shadow-sm bg-[hsl(var(--card))]'>
 					<CardHeader className='pb-2'>
-						<CardDescription>Pre-registered</CardDescription>
-						<CardTitle className='text-2xl text-emerald-600'>
-							{students.filter((s) => s.status === 'PRE_REGISTERED').length}
+						<CardDescription className='text-xs uppercase tracking-wider font-bold'>
+							Sections On Current Page
+						</CardDescription>
+						<CardTitle className='text-2xl font-extrabold text-blue-600'>
+							{visibleSectionCount}
 						</CardTitle>
 					</CardHeader>
 				</Card>
 			</div>
 
 			{/* Search and Filters */}
-			<Card>
-				<CardHeader>
-					<CardTitle className='text-lg'>Search & Filter</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4'>
-						{/* Search */}
-						<div className='lg:col-span-2'>
+			<Card className='border-none shadow-sm bg-[hsl(var(--card))]'>
+				<CardHeader className='px-3 sm:px-6 pb-3'>
+					<div className='flex flex-col md:flex-row gap-3 md:gap-4 items-stretch md:items-end'>
+						<div className='flex-1 space-y-2 w-full'>
+							<Label className='text-xs sm:text-sm uppercase tracking-wider font-bold'>
+								Search Student
+							</Label>
 							<div className='relative'>
-								<Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[hsl(var(--muted-foreground))]' />
+								<Search className='absolute left-2.5 top-2.5 h-4 w-4' />
 								<Input
-									placeholder='Search by LRN or name...'
+									placeholder='LRN, first name, last name...'
+									className='pl-9 h-10 text-sm font-bold'
 									value={search}
-									onChange={(e) => setSearch(e.target.value)}
-									className='pl-9'
+									onChange={(e) => {
+										setSearch(e.target.value);
+										setPage(1);
+									}}
 								/>
 							</div>
 						</div>
-
-						{/* Grade Level Filter */}
-						<div>
-							<Select
-								value={gradeLevelFilter}
-								onValueChange={setGradeLevelFilter}
-							>
-								<SelectTrigger>
-									<SelectValue placeholder='Grade Level' />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value='all'>All Grades</SelectItem>
-									{gradeLevels.map((gl) => (
+						<div className='grid grid-cols-1 md:flex gap-3 md:gap-4 w-full md:w-auto'>
+							<div className='space-y-2'>
+								<Label className='text-xs sm:text-sm uppercase tracking-wider font-bold'>
+									Grade Level
+								</Label>
+								<Select
+									value={gradeLevelFilter}
+									onValueChange={(value) => {
+										setGradeLevelFilter(value);
+										setPage(1);
+									}}
+								>
+									<SelectTrigger className='h-10 w-full md:w-52 text-sm font-bold'>
+										<SelectValue placeholder='All Grades' />
+									</SelectTrigger>
+									<SelectContent>
 										<SelectItem
-											key={gl.id}
-											value={gl.id.toString()}
+											value='all'
+											className='text-sm font-bold'
 										>
-											{gl.name}
+											All Grades
 										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
-
-						{/* Section Filter */}
-						<div>
-							<Select
-								value={sectionFilter}
-								onValueChange={setSectionFilter}
-							>
-								<SelectTrigger>
-									<SelectValue placeholder='Section' />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value='all'>All Sections</SelectItem>
-									{filteredSections.map((sec) => (
+										{gradeLevels.map((gl) => (
+											<SelectItem
+												key={gl.id}
+												value={gl.id.toString()}
+												className='text-sm font-bold'
+											>
+												{gl.name}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+							<div className='space-y-2'>
+								<Label className='text-xs sm:text-sm uppercase tracking-wider font-bold'>
+									Section
+								</Label>
+								<Select
+									value={sectionFilter}
+									onValueChange={(value) => {
+										setSectionFilter(value);
+										setPage(1);
+									}}
+								>
+									<SelectTrigger className='h-10 w-full md:w-52 text-sm font-bold'>
+										<SelectValue placeholder='All Sections' />
+									</SelectTrigger>
+									<SelectContent>
 										<SelectItem
-											key={sec.id}
-											value={sec.id.toString()}
+											value='all'
+											className='text-sm font-bold'
 										>
-											{sec.name}
+											All Sections
 										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
+										{filteredSections.map((sec) => (
+											<SelectItem
+												key={sec.id}
+												value={sec.id.toString()}
+												className='text-sm font-bold'
+											>
+												{sec.name}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
 						</div>
-
-						{/* Status Filter */}
-						<div>
-							<Select
-								value={statusFilter}
-								onValueChange={setStatusFilter}
+						<div className='flex w-full md:w-auto items-center gap-2'>
+							<Button
+								variant='outline'
+								className='h-10 px-3 text-sm font-bold w-full md:w-auto'
+								onClick={() => {
+									setSearch('');
+									setGradeLevelFilter('all');
+									setSectionFilter('all');
+									setSortBy('createdAt');
+									setSortOrder('desc');
+									setPage(1);
+								}}
 							>
-								<SelectTrigger>
-									<SelectValue placeholder='Status' />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value='all'>All Status</SelectItem>
-									<SelectItem value='ENROLLED'>Enrolled</SelectItem>
-									<SelectItem value='PRE_REGISTERED'>Pre-registered</SelectItem>
-									<SelectItem value='UNDER_REVIEW'>Processing</SelectItem>
-									<SelectItem value='REJECTED'>Rejected</SelectItem>
-								</SelectContent>
-							</Select>
+								Reset
+							</Button>
 						</div>
 					</div>
-				</CardContent>
+				</CardHeader>
 			</Card>
 
-			{/* Students Table */}
-			<Card>
-				<CardHeader>
-					<CardTitle>Student Records</CardTitle>
-					<CardDescription>
-						Showing {students.length} of {total} students
+			{/* Student List */}
+			<Card className='border-none shadow-sm bg-[hsl(var(--card))]'>
+				<CardHeader className='px-3 sm:px-6 pb-2'>
+					<CardTitle className='text-base sm:text-lg font-extrabold'>
+						Enrolled Student Records
+					</CardTitle>
+					<CardDescription className='text-xs sm:text-sm font-semibold'>
+						Showing {students.length} of {total} enrolled students
 					</CardDescription>
 				</CardHeader>
-				<CardContent>
-					<div className='w-full overflow-x-auto rounded-lg border'>
-						<Table>
-							<TableHeader>
+				<CardContent className='px-3 sm:px-6 pb-4'>
+					<div className='md:hidden space-y-3'>
+						{loading ? (
+							Array.from({ length: 4 }).map((_, index) => (
+								<div
+									key={index}
+									className='rounded-xl border p-3 space-y-3 animate-pulse'
+								>
+									<div className='h-4 bg-muted rounded w-2/3' />
+									<div className='h-3 bg-muted rounded w-1/3' />
+									<div className='h-9 bg-muted rounded w-full' />
+								</div>
+							))
+						) : students.length === 0 ? (
+							<div className='rounded-xl border p-6 text-center text-sm font-bold'>
+								No enrolled students found for the selected filters.
+							</div>
+						) : (
+							students.map((student) => (
+								<div
+									key={student.id}
+									className='rounded-xl border bg-[hsl(var(--card))] p-3'
+								>
+									<div className='flex items-start justify-between gap-2'>
+										<div className='min-w-0'>
+											<p className='font-bold text-sm uppercase leading-tight break-words'>
+												{student.fullName}
+											</p>
+											<p className='text-xs font-bold text-muted-foreground truncate'>
+												{student.trackingNumber}
+											</p>
+										</div>
+										{getEnrolledBadge()}
+									</div>
+
+									<div className='mt-2 grid grid-cols-2 gap-2 text-xs'>
+										<div>
+											<p className='text-[10px] uppercase tracking-wider font-bold text-muted-foreground'>
+												LRN
+											</p>
+											<p className='font-bold'>{student.lrn}</p>
+										</div>
+										<div>
+											<p className='text-[10px] uppercase tracking-wider font-bold text-muted-foreground'>
+												Grade Level
+											</p>
+											<p className='font-bold'>{student.gradeLevel}</p>
+										</div>
+										<div>
+											<p className='text-[10px] uppercase tracking-wider font-bold text-muted-foreground'>
+												Section
+											</p>
+											<p className='font-bold'>{student.section || '—'}</p>
+										</div>
+										<div>
+											<p className='text-[10px] uppercase tracking-wider font-bold text-muted-foreground'>
+												Strand
+											</p>
+											<p className='font-bold'>{student.strand || '—'}</p>
+										</div>
+									</div>
+
+									<p className='mt-2 text-[11px] font-bold text-muted-foreground'>
+										Enrolled {formatDate(student.createdAt)}
+									</p>
+
+									<Button
+										variant='secondary'
+										size='sm'
+										className='mt-3 h-9 w-full text-xs font-bold bg-primary/10 hover:bg-primary border-2 border-primary/20 hover:text-primary-foreground'
+										onClick={() => handleViewDetails(student.id)}
+									>
+										<Eye className='h-3.5 w-3.5 mr-1.5' />
+										View Student
+									</Button>
+								</div>
+							))
+						)}
+					</div>
+
+					<div className='hidden md:block rounded-xl border overflow-hidden'>
+						<Table className='border-collapse'>
+							<TableHeader className='bg-[hsl(var(--primary))]'>
 								<TableRow>
 									<TableHead className='p-0'>
 										<button
+											onClick={() => handleSort('lastName')}
+											className='flex h-11 w-full items-center justify-center gap-1 px-3 text-xs font-bold uppercase tracking-wider text-primary-foreground/90 hover:bg-primary/90 transition-colors'
+										>
+											Student
+											{getSortIcon('lastName')}
+										</button>
+									</TableHead>
+									<TableHead className='p-0'>
+										<button
 											onClick={() => handleSort('lrn')}
-											className='flex h-12 w-full items-center px-4 font-semibold hover:bg-[hsl(var(--muted))]/50 transition-colors cursor-pointer relative z-10'
+											className='flex h-11 w-full items-center justify-center gap-1 px-3 text-xs font-bold uppercase tracking-wider text-primary-foreground/90 hover:bg-primary/90 transition-colors'
 										>
 											LRN
 											{getSortIcon('lrn')}
@@ -500,17 +598,8 @@ export default function Students() {
 									</TableHead>
 									<TableHead className='p-0'>
 										<button
-											onClick={() => handleSort('lastName')}
-											className='flex h-12 w-full items-center px-4 font-semibold hover:bg-[hsl(var(--muted))]/50 transition-colors cursor-pointer relative z-10'
-										>
-											Full Name
-											{getSortIcon('lastName')}
-										</button>
-									</TableHead>
-									<TableHead className='p-0 hidden md:table-cell'>
-										<button
 											onClick={() => handleSort('gradeLevel')}
-											className='flex h-12 w-full items-center px-4 font-semibold hover:bg-[hsl(var(--muted))]/50 transition-colors cursor-pointer relative z-10'
+											className='flex h-11 w-full items-center justify-center gap-1 px-3 text-xs font-bold uppercase tracking-wider text-primary-foreground/90 hover:bg-primary/90 transition-colors'
 										>
 											Grade Level
 											{getSortIcon('gradeLevel')}
@@ -519,81 +608,94 @@ export default function Students() {
 									<TableHead className='p-0 hidden lg:table-cell'>
 										<button
 											onClick={() => handleSort('section')}
-											className='flex h-12 w-full items-center px-4 font-semibold hover:bg-[hsl(var(--muted))]/50 transition-colors cursor-pointer relative z-10'
+											className='flex h-11 w-full items-center justify-center gap-1 px-3 text-xs font-bold uppercase tracking-wider text-primary-foreground/90 hover:bg-primary/90 transition-colors'
 										>
 											Section
 											{getSortIcon('section')}
 										</button>
 									</TableHead>
-									<TableHead className='p-0 hidden lg:table-cell'>
+									<TableHead className='p-0 hidden xl:table-cell'>
 										<button
 											onClick={() => handleSort('strand')}
-											className='flex h-12 w-full items-center px-4 font-semibold hover:bg-[hsl(var(--muted))]/50 transition-colors cursor-pointer relative z-10'
+											className='flex h-11 w-full items-center justify-center gap-1 px-3 text-xs font-bold uppercase tracking-wider text-primary-foreground/90 hover:bg-primary/90 transition-colors'
 										>
 											Strand
 											{getSortIcon('strand')}
 										</button>
 									</TableHead>
-									<TableHead className='p-0'>
-										<button
-											onClick={() => handleSort('status')}
-											className='flex h-12 w-full items-center px-4 font-semibold hover:bg-[hsl(var(--muted))]/50 transition-colors cursor-pointer relative z-10'
-										>
-											Status
-											{getSortIcon('status')}
-										</button>
-									</TableHead>
-									<TableHead className='p-0 hidden md:table-cell'>
+									<TableHead className='p-0 hidden lg:table-cell'>
 										<button
 											onClick={() => handleSort('createdAt')}
-											className='flex h-12 w-full items-center px-4 font-semibold hover:bg-[hsl(var(--muted))]/50 transition-colors cursor-pointer relative z-10'
+											className='flex h-11 w-full items-center justify-center gap-1 px-3 text-xs font-bold uppercase tracking-wider text-primary-foreground/90 hover:bg-primary/90 transition-colors'
 										>
-											Applied
+											Enrolled
 											{getSortIcon('createdAt')}
 										</button>
 									</TableHead>
-									<TableHead className='font-semibold text-right px-4'>
+									<TableHead className='text-center font-bold text-primary-foreground text-xs uppercase tracking-wider'>
 										Actions
 									</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
-								{loading ? null : students.length === 0 ? (
+								{loading ? (
 									<TableRow>
 										<TableCell
-											colSpan={8}
-											className='text-center py-8 text-[hsl(var(--muted-foreground))]'
+											colSpan={7}
+											className='h-20 text-center text-sm font-bold text-muted-foreground'
 										>
-											No students found. Try adjusting your search or filters.
+											Loading enrolled students...
+										</TableCell>
+									</TableRow>
+								) : students.length === 0 ? (
+									<TableRow>
+										<TableCell
+											colSpan={7}
+											className='h-20 text-center text-sm font-bold text-muted-foreground'
+										>
+											No enrolled students found for the selected filters.
 										</TableCell>
 									</TableRow>
 								) : (
 									students.map((student) => (
-										<TableRow key={student.id}>
-											<TableCell className=' text-xs'>{student.lrn}</TableCell>
-											<TableCell className='font-medium'>
-												{student.fullName}
+										<TableRow
+											key={student.id}
+											className='hover:bg-[hsl(var(--muted))] transition-colors text-center text-sm'
+										>
+											<TableCell>
+												<div className='flex flex-col text-left'>
+													<span className='font-bold text-sm uppercase leading-tight'>
+														{student.fullName}
+													</span>
+													<span className='text-xs font-bold text-muted-foreground'>
+														{student.trackingNumber}
+													</span>
+												</div>
 											</TableCell>
-											<TableCell className='hidden md:table-cell'>
+											<TableCell className='font-bold text-sm'>
+												{student.lrn}
+											</TableCell>
+											<TableCell className='font-bold text-sm'>
 												{student.gradeLevel}
 											</TableCell>
-											<TableCell className='hidden lg:table-cell'>
+											<TableCell className='hidden lg:table-cell font-bold text-sm'>
 												{student.section || '—'}
 											</TableCell>
-											<TableCell className='hidden lg:table-cell'>
+											<TableCell className='hidden xl:table-cell text-sm'>
 												{student.strand || '—'}
 											</TableCell>
-											<TableCell>{getStatusBadge(student.status)}</TableCell>
-											<TableCell className='hidden md:table-cell text-sm text-[hsl(var(--muted-foreground))]'>
+											<TableCell className='hidden lg:table-cell text-sm font-bold'>
 												{formatDate(student.createdAt)}
 											</TableCell>
-											<TableCell className='text-right'>
+											<TableCell>
 												<Button
-													variant='ghost'
+													variant='secondary'
 													size='sm'
+													className='h-8 text-xs font-bold bg-primary/10 hover:bg-primary border-2 border-primary/20 hover:text-primary-foreground'
 													onClick={() => handleViewDetails(student.id)}
 												>
-													<Eye className='h-4 w-4' />
+													<Eye className='h-3.5 w-3.5 mr-1.5' />
+													View
 												</Button>
 											</TableCell>
 										</TableRow>
@@ -605,14 +707,15 @@ export default function Students() {
 
 					{/* Pagination */}
 					{totalPages > 1 && (
-						<div className='flex items-center justify-between mt-4'>
-							<p className='text-sm text-[hsl(var(--muted-foreground))]'>
+						<div className='mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+							<p className='text-sm font-semibold text-[hsl(var(--muted-foreground))]'>
 								Page {page} of {totalPages}
 							</p>
 							<div className='flex gap-2'>
 								<Button
 									variant='outline'
 									size='sm'
+									className='h-9 font-bold'
 									onClick={() => setPage((p) => Math.max(1, p - 1))}
 									disabled={page === 1}
 								>
@@ -621,6 +724,7 @@ export default function Students() {
 								<Button
 									variant='outline'
 									size='sm'
+									className='h-9 font-bold'
 									onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
 									disabled={page === totalPages}
 								>
@@ -637,184 +741,204 @@ export default function Students() {
 				open={detailDialogOpen}
 				onOpenChange={setDetailDialogOpen}
 			>
-				<DialogContent className='max-w-2xl max-h-[90vh] overflow-y-auto'>
-					<DialogHeader>
-						<DialogTitle>Student Details</DialogTitle>
-						<DialogDescription>
-							Complete information for {selectedStudent?.trackingNumber}
-						</DialogDescription>
-					</DialogHeader>
+				<DialogContent className='w-[calc(100vw-1rem)] sm:w-full max-w-3xl max-h-[90vh] overflow-y-auto p-0'>
+					<div className='p-4 sm:p-6 space-y-6'>
+						<DialogHeader className='space-y-2'>
+							<DialogTitle className='text-lg sm:text-xl font-extrabold'>
+								Enrolled Student Details
+							</DialogTitle>
+							<DialogDescription className='text-sm font-medium'>
+								Complete profile and enrollment details for{' '}
+								{selectedStudent?.trackingNumber}
+							</DialogDescription>
+						</DialogHeader>
 
-					{detailLoading ? null : selectedStudent ? (
-						<div className='space-y-6'>
-							{/* Status Badge */}
-							<div className='flex items-center justify-between'>
-								{getStatusBadge(selectedStudent.status)}
-								<span className='text-sm text-[hsl(var(--muted-foreground))]'>
-									{selectedStudent.trackingNumber}
-								</span>
+						{detailLoading ? (
+							<div className='space-y-3 animate-pulse'>
+								<div className='h-4 bg-muted rounded w-1/3' />
+								<div className='h-24 bg-muted rounded w-full' />
+								<div className='h-24 bg-muted rounded w-full' />
 							</div>
-
-							{/* Personal Information */}
-							<div className='space-y-3'>
-								<h3 className='font-semibold text-sm uppercase tracking-wide text-[hsl(var(--muted-foreground))]'>
-									Personal Information
-								</h3>
-								<div className='grid grid-cols-2 gap-4'>
-									<div>
-										<Label className='text-xs text-[hsl(var(--muted-foreground))]'>
-											Full Name
-										</Label>
-										<p className='font-medium'>{selectedStudent.fullName}</p>
-									</div>
-									<div>
-										<Label className='text-xs text-[hsl(var(--muted-foreground))]'>
-											LRN
-										</Label>
-										<p className=' text-sm'>{selectedStudent.lrn}</p>
-									</div>
-									<div>
-										<Label className='text-xs text-[hsl(var(--muted-foreground))]'>
-											Date of Birth
-										</Label>
-										<p className='text-sm'>
-											{formatDate(selectedStudent.birthDate)} (
-											{calculateAge(selectedStudent.birthDate)} yrs)
-										</p>
-									</div>
-									<div>
-										<Label className='text-xs text-[hsl(var(--muted-foreground))]'>
-											Sex
-										</Label>
-										<p className='text-sm'>{selectedStudent.sex}</p>
-									</div>
-									<div className='col-span-2'>
-										<Label className='text-xs text-[hsl(var(--muted-foreground))]'>
-											Home Address
-										</Label>
-										<p className='text-sm'>{selectedStudent.address}</p>
-									</div>
+						) : selectedStudent ? (
+							<div className='space-y-6'>
+								<div className='flex flex-wrap items-center justify-between gap-2'>
+									{getEnrolledBadge()}
+									<span className='text-xs sm:text-sm font-semibold text-[hsl(var(--muted-foreground))] break-all'>
+										{selectedStudent.trackingNumber}
+									</span>
 								</div>
-							</div>
 
-							{/* Family & Contact */}
-							<div className='space-y-3'>
-								<h3 className='font-semibold text-sm uppercase tracking-wide text-[hsl(var(--muted-foreground))]'>
-									Family & Contact
-								</h3>
-								<div className='grid grid-cols-2 gap-4'>
-									<div>
-										<Label className='text-xs text-[hsl(var(--muted-foreground))]'>
-											Parent/Guardian
-										</Label>
-										<p className='text-sm'>
-											{selectedStudent.parentGuardianName}
-										</p>
-									</div>
-									<div>
-										<Label className='text-xs text-[hsl(var(--muted-foreground))]'>
-											Contact Number
-										</Label>
-										<p className='text-sm '>
-											{selectedStudent.parentGuardianContact}
-										</p>
-									</div>
-									<div className='col-span-2'>
-										<Label className='text-xs text-[hsl(var(--muted-foreground))]'>
-											Email Address
-										</Label>
-										<p className='text-sm'>{selectedStudent.emailAddress}</p>
-									</div>
-								</div>
-							</div>
-
-							{/* Enrollment Information */}
-							<div className='space-y-3'>
-								<h3 className='font-semibold text-sm uppercase tracking-wide text-[hsl(var(--muted-foreground))]'>
-									Enrollment Information
-								</h3>
-								<div className='grid grid-cols-2 gap-4'>
-									<div>
-										<Label className='text-xs text-[hsl(var(--muted-foreground))]'>
-											School Year
-										</Label>
-										<p className='text-sm'>{selectedStudent.schoolYear}</p>
-									</div>
-									<div>
-										<Label className='text-xs text-[hsl(var(--muted-foreground))]'>
-											Grade Level
-										</Label>
-										<p className='text-sm'>{selectedStudent.gradeLevel}</p>
-									</div>
-									{selectedStudent.strand && (
+								<div className='space-y-3'>
+									<h3 className='font-bold text-xs sm:text-sm uppercase tracking-wider text-[hsl(var(--muted-foreground))]'>
+										Personal Information
+									</h3>
+									<div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
 										<div>
-											<Label className='text-xs text-[hsl(var(--muted-foreground))]'>
-												Strand
+											<Label className='text-[11px] uppercase tracking-wider font-bold text-[hsl(var(--muted-foreground))]'>
+												Full Name
 											</Label>
-											<p className='text-sm'>{selectedStudent.strand}</p>
+											<p className='text-sm font-semibold break-words'>
+												{selectedStudent.fullName}
+											</p>
 										</div>
-									)}
-									{selectedStudent.enrollment && (
-										<>
+										<div>
+											<Label className='text-[11px] uppercase tracking-wider font-bold text-[hsl(var(--muted-foreground))]'>
+												LRN
+											</Label>
+											<p className='text-sm font-semibold'>
+												{selectedStudent.lrn}
+											</p>
+										</div>
+										<div>
+											<Label className='text-[11px] uppercase tracking-wider font-bold text-[hsl(var(--muted-foreground))]'>
+												Date of Birth
+											</Label>
+											<p className='text-sm font-medium'>
+												{formatDate(selectedStudent.birthDate)} (
+												{calculateAge(selectedStudent.birthDate)} yrs)
+											</p>
+										</div>
+										<div>
+											<Label className='text-[11px] uppercase tracking-wider font-bold text-[hsl(var(--muted-foreground))]'>
+												Sex
+											</Label>
+											<p className='text-sm font-medium'>
+												{selectedStudent.sex}
+											</p>
+										</div>
+										<div className='sm:col-span-2'>
+											<Label className='text-[11px] uppercase tracking-wider font-bold text-[hsl(var(--muted-foreground))]'>
+												Home Address
+											</Label>
+											<p className='text-sm font-medium break-words'>
+												{selectedStudent.address}
+											</p>
+										</div>
+									</div>
+								</div>
+
+								<div className='space-y-3'>
+									<h3 className='font-bold text-xs sm:text-sm uppercase tracking-wider text-[hsl(var(--muted-foreground))]'>
+										Family and Contact
+									</h3>
+									<div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+										<div>
+											<Label className='text-[11px] uppercase tracking-wider font-bold text-[hsl(var(--muted-foreground))]'>
+												Parent or Guardian
+											</Label>
+											<p className='text-sm font-medium'>
+												{selectedStudent.parentGuardianName}
+											</p>
+										</div>
+										<div>
+											<Label className='text-[11px] uppercase tracking-wider font-bold text-[hsl(var(--muted-foreground))]'>
+												Contact Number
+											</Label>
+											<p className='text-sm font-medium break-words'>
+												{selectedStudent.parentGuardianContact}
+											</p>
+										</div>
+										<div className='sm:col-span-2'>
+											<Label className='text-[11px] uppercase tracking-wider font-bold text-[hsl(var(--muted-foreground))]'>
+												Email Address
+											</Label>
+											<p className='text-sm font-medium break-words'>
+												{selectedStudent.emailAddress}
+											</p>
+										</div>
+									</div>
+								</div>
+
+								<div className='space-y-3'>
+									<h3 className='font-bold text-xs sm:text-sm uppercase tracking-wider text-[hsl(var(--muted-foreground))]'>
+										Enrollment Information
+									</h3>
+									<div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+										<div>
+											<Label className='text-[11px] uppercase tracking-wider font-bold text-[hsl(var(--muted-foreground))]'>
+												School Year
+											</Label>
+											<p className='text-sm font-medium'>
+												{selectedStudent.schoolYear}
+											</p>
+										</div>
+										<div>
+											<Label className='text-[11px] uppercase tracking-wider font-bold text-[hsl(var(--muted-foreground))]'>
+												Grade Level
+											</Label>
+											<p className='text-sm font-medium'>
+												{selectedStudent.gradeLevel}
+											</p>
+										</div>
+										{selectedStudent.strand && (
 											<div>
-												<Label className='text-xs text-[hsl(var(--muted-foreground))]'>
-													Section
+												<Label className='text-[11px] uppercase tracking-wider font-bold text-[hsl(var(--muted-foreground))]'>
+													Strand
 												</Label>
-												<p className='text-sm'>
-													{selectedStudent.enrollment.section}
+												<p className='text-sm font-medium'>
+													{selectedStudent.strand}
 												</p>
 											</div>
-											{selectedStudent.enrollment.advisingTeacher && (
+										)}
+										{selectedStudent.enrollment ? (
+											<>
 												<div>
-													<Label className='text-xs text-[hsl(var(--muted-foreground))]'>
-														Advising Teacher
+													<Label className='text-[11px] uppercase tracking-wider font-bold text-[hsl(var(--muted-foreground))]'>
+														Section
 													</Label>
-													<p className='text-sm'>
-														{selectedStudent.enrollment.advisingTeacher}
+													<p className='text-sm font-medium'>
+														{selectedStudent.enrollment.section}
 													</p>
 												</div>
-											)}
-											<div>
-												<Label className='text-xs text-[hsl(var(--muted-foreground))]'>
-													Enrolled On
-												</Label>
-												<p className='text-sm'>
-													{formatDate(selectedStudent.enrollment.enrolledAt)}
+												{selectedStudent.enrollment.advisingTeacher && (
+													<div>
+														<Label className='text-[11px] uppercase tracking-wider font-bold text-[hsl(var(--muted-foreground))]'>
+															Advising Teacher
+														</Label>
+														<p className='text-sm font-medium'>
+															{selectedStudent.enrollment.advisingTeacher}
+														</p>
+													</div>
+												)}
+												<div>
+													<Label className='text-[11px] uppercase tracking-wider font-bold text-[hsl(var(--muted-foreground))]'>
+														Enrolled On
+													</Label>
+													<p className='text-sm font-medium'>
+														{formatDate(selectedStudent.enrollment.enrolledAt)}
+													</p>
+												</div>
+												<div>
+													<Label className='text-[11px] uppercase tracking-wider font-bold text-[hsl(var(--muted-foreground))]'>
+														Enrolled By
+													</Label>
+													<p className='text-sm font-medium'>
+														{selectedStudent.enrollment.enrolledBy}
+													</p>
+												</div>
+											</>
+										) : (
+											<div className='sm:col-span-2 rounded-lg border border-dashed p-3'>
+												<p className='text-sm font-semibold text-muted-foreground'>
+													No enrollment assignment details are currently
+													available.
 												</p>
 											</div>
-											<div>
-												<Label className='text-xs text-[hsl(var(--muted-foreground))]'>
-													Enrolled By
-												</Label>
-												<p className='text-sm'>
-													{selectedStudent.enrollment.enrolledBy}
-												</p>
-											</div>
-										</>
-									)}
+										)}
+									</div>
+								</div>
+
+								<div className='pt-4 border-t text-xs sm:text-sm text-[hsl(var(--muted-foreground))] space-y-1'>
+									<p className='font-semibold'>
+										Applied: {formatDate(selectedStudent.createdAt)}
+									</p>
+									<p className='font-semibold'>
+										Last Updated: {formatDate(selectedStudent.updatedAt)}
+									</p>
 								</div>
 							</div>
-
-							{/* Rejection Reason (if applicable) */}
-							{selectedStudent.status === 'REJECTED' &&
-								selectedStudent.rejectionReason && (
-									<div className='space-y-2 p-4 bg-red-50 rounded-lg border border-red-200'>
-										<Label className='text-xs font-semibold text-red-700'>
-											Rejection Reason
-										</Label>
-										<p className='text-sm text-red-900'>
-											{selectedStudent.rejectionReason}
-										</p>
-									</div>
-								)}
-
-							{/* Submission Info */}
-							<div className='pt-4 border-t text-xs text-[hsl(var(--muted-foreground))]'>
-								<p>Applied: {formatDate(selectedStudent.createdAt)}</p>
-								<p>Last Updated: {formatDate(selectedStudent.updatedAt)}</p>
-							</div>
-						</div>
-					) : null}
+						) : null}
+					</div>
 				</DialogContent>
 			</Dialog>
 		</div>

@@ -3,16 +3,72 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '../../lib/prisma.js';
 import { auditLog } from '../audit-logs/audit-logs.service.js';
 
+function getUniqueConstraintFields(error: unknown): string[] {
+	if (!error || typeof error !== 'object') return [];
+
+	const prismaError = error as {
+		code?: string;
+		meta?: { target?: unknown };
+	};
+
+	if (prismaError.code !== 'P2002') return [];
+
+	const target = prismaError.meta?.target;
+	if (Array.isArray(target)) return target.map((field) => String(field));
+	if (typeof target === 'string') return [target];
+
+	return [];
+}
+
 export async function index(req: Request, res: Response) {
 	try {
-		const { role, isActive, page = '1', limit = '20' } = req.query;
-		const skip = (parseInt(String(page)) - 1) * parseInt(String(limit));
+		const {
+			role,
+			isActive,
+			search,
+			sortBy = 'createdAt',
+			sortOrder = 'desc',
+			page = '1',
+			limit = '20',
+		} = req.query;
+
+		const pageNumber = Math.max(1, parseInt(String(page), 10) || 1);
+		const pageSize = Math.min(
+			100,
+			Math.max(1, parseInt(String(limit), 10) || 20),
+		);
+		const skip = (pageNumber - 1) * pageSize;
+
+		const normalizedSearch = String(search ?? '').trim();
+		const allowedSortFields = new Set([
+			'lastName',
+			'designation',
+			'email',
+			'role',
+			'isActive',
+			'lastLoginAt',
+			'createdAt',
+		]);
+		const safeSortBy = allowedSortFields.has(String(sortBy))
+			? String(sortBy)
+			: 'createdAt';
+		const safeSortOrder = String(sortOrder) === 'asc' ? 'asc' : 'desc';
 
 		const where: any = {};
 		if (role) {
 			where.role = role;
 		}
 		if (isActive !== undefined) where.isActive = String(isActive) === 'true';
+		if (normalizedSearch) {
+			where.OR = [
+				{ firstName: { contains: normalizedSearch, mode: 'insensitive' } },
+				{ lastName: { contains: normalizedSearch, mode: 'insensitive' } },
+				{ email: { contains: normalizedSearch, mode: 'insensitive' } },
+				{ employeeId: { contains: normalizedSearch, mode: 'insensitive' } },
+				{ designation: { contains: normalizedSearch, mode: 'insensitive' } },
+				{ mobileNumber: { contains: normalizedSearch, mode: 'insensitive' } },
+			];
+		}
 
 		const [users, total] = await Promise.all([
 			prisma.user.findMany({
@@ -34,9 +90,9 @@ export async function index(req: Request, res: Response) {
 					createdAt: true,
 					createdBy: { select: { firstName: true, lastName: true } },
 				},
-				orderBy: { createdAt: 'desc' },
+				orderBy: { [safeSortBy]: safeSortOrder },
 				skip,
-				take: parseInt(String(limit)),
+				take: pageSize,
 			}),
 			prisma.user.count({ where }),
 		]);
@@ -44,8 +100,11 @@ export async function index(req: Request, res: Response) {
 		res.json({
 			users,
 			total,
-			page: parseInt(String(page)),
-			limit: parseInt(String(limit)),
+			page: pageNumber,
+			limit: pageSize,
+			totalPages: Math.max(1, Math.ceil(total / pageSize)),
+			sortBy: safeSortBy,
+			sortOrder: safeSortOrder,
 		});
 	} catch (error: any) {
 		res.status(500).json({ message: error.message });
@@ -109,6 +168,15 @@ export async function store(req: Request, res: Response) {
 
 		res.status(201).json(user);
 	} catch (error: any) {
+		const uniqueFields = getUniqueConstraintFields(error);
+		if (uniqueFields.some((field) => field.toLowerCase().includes('email'))) {
+			return res.status(409).json({
+				message: 'Email address is already in use by another account.',
+				field: 'email',
+				code: 'DUPLICATE_EMAIL',
+			});
+		}
+
 		res.status(500).json({ message: error.message });
 	}
 }
@@ -167,6 +235,15 @@ export async function update(req: Request, res: Response) {
 
 		res.json(user);
 	} catch (error: any) {
+		const uniqueFields = getUniqueConstraintFields(error);
+		if (uniqueFields.some((field) => field.toLowerCase().includes('email'))) {
+			return res.status(409).json({
+				message: 'Email address is already in use by another account.',
+				field: 'email',
+				code: 'DUPLICATE_EMAIL',
+			});
+		}
+
 		res.status(500).json({ message: error.message });
 	}
 }
@@ -179,12 +256,10 @@ export async function deactivate(req: Request, res: Response) {
 		if (!targetUser) return res.status(404).json({ message: 'User not found' });
 
 		if (targetUser.role === 'SYSTEM_ADMIN') {
-			return res
-				.status(400)
-				.json({
-					message:
-						'SYSTEM_ADMIN accounts cannot be deactivated to prevent system lockout.',
-				});
+			return res.status(400).json({
+				message:
+					'SYSTEM_ADMIN accounts cannot be deactivated to prevent system lockout.',
+			});
 		}
 
 		const user = await prisma.user.update({

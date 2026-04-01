@@ -171,8 +171,16 @@ function NavItem({
 	label: string;
 	pathname: string;
 }) {
-	const isActive =
+	let isActive =
 		pathname === to || (to !== '/' && pathname.startsWith(to + '/'));
+
+	const isEnrollmentRequirementsRoute =
+		pathname === '/enrollment/requirements' ||
+		pathname.startsWith('/enrollment/requirements/');
+
+	if (isEnrollmentRequirementsRoute && to !== '/enrollment/requirements') {
+		isActive = false;
+	}
 	return (
 		<SidebarMenuItem>
 			<SidebarMenuButton
@@ -393,7 +401,7 @@ function AppSidebar() {
 											<NavItemChild
 												to='/early-registration'
 												icon={FileText}
-												label='Monitoring'
+												label='Application Monitoring'
 												pathname={pathname}
 												badgeCount={pendingCount}
 											/>
@@ -406,7 +414,7 @@ function AppSidebar() {
 											<NavItemChild
 												to='/f2f-early-registration'
 												icon={UserPlus}
-												label='Walk-in'
+												label='Walk-In Registration'
 												pathname={pathname}
 											/>
 										</NavItemParent>
@@ -428,7 +436,7 @@ function AppSidebar() {
 										<NavItem
 											to='/enrollment/requirements'
 											icon={FileText}
-											label='Documentary Requirements'
+											label='Enrollment Requirements'
 											pathname={pathname}
 										/>
 										<NavItem
