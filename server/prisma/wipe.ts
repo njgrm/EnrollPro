@@ -11,6 +11,8 @@ async function main() {
 	console.log('⚠️  Starting applicant-only data wipe...');
 
 	try {
+		const gradeLevelsBefore = await prisma.gradeLevel.count();
+
 		// 1. Delete Applicant child records first
 		await prisma.applicantDocument.deleteMany({});
 		console.log('✅ Applicant documents cleared.');
@@ -39,8 +41,18 @@ async function main() {
 		await prisma.applicant.deleteMany({});
 		console.log('✅ Applicants cleared.');
 
+		const gradeLevelsAfter = await prisma.gradeLevel.count();
+		if (gradeLevelsAfter !== gradeLevelsBefore) {
+			throw new Error(
+				`GradeLevels changed during wipe (${gradeLevelsBefore} -> ${gradeLevelsAfter}). Wipe aborted to protect master data.`,
+			);
+		}
+		console.log(`✅ GradeLevels preserved: ${gradeLevelsAfter}`);
+
 		console.log('\n✨ Applicant-related data reset successful!');
-		console.log('   Preserved: Users, Teachers, SchoolYears, Sections, Strands, GradeLevels, and SchoolSettings.');
+		console.log(
+			'   Preserved: Users, Teachers, SchoolYears, Sections, Strands, GradeLevels, and SchoolSettings.',
+		);
 	} catch (error) {
 		console.error('❌ Error during wipe:', error);
 		process.exit(1);

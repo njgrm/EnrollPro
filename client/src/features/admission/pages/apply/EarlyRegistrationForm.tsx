@@ -100,6 +100,10 @@ export default function EarlyRegistrationForm({
 	const currentIndex =
 		steps.findIndex((s) => s.id === stepper.state.current.data.id) + 1;
 
+	const scrollToTopInstant = () => {
+		window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+	};
+
 	// Track furthest step
 	useEffect(() => {
 		if (currentIndex > maxStepReached) {
@@ -147,6 +151,11 @@ export default function EarlyRegistrationForm({
 		}
 	}, [stepper.state.current.data.id, stepper.state]);
 
+	// Keep each step mounted at the top without smooth scrolling animation.
+	useEffect(() => {
+		scrollToTopInstant();
+	}, [stepper.state.current.data.id]);
+
 	const nextStep = async () => {
 		let fieldsToValidate: FieldPath<EarlyRegistrationFormData>[] = [];
 
@@ -192,20 +201,20 @@ export default function EarlyRegistrationForm({
 			} else {
 				stepper.navigation.next();
 			}
-			window.scrollTo({ top: 0, behavior: 'smooth' });
+			scrollToTopInstant();
 		}
 	};
 
 	const prevStep = () => {
 		stepper.navigation.prev();
-		window.scrollTo({ top: 0, behavior: 'smooth' });
+		scrollToTopInstant();
 	};
 
 	const goToStep = (stepId: number) => {
 		setIsEditing(true);
 		sessionStorage.setItem(EDITING_KEY, 'true');
 		stepper.navigation.goTo(steps[stepId - 1].id);
-		window.scrollTo({ top: 0, behavior: 'smooth' });
+		scrollToTopInstant();
 	};
 
 	const handleAttemptSubmit = async () => {
@@ -213,7 +222,7 @@ export default function EarlyRegistrationForm({
 		if (isValid) {
 			setShowSubmitConfirm(true);
 		} else {
-			window.scrollTo({ top: 0, behavior: 'smooth' });
+			scrollToTopInstant();
 		}
 	};
 
@@ -268,7 +277,7 @@ export default function EarlyRegistrationForm({
 				(error as { response?: { data?: { message?: string } } })?.response
 					?.data?.message || 'Failed to submit application. Please try again.';
 			setSubmitError(message);
-			window.scrollTo({ top: 0, behavior: 'smooth' });
+			scrollToTopInstant();
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -277,7 +286,7 @@ export default function EarlyRegistrationForm({
 	const isLastStep = stepper.state.isLast;
 
 	return (
-		<div className='max-w-5xl mx-auto p-4 md:p-0'>
+		<div className='max-w-6xl mx-auto p-4 md:p-0'>
 			<StepProgressBar
 				currentStep={currentIndex}
 				totalSteps={steps.length}

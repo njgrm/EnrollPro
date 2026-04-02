@@ -127,6 +127,10 @@ export default function F2FEarlyRegistration() {
 	const currentIndex =
 		steps.findIndex((s) => s.id === stepper.state.current.data.id) + 1;
 
+	const scrollToTopInstant = () => {
+		window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+	};
+
 	const handleFullReset = () => {
 		setShowResetConfirm(false);
 
@@ -208,6 +212,11 @@ export default function F2FEarlyRegistration() {
 		}
 	}, [stepper.state.current.data.id, stepper.state]);
 
+	// Keep each step mounted at the top without smooth scrolling animation.
+	useEffect(() => {
+		scrollToTopInstant();
+	}, [stepper.state.current.data.id]);
+
 	const nextStep = async () => {
 		let fieldsToValidate: FieldPath<EarlyRegistrationFormData>[] = [];
 
@@ -253,20 +262,20 @@ export default function F2FEarlyRegistration() {
 			} else {
 				stepper.navigation.next();
 			}
-			window.scrollTo({ top: 0, behavior: 'smooth' });
+			scrollToTopInstant();
 		}
 	};
 
 	const prevStep = () => {
 		stepper.navigation.prev();
-		window.scrollTo({ top: 0, behavior: 'smooth' });
+		scrollToTopInstant();
 	};
 
 	const goToStep = (stepId: number) => {
 		setIsEditing(true);
 		sessionStorage.setItem(EDITING_KEY, 'true');
 		stepper.navigation.goTo(steps[stepId - 1].id);
-		window.scrollTo({ top: 0, behavior: 'smooth' });
+		scrollToTopInstant();
 	};
 
 	const handleAttemptSubmit = async () => {
@@ -274,7 +283,7 @@ export default function F2FEarlyRegistration() {
 		if (isValid) {
 			setShowSubmitConfirm(true);
 		} else {
-			window.scrollTo({ top: 0, behavior: 'smooth' });
+			scrollToTopInstant();
 		}
 	};
 
@@ -321,7 +330,7 @@ export default function F2FEarlyRegistration() {
 				title: 'Submission Failed',
 				description: message,
 			});
-			window.scrollTo({ top: 0, behavior: 'smooth' });
+			scrollToTopInstant();
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -341,7 +350,7 @@ export default function F2FEarlyRegistration() {
 
 	return (
 		<div
-			className='max-w-5xl mx-auto'
+			className='max-w-6xl mx-auto'
 			style={
 				applyOverride
 					? ({

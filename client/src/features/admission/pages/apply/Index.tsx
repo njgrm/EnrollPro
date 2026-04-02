@@ -201,7 +201,7 @@ export default function Apply() {
 					<div
 						className={cn(
 							'w-full mx-auto flex flex-col',
-							isClosed ? 'max-w-3xl' : 'max-w-4xl flex-1',
+							isClosed ? 'max-w-3xl' : 'max-w-6xl flex-1',
 						)}
 					>
 						{isClosed ? (

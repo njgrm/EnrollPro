@@ -45,21 +45,25 @@ async function main() {
 		});
 	}
 
-	// 3. Ensure Grade Levels G7-G12 exist for the active school year
+	// 3. Ensure Grade Levels Grade 7-Grade 12 exist for the active school year
 	const grades = [
-		{ name: 'Grade 7', displayOrder: 7 },
-		{ name: 'Grade 8', displayOrder: 8 },
-		{ name: 'Grade 9', displayOrder: 9 },
-		{ name: 'Grade 10', displayOrder: 10 },
-		{ name: 'Grade 11', displayOrder: 11 },
-		{ name: 'Grade 12', displayOrder: 12 },
+		{ name: 'Grade 7', legacyName: 'G7', displayOrder: 7 },
+		{ name: 'Grade 8', legacyName: 'G8', displayOrder: 8 },
+		{ name: 'Grade 9', legacyName: 'G9', displayOrder: 9 },
+		{ name: 'Grade 10', legacyName: 'G10', displayOrder: 10 },
+		{ name: 'Grade 11', legacyName: 'G11', displayOrder: 11 },
+		{ name: 'Grade 12', legacyName: 'G12', displayOrder: 12 },
 	];
 
 	for (const grade of grades) {
 		const existingGrade = await prisma.gradeLevel.findFirst({
 			where: {
 				schoolYearId: activeYear.id,
-				name: grade.name,
+				OR: [
+					{ name: grade.name },
+					{ name: grade.legacyName },
+					{ displayOrder: grade.displayOrder },
+				],
 			},
 		});
 
@@ -72,6 +76,20 @@ async function main() {
 				},
 			});
 			console.log(`✅ Created Grade Level: ${grade.name}`);
+		} else if (
+			existingGrade.name !== grade.name ||
+			existingGrade.displayOrder !== grade.displayOrder
+		) {
+			await prisma.gradeLevel.update({
+				where: { id: existingGrade.id },
+				data: {
+					name: grade.name,
+					displayOrder: grade.displayOrder,
+				},
+			});
+			console.log(
+				`✅ Updated Grade Level: ${existingGrade.name} -> ${grade.name}`,
+			);
 		}
 	}
 
