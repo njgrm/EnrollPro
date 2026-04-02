@@ -13,7 +13,7 @@ const CONSENT_KEY = 'enrollpro_apply_consent';
 const TAB_KEY = 'enrollpro_apply_active_tab';
 const API_BASE =
 	import.meta.env.VITE_API_URL?.replace('/api', '') ||
-	'http://192.168.254.106:3001';
+	'http://localhost:5000';
 
 export default function Apply() {
 	const [hasConsented, setHasConsented] = useState(() => {

@@ -19,7 +19,7 @@ import { Separator } from '@/shared/ui/separator';
 
 const API_BASE =
 	import.meta.env.VITE_API_URL?.replace('/api', '') ||
-	'http://192.168.254.106:3001';
+	'http://localhost:5000';
 
 /** Returns true if the HSL accent color is light (needs dark text) */
 function isAccentLight(hsl: string): boolean {

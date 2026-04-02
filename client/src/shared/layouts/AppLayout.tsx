@@ -21,6 +21,7 @@ import {
 	Activity,
 	Mail,
 	AlertTriangle,
+	ExternalLink,
 } from 'lucide-react';
 
 import {
@@ -62,7 +63,7 @@ import { useAccessibility } from '@/shared/hooks/useAccessibility';
 
 const API_BASE =
 	import.meta.env.VITE_API_URL?.replace('/api', '') ||
-	'http://192.168.254.106:3001';
+	'http://localhost:5000';
 
 interface SchoolYearItem {
 	id: number;
@@ -229,12 +230,14 @@ function NavItemChild({
 	label,
 	pathname,
 	badgeCount,
+	externalHref,
 }: {
 	to: string;
 	icon: React.ElementType;
 	label: string;
 	pathname: string;
 	badgeCount?: number;
+	externalHref?: string;
 }) {
 	let isActive = pathname === to || pathname.startsWith(to + '/');
 
@@ -244,6 +247,24 @@ function NavItemChild({
 		pathname.startsWith('/applications/admission/')
 	) {
 		isActive = true;
+	}
+
+	if (externalHref) {
+		return (
+			<SidebarMenuItem>
+				<SidebarMenuButton
+					asChild
+					tooltip={label}
+					className='pl-8 text-sm'
+				>
+					<a href={externalHref}>
+						<Icon className='size-3.5' />
+						<span>{label}</span>
+						<ExternalLink className='ml-auto size-3.5 opacity-70' />
+					</a>
+				</SidebarMenuButton>
+			</SidebarMenuItem>
+		);
 	}
 
 	return (
@@ -271,7 +292,7 @@ function NavItemChild({
 function AppSidebar() {
 	const location = useLocation();
 	const navigate = useNavigate();
-	const { user, clearAuth } = useAuthStore();
+	const { user, token, clearAuth } = useAuthStore();
 	const { schoolName, logoUrl, activeSchoolYearId } = useSettingsStore();
 	const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 	const [pendingCount, setPendingCount] = useState<number>(0);
@@ -282,6 +303,7 @@ function AppSidebar() {
 	const isAdmin = user?.role === 'SYSTEM_ADMIN';
 	const isRegistrar = user?.role === 'REGISTRAR';
 	const pathname = location.pathname;
+	const atlasHref = `http://localhost:5174/?bridgeToken=${encodeURIComponent(token ?? '')}&from=enrollpro`;
 
 	useEffect(() => {
 		api
@@ -400,6 +422,13 @@ function AppSidebar() {
 												icon={CheckCircle}
 												label='Enrollment'
 												pathname={pathname}
+											/>
+											<NavItemChild
+												to='/applications/atlas'
+												icon={LayoutDashboard}
+												label='ATLAS'
+												pathname={pathname}
+												externalHref={atlasHref}
 											/>
 										</NavItemParent>
 

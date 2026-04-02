@@ -36,7 +36,7 @@ import jsPDF from 'jspdf';
 
 const API_BASE =
 	import.meta.env.VITE_API_URL?.replace('/api', '') ||
-	'http://192.168.254.106:3001';
+	'http://localhost:5000';
 const trackSchema = z.object({
 	trackingNumber: z
 		.string()

@@ -3,7 +3,7 @@ import { sileo } from 'sileo';
 import { useAuthStore } from '@/store/auth.slice';
 
 const api = axios.create({
-	baseURL: import.meta.env.VITE_API_URL || 'http://192.168.254.106:3001/api',
+	baseURL: import.meta.env.VITE_API_URL || '/api',
 });
 
 api.interceptors.request.use((config) => {

@@ -43,7 +43,7 @@ export default function StudentProfile() {
 		if (!photo) return null;
 		if (photo.startsWith('data:')) return photo;
 		const baseUrl = (
-			import.meta.env.VITE_API_URL || 'http://192.168.254.106:3001/api'
+			import.meta.env.VITE_API_URL || '/api'
 		).replace(/\/api$/, '');
 		return `${baseUrl}${photo}`;
 	};

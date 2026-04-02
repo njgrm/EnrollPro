@@ -61,7 +61,7 @@ export function ApplicationDetailPanel({
 		if (photo.startsWith('data:')) return photo;
 		// Assuming /uploads/filename.ext - need to prefix with backend origin
 		const baseUrl = (
-			import.meta.env.VITE_API_URL || 'http://192.168.254.106:3001/api'
+			import.meta.env.VITE_API_URL || '/api'
 		).replace(/\/api$/, '');
 		return `${baseUrl}${photo}`;
 	};
