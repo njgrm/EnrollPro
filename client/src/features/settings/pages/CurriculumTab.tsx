@@ -287,7 +287,7 @@ export default function CurriculumTab() {
                   Special Curricular Programs (SCP)
                 </CardTitle>
                 <CardDescription className="font-bold">
-                  Configure Early Registration criteria for STE, SPA, SPS, etc.
+                  Configure BASIC EDUCATION EARLY REGISTRATION FORM criteria for STE, SPA, SPS, etc.
                 </CardDescription>
               </div>
               <Button size="sm" onClick={handleSaveScp} disabled={savingScp}>

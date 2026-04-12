@@ -40,7 +40,6 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/shared/ui/dialog';
-import { Tabs, TabsList, TabsTrigger } from '@/shared/ui/tabs';
 
 interface Teacher {
 	id: number;
@@ -83,7 +82,6 @@ export default function SectionsTab() {
 	const { activeSchoolYearId, viewingSchoolYearId } = useSettingsStore();
 	const ayId = viewingSchoolYearId ?? activeSchoolYearId;
 
-	const [activeLevel, setActiveLevel] = useState('JHS');
 	const [groups, setGroups] = useState<GradeLevelGroup[]>([]);
 	const [teachers, setTeachers] = useState<Teacher[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -116,7 +114,7 @@ export default function SectionsTab() {
 		setLoading(true);
 		try {
 			const [res, teachersRes] = await Promise.all([
-				api.get(`/sections/${ayId}`, { params: { level: activeLevel } }),
+				api.get(`/sections/${ayId}`),
 				api.get('/sections/teachers'),
 			]);
 			setGroups(res.data.gradeLevels);
@@ -126,7 +124,7 @@ export default function SectionsTab() {
 		} finally {
 			setLoading(false);
 		}
-	}, [ayId, activeLevel]);
+	}, [ayId]);
 
 	useEffect(() => {
 		fetchData();
@@ -238,27 +236,6 @@ export default function SectionsTab() {
 
 	return (
 		<div className='space-y-6'>
-			<Tabs
-				value={activeLevel}
-				onValueChange={setActiveLevel}
-				className='w-full'
-			>
-				<TabsList className='w-full flex flex-wrap h-auto gap-1 mb-4 relative'>
-					<TabsTrigger
-						value='JHS'
-						className='flex-1 min-w-25 relative z-10 data-[state=active]:bg-transparent data-[state=active]:shadow-none transition-colors'
-					>
-						{activeLevel === 'JHS' && (
-							<motion.div
-								layoutId='active-pill'
-								className='absolute inset-0 bg-primary rounded-md'
-								transition={{ type: 'spring', bounce: 0.15, duration: 0.3 }}
-							/>
-						)}
-						<span className='relative z-20'>Junior High School</span>
-					</TabsTrigger>
-				</TabsList>
-			</Tabs>
 
 			<AnimatePresence mode='wait'>
 				{loading ? (
@@ -278,7 +255,6 @@ export default function SectionsTab() {
 					</motion.div>
 				) : (
 					<motion.div
-						key={activeLevel}
 						initial={{ opacity: 0, y: 10 }}
 						animate={{ opacity: 1, y: 0 }}
 						exit={{ opacity: 0, y: -10 }}

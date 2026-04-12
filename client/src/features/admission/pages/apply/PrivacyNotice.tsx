@@ -62,14 +62,14 @@ export default function PrivacyNotice({ onAccept }: PrivacyNoticeProps) {
 								<p className='text-muted-foreground text-sm mb-2'>
 									The Department of Education (DepEd) and {schoolName} collect
 									personal information specifically to facilitate the{' '}
-									<strong>Early Registration</strong> process. This ensures the
+									<strong>BASIC EDUCATION EARLY REGISTRATION FORM</strong> process. This ensures the
 									timely planning of resources, classrooms, and teacher
 									assignments for the upcoming school year.
 								</p>
 								<p className='text-muted-foreground text-sm italic'>
 									Ang Department of Education (DepEd) kag ang {schoolName}{' '}
 									nagakolekta sang personal nga impormasyon para gid sa{' '}
-									<strong>Early Registration</strong>. Ini para sa husto nga
+									<strong>BASIC EDUCATION EARLY REGISTRATION FORM</strong>. Ini para sa husto nga
 									pagplano sang mga kagamitan, classroom, kag mga manunudlo para
 									sa maabot nga school year.
 								</p>
@@ -85,11 +85,11 @@ export default function PrivacyNotice({ onAccept }: PrivacyNoticeProps) {
 								</h4>
 								<ul className='list-disc pl-5 space-y-2 text-muted-foreground text-sm'>
 									<li>
-										To process and validate Early Registration applications.
+										To process and validate BASIC EDUCATION EARLY REGISTRATION FORM applications.
 										<br />
 										<span className='italic'>
 											Para maproseso kag ma-validate ang inyo aplikasyon sa{' '}
-											<strong>Early Registration</strong>.
+											<strong>BASIC EDUCATION EARLY REGISTRATION FORM</strong>.
 										</span>
 									</li>
 									<li>

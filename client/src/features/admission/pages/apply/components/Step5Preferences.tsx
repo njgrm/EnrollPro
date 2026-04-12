@@ -89,7 +89,7 @@ export default function Step5Enrollment() {
                       ? "text-primary-foreground/80"
                       : "text-muted-foreground",
                   )}>
-                  Open EARLY REGISTRATION • no entrance exam required.
+                  Open BASIC EDUCATION EARLY REGISTRATION FORM • no entrance exam required.
                 </p>
               </button>
 

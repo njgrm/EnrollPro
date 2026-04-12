@@ -367,10 +367,10 @@ export default function F2FEarlyRegistration() {
               </div>
               <div>
                 <CardTitle className="text-xl font-bold">
-                  WALK-IN EARLY REGISTRATION
+                  WALK-IN BASIC EDUCATION EARLY REGISTRATION FORM
                 </CardTitle>
                 <CardDescription className="text-sm">
-                  Encode face-to-face EARLY REGISTRATION application
+                  Encode face-to-face BASIC EDUCATION EARLY REGISTRATION FORM application
                 </CardDescription>
               </div>
             </div>

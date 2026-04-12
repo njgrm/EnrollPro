@@ -4,23 +4,17 @@ import GuestLayout from "@/shared/layouts/GuestLayout";
 import PrivacyNotice from "./PrivacyNotice";
 import EarlyRegistrationForm from "./EarlyRegistrationForm";
 import EarlyRegistrationSuccess from "./components/EarlyRegistrationSuccess";
-import TrackApplication from "./Track";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/shared/lib/utils";
 import { useSettingsStore } from "@/store/settings.slice";
 
 const CONSENT_KEY = "enrollpro_apply_consent";
-const TAB_KEY = "enrollpro_apply_active_tab";
 const API_BASE = import.meta.env.VITE_API_URL?.replace("/api", "") || "";
 
 export default function Apply() {
   const [hasConsented, setHasConsented] = useState(() => {
     return sessionStorage.getItem(CONSENT_KEY) === "true";
   });
-  const [activeTab, setActiveTab] = useState<"form" | "monitor">(() => {
-    return (sessionStorage.getItem(TAB_KEY) as "form" | "monitor") || "form";
-  });
-  const [monitorHasResults, setMonitorHasResults] = useState(false);
   const [submittedTrackingNumber, setSubmittedTrackingNumber] = useState<
     string | null
   >(null);
@@ -36,12 +30,6 @@ export default function Apply() {
   const handleReset = () => {
     sessionStorage.removeItem(CONSENT_KEY);
     setHasConsented(false);
-    setSubmittedTrackingNumber(null);
-  };
-
-  const handleTabChange = (tab: "form" | "monitor") => {
-    sessionStorage.setItem(TAB_KEY, tab);
-    setActiveTab(tab);
     setSubmittedTrackingNumber(null);
   };
 
@@ -155,7 +143,7 @@ export default function Apply() {
                     {schoolName}
                   </span>
                   <span className="text-[0.5rem] font-black tracking-widest uppercase text-muted-foreground mt-0.5">
-                    Early Registration Portal
+                    BASIC EDUCATION EARLY REGISTRATION FORM
                   </span>
                 </div>
               </div>
@@ -166,7 +154,7 @@ export default function Apply() {
                   {schoolName}
                 </span>
                 <span className="text-[0.5625rem] sm:text-[0.625rem] md:text-xs font-black tracking-widest sm:tracking-[0.15em] uppercase text-muted-foreground mt-1 wrap-break-word">
-                  Early Registration Portal
+                  BASIC EDUCATION EARLY REGISTRATION FORM
                 </span>
               </div>
 
@@ -220,10 +208,10 @@ export default function Apply() {
                   </div>
                   <div className="space-y-4 max-w-lg mx-auto">
                     <h3 className="text-xl sm:text-2xl font-bold text-black">
-                      Early Registration is Currently Closed
+                      BASIC EDUCATION EARLY REGISTRATION FORM is Currently Closed
                     </h3>
                     <p className="text-sm sm:text-base text-black leading-relaxed">
-                      The online portal for Early Registration is not currently
+                      The online portal for BASIC EDUCATION EARLY REGISTRATION FORM is not currently
                       accepting applications. Registration periods are scheduled
                       according to the DepEd school calendar.
                     </p>
@@ -236,87 +224,43 @@ export default function Apply() {
                 </div>
               </motion.div>
             ) : (
-              <>
-                <div className="flex justify-center">
-                  <div className="flex bg-white/80 p-1.5 rounded-2xl border-3 border-primary/80 w-full sm:w-auto shadow-inner">
-                    <button
-                      onClick={() => handleTabChange("form")}
-                      className={cn(
-                        "flex-1 sm:flex-none px-8 py-3 text-[0.625rem] sm:text-xs font-black uppercase tracking-[0.15em] rounded-xl transition-all duration-200",
-                        activeTab === "form"
-                          ? "bg-primary text-primary-foreground shadow-lg scale-[1.02]"
-                          : "text-muted-foreground hover:text-primary hover:bg-primary/5",
-                      )}>
-                      Application Form
-                    </button>
-                    <button
-                      onClick={() => handleTabChange("monitor")}
-                      className={cn(
-                        "flex-1 sm:flex-none px-8 py-3 text-[0.625rem] sm:text-xs font-black uppercase tracking-[0.15em] rounded-xl transition-all duration-200",
-                        activeTab === "monitor"
-                          ? "bg-primary text-primary-foreground shadow-lg scale-[1.02]"
-                          : "text-muted-foreground hover:text-primary hover:bg-primary/5",
-                      )}>
-                      Monitor Portal
-                    </button>
-                  </div>
-                </div>
-
-                <div
-                  className={cn(
-                    "flex flex-col",
-                    activeTab === "monitor" && !monitorHasResults
-                      ? "flex-1 justify-center"
-                      : "h-auto",
-                  )}>
-                  <AnimatePresence mode="wait">
-                    {activeTab === "monitor" ? (
-                      <motion.div
-                        key="monitor"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.98 }}
-                        transition={{ duration: 0.3 }}>
-                        <TrackApplication
-                          onResultsFetched={setMonitorHasResults}
-                        />
-                      </motion.div>
-                    ) : submittedTrackingNumber ? (
-                      <motion.div
-                        key="success"
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        transition={{ duration: 0.4 }}>
-                        <EarlyRegistrationSuccess
-                          trackingNumber={submittedTrackingNumber}
-                          onBackHome={handleBackHome}
-                        />
-                      </motion.div>
-                    ) : !hasConsented ? (
-                      <motion.div
-                        key="privacy"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.98 }}
-                        transition={{ duration: 0.3 }}>
-                        <PrivacyNotice onAccept={handleAccept} />
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        key="form"
-                        initial={{ opacity: 0, scale: 1.02, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 1.02 }}
-                        transition={{ duration: 0.4, ease: "easeOut" }}>
-                        <EarlyRegistrationForm
-                          onSuccess={setSubmittedTrackingNumber}
-                        />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </>
+              <div className="flex flex-col h-auto">
+                <AnimatePresence mode="wait">
+                  {submittedTrackingNumber ? (
+                    <motion.div
+                      key="success"
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.4 }}>
+                      <EarlyRegistrationSuccess
+                        trackingNumber={submittedTrackingNumber}
+                        onBackHome={handleBackHome}
+                      />
+                    </motion.div>
+                  ) : !hasConsented ? (
+                    <motion.div
+                      key="privacy"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.98 }}
+                      transition={{ duration: 0.3 }}>
+                      <PrivacyNotice onAccept={handleAccept} />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="form"
+                      initial={{ opacity: 0, scale: 1.02, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 1.02 }}
+                      transition={{ duration: 0.4, ease: "easeOut" }}>
+                      <EarlyRegistrationForm
+                        onSuccess={setSubmittedTrackingNumber}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             )}
           </div>
         </main>

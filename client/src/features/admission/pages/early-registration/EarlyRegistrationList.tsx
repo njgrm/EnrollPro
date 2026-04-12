@@ -301,7 +301,7 @@ export default function EarlyRegistration() {
           stepOrder,
           kind,
           score,
-          notes: "Recorded from Early Registration portal",
+          notes: "Recorded from BASIC EDUCATION EARLY REGISTRATION FORM portal",
         },
       );
 
@@ -344,7 +344,7 @@ export default function EarlyRegistration() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-              Early Registration Monitoring Dashboard
+              BASIC EDUCATION EARLY REGISTRATION FORM Monitoring Dashboard
             </h1>
             <p className="text-sm sm:text-base font-bold text-muted-foreground">
               Applicant screening and assessment workflow

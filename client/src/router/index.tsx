@@ -27,10 +27,11 @@ import EmailLogs from '@/features/admin/pages/EmailLogs';
 import SystemHealth from '@/features/admin/pages/SystemHealth';
 import Teachers from '@/features/teachers/pages/Index';
 
-// F2F EARLY REGISTRATION Page
+// F2F BASIC EDUCATION EARLY REGISTRATION FORM Page
 import F2FEarlyRegistration from '@/features/admission/pages/f2f/Index';
 
 import Apply from '@/features/admission/pages/apply/Index';
+import Monitor from '@/features/admission/pages/apply/Monitor';
 
 export const router = createBrowserRouter([
 	{
@@ -40,6 +41,10 @@ export const router = createBrowserRouter([
 			{
 				path: '/apply',
 				element: <Apply />,
+			},
+			{
+				path: '/monitor',
+				element: <Monitor />,
 			},
 			{
 				path: '/learner',

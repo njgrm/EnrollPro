@@ -292,7 +292,7 @@ export default function Step6Review({
 							<hr className='my-3 border-muted/30' />
 
 							<p className='font-semibold text-destructive/90'>
-								I hereby confirm my early registration and I fully understand
+								I hereby confirm my BASIC EDUCATION EARLY REGISTRATION FORM and I fully understand
 								that due to the volume of registrants and absorptive capacity,
 								the {schoolName} may not guarantee my enrollment for SY{' '}
 								{yearLabel}.

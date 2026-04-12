@@ -244,7 +244,7 @@ function NavItemChild({
     isActive = false;
   }
 
-  // Early Registration detail pages (/early-registration/:id) should highlight Monitoring
+  // BASIC EDUCATION EARLY REGISTRATION FORM detail pages (/early-registration/:id) should highlight Monitoring
   if (
     to === "/early-registration" &&
     pathname.startsWith("/early-registration/") &&
@@ -383,7 +383,7 @@ function AppSidebar() {
 
                     <NavItemParent
                       icon={ClipboardList}
-                      label="Early Registration"
+                      label="BASIC EDUCATION EARLY REGISTRATION FORM"
                       isActive={false}>
                       <NavItemChild
                         to="/early-registration"

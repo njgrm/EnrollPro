@@ -163,7 +163,7 @@ export default function EnrollmentGateTab() {
       if (checked) {
         sileo.warning({
           title: "Manual Override Active",
-          description: "The early registration portal is now forced OPEN.",
+          description: "The BASIC EDUCATION EARLY REGISTRATION FORM portal is now forced OPEN.",
         });
       } else {
         sileo.success({
@@ -263,7 +263,7 @@ export default function EnrollmentGateTab() {
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-semibold text-foreground">
-                  PHASE 1 · Early Registration
+                  PHASE 1 · BASIC EDUCATION EARLY REGISTRATION FORM
                 </h4>
                 <p className="text-xs text-muted-foreground">
                   For: Grade 7, Transferees, First-time enrollees

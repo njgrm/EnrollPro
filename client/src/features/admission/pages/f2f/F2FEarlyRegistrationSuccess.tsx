@@ -79,7 +79,7 @@ export default function F2FEarlyRegistrationSuccess({
 						F2F Application Submitted
 					</CardTitle>
 					<CardDescription className='text-lg'>
-						Walk-in EARLY REGISTRATION has been successfully recorded.
+						Walk-in BASIC EDUCATION EARLY REGISTRATION FORM has been successfully recorded.
 					</CardDescription>
 				</CardHeader>
 
