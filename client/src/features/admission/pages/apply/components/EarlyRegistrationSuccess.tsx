@@ -19,11 +19,13 @@ const API_BASE = import.meta.env.VITE_API_URL?.replace("/api", "") || "";
 
 interface EarlyRegistrationSuccessProps {
   trackingNumber: string;
+  applicantType?: string | null;
   onBackHome?: () => void;
 }
 
 export default function EarlyRegistrationSuccess({
   trackingNumber,
+  applicantType,
   onBackHome,
 }: EarlyRegistrationSuccessProps) {
   const { schoolName, logoUrl } = useSettingsStore();
@@ -39,19 +41,61 @@ export default function EarlyRegistrationSuccess({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const getSteps = () => {
+    const baseSteps = [
+      {
+        title: "Check your email",
+        desc: "A confirmation has been sent to your primary contact email.",
+      },
+      {
+        title: "Wait for verification",
+        desc: "Our Registrar will review your documents within 3-5 working days.",
+      },
+    ];
+
+    let docStep = {
+      title: "Document Submission",
+      desc: "Prepare original copies of PSA Birth Certificate and SF9 (Report Card).",
+    };
+
+    if (applicantType === "SCIENCE_TECHNOLOGY_AND_ENGINEERING") {
+      docStep = {
+        title: "STE Requirements",
+        desc: "Submit photocopy of SF9 (Q1&Q2 Avg ≥ 85%), Medical Certificate, and Good Moral to the Science Office.",
+      };
+    } else if (applicantType === "SPECIAL_PROGRAM_IN_SPORTS") {
+      docStep = {
+        title: "SPS Requirements",
+        desc: "Submit photocopy of SF9 (Q1&Q2 Avg ≥ 85%), strict Medical Certificate, and Certificates of Recognition to the MAPEH office.",
+      };
+    } else if (applicantType === "SPECIAL_PROGRAM_IN_THE_ARTS") {
+      docStep = {
+        title: "SPA Requirements",
+        desc: "Submit SF9 (showing no failing grades) and prepare for Audition/Portfolio Presentation.",
+      };
+    }
+
+    const monitorStep = {
+      title: "Monitor Portal",
+      desc: "Use your tracking number to check the status of your application.",
+    };
+
+    return [...baseSteps, docStep, monitorStep];
+  };
+
+  const steps = getSteps();
+
   const downloadPDF = async () => {
     if (!pdfRef.current) return;
     setIsGenerating(true);
 
     try {
       const element = pdfRef.current;
-      // Show element for capture (off-screen)
       element.style.visibility = "visible";
       element.style.position = "fixed";
       element.style.left = "-9999px";
       element.style.top = "0";
 
-      // Small delay to ensure rendering and image loading
       await new Promise((resolve) => setTimeout(resolve, 800));
 
       const canvas = await html2canvas(element, {
@@ -64,7 +108,6 @@ export default function EarlyRegistrationSuccess({
       });
 
       const imgData = canvas.toDataURL("image/jpeg", 0.98);
-
       const imgWidth = 595.28;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
@@ -106,7 +149,8 @@ export default function EarlyRegistrationSuccess({
           }}
         />
       )}
-      {/* PDF Container (Using hardcoded hex colors to avoid oklch parsing errors) ─── */}
+      
+      {/* PDF Container */}
       <div
         ref={pdfRef}
         style={{
@@ -115,7 +159,7 @@ export default function EarlyRegistrationSuccess({
           left: "-9999px",
           top: "0",
           width: "800px",
-          height: "0",
+          height: "auto",
           overflow: "hidden",
           padding: "60px",
           backgroundColor: "#ffffff",
@@ -233,24 +277,7 @@ export default function EarlyRegistrationSuccess({
               Important Next Steps
             </h3>
             <div className="grid grid-cols-1 gap-6 text-sm">
-              {[
-                {
-                  title: "Check your email",
-                  desc: "A confirmation has been sent to your primary contact email.",
-                },
-                {
-                  title: "Wait for verification",
-                  desc: "Our Registrar will review your documents within 3-5 working days.",
-                },
-                {
-                  title: "Prepare original documents",
-                  desc: "Submit PSA Birth Certificate and SF9 (Report Card) upon request.",
-                },
-                {
-                  title: "Monitor Portal",
-                  desc: "Use your tracking number to check the status of your application.",
-                },
-              ].map((step, i) => (
+              {steps.map((step, i) => (
                 <div key={i} className="flex gap-4 items-start">
                   <div
                     style={{ backgroundColor: "#061E29" }}
@@ -303,7 +330,7 @@ export default function EarlyRegistrationSuccess({
         </div>
       </div>
 
-      {/* ─── Regular Web UI (Uses Theme Variables) ─── */}
+      {/* Regular Web UI */}
       <Card className="shadow-lg border-2 border-primary/10">
         <CardHeader className="text-center pb-2">
           <div className="flex justify-center mb-4">
@@ -350,22 +377,11 @@ export default function EarlyRegistrationSuccess({
               Next Steps
             </h3>
             <ul className="space-y-3 text-sm list-decimal pl-5">
-              <li>
-                <strong>Check your email:</strong> We've sent a confirmation
-                email to the address provided.
-              </li>
-              <li>
-                <strong>Wait for verification:</strong> Our Registrar will
-                review your documents within 3-5 working days.
-              </li>
-              <li>
-                <strong>Document Submission:</strong> Prepare the original
-                copies of your PSA Birth Certificate and SF9 (Report Card).
-              </li>
-              <li>
-                <strong>SCP Applicants:</strong> Watch out for announcements
-                regarding entrance exams and audition schedules.
-              </li>
+              {steps.map((step, i) => (
+                <li key={i}>
+                  <strong>{step.title}:</strong> {step.desc}
+                </li>
+              ))}
             </ul>
           </div>
 

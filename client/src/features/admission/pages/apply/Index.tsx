@@ -1,6 +1,6 @@
 import { useState } from "react";
-import depedLogo from "@/assets/DepEd-logo.png";
 import GuestLayout from "@/shared/layouts/GuestLayout";
+import AdmissionHeader from "../../components/AdmissionHeader";
 import PrivacyNotice from "./PrivacyNotice";
 import EarlyRegistrationForm from "./EarlyRegistrationForm";
 import EarlyRegistrationSuccess from "./components/EarlyRegistrationSuccess";
@@ -18,6 +18,9 @@ export default function Apply() {
   const [submittedTrackingNumber, setSubmittedTrackingNumber] = useState<
     string | null
   >(null);
+  const [submittedApplicantType, setSubmittedApplicantType] = useState<
+    string | null
+  >(null);
 
   const { schoolName, logoUrl, enrollmentPhase } = useSettingsStore();
   const isClosed = enrollmentPhase === "CLOSED";
@@ -31,10 +34,12 @@ export default function Apply() {
     sessionStorage.removeItem(CONSENT_KEY);
     setHasConsented(false);
     setSubmittedTrackingNumber(null);
+    setSubmittedApplicantType(null);
   };
 
   const handleBackHome = () => {
     setSubmittedTrackingNumber(null);
+    setSubmittedApplicantType(null);
     handleReset();
   };
 
@@ -116,59 +121,12 @@ export default function Apply() {
           />
         </div>
 
-        {!isClosed && (
-          <header className="sticky top-0 z-50 w-full border-b border-border bg-card shadow-sm">
-            <div className="max-w-7xl mx-auto px-4 h-auto py-4 sm:h-25 grid grid-cols-1 sm:grid-cols-3 items-center gap-3 sm:gap-6">
-              {/* 1. School Logo & Name Container for mobile/desktop */}
-              <div className="flex items-center gap-3 sm:justify-end sm:col-start-1">
-                <div className="flex shrink-0">
-                  {logoUrl ? (
-                    <img
-                      src={`${API_BASE}${logoUrl}`}
-                      alt={`${schoolName} logo`}
-                      className="h-12 w-12 sm:h-18 sm:w-30 shrink-0 object-contain"
-                    />
-                  ) : (
-                    <div className="h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-full bg-[hsl(var(--primary))/0.1] flex items-center justify-center">
-                      <span className="text-lg sm:text-xl font-bold text-foreground">
-                        {schoolName?.charAt(0)}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Mobile school name (only visible on sm) */}
-                <div className="flex flex-col leading-tight sm:hidden min-w-0">
-                  <span className="text-sm font-black tracking-tight text-foreground leading-none uppercase">
-                    {schoolName}
-                  </span>
-                  <span className="text-[0.5rem] font-black tracking-widest uppercase text-muted-foreground mt-0.5">
-                    BASIC EDUCATION EARLY REGISTRATION FORM
-                  </span>
-                </div>
-              </div>
-
-              {/* 2. School Name & Title (hidden on mobile, centered on desktop) */}
-              <div className="hidden sm:flex flex-col leading-tight text-center justify-center min-w-0 sm:col-start-2">
-                <span className="text-base sm:text-lg md:text-xl font-black tracking-tight text-foreground leading-none uppercase wrap-break-word">
-                  {schoolName}
-                </span>
-                <span className="text-[0.5625rem] sm:text-[0.625rem] md:text-xs font-black tracking-widest sm:tracking-[0.15em] uppercase text-muted-foreground mt-1 wrap-break-word">
-                  BASIC EDUCATION EARLY REGISTRATION FORM
-                </span>
-              </div>
-
-              {/* 3. DepEd Logo - Hidden on mobile */}
-              <div className="hidden sm:flex justify-start overflow-hidden sm:col-start-3">
-                <img
-                  src={depedLogo}
-                  alt="DepEd logo"
-                  className="h-14 w-14 sm:h-50 sm:w-50 shrink-0 object-contain"
-                />
-              </div>
-            </div>
-          </header>
-        )}
+        <AdmissionHeader
+          isClosed={isClosed}
+          logoUrl={logoUrl}
+          schoolName={schoolName}
+          title="BASIC EDUCATION EARLY REGISTRATION FORM"
+        />
 
         <main
           className={cn(
@@ -208,12 +166,14 @@ export default function Apply() {
                   </div>
                   <div className="space-y-4 max-w-lg mx-auto">
                     <h3 className="text-xl sm:text-2xl font-bold text-black">
-                      BASIC EDUCATION EARLY REGISTRATION FORM is Currently Closed
+                      BASIC EDUCATION EARLY REGISTRATION FORM is Currently
+                      Closed
                     </h3>
                     <p className="text-sm sm:text-base text-black leading-relaxed">
-                      The online portal for BASIC EDUCATION EARLY REGISTRATION FORM is not currently
-                      accepting applications. Registration periods are scheduled
-                      according to the DepEd school calendar.
+                      The online portal for BASIC EDUCATION EARLY REGISTRATION
+                      FORM is not currently accepting applications. Registration
+                      periods are scheduled according to the DepEd school
+                      calendar.
                     </p>
                     <p className="text-sm text-black font-medium pt-4 border-t border-border/50">
                       Please stay tuned to our official school social media
@@ -235,6 +195,7 @@ export default function Apply() {
                       transition={{ duration: 0.4 }}>
                       <EarlyRegistrationSuccess
                         trackingNumber={submittedTrackingNumber}
+                        applicantType={submittedApplicantType}
                         onBackHome={handleBackHome}
                       />
                     </motion.div>
@@ -255,7 +216,10 @@ export default function Apply() {
                       exit={{ opacity: 0, scale: 1.02 }}
                       transition={{ duration: 0.4, ease: "easeOut" }}>
                       <EarlyRegistrationForm
-                        onSuccess={setSubmittedTrackingNumber}
+                        onSuccess={(tracking, type) => {
+                          setSubmittedTrackingNumber(tracking);
+                          setSubmittedApplicantType(type || null);
+                        }}
                       />
                     </motion.div>
                   )}

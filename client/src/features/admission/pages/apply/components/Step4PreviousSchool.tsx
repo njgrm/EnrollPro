@@ -200,6 +200,37 @@ export default function Step4PreviousSchool() {
 						className='h-11 font-bold uppercase'
 					/>
 				</div>
+
+				<div className='space-y-2 pt-4'>
+					<Label
+						htmlFor='gen-avg'
+						className='text-sm font-bold'
+					>
+						Grade 6 General Average *
+					</Label>
+					<div className='flex flex-col gap-1.5'>
+						<Input
+							id='gen-avg'
+							type='number'
+							step='0.01'
+							{...register('generalAverage', { valueAsNumber: true })}
+							placeholder='e.g. 88.50'
+							className={cn(
+								'h-11 font-bold max-w-[120px]',
+								errors.generalAverage && 'border-destructive',
+							)}
+						/>
+						<p className='text-[0.625rem] text-muted-foreground italic font-medium'>
+							For Early Registration, please provide your current average (Q1 &
+							Q2). Minimum of 85.00 required for STE/SPS tracks.
+						</p>
+					</div>
+					{errors.generalAverage && (
+						<p className='text-[0.6875rem] text-destructive font-medium'>
+							{errors.generalAverage.message}
+						</p>
+					)}
+				</div>
 			</div>
 
 			<Alert className='bg-primary/5 border-primary/20 mt-12'>

@@ -135,5 +135,44 @@ export function getRequiredDocuments(params: {
 		});
 	}
 
+	// 7. SCP-specific Requirements
+	if (applicantType === 'SCIENCE_TECHNOLOGY_AND_ENGINEERING') {
+		requirements.push({
+			type: 'MEDICAL_CERTIFICATE',
+			label: 'Medical Certificate',
+			isRequired: true,
+			isOnceOnly: false,
+			description: 'Physical health clearance for STE admission',
+			phase: 1,
+		});
+		requirements.push({
+			type: 'GOOD_MORAL_CERTIFICATE',
+			label: 'Certificate of Good Moral Character',
+			isRequired: true,
+			isOnceOnly: false,
+			description: 'Issued by previous school principal/adviser',
+			phase: 1,
+		});
+	}
+
+	if (applicantType === 'SPECIAL_PROGRAM_IN_SPORTS') {
+		requirements.push({
+			type: 'MEDICAL_CERTIFICATE',
+			label: 'Strict Medical Certificate',
+			isRequired: true,
+			isOnceOnly: false,
+			description: 'Clearing for intense physical activity/tryouts',
+			phase: 1,
+		});
+		requirements.push({
+			type: 'CERTIFICATE_OF_RECOGNITION',
+			label: 'Certificates of Recognition in Sports',
+			isRequired: true,
+			isOnceOnly: false,
+			description: 'Proof of participation/achievement in sports',
+			phase: 1,
+		});
+	}
+
 	return requirements;
 }

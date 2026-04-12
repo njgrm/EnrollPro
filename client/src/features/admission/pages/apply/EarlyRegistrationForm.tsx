@@ -46,7 +46,7 @@ const DEFAULT_VALUES = {
 export default function EarlyRegistrationForm({
   onSuccess,
 }: {
-  onSuccess?: (trackingNumber: string) => void;
+  onSuccess?: (trackingNumber: string, applicantType?: string) => void;
 }) {
   const [initialDraft] = useState(() => {
     const draft = sessionStorage.getItem(DRAFT_KEY);
@@ -252,7 +252,10 @@ export default function EarlyRegistrationForm({
 
       // Prepare for potential new application or fresh state when going back
       if (onSuccess) {
-        onSuccess(response.data.trackingNumber);
+        onSuccess(
+          response.data.trackingNumber,
+          data.isScpApplication ? data.scpType : undefined,
+        );
       }
 
       // Reset form and stepper state

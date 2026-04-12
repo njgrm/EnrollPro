@@ -674,24 +674,47 @@ export default function TrackApplication({
                     Important Next Steps
                   </h3>
                   <div className="grid grid-cols-1 gap-6 text-sm">
-                    {[
-                      {
-                        title: "Check your email",
-                        desc: "A confirmation has been sent to your primary contact email.",
-                      },
-                      {
-                        title: "Wait for verification",
-                        desc: "Our Registrar will review your documents within 3-5 working days.",
-                      },
-                      {
-                        title: "Prepare original documents",
-                        desc: "Submit PSA Birth Certificate and SF9 (Report Card) upon request.",
-                      },
-                      {
+                    {(() => {
+                      const baseSteps = [
+                        {
+                          title: "Check your email",
+                          desc: "A confirmation has been sent to your primary contact email.",
+                        },
+                        {
+                          title: "Wait for verification",
+                          desc: "Our Registrar will review your documents within 3-5 working days.",
+                        },
+                      ];
+
+                      let docStep = {
+                        title: "Document Submission",
+                        desc: "Prepare original copies of PSA Birth Certificate and SF9 (Report Card).",
+                      };
+
+                      if (scpType === "SCIENCE_TECHNOLOGY_AND_ENGINEERING") {
+                        docStep = {
+                          title: "STE Requirements",
+                          desc: "Submit photocopy of SF9 (Q1&Q2 Avg ≥ 85%), Medical Certificate, and Good Moral to the Science Office.",
+                        };
+                      } else if (scpType === "SPECIAL_PROGRAM_IN_SPORTS") {
+                        docStep = {
+                          title: "SPS Requirements",
+                          desc: "Submit photocopy of SF9 (Q1&Q2 Avg ≥ 85%), strict Medical Certificate, and Certificates of Recognition to the MAPEH office.",
+                        };
+                      } else if (scpType === "SPECIAL_PROGRAM_IN_THE_ARTS") {
+                        docStep = {
+                          title: "SPA Requirements",
+                          desc: "Submit SF9 (showing no failing grades) and prepare for Audition/Portfolio Presentation.",
+                        };
+                      }
+
+                      const monitorStep = {
                         title: "Monitor Portal",
                         desc: "Use your tracking number to check the status of your application.",
-                      },
-                    ].map((step, i) => (
+                      };
+
+                      return [...baseSteps, docStep, monitorStep];
+                    })().map((step, i) => (
                       <div key={i} className="flex gap-4 items-start">
                         <div
                           style={{ backgroundColor: "#061E29" }}

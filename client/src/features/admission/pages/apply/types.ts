@@ -118,6 +118,12 @@ export const EarlyRegistrationSchema = z.object({
     .min(1, "School year last attended is required"),
   lastSchoolAddress: z.string().optional(),
   lastSchoolType: z.enum(["Public", "Private", "International", "ALS"]),
+  generalAverage: z
+    .number()
+    .min(70, "Invalid average")
+    .max(100, "Invalid average")
+    .optional()
+    .nullable(),
 
   // Section 8: SCP Specifics
   artField: z.string().optional(),
@@ -141,6 +147,26 @@ export const EarlyRegistrationSchema = z.object({
   }),
   parentGuardianSignature: z.string().min(1, "Full Name is required"),
   dateAccomplished: z.date().default(new Date()),
+}).superRefine((data, ctx) => {
+  if (data.isScpApplication) {
+    if (data.scpType === "SPECIAL_PROGRAM_IN_THE_ARTS" && !data.artField) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Art field is required for SPA applicants",
+        path: ["artField"],
+      });
+    }
+    if (
+      data.scpType === "SPECIAL_PROGRAM_IN_SPORTS" &&
+      (!data.sportsList || data.sportsList.length === 0)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one sport is required for SPS applicants",
+        path: ["sportsList"],
+      });
+    }
+  }
 });
 
 export type EarlyRegistrationFormData = z.infer<typeof EarlyRegistrationSchema>;

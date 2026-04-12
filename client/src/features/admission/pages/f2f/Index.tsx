@@ -76,6 +76,9 @@ export default function F2FEarlyRegistration() {
   const { colorScheme, selectedAccentHsl } = useSettingsStore();
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [trackingNumber, setTrackingNumber] = useState("");
+  const [submittedApplicantType, setSubmittedApplicantType] = useState<
+    string | null
+  >(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [maxStepReached, setMaxStepReached] = useState(1);
@@ -306,6 +309,7 @@ export default function F2FEarlyRegistration() {
 
       const response = await api.post("/applications/f2f", payload);
       setTrackingNumber(response.data.trackingNumber);
+      setSubmittedApplicantType(data.isScpApplication ? (data.scpType || null) : null);
 
       sileo.success({
         title: "F2F Application Submitted!",
@@ -338,6 +342,7 @@ export default function F2FEarlyRegistration() {
     return (
       <F2FEarlyRegistrationSuccess
         trackingNumber={trackingNumber}
+        applicantType={submittedApplicantType}
         encodedBy={user ? `${user.firstName} ${user.lastName}` : "Staff"}
         onNewApplication={handleFullReset}
       />

@@ -1,0 +1,53 @@
+import { earlyRegistrationSubmitSchema } from "@enrollpro/shared";
+import type { z } from "zod";
+
+export const EarlyRegFormSchema = earlyRegistrationSubmitSchema;
+export type EarlyRegFormData = z.infer<typeof earlyRegistrationSubmitSchema>;
+
+export const DEFAULT_VALUES: Partial<EarlyRegFormData> = {
+  schoolYear: "",
+  gradeLevel: "7",
+  lrn: "",
+  learnerType: "NEW_ENROLLEE",
+  lastName: "",
+  firstName: "",
+  middleName: "",
+  extensionName: "",
+  birthdate: "",
+  sex: "MALE",
+  religion: "",
+  isIpCommunity: false,
+  ipGroupName: "",
+  isLearnerWithDisability: false,
+  disabilityTypes: [],
+  houseNoStreet: "",
+  sitio: "",
+  barangay: "",
+  cityMunicipality: "",
+  province: "",
+  father: {
+    lastName: "",
+    firstName: "",
+    middleName: "",
+    contactNumber: "",
+    email: "",
+  },
+  mother: {
+    lastName: "",
+    firstName: "",
+    middleName: "",
+    contactNumber: "",
+    email: "",
+  },
+  guardian: {
+    lastName: "",
+    firstName: "",
+    middleName: "",
+    contactNumber: "",
+    email: "",
+  },
+  guardianRelationship: "",
+  contactNumber: "",
+  email: "",
+  isPrivacyConsentGiven: false,
+};

@@ -23,12 +23,14 @@ import { useSettingsStore } from '@/store/settings.slice';
 
 interface F2FEarlyRegistrationSuccessProps {
 	trackingNumber: string;
+	applicantType?: string | null;
 	encodedBy: string;
 	onNewApplication?: () => void;
 }
 
 export default function F2FEarlyRegistrationSuccess({
 	trackingNumber,
+	applicantType,
 	encodedBy,
 	onNewApplication,
 }: F2FEarlyRegistrationSuccessProps) {
@@ -158,17 +160,26 @@ export default function F2FEarlyRegistrationSuccess({
 								their tracking number for monitoring.
 							</li>
 							<li>
-								<strong>Document submission:</strong> Collect and verify
-								original documents (PSA Birth Certificate, SF9).
+								<strong>Document submission:</strong>
+								{applicantType === 'SCIENCE_TECHNOLOGY_AND_ENGINEERING'
+									? ' Collect photocopy of SF9 (Q1&Q2 Avg ≥ 85%), Medical Certificate, and Good Moral.'
+									: applicantType === 'SPECIAL_PROGRAM_IN_SPORTS'
+										? ' Collect photocopy of SF9 (Q1&Q2 Avg ≥ 85%), strict Medical Certificate, and Certificates of Recognition.'
+										: applicantType === 'SPECIAL_PROGRAM_IN_THE_ARTS'
+											? ' Collect SF9 (no failing grades) and advise on Audition/Portfolio Presentation.'
+											: ' Collect and verify original documents (PSA Birth Certificate, SF9).'}
 							</li>
 							<li>
 								<strong>Application review:</strong> The application is now in
 								the queue for registrar review.
 							</li>
-							<li>
-								<strong>SCP applicants:</strong> Schedule entrance exam/audition
-								if applicable.
-							</li>
+							{applicantType &&
+								applicantType !== 'BASIC_EDUCATION_CURRICULUM' && (
+									<li>
+										<strong>SCP Assessment:</strong> Ensure the applicant is
+										briefed on the qualifying exam or tryout schedule.
+									</li>
+								)}
 						</ul>
 					</div>
 

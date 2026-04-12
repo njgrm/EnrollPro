@@ -1003,6 +1003,7 @@ export async function updateChecklist(
       "isSf10Requested",
       "isGoodMoralPresented",
       "isMedicalEvalSubmitted",
+      "isCertOfRecognitionPresented",
       "isUndertakingSigned",
       "isConfirmationSlipReceived",
     ] as const;
@@ -1037,6 +1038,7 @@ export async function updateChecklist(
       isSf10Requested: "SF10 (Permanent Record)",
       isGoodMoralPresented: "Good Moral Certificate",
       isMedicalEvalSubmitted: "Medical Evaluation",
+      isCertOfRecognitionPresented: "Certificate of Recognition",
       isUndertakingSigned: "Affidavit of Undertaking",
     };
 

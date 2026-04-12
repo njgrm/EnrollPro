@@ -101,6 +101,28 @@ export const LastSchoolTypeEnum = z.enum([
   "ALS",
 ]);
 export const GradeLevelEnum = z.enum(["7"]);
+
+// ─── DO 017 s.2025 Early Registration Enums ─────────────
+export const EarlyRegGradeLevelEnum = z.enum(["7", "8", "9", "10"]);
+export const DisabilityTypeEnum = z.enum([
+  "VISUAL",
+  "HEARING",
+  "INTELLECTUAL",
+  "LEARNING",
+  "PSYCHOSOCIAL",
+  "ORTHOPEDIC",
+  "SPEECH",
+  "AUTISM",
+  "CHRONIC_ILLNESS",
+  "MULTIPLE",
+]);
+export const EarlyRegistrationStatusEnum = z.enum([
+  "DRAFT",
+  "SUBMITTED",
+  "VERIFIED",
+  "LINKED",
+]);
+
 export const ScpTypeEnum = z.enum([
   "SCIENCE_TECHNOLOGY_AND_ENGINEERING",
   "SPECIAL_PROGRAM_IN_THE_ARTS",
@@ -113,6 +135,11 @@ export const ScpTypeEnum = z.enum([
 // ─── Types derived from enums ───────────────────────────
 export type AssessmentKind = z.infer<typeof AssessmentKindEnum>;
 export type ScpType = z.infer<typeof ScpTypeEnum>;
+export type DisabilityType = z.infer<typeof DisabilityTypeEnum>;
+export type EarlyRegGradeLevel = z.infer<typeof EarlyRegGradeLevelEnum>;
+export type EarlyRegistrationStatus = z.infer<
+  typeof EarlyRegistrationStatusEnum
+>;
 
 // ─── Assessment Kind Labels ─────────────────────────────
 export const ASSESSMENT_KIND_LABELS: Record<AssessmentKind, string> = {
