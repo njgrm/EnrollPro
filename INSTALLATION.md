@@ -6,7 +6,7 @@ This guide provides step-by-step instructions for setting up and running the Enr
 
 Ensure you have the following installed on your machine:
 
-- **Node.js** (v18.x or later)
+- **Node.js** (v22.13.0 or later in the v22 LTS line)
 - **pnpm** (v8.x or later) - The project uses pnpm workspaces.
 - **PostgreSQL** (v14 or later) - Used as the primary database.
 - **Git** - For cloning the repository.
@@ -96,6 +96,7 @@ pnpm run dev
 ```
 
 This will start:
+
 - **Server:** `http://localhost:5000`
 - **Client:** `http://localhost:5173`
 
@@ -104,7 +105,9 @@ This will start:
 Once running, open your browser and navigate to `http://localhost:5173`.
 
 ### Default Admin Credentials
+
 If you used the default seed data:
+
 - **Email:** `admin@deped.edu.ph`
 - **Password:** `Admin2026!`
 
@@ -112,7 +115,8 @@ If you used the default seed data:
 
 - **Database Connection:** If the server fails to start, verify your `DATABASE_URL` in the `.env` file and ensure PostgreSQL is accepting connections.
 - **Prisma Issues:** If you encounter types errors related to the database, try re-running `pnpm run db:generate`.
-- **Node Version:** Ensure you are using a compatible Node.js version (`node -v`).
+- **Node Version:** Ensure you are using Node.js 22 LTS (`node -v`).
 
 ---
+
 For further assistance, please contact the development team.

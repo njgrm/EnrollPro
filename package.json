@@ -2,7 +2,7 @@
   "name": "enrollpro",
   "private": true,
   "engines": {
-    "node": ">=20.20.2 <21.0.0"
+    "node": ">=22.13.0 <23.0.0"
   },
   "pnpm": {
     "engine-strict": true,

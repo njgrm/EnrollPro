@@ -6,6 +6,11 @@
       "sourceType": "github",
       "computedHash": "4931c2867890bfef5881225adb691c3d719fe9ad556e3d5fae15f83e0668fa60"
     },
+    "accessibility": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "075465dbf841875597a95f3cc43d80e34149bc7332c885c0c15eee346ca686c2"
+    },
     "agent-eval": {
       "source": "affaan-m/everything-claude-code",
       "sourceType": "github",
@@ -416,6 +421,11 @@
       "sourceType": "github",
       "computedHash": "6ba1dbbe48fce359bbf77ef204be28d51a447b2049e15cac3cac0fa42369e886"
     },
+    "gateguard": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "52c46b9088f6c3b1f960cb0bebf1967702d250b9f7419a7c9046280c434ee631"
+    },
     "gemini-api-dev": {
       "source": "google-gemini/gemini-skills",
       "sourceType": "github",
@@ -804,7 +814,7 @@
     "skill-comply": {
       "source": "affaan-m/everything-claude-code",
       "sourceType": "github",
-      "computedHash": "1fcb8c3dda32ed2727193d03286555c7bd08358287bd35cf66c96721f7c28320"
+      "computedHash": "a2f7219f3440c4c7d7efc5f9b7b343392a6a94414c2720c42fedd86e8b263f32"
     },
     "social-graph-ranker": {
       "source": "affaan-m/everything-claude-code",

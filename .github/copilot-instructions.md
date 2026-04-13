@@ -2,7 +2,7 @@
 
 ## Build, lint, and test commands
 
-Run commands from the repository root (`EnrollPro`) with Node 20 (`.node-version`, `engine-strict=true`).
+Run commands from the repository root (`EnrollPro`) with Node 22 LTS (`.node-version`, `engine-strict=true`).
 
 - Install workspace dependencies: `pnpm install`
 - Run client + server in parallel: `pnpm run dev`
