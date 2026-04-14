@@ -236,6 +236,16 @@ export async function getScpConfig(req: Request, res: Response): Promise<void> {
 
   const scpProgramConfigs = await prisma.scpProgramConfig.findMany({
     where: { schoolYearId: settings.activeSchoolYearId, isOffered: true },
+    select: {
+      id: true,
+      schoolYearId: true,
+      scpType: true,
+      isOffered: true,
+      isTwoPhase: true,
+      cutoffScore: true,
+      notes: true,
+    },
+    orderBy: { scpType: "asc" },
   });
 
   res.json({ scpProgramConfigs });

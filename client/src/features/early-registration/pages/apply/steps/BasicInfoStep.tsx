@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFormContext } from "react-hook-form";
 import type { EarlyRegFormData } from "../types";
 import { Input } from "@/shared/ui/input";
@@ -49,6 +49,19 @@ const SCP_PROGRAMS: Array<{ id: ScpTypeValue; description: string }> = [
   },
 ];
 
+interface PublicScpProgramConfig {
+  scpType: unknown;
+  isOffered?: boolean;
+}
+
+interface PublicScpConfigResponse {
+  scpProgramConfigs?: PublicScpProgramConfig[];
+}
+
+const isScpTypeValue = (value: unknown): value is ScpTypeValue =>
+  typeof value === "string" &&
+  SCP_PROGRAMS.some((program) => program.id === value);
+
 export default function BasicInfoStep() {
   const {
     register,
@@ -66,6 +79,62 @@ export default function BasicInfoStep() {
   const isScpApplication = watch("isScpApplication");
   const scpType = watch("scpType");
   const isScpEligible = learnerType === "NEW_ENROLLEE" && gradeLevel === "7";
+  const [isLoadingScpConfig, setIsLoadingScpConfig] = useState(false);
+  const [scpConfigError, setScpConfigError] = useState<string | null>(null);
+  const [offeredScpTypes, setOfferedScpTypes] = useState<ScpTypeValue[]>([]);
+
+  const availableScpPrograms = useMemo(
+    () =>
+      SCP_PROGRAMS.filter((program) => offeredScpTypes.includes(program.id)),
+    [offeredScpTypes],
+  );
+  const hasOfferedScpPrograms = availableScpPrograms.length > 0;
+  const canSelectScpTrack =
+    isScpEligible && !isLoadingScpConfig && hasOfferedScpPrograms;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadScpConfig = async () => {
+      setIsLoadingScpConfig(true);
+      setScpConfigError(null);
+
+      try {
+        const response = await api.get<PublicScpConfigResponse>(
+          "/settings/scp-config",
+        );
+
+        const offered = (response.data.scpProgramConfigs ?? []).reduce<
+          ScpTypeValue[]
+        >((acc, config) => {
+          if (config.isOffered !== false && isScpTypeValue(config.scpType)) {
+            acc.push(config.scpType);
+          }
+          return acc;
+        }, []);
+
+        if (!isMounted) return;
+        setOfferedScpTypes(Array.from(new Set(offered)));
+      } catch (error) {
+        console.error("Failed to load SCP configuration:", error);
+        if (!isMounted) return;
+        setOfferedScpTypes([]);
+        setScpConfigError(
+          "Unable to load available SCP programs right now. Please try again later.",
+        );
+      } finally {
+        if (isMounted) {
+          setIsLoadingScpConfig(false);
+        }
+      }
+    };
+
+    void loadScpConfig();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // 1. Auto-set School Year
   useEffect(() => {
@@ -89,6 +158,42 @@ export default function BasicInfoStep() {
       clearErrors("scpType");
     }
   }, [isScpEligible, isScpApplication, scpType, setValue, clearErrors]);
+
+  useEffect(() => {
+    if (isLoadingScpConfig || !isScpApplication || hasOfferedScpPrograms) {
+      return;
+    }
+
+    setValue("isScpApplication", false, { shouldValidate: true });
+    setValue("scpType", null, { shouldValidate: true });
+    clearErrors("scpType");
+  }, [
+    isLoadingScpConfig,
+    isScpApplication,
+    hasOfferedScpPrograms,
+    setValue,
+    clearErrors,
+  ]);
+
+  useEffect(() => {
+    if (isLoadingScpConfig || !scpType) return;
+
+    const isStillAvailable = availableScpPrograms.some(
+      (program) => program.id === scpType,
+    );
+
+    if (!isStillAvailable) {
+      setValue("isScpApplication", false, { shouldValidate: true });
+      setValue("scpType", null, { shouldValidate: true });
+      clearErrors("scpType");
+    }
+  }, [
+    isLoadingScpConfig,
+    scpType,
+    availableScpPrograms,
+    setValue,
+    clearErrors,
+  ]);
 
   // 3. LRN existence check (Debounced)
   useEffect(() => {
@@ -136,7 +241,7 @@ export default function BasicInfoStep() {
   };
 
   const selectScpTrack = () => {
-    if (!isScpEligible) return;
+    if (!canSelectScpTrack) return;
     setValue("isScpApplication", true, { shouldValidate: true });
   };
 
@@ -263,10 +368,10 @@ export default function BasicInfoStep() {
                 className={cn(
                   "relative flex items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all h-14 uppercase",
                   gradeLevel === opt.value
-                    ? "border-primary bg-primary/10 text-primary shadow-sm ring-1 ring-primary"
+                    ? "border-primary bg-primary text-white shadow-sm ring-1 ring-primary"
                     : "border-border bg-white hover:border-primary/50 hover:bg-primary/5 cursor-pointer",
                 )}>
-                <span className="text-sm font-bold leading-tight text-primary">
+                <span className="text-sm font-bold leading-tight">
                   {opt.label}
                 </span>
               </button>
@@ -334,11 +439,14 @@ export default function BasicInfoStep() {
               {isScpEligible && (
                 <button
                   type="button"
+                  disabled={!canSelectScpTrack}
                   className={cn(
                     "flex flex-col p-4 rounded-xl border-2 transition-all text-left",
                     isScpApplication
                       ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-white hover:bg-primary/5",
+                      : canSelectScpTrack
+                        ? "border-border bg-white hover:bg-primary/5"
+                        : "border-border bg-muted/40 text-muted-foreground cursor-not-allowed opacity-70",
                   )}
                   onClick={selectScpTrack}>
                   <div className="flex items-center gap-3 mb-1">
@@ -364,11 +472,39 @@ export default function BasicInfoStep() {
                         ? "text-primary-foreground/80"
                         : "text-muted-foreground",
                     )}>
-                    Select this if applying for an SCP track.
+                    {isLoadingScpConfig
+                      ? "Loading currently offered SCP tracks..."
+                      : hasOfferedScpPrograms
+                        ? "Select this if applying for an SCP track."
+                        : "No SCP tracks are currently open for this school year."}
                   </p>
                 </button>
               )}
             </div>
+
+            {isScpEligible && isLoadingScpConfig && (
+              <p className="font-bold text-xs italic flex items-center gap-1 mt-2 text-muted-foreground">
+                <Info className="w-4 h-4" />
+                Loading available SCP programs...
+              </p>
+            )}
+
+            {isScpEligible && !isLoadingScpConfig && scpConfigError && (
+              <p className="text-xs text-destructive font-medium flex items-center gap-1 mt-2">
+                <AlertCircle className="w-3 h-3" />
+                {scpConfigError}
+              </p>
+            )}
+
+            {isScpEligible &&
+              !isLoadingScpConfig &&
+              !scpConfigError &&
+              !hasOfferedScpPrograms && (
+                <p className="font-bold text-xs italic flex items-center gap-1 mt-2 text-muted-foreground">
+                  <Info className="w-4 h-4" />
+                  No SCP programs are currently offered for this school year.
+                </p>
+              )}
 
             {!isScpEligible && (
               <p className="font-bold text-xs italic flex items-center gap-1 mt-2 text-muted-foreground">
@@ -377,14 +513,14 @@ export default function BasicInfoStep() {
               </p>
             )}
 
-            {isScpEligible && isScpApplication && (
+            {isScpEligible && isScpApplication && hasOfferedScpPrograms && (
               <div className="space-y-3 pt-2">
                 <Label className="text-sm font-bold uppercase tracking-widest text-primary">
                   Select SCP Program <span className="text-destructive">*</span>
                 </Label>
 
                 <div className="grid grid-cols-1 gap-3">
-                  {SCP_PROGRAMS.map((program) => (
+                  {availableScpPrograms.map((program) => (
                     <button
                       key={program.id}
                       type="button"

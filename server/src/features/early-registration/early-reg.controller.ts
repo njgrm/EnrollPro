@@ -237,6 +237,24 @@ async function createRegistration(
       body.scpType,
     );
 
+    if (applicantType !== "REGULAR") {
+      const offeredScpConfig = await prisma.scpProgramConfig.findFirst({
+        where: {
+          schoolYearId: activeYear.id,
+          scpType: applicantType,
+          isOffered: true,
+        },
+        select: { id: true },
+      });
+
+      if (!offeredScpConfig) {
+        throw new AppError(
+          422,
+          "Ang napiling SCP track ay hindi available para sa kasalukuyang school year. / The selected SCP track is not available for the active school year.",
+        );
+      }
+    }
+
     // 2. Parse and validate birthdate
     const rawBirthDate = new Date(body.birthdate);
     if (isNaN(rawBirthDate.getTime())) {
