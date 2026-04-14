@@ -240,7 +240,7 @@ export default function EarlyRegistrationForm({
                 <h2 className="text-xl font-bold tracking-tight text-foreground leading-tight">
                   {stepper.state.current.data.title}
                 </h2>
-                <p className="text-sm text-muted-foreground mt-0.5">
+                <p className="text-sm text-muted-foreground mt-0.5 font-bold">
                   {stepper.state.current.data.description}
                 </p>
               </div>

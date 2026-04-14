@@ -1,11 +1,15 @@
+import * as React from "react";
 import { useFormContext, Controller } from "react-hook-form";
 import type { EarlyRegFormData } from "../types";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Switch } from "@/shared/ui/switch";
-import { DatePicker } from "@/shared/ui/date-picker";
-import { AlertCircle, Lock, Mars, Venus } from "lucide-react";
-import { differenceInYears } from "date-fns";
+import { Checkbox } from "@/shared/ui/checkbox";
+import { Calendar } from "@/shared/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
+import { Button } from "@/shared/ui/button";
+import { AlertCircle, Lock, Mars, Venus, Calendar as CalendarIcon } from "lucide-react";
+import { differenceInYears, isValid, parse, format, isAfter, isBefore } from "date-fns";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/ui/badge";
 
@@ -37,9 +41,68 @@ export default function LearnerProfileStep() {
   const isPwd = watch("isLearnerWithDisability");
   const selectedDisabilities = watch("disabilityTypes") || [];
 
-  const age = birthdate
-    ? differenceInYears(new Date(), new Date(birthdate))
-    : null;
+  const [dateInput, setDateInput] = React.useState(() => {
+    if (birthdate) {
+      const d = new Date(birthdate);
+      return isValid(d) ? format(d, "MM/dd/yyyy") : "";
+    }
+    return "";
+  });
+
+  const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
+  const [calendarMonth, setCalendarMonth] = React.useState<Date>(() => {
+    if (birthdate) {
+      const d = new Date(birthdate);
+      if (isValid(d)) return d;
+    }
+    return new Date();
+  });
+
+  const age = React.useMemo(() => {
+    if (!birthdate) return null;
+    const d = new Date(birthdate);
+    if (!isValid(d)) return null;
+    const calculated = differenceInYears(new Date(), d);
+    return calculated >= 0 ? calculated : null;
+  }, [birthdate]);
+
+  // Handle manual typing with MM/DD/YYYY mask
+  const handleDateTyping = (value: string, onChange: (val: string) => void) => {
+    const isDeleting = value.length < dateInput.length;
+    const cleaned = value.replace(/\D/g, "").slice(0, 8);
+    
+    let masked = "";
+    if (cleaned.length > 0) {
+      masked = cleaned.slice(0, 2);
+      if (cleaned.length > 2 || (cleaned.length === 2 && !isDeleting)) {
+        masked += "/";
+      }
+      if (cleaned.length > 2) {
+        masked += cleaned.slice(2, 4);
+        if (cleaned.length > 4 || (cleaned.length === 4 && !isDeleting)) {
+          masked += "/";
+        }
+      }
+      if (cleaned.length > 4) {
+        masked += cleaned.slice(4, 8);
+      }
+    }
+    
+    setDateInput(masked);
+
+    // If valid date, update form state
+    if (masked.length === 10) {
+      const parsedDate = parse(masked, "MM/dd/yyyy", new Date());
+      if (isValid(parsedDate) && !isAfter(parsedDate, new Date()) && !isBefore(parsedDate, new Date(1900, 0, 1))) {
+        onChange(parsedDate.toISOString());
+        setCalendarMonth(parsedDate);
+      } else {
+        onChange(""); 
+      }
+    } else {
+      onChange(""); 
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -64,7 +127,7 @@ export default function LearnerProfileStep() {
             }}
           />
           {errors.lastName && (
-            <p className="text-[0.6875rem] text-destructive font-medium flex items-center gap-1">
+            <p className="text-xs text-destructive font-medium flex items-center gap-1">
               <AlertCircle className="w-3 h-3" />
               {errors.lastName.message}
             </p>
@@ -90,7 +153,7 @@ export default function LearnerProfileStep() {
             }}
           />
           {errors.firstName && (
-            <p className="text-[0.6875rem] text-destructive font-medium flex items-center gap-1">
+            <p className="text-xs text-destructive font-medium flex items-center gap-1">
               <AlertCircle className="w-3 h-3" />
               {errors.firstName.message}
             </p>
@@ -140,25 +203,65 @@ export default function LearnerProfileStep() {
             control={control}
             name="birthdate"
             render={({ field }) => (
-              <DatePicker
-                date={field.value ? new Date(field.value) : undefined}
-                setDate={(date?: Date) => {
-                  field.onChange(date ? date.toISOString() : "");
-                }}
-                placeholder="Select your Birthdate"
-                minDate={new Date(2000, 0, 1)}
-                maxDate={new Date()}
-                className={cn(
-                  "h-11 font-bold uppercase w-full",
-                  errors.birthdate 
-                    ? "border-destructive text-destructive focus:ring-destructive" 
-                    : "border-input"
-                )}
-              />
+              <div className="relative">
+                <Input
+                  placeholder="MM/DD/YYYY"
+                  maxLength={10}
+                  inputMode="numeric"
+                  value={dateInput}
+                  onChange={(e) => handleDateTyping(e.target.value, field.onChange)}
+                  className={cn(
+                    "h-11 font-bold pr-12",
+                    errors.birthdate && "border-destructive focus-visible:ring-destructive"
+                  )}
+                />
+                <Popover open={isCalendarOpen} onOpenChange={(open) => {
+                  if (open && field.value) {
+                    const d = new Date(field.value);
+                    if (isValid(d)) setCalendarMonth(d);
+                  }
+                  setIsCalendarOpen(open);
+                }}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full w-10 hover:bg-transparent"
+                    >
+                      <CalendarIcon className={cn(
+                        "w-5 h-5 transition-colors",
+                        isCalendarOpen ? "text-primary" : "text-muted-foreground"
+                      )} />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                      mode="single"
+                      captionLayout="dropdown"
+                      selected={field.value ? new Date(field.value) : undefined}
+                      month={calendarMonth}
+                      onMonthChange={setCalendarMonth}
+                      onSelect={(date) => {
+                        if (date) {
+                          field.onChange(date.toISOString());
+                          setDateInput(format(date, "MM/dd/yyyy"));
+                          setCalendarMonth(date);
+                          setIsCalendarOpen(false);
+                        }
+                      }}
+                      disabled={(date) =>
+                        date > new Date() || date < new Date(1950, 0, 1)
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             )}
           />
           {errors.birthdate && (
-            <p className="text-[0.6875rem] text-destructive font-medium flex items-center gap-1">
+            <p className="text-xs text-destructive font-medium flex items-center gap-1">
               <AlertCircle className="w-3 h-3" />
               {errors.birthdate.message}
             </p>
@@ -168,7 +271,7 @@ export default function LearnerProfileStep() {
         <div className="space-y-1.5">
           <Label className="text-sm font-semibold">Age</Label>
           <div className="h-11 flex items-center px-3 rounded-md border bg-muted text-sm font-bold">
-            {age !== null && age >= 0 ? `${age} YEARS OLD` : "—"}
+            {age !== null ? `${age} YEARS OLD` : "—"}
           </div>
           <p className="text-[0.625rem] text-muted-foreground italic">
             Auto-calculated
@@ -201,7 +304,8 @@ export default function LearnerProfileStep() {
                     : errors.sex
                       ? "border-destructive hover:bg-destructive/10"
                       : "border-border hover:bg-muted/50",
-                )}>
+                )}
+              >
                 <s.icon
                   className={cn(
                     "w-4 h-4",
@@ -215,7 +319,7 @@ export default function LearnerProfileStep() {
             ))}
           </div>
           {errors.sex && (
-            <p className="text-[0.6875rem] text-destructive font-medium flex items-center gap-1">
+            <p className="text-xs text-destructive font-medium flex items-center gap-1">
               <AlertCircle className="w-3 h-3" />
               {errors.sex.message}
             </p>
@@ -262,7 +366,8 @@ export default function LearnerProfileStep() {
               </Label>
               <Badge
                 variant="outline"
-                className="text-[0.625rem] uppercase border-primary/20 text-primary gap-1 font-bold">
+                className="text-[0.625rem] uppercase border-primary/20 text-primary gap-1 font-bold"
+              >
                 <Lock className="w-2.5 h-2.5" /> Confidential
               </Badge>
             </div>
@@ -280,15 +385,17 @@ export default function LearnerProfileStep() {
               />
               <Label
                 htmlFor="is-ip"
-                className="text-sm font-semibold cursor-pointer">
+                className="text-sm font-semibold cursor-pointer"
+              >
                 Learner belongs to an IP community
               </Label>
             </div>
             {isIp && (
-              <div className="space-y-2 pt-1 max-w-sm">
+              <div className="space-y-2 pt-1 max-w-screen">
                 <Label
                   htmlFor="ipGroupName"
-                  className="text-xs font-bold uppercase text-muted-foreground">
+                  className="text-xs font-bold uppercase text-muted-foreground"
+                >
                   Specify IP Group/Ethnicity{" "}
                   <span className="text-destructive">*</span>
                 </Label>
@@ -298,14 +405,15 @@ export default function LearnerProfileStep() {
                   placeholder="e.g. MANGYAN, T'BOLI"
                   className={cn(
                     "h-11 font-bold uppercase",
-                    errors.ipGroupName && "border-destructive focus-visible:ring-destructive"
+                    errors.ipGroupName &&
+                      "border-destructive focus-visible:ring-destructive",
                   )}
                   onInput={(e) => {
                     e.currentTarget.value = e.currentTarget.value.toUpperCase();
                   }}
                 />
                 {errors.ipGroupName && (
-                  <p className="text-[0.6875rem] text-destructive font-medium flex items-center gap-1">
+                  <p className="text-xs text-destructive font-medium flex items-center gap-1">
                     <AlertCircle className="w-3 h-3" />
                     {errors.ipGroupName.message}
                   </p>
@@ -322,7 +430,8 @@ export default function LearnerProfileStep() {
               </Label>
               <Badge
                 variant="outline"
-                className="text-[0.625rem] uppercase border-primary/20 text-primary gap-1 font-bold">
+                className="text-[0.625rem] uppercase border-primary/20 text-primary gap-1 font-bold"
+              >
                 <Lock className="w-2.5 h-2.5" /> Confidential
               </Badge>
             </div>
@@ -340,7 +449,8 @@ export default function LearnerProfileStep() {
               />
               <Label
                 htmlFor="is-pwd"
-                className="text-sm font-semibold cursor-pointer">
+                className="text-sm font-semibold cursor-pointer"
+              >
                 Learner is a person with disability
               </Label>
             </div>
@@ -359,32 +469,33 @@ export default function LearnerProfileStep() {
                       <Label
                         key={dt.value}
                         className={cn(
-                          "flex items-center gap-2 rounded-lg border p-3 cursor-pointer transition-colors text-sm",
+                          "flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors text-sm",
                           isSelected
                             ? "border-primary bg-primary/5 font-bold"
                             : errors.disabilityTypes
                               ? "border-destructive hover:bg-destructive/10"
                               : "border-border hover:bg-muted/50",
-                        )}>
-                        <input
-                          type="checkbox"
+                        )}
+                      >
+                        <Checkbox
                           checked={isSelected}
-                          onChange={() => {
+                          onCheckedChange={(checked) => {
                             const current = [...(selectedDisabilities || [])];
-                            if (isSelected) {
+                            if (!checked) {
                               setValue(
                                 "disabilityTypes",
                                 current.filter((d) => d !== dt.value),
-                                { shouldValidate: true }
+                                { shouldValidate: true },
                               );
                             } else {
-                              setValue("disabilityTypes", [
-                                ...current,
-                                dt.value as any,
-                              ], { shouldValidate: true });
+                              setValue(
+                                "disabilityTypes",
+                                [...current, dt.value as any],
+                                { shouldValidate: true },
+                              );
                             }
                           }}
-                          className="w-4 h-4 rounded border-primary"
+                          className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                         />
                         {dt.label}
                       </Label>
@@ -392,7 +503,7 @@ export default function LearnerProfileStep() {
                   })}
                 </div>
                 {errors.disabilityTypes && (
-                  <p className="text-[0.6875rem] text-destructive font-medium flex items-center gap-1">
+                  <p className="text-xs text-destructive font-medium flex items-center gap-1">
                     <AlertCircle className="w-3 h-3" />
                     {(errors.disabilityTypes as any)?.message}
                   </p>

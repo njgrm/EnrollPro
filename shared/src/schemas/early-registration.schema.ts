@@ -59,7 +59,12 @@ export const earlyRegistrationSubmitSchema = z
   .object({
     // ── Registration ──────────────────────────────────────
     schoolYear: z.string().min(1, "School year is required"),
-    gradeLevel: EarlyRegGradeLevelEnum,
+    gradeLevel: EarlyRegGradeLevelEnum.or(z.literal("")).refine(
+      (v) => v !== "",
+      {
+        message: "Grade level is required",
+      },
+    ),
     lrn: z
       .string()
       .regex(/^\d{12}$/, "LRN must be exactly 12 numeric digits")
@@ -73,10 +78,7 @@ export const earlyRegistrationSubmitSchema = z
     firstName: z.string().min(1, "First name is required").max(100),
     middleName: z.string().max(100).optional().nullable(),
     extensionName: z.string().max(20).optional().nullable(),
-    birthdate: z.union(
-      [z.string().min(1, "Date of birth is required"), z.date()],
-      { errorMap: () => ({ message: "Date of birth is required" }) }
-    ),
+    birthdate: z.string().min(1, "Date of birth is required").or(z.date()),
     sex: SexEnum,
     religion: z.string().max(100).optional().nullable(),
 
@@ -103,14 +105,14 @@ export const earlyRegistrationSubmitSchema = z
     hasNoMother: z.boolean().default(false),
     hasNoFather: z.boolean().default(false),
     guardianRelationship: z.string().max(50).optional().nullable(),
-    primaryContact: z.enum(["FATHER", "MOTHER", "GUARDIAN"]).optional().nullable(),
+    primaryContact: z
+      .enum(["FATHER", "MOTHER", "GUARDIAN"])
+      .optional()
+      .nullable(),
     contactNumber: z
       .string()
       .min(1, "Contact number is required")
-      .regex(
-        /^09\d{2}-\d{3}-\d{4}$/,
-        "Format: 09XX-XXX-YYYY",
-      ),
+      .regex(/^09\d{2}-\d{3}-\d{4}$/, "Format: 09XX-XXX-YYYY"),
     email: z
       .string()
       .email("Invalid email")
@@ -138,10 +140,12 @@ export const earlyRegistrationSubmitSchema = z
     }
 
     // At least one parent/guardian must be provided
-    const hasFather = !data.hasNoFather && data.father?.lastName && data.father?.firstName;
-    const hasMother = !data.hasNoMother && data.mother?.maidenName && data.mother?.firstName;
+    const hasFather =
+      !data.hasNoFather && data.father?.lastName && data.father?.firstName;
+    const hasMother =
+      !data.hasNoMother && data.mother?.maidenName && data.mother?.firstName;
     const hasGuardian = data.guardian?.lastName && data.guardian?.firstName;
-    
+
     if (!hasFather && !hasMother && !hasGuardian) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

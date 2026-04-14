@@ -8,7 +8,7 @@ interface AdmissionHeaderProps {
   isClosed?: boolean;
   logoUrl?: string | null;
   schoolName?: string;
-  title: string;
+  title: React.ReactNode;
 }
 
 export default function AdmissionHeader({
@@ -51,7 +51,7 @@ export default function AdmissionHeader({
           <span className="text-[0.8rem] sm:text-lg md:text-xl font-black tracking-tight text-foreground leading-none uppercase wrap-break-word">
             {schoolName}
           </span>
-          <span className="text-[0.565rem] sm:text-[0.625rem] md:text-xs font-black tracking-widest sm:tracking-[0.15em] uppercase text-muted-foreground mt-0.5 sm:mt-1 wrap-break-word">
+          <span className="text-[0.565rem] sm:text-[0.625rem] md:text-xs font-black tracking-widest sm:tracking-[0.15em] uppercase text-foreground mt-0.5 sm:mt-1 wrap-break-word">
             {title}
           </span>
         </div>

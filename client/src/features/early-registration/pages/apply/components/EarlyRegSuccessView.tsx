@@ -12,8 +12,6 @@ import { useSettingsStore } from "@/store/settings.slice";
 import { cn, formatManilaDate, getManilaNow } from "@/shared/lib/utils";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import Confetti from "react-confetti";
-import { useWindowSize } from "react-use";
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace("/api", "") || "";
 
@@ -31,8 +29,6 @@ export default function EarlyRegSuccessView({
   const { schoolName, logoUrl } = useSettingsStore();
   const [copied, setCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [numPieces, setNumPieces] = useState(4000);
-  const { width, height } = useWindowSize();
   const pdfRef = useRef<HTMLDivElement>(null);
 
   // Format ID as a tracking-like number: REG-2026-XXXX
@@ -111,24 +107,6 @@ export default function EarlyRegSuccessView({
 
   return (
     <div className="max-w-3xl mx-auto p-4 md:p-0">
-      {numPieces > 0 && (
-        <Confetti
-          width={width}
-          height={height}
-          recycle={false}
-          numberOfPieces={numPieces}
-          gravity={0.15}
-          onConfettiComplete={() => setNumPieces(0)}
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            zIndex: 10000,
-            pointerEvents: "none",
-          }}
-        />
-      )}
-      
       {/* PDF Container (Hidden from Web UI) */}
       <div
         ref={pdfRef}

@@ -63,10 +63,10 @@ export default function StepProgressBar({
         {/* Mobile */}
         <div className="md:hidden">
           <div className="mb-3 flex items-center justify-between gap-2">
-            <p className="text-[0.58rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-foreground">
               Step {currentStep} of {totalSteps}
             </p>
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[0.58rem] font-bold text-primary">
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">
               {progressPercent}%
             </span>
           </div>
@@ -101,7 +101,8 @@ export default function StepProgressBar({
                           ? "border-primary bg-primary text-primary-foreground shadow-[0_0_0_2px_hsl(var(--card)),0_0_0_4px_hsl(var(--primary)/0.25)]"
                           : "border-border bg-card text-muted-foreground",
                     )}
-                    aria-current={isActive ? "step" : undefined}>
+                    aria-current={isActive ? "step" : undefined}
+                  >
                     <StepIcon className="h-3.5 w-3.5" />
                   </div>
                 </div>
@@ -110,11 +111,11 @@ export default function StepProgressBar({
           </div>
 
           <div className="mt-3 rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
-            <p className="truncate text-xs font-semibold text-foreground">
+            <p className="truncate font-bold text-foreground">
               {currentStepData?.title}
             </p>
             {description && (
-              <p className="mt-0.5 text-[0.68rem] leading-snug text-muted-foreground">
+              <p className="text-sm font-bold mt-0.5 leading-snug text-muted-foreground">
                 {description}
               </p>
             )}
@@ -123,7 +124,7 @@ export default function StepProgressBar({
 
         {/* Desktop and larger */}
         <div className="hidden md:block">
-          <p className="mb-3 text-center text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          <p className="mb-3 text-center text-base font-semibold uppercase tracking-[0.14em] text-foreground">
             Step {currentStep} of {totalSteps}
           </p>
 
@@ -158,20 +159,22 @@ export default function StepProgressBar({
                             ? "border-primary bg-primary text-primary-foreground shadow-[0_0_0_2px_hsl(var(--card)),0_0_0_4px_hsl(var(--primary)/0.25)]"
                             : "border-border bg-card text-muted-foreground",
                       )}
-                      aria-current={isActive ? "step" : undefined}>
+                      aria-current={isActive ? "step" : undefined}
+                    >
                       <StepIcon className="h-4 w-4" />
                     </div>
 
                     <span
                       className={cn(
-                        "mt-2 block w-full truncate px-1 text-center text-xs leading-tight lg:text-sm",
+                        "mt-2 block w-full truncate px-1 text-center leading-tight",
                         isActive
                           ? "font-bold text-foreground"
                           : isCompleted
                             ? "font-semibold text-foreground"
-                            : "font-medium text-muted-foreground",
+                            : "font-medium text-foreground",
                       )}
-                      title={step.title}>
+                      title={step.title}
+                    >
                       {step.title}
                     </span>
                   </div>
@@ -181,7 +184,7 @@ export default function StepProgressBar({
           </div>
 
           {description && (
-            <p className="mt-4 text-center text-sm font-medium text-muted-foreground">
+            <p className="mt-4 text-center font-bold text-foreground">
               {description}
             </p>
           )}

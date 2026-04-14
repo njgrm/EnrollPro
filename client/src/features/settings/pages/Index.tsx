@@ -3,13 +3,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs';
 import SchoolProfileTab from './SchoolProfileTab';
 import SchoolYearTab from './SchoolYearTab';
 import CurriculumTab from './CurriculumTab';
-import SectionsTab from './SectionsTab';
 import EnrollmentGateTab from './EnrollmentGateTab';
 import { motion, AnimatePresence } from 'motion/react';
 
+const VALID_TABS = ['profile', 'school-year', 'curriculum', 'enrollment'] as const;
+type SettingsTab = (typeof VALID_TABS)[number];
+
 export default function Settings() {
 	const [searchParams, setSearchParams] = useSearchParams();
-	const activeTab = searchParams.get('tab') || 'profile';
+	const requestedTab = searchParams.get('tab');
+	const activeTab: SettingsTab = VALID_TABS.includes(
+		(requestedTab ?? '') as SettingsTab,
+	)
+		? ((requestedTab as SettingsTab) ?? 'profile')
+		: 'profile';
 
 	const handleTabChange = (value: string) => {
 		setSearchParams({ tab: value }, { replace: true });
@@ -23,7 +30,7 @@ export default function Settings() {
 				</h1>
 				<p className='text-sm font-bold'>
 					Manage school identity, school year, curriculum, and enrollment
-					settings
+					gate settings
 				</p>
 			</div>
 
@@ -71,19 +78,6 @@ export default function Settings() {
 							/>
 						)}
 						<span className='relative z-20'>Curriculum</span>
-					</TabsTrigger>
-					<TabsTrigger
-						value='sections'
-						className='flex-1 min-w-25 font-bold transition-all relative z-10 data-[state=active]:bg-transparent data-[state=active]:shadow-none'
-					>
-						{activeTab === 'sections' && (
-							<motion.div
-								layoutId='settings-active-pill'
-								className='absolute inset-0 bg-primary rounded-md'
-								transition={{ type: 'spring', bounce: 0.15, duration: 0.5 }}
-							/>
-						)}
-						<span className='relative z-20'>Sections</span>
 					</TabsTrigger>
 					<TabsTrigger
 						value='enrollment'
@@ -154,25 +148,6 @@ export default function Settings() {
 								className='mt-0 focus-visible:outline-none ring-0'
 							>
 								<CurriculumTab />
-							</TabsContent>
-						</motion.div>
-					)}
-
-					{activeTab === 'sections' && (
-						<motion.div
-							key='sections'
-							initial={{ opacity: 0, y: 10 }}
-							animate={{ opacity: 1, y: 0 }}
-							exit={{ opacity: 0, y: -10 }}
-							transition={{ duration: 0.2 }}
-							className='w-full'
-						>
-							<TabsContent
-								value='sections'
-								forceMount
-								className='mt-0 focus-visible:outline-none ring-0'
-							>
-								<SectionsTab />
 							</TabsContent>
 						</motion.div>
 					)}

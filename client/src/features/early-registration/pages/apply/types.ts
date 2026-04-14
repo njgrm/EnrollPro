@@ -47,7 +47,7 @@ export const DEFAULT_VALUES: Partial<EarlyRegFormData> = {
     email: "",
   },
   guardianRelationship: "",
-  primaryContact: "",
+  primaryContact: null,
   hasNoMother: false,
   hasNoFather: false,
   contactNumber: "",

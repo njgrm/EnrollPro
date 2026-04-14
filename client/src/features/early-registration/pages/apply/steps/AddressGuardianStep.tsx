@@ -2,7 +2,7 @@ import { useFormContext } from "react-hook-form";
 import type { EarlyRegFormData } from "../types";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
-import { Info, UserPlus, AlertCircle, User, Venus, Mars } from "lucide-react";
+import { Info, AlertCircle, User, Venus, Mars} from "lucide-react";
 import { Separator } from "@/shared/ui/separator";
 import { Alert, AlertDescription } from "@/shared/ui/alert";
 import { cn } from "@/shared/lib/utils";
@@ -20,6 +20,19 @@ export default function AddressGuardianStep() {
   const hasNoMother = data.hasNoMother;
   const hasNoFather = data.hasNoFather;
   const isGuardianRequired = hasNoMother && hasNoFather;
+
+  const motherInfoFilled = !hasNoMother && 
+    data.mother?.firstName?.trim() && 
+    data.mother?.maidenName?.trim();
+  
+  const fatherInfoFilled = !hasNoFather && 
+    data.father?.firstName?.trim() && 
+    data.father?.lastName?.trim();
+
+  const guardianInfoFilled = data.guardian?.firstName?.trim() && 
+    data.guardian?.lastName?.trim();
+
+  const activeContactsCount = [motherInfoFilled, fatherInfoFilled, guardianInfoFilled].filter(Boolean).length;
 
   return (
     <div className="space-y-12">
@@ -40,7 +53,8 @@ export default function AddressGuardianStep() {
           <div className="space-y-1.5">
             <Label
               htmlFor="houseNoStreet"
-              className="text-xs font-bold uppercase">
+              className="text-xs font-bold uppercase"
+            >
               House No. / Street
             </Label>
             <Input
@@ -97,7 +111,7 @@ export default function AddressGuardianStep() {
               }}
             />
             {errors.barangay && (
-              <p className="text-[0.6875rem] text-destructive font-medium flex items-center gap-1">
+              <p className="text-xs text-destructive font-medium flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" />
                 {errors.barangay.message}
               </p>
@@ -106,7 +120,8 @@ export default function AddressGuardianStep() {
           <div className="space-y-1.5">
             <Label
               htmlFor="cityMunicipality"
-              className="text-xs font-bold uppercase">
+              className="text-xs font-bold uppercase"
+            >
               City / Municipality <span className="text-destructive">*</span>
             </Label>
             <Input
@@ -126,7 +141,7 @@ export default function AddressGuardianStep() {
               }}
             />
             {errors.cityMunicipality && (
-              <p className="text-[0.6875rem] text-destructive font-medium flex items-center gap-1">
+              <p className="text-xs text-destructive font-medium flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" />
                 {errors.cityMunicipality.message}
               </p>
@@ -153,7 +168,7 @@ export default function AddressGuardianStep() {
               }}
             />
             {errors.province && (
-              <p className="text-[0.6875rem] text-destructive font-medium flex items-center gap-1">
+              <p className="text-xs text-destructive font-medium flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" />
                 {errors.province.message}
               </p>
@@ -195,7 +210,8 @@ export default function AddressGuardianStep() {
               />
               <Label
                 htmlFor="hasNoMother"
-                className="text-[0.625rem] font-bold uppercase text-muted-foreground cursor-pointer">
+                className="text-xs font-bold uppercase text-muted-foreground cursor-pointer"
+              >
                 Information not available
               </Label>
             </div>
@@ -204,11 +220,13 @@ export default function AddressGuardianStep() {
             className={cn(
               "space-y-4 transition-opacity",
               hasNoMother && "opacity-50 pointer-events-none",
-            )}>
+            )}
+          >
             <div className="space-y-1.5">
               <Label
                 htmlFor="mother.maidenName"
-                className="text-xs font-bold uppercase">
+                className="text-xs font-bold uppercase"
+              >
                 Maiden Last Name{" "}
                 {!hasNoMother && <span className="text-destructive">*</span>}
               </Label>
@@ -230,7 +248,7 @@ export default function AddressGuardianStep() {
                 }}
               />
               {errors.mother?.maidenName && (
-                <p className="text-[0.6875rem] text-destructive font-medium flex items-center gap-1">
+                <p className="text-xs text-destructive font-medium flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
                   {errors.mother.maidenName.message}
                 </p>
@@ -239,7 +257,8 @@ export default function AddressGuardianStep() {
             <div className="space-y-1.5">
               <Label
                 htmlFor="mother.firstName"
-                className="text-xs font-bold uppercase">
+                className="text-xs font-bold uppercase"
+              >
                 First Name{" "}
                 {!hasNoMother && <span className="text-destructive">*</span>}
               </Label>
@@ -261,7 +280,7 @@ export default function AddressGuardianStep() {
                 }}
               />
               {errors.mother?.firstName && (
-                <p className="text-[0.6875rem] text-destructive font-medium flex items-center gap-1">
+                <p className="text-xs text-destructive font-medium flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
                   {errors.mother.firstName.message}
                 </p>
@@ -270,7 +289,8 @@ export default function AddressGuardianStep() {
             <div className="space-y-1.5">
               <Label
                 htmlFor="mother.middleName"
-                className="text-xs font-bold uppercase">
+                className="text-xs font-bold uppercase"
+              >
                 Middle Name
               </Label>
               <Input
@@ -319,7 +339,8 @@ export default function AddressGuardianStep() {
               />
               <Label
                 htmlFor="hasNoFather"
-                className="text-[0.625rem] font-bold uppercase text-muted-foreground cursor-pointer">
+                className="text-xs font-bold uppercase text-muted-foreground cursor-pointer"
+              >
                 Information not available
               </Label>
             </div>
@@ -328,11 +349,13 @@ export default function AddressGuardianStep() {
             className={cn(
               "space-y-4 transition-opacity",
               hasNoFather && "opacity-50 pointer-events-none",
-            )}>
+            )}
+          >
             <div className="space-y-1.5">
               <Label
                 htmlFor="father.lastName"
-                className="text-xs font-bold uppercase">
+                className="text-xs font-bold uppercase"
+              >
                 Last Name{" "}
                 {!hasNoFather && <span className="text-destructive">*</span>}
               </Label>
@@ -354,7 +377,7 @@ export default function AddressGuardianStep() {
                 }}
               />
               {errors.father?.lastName && (
-                <p className="text-[0.6875rem] text-destructive font-medium flex items-center gap-1">
+                <p className="text-xs text-destructive font-medium flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
                   {errors.father.lastName.message}
                 </p>
@@ -363,7 +386,8 @@ export default function AddressGuardianStep() {
             <div className="space-y-1.5">
               <Label
                 htmlFor="father.firstName"
-                className="text-xs font-bold uppercase">
+                className="text-xs font-bold uppercase"
+              >
                 First Name{" "}
                 {!hasNoFather && <span className="text-destructive">*</span>}
               </Label>
@@ -385,7 +409,7 @@ export default function AddressGuardianStep() {
                 }}
               />
               {errors.father?.firstName && (
-                <p className="text-[0.6875rem] text-destructive font-medium flex items-center gap-1">
+                <p className="text-xs text-destructive font-medium flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
                   {errors.father.firstName.message}
                 </p>
@@ -394,7 +418,8 @@ export default function AddressGuardianStep() {
             <div className="space-y-1.5">
               <Label
                 htmlFor="father.middleName"
-                className="text-xs font-bold uppercase">
+                className="text-xs font-bold uppercase"
+              >
                 Middle Name
               </Label>
               <Input
@@ -420,7 +445,6 @@ export default function AddressGuardianStep() {
       {/* Guardian Section */}
       <div className="space-y-6">
         <div className="flex items-center gap-2">
-          <UserPlus className="w-4 h-4 text-primary" />
           <h3 className="text-sm font-bold uppercase tracking-widest text-primary">
             Guardian Information (If different from parents)
           </h3>
@@ -429,8 +453,12 @@ export default function AddressGuardianStep() {
           <div className="space-y-1.5">
             <Label
               htmlFor="guardian.lastName"
-              className="text-xs font-bold uppercase">
-              Last Name {isGuardianRequired && <span className="text-destructive">*</span>}
+              className="text-xs font-bold uppercase"
+            >
+              Last Name{" "}
+              {isGuardianRequired && (
+                <span className="text-destructive">*</span>
+              )}
             </Label>
             <Input
               autoComplete="off"
@@ -438,7 +466,8 @@ export default function AddressGuardianStep() {
               {...register("guardian.lastName")}
               className={cn(
                 "h-11 uppercase font-bold",
-                errors.guardian?.lastName && "border-destructive focus-visible:ring-destructive",
+                errors.guardian?.lastName &&
+                  "border-destructive focus-visible:ring-destructive",
               )}
               placeholder="e.g. DELA CRUZ"
               onInput={(e) => {
@@ -448,7 +477,7 @@ export default function AddressGuardianStep() {
               }}
             />
             {errors.guardian?.lastName && (
-              <p className="text-[0.6875rem] text-destructive font-medium flex items-center gap-1">
+              <p className="text-xs text-destructive font-medium flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" />
                 {errors.guardian.lastName.message}
               </p>
@@ -457,8 +486,12 @@ export default function AddressGuardianStep() {
           <div className="space-y-1.5">
             <Label
               htmlFor="guardian.firstName"
-              className="text-xs font-bold uppercase">
-              First Name {isGuardianRequired && <span className="text-destructive">*</span>}
+              className="text-xs font-bold uppercase"
+            >
+              First Name{" "}
+              {isGuardianRequired && (
+                <span className="text-destructive">*</span>
+              )}
             </Label>
             <Input
               autoComplete="off"
@@ -466,7 +499,8 @@ export default function AddressGuardianStep() {
               {...register("guardian.firstName")}
               className={cn(
                 "h-11 uppercase font-bold",
-                errors.guardian?.firstName && "border-destructive focus-visible:ring-destructive",
+                errors.guardian?.firstName &&
+                  "border-destructive focus-visible:ring-destructive",
               )}
               placeholder="e.g. MARCELO"
               onInput={(e) => {
@@ -476,7 +510,7 @@ export default function AddressGuardianStep() {
               }}
             />
             {errors.guardian?.firstName && (
-              <p className="text-[0.6875rem] text-destructive font-medium flex items-center gap-1">
+              <p className="text-xs text-destructive font-medium flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" />
                 {errors.guardian.firstName.message}
               </p>
@@ -485,8 +519,12 @@ export default function AddressGuardianStep() {
           <div className="space-y-1.5">
             <Label
               htmlFor="guardianRelationship"
-              className="text-xs font-bold uppercase">
-              Relationship {isGuardianRequired && <span className="text-destructive">*</span>}
+              className="text-xs font-bold uppercase"
+            >
+              Relationship{" "}
+              {isGuardianRequired && (
+                <span className="text-destructive">*</span>
+              )}
             </Label>
             <Input
               autoComplete="off"
@@ -494,7 +532,8 @@ export default function AddressGuardianStep() {
               {...register("guardianRelationship")}
               className={cn(
                 "h-11 font-bold uppercase",
-                errors.guardianRelationship && "border-destructive focus-visible:ring-destructive",
+                errors.guardianRelationship &&
+                  "border-destructive focus-visible:ring-destructive",
               )}
               placeholder="e.g. GRANDPARENT"
               onInput={(e) => {
@@ -504,7 +543,7 @@ export default function AddressGuardianStep() {
               }}
             />
             {errors.guardianRelationship && (
-              <p className="text-[0.6875rem] text-destructive font-medium flex items-center gap-1">
+              <p className="text-xs text-destructive font-medium flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" />
                 {errors.guardianRelationship.message}
               </p>
@@ -514,110 +553,51 @@ export default function AddressGuardianStep() {
       </div>
 
       <Separator className="opacity-50" />
-
-      {/* Contact Information */}
-      <div className="space-y-10">
-        <div className="space-y-6">
-          <h3 className="text-sm font-bold uppercase tracking-widest text-primary">
-            Contact Details
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-1.5">
-              <Label htmlFor="contactNumber" className="text-sm font-semibold">
-                Contact Number <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="contactNumber"
-                {...register("contactNumber")}
-                placeholder="09XX-XXX-YYYY"
-                className={cn(
-                  "h-11 font-bold",
-                  errors.contactNumber &&
-                    "border-destructive focus-visible:ring-destructive",
-                )}
-                inputMode="tel"
-                maxLength={13}
-                onInput={(e) => {
-                  const input = e.target as HTMLInputElement;
-                  let val = input.value.replace(/\D/g, "");
-                  if (val.length > 11) val = val.slice(0, 11);
-                  if (val.length > 7) {
-                    val = `${val.slice(0, 4)}-${val.slice(4, 7)}-${val.slice(7)}`;
-                  } else if (val.length > 4) {
-                    val = `${val.slice(0, 4)}-${val.slice(4)}`;
-                  }
-                  input.value = val;
-                }}
-              />
-              {errors.contactNumber && (
-                <p className="text-[0.6875rem] text-destructive font-medium flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  {errors.contactNumber.message}
-                </p>
-              )}
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-sm font-semibold">
-                Email Address
-              </Label>
-              <Input
-                id="email"
-                {...register("email")}
-                type="email"
-                placeholder="email@example.com"
-                className={cn(
-                  "h-11 font-bold",
-                  errors.email &&
-                    "border-destructive focus-visible:ring-destructive",
-                )}
-              />
-              {errors.email && (
-                <p className="text-[0.6875rem] text-destructive font-medium flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  {errors.email.message}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-4">
+      <div className="space-y-4">
           <Label className="text-sm font-bold uppercase tracking-widest text-primary">
-            Who should we contact? <span className="text-destructive">*</span>
+            Who should we contact? / Primary Contact Person <span className="text-destructive">*</span>
           </Label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className={cn(
+            "grid grid-cols-1 gap-4",
+            activeContactsCount === 3 ? "md:grid-cols-3" : activeContactsCount === 2 ? "md:grid-cols-2" : "grid-cols-1"
+          )}>
             {(
               [
-                { 
-                  value: "MOTHER", 
-                  label: "Mother", 
-                  icon: Venus, 
-                  hide: hasNoMother || !data.mother?.firstName?.trim() || !data.mother?.maidenName?.trim()
+                {
+                  value: "MOTHER",
+                  label: "Mother",
+                  icon: Venus,
+                  hide: !motherInfoFilled,
                 },
-                { 
-                  value: "FATHER", 
-                  label: "Father", 
-                  icon: Mars, 
-                  hide: hasNoFather || !data.father?.firstName?.trim() || !data.father?.lastName?.trim()
+                {
+                  value: "FATHER",
+                  label: "Father",
+                  icon: Mars,
+                  hide: !fatherInfoFilled,
                 },
-                { 
-                  value: "GUARDIAN", 
-                  label: "Guardian", 
-                  icon: User, 
-                  hide: !data.guardian?.firstName?.trim() || !data.guardian?.lastName?.trim()
+                {
+                  value: "GUARDIAN",
+                  label: "Guardian",
+                  icon: User,
+                  hide: !guardianInfoFilled,
                 },
               ] as const
             )
               .filter((opt) => !opt.hide)
               .map((opt) => {
-                const firstName = opt.value === "MOTHER" 
-                  ? data.mother?.firstName 
-                  : opt.value === "FATHER" 
-                    ? data.father?.firstName 
-                    : data.guardian?.firstName;
-                const displayLabel = firstName && firstName !== "N/A" && firstName !== "Information not available"
-                  ? `${opt.label} (${firstName})` 
-                  : opt.label;
+                const firstName =
+                  opt.value === "MOTHER"
+                    ? data.mother?.firstName
+                    : opt.value === "FATHER"
+                      ? data.father?.firstName
+                      : data.guardian?.firstName;
+
+                const displayLabel =
+                  firstName &&
+                  firstName !== "N/A" &&
+                  firstName !== "Information not available"
+                    ? `${opt.label} (${firstName})`
+                    : opt.label;
 
                 return (
                   <button
@@ -633,14 +613,16 @@ export default function AddressGuardianStep() {
                       watch("primaryContact") === opt.value
                         ? "border-primary bg-primary/5 shadow-md"
                         : "border-border bg-white hover:bg-muted/50",
-                    )}>
+                    )}
+                  >
                     <div
                       className={cn(
                         "w-12 h-12 rounded-full flex items-center justify-center transition-colors",
                         watch("primaryContact") === opt.value
                           ? "bg-primary text-primary-foreground"
                           : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary",
-                      )}>
+                      )}
+                    >
                       <opt.icon className="w-6 h-6" />
                     </div>
                     <span
@@ -649,7 +631,8 @@ export default function AddressGuardianStep() {
                         watch("primaryContact") === opt.value
                           ? "text-primary"
                           : "text-muted-foreground",
-                      )}>
+                      )}
+                    >
                       {displayLabel}
                     </span>
                   </button>
@@ -657,11 +640,173 @@ export default function AddressGuardianStep() {
               })}
           </div>
           {errors.primaryContact && (
-            <p className="text-[0.6875rem] text-destructive font-medium flex items-center gap-1">
+            <p className="text-xs text-destructive font-medium flex items-center gap-1">
               <AlertCircle className="w-3 h-3" />
               {errors.primaryContact.message}
             </p>
           )}
+        </div>
+
+      {/* Contact Information */}
+      <div className="space-y-10">
+        <div className="space-y-6">
+          <h3 className="text-sm font-bold uppercase tracking-widest text-primary">
+            Contact Details
+          </h3>
+
+          {!data.primaryContact && (
+            <p className="text-sm text-muted-foreground italic">Please select a primary contact above to enter their details.</p>
+          )}
+
+          <div className={cn(
+            "grid grid-cols-1 gap-8 items-start",
+            (motherInfoFilled && fatherInfoFilled && guardianInfoFilled) ? "md:grid-cols-3" : "md:grid-cols-2"
+          )}>
+            {/* 1. Primary Contact Block */}
+            {data.primaryContact && (
+              <div className="space-y-4">
+                <div className="flex flex-col gap-1">
+                  <h4 className="text-sm font-bold uppercase tracking-widest text-primary">Primary Contact</h4>
+                  <Label className="text-[0.625rem] font-black uppercase text-muted-foreground tracking-widest flex items-center gap-2">
+                    {data.primaryContact === "MOTHER" ? <Venus className="w-3 h-3" /> : data.primaryContact === "FATHER" ? <Mars className="w-3 h-3" /> : <User className="w-3 h-3" />}
+                    {data.primaryContact === "MOTHER" ? "Mother's" : data.primaryContact === "FATHER" ? "Father's" : "Guardian's"} Contact Information
+                  </Label>
+                </div>
+                <div className="grid grid-cols-1 gap-6 p-5 rounded-2xl border border-primary/20 bg-primary/5 shadow-sm">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="contactNumber" className="text-xs font-bold uppercase flex items-center gap-1">
+                      Contact Number <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="contactNumber"
+                      {...register("contactNumber")}
+                      placeholder="09XX-XXX-XXXX"
+                      className={cn(
+                        "h-11 font-bold bg-white",
+                        errors.contactNumber && "border-destructive focus-visible:ring-destructive",
+                      )}
+                      inputMode="tel"
+                      maxLength={13}
+                      onInput={(e) => {
+                        const input = e.target as HTMLInputElement;
+                        let val = input.value.replace(/\D/g, "");
+                        if (val.length > 11) val = val.slice(0, 11);
+                        if (val.length > 7) {
+                          val = `${val.slice(0, 4)}-${val.slice(4, 7)}-${val.slice(7)}`;
+                        } else if (val.length > 4) {
+                          val = `${val.slice(0, 4)}-${val.slice(4)}`;
+                        }
+                        input.value = val;
+                      }}
+                    />
+                    {errors.contactNumber && (
+                      <p className="text-xs text-destructive font-bold flex items-center gap-1 mt-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {errors.contactNumber.message}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="email" className="text-xs font-bold uppercase flex items-center gap-1">
+                      Email Address
+                    </Label>
+                    <Input
+                      id="email"
+                      {...register("email")}
+                      type="email"
+                      placeholder="email@example.com"
+                      className={cn(
+                        "h-11 font-bold bg-white",
+                        errors.email && "border-destructive focus-visible:ring-destructive",
+                      )}
+                    />
+                    {errors.email && (
+                      <p className="text-xs text-destructive font-bold flex items-center gap-1 mt-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {errors.email.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 2. Secondary Contact(s) Block */}
+            <>
+              {[
+                { 
+                  id: "mother", 
+                  label: "Mother", 
+                  icon: Venus, 
+                  active: motherInfoFilled && data.primaryContact !== "MOTHER",
+                  path: "mother" 
+                },
+                { 
+                  id: "father", 
+                  label: "Father", 
+                  icon: Mars, 
+                  active: fatherInfoFilled && data.primaryContact !== "FATHER",
+                  path: "father" 
+                },
+                { 
+                  id: "guardian", 
+                  label: "Guardian", 
+                  icon: User, 
+                  active: guardianInfoFilled && data.primaryContact !== "GUARDIAN",
+                  path: "guardian" 
+                },
+              ]
+                .filter(s => s.active)
+                .map((s) => (
+                  <div key={s.id} className="space-y-4 transition-opacity duration-300 opacity-70 hover:opacity-100 focus-within:opacity-100">
+                    <div className="flex flex-col gap-1">
+                      <h4 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Secondary Contact (Optional)</h4>
+                      <Label className="text-[0.625rem] font-black uppercase text-muted-foreground/60 tracking-widest flex items-center gap-2">
+                        <s.icon className="w-3 h-3" /> {s.label}'s Contact Information
+                      </Label>
+                    </div>
+                    <div className="grid grid-cols-1 gap-6 p-5 rounded-2xl border border-border bg-muted/20 shadow-sm">
+                      <div className="space-y-1.5">
+                        <Label htmlFor={`${s.path}.contactNumber`} className="text-xs font-bold uppercase">
+                          Contact Number
+                        </Label>
+                        <Input
+                          id={`${s.path}.contactNumber`}
+                          {...register(`${s.path}.contactNumber` as any)}
+                          placeholder="09XX-XXX-XXXX"
+                          className="h-11 font-bold bg-white"
+                          inputMode="tel"
+                          maxLength={13}
+                          onInput={(e) => {
+                            const input = e.target as HTMLInputElement;
+                            let val = input.value.replace(/\D/g, "");
+                            if (val.length > 11) val = val.slice(0, 11);
+                            if (val.length > 7) {
+                              val = `${val.slice(0, 4)}-${val.slice(4, 7)}-${val.slice(7)}`;
+                            } else if (val.length > 4) {
+                              val = `${val.slice(0, 4)}-${val.slice(4)}`;
+                            }
+                            input.value = val;
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor={`${s.path}.email`} className="text-xs font-bold uppercase">
+                          Email Address
+                        </Label>
+                        <Input
+                          id={`${s.path}.email`}
+                          {...register(`${s.path}.email` as any)}
+                          type="email"
+                          placeholder="email@example.com"
+                          className="h-11 font-bold bg-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </>
+          </div>
         </div>
       </div>
     </div>

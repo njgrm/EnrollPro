@@ -42,11 +42,13 @@ export default function EarlyRegistrationApply() {
           className="fixed inset-0 -z-10"
           style={{
             background: "hsl(var(--sidebar-background)/0.5)",
-          }}>
+          }}
+        >
           {/* Pixel grid */}
           <svg
             className="absolute inset-0 w-full h-full opacity-[0.08]"
-            xmlns="http://www.w3.org/2000/svg">
+            xmlns="http://www.w3.org/2000/svg"
+          >
             <defs>
               <pattern
                 id="pixel-grid"
@@ -54,7 +56,8 @@ export default function EarlyRegistrationApply() {
                 y="0"
                 width="80"
                 height="80"
-                patternUnits="userSpaceOnUse">
+                patternUnits="userSpaceOnUse"
+              >
                 <rect
                   x="2"
                   y="2"
@@ -113,24 +116,33 @@ export default function EarlyRegistrationApply() {
           isClosed={isClosed}
           logoUrl={logoUrl}
           schoolName={schoolName}
-          title="Basic Education Early Registration Form (Grades 7–10 JHS)"
+          title={
+            <>
+              Basic Education Early Registration Form
+              <br />
+              (Grades 7–10 JHS)
+            </>
+          }
         />
 
         <main
           className={cn(
             "px-4 sm:px-6 lg:px-8 flex flex-col flex-1",
             isClosed ? "justify-center items-center" : "py-8",
-          )}>
+          )}
+        >
           <div
             className={cn(
               "w-full mx-auto flex flex-col",
               isClosed ? "max-w-3xl" : "max-w-6xl flex-1",
-            )}>
+            )}
+          >
             {isClosed ? (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-center space-y-8 py-16 px-6 sm:px-16 bg-white/60 backdrop-blur-md rounded-3xl border border-white/20 shadow-2xl relative overflow-hidden w-full">
+                className="text-center space-y-8 py-16 px-6 sm:px-16 bg-white/60 backdrop-blur-md rounded-3xl border border-white/20 shadow-2xl relative overflow-hidden w-full"
+              >
                 <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-destructive/50 to-transparent" />
                 <div className="space-y-6 relative z-10">
                   {logoUrl ? (
@@ -157,10 +169,13 @@ export default function EarlyRegistrationApply() {
                       Early Registration is Currently Closed
                     </h3>
                     <p className="text-sm sm:text-base text-black leading-relaxed">
-                      Hindi pa bukas ang early registration. Mangyaring bumalik kapag nagsimula na ang panahon ng early registration.
+                      Hindi pa bukas ang early registration. Mangyaring bumalik
+                      kapag nagsimula na ang panahon ng early registration.
                     </p>
                     <p className="text-sm text-black font-medium pt-4 border-t border-border/50">
-                      Please stay tuned to our official school social media pages or visit the school campus for announcements regarding the next registration schedule.
+                      Please stay tuned to our official school social media
+                      pages or visit the school campus for announcements
+                      regarding the next registration schedule.
                     </p>
                   </div>
                 </div>
@@ -173,8 +188,9 @@ export default function EarlyRegistrationApply() {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.4 }}>
-                    <EarlyRegSuccessView 
+                    transition={{ duration: 0.4 }}
+                  >
+                    <EarlyRegSuccessView
                       registrationId={successData.id}
                       learnerName={successData.learnerName}
                       onRegisterAnother={handleReset}
@@ -186,7 +202,8 @@ export default function EarlyRegistrationApply() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.98 }}
-                    transition={{ duration: 0.3 }}>
+                    transition={{ duration: 0.3 }}
+                  >
                     <PrivacyNotice onAccept={handleAccept} />
                   </motion.div>
                 ) : (
@@ -195,7 +212,8 @@ export default function EarlyRegistrationApply() {
                     initial={{ opacity: 0, scale: 1.02, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 1.02 }}
-                    transition={{ duration: 0.4, ease: "easeOut" }}>
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                  >
                     <EarlyRegistrationForm
                       onSuccess={(data) => setSuccessData(data)}
                     />
