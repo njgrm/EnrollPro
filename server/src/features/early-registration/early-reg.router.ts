@@ -12,7 +12,10 @@ const router: Router = Router();
 const submitLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 15,
-  message: { message: "Too many submissions. Please try again later." },
+  message: {
+    message:
+      "Too many submissions right now. Please try again in a few minutes.",
+  },
   standardHeaders: true,
   legacyHeaders: false,
 });

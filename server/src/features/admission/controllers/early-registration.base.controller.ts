@@ -32,42 +32,12 @@ export function createEarlyRegistrationBaseController(
       });
       if (!applicant) throw new AppError(404, "Applicant not found");
 
-      let dynamicDocumentRequirements: Array<{
-        docId: string;
-        policy: "REQUIRED" | "OPTIONAL" | "HIDDEN";
-        phase?: "EARLY_REGISTRATION" | "ENROLLMENT" | null;
-        notes?: string | null;
-      }> | null = null;
-
-      if (applicant.applicantType !== "REGULAR") {
-        const scpConfig = await prisma.scpProgramConfig.findUnique({
-          where: {
-            uq_scp_program_configs_type: {
-              schoolYearId: applicant.schoolYearId,
-              scpType: applicant.applicantType,
-            },
-          },
-          select: { documentRequirements: true },
-        });
-
-        if (Array.isArray(scpConfig?.documentRequirements)) {
-          dynamicDocumentRequirements =
-            scpConfig.documentRequirements as Array<{
-              docId: string;
-              policy: "REQUIRED" | "OPTIONAL" | "HIDDEN";
-              phase?: "EARLY_REGISTRATION" | "ENROLLMENT" | null;
-              notes?: string | null;
-            }>;
-        }
-      }
-
       const requirements = getRequiredDocuments({
         learnerType: applicant.learnerType,
         gradeLevel: applicant.gradeLevel.name,
         applicantType: applicant.applicantType,
         isLwd: applicant.isLearnerWithDisability,
         isPeptAePasser: false,
-        documentRequirements: dynamicDocumentRequirements,
       });
 
       res.json({ requirements });

@@ -19,9 +19,6 @@ export default function CurriculumTabPage() {
     savingScp,
     handleUpdateScpField,
     handleUpdateStep,
-    patchDocumentRequirement,
-    handleAddDocumentRequirement,
-    handleRemoveDocumentRequirement,
     handleSaveScp,
   } = useCurriculumScpConfigs();
 
@@ -71,11 +68,6 @@ export default function CurriculumTabPage() {
                     scpYearEnd={scpYearEnd}
                     onUpdateScpField={handleUpdateScpField}
                     onUpdateStep={handleUpdateStep}
-                    onPatchDocumentRequirement={patchDocumentRequirement}
-                    onAddDocumentRequirement={handleAddDocumentRequirement}
-                    onRemoveDocumentRequirement={
-                      handleRemoveDocumentRequirement
-                    }
                   />
                 ))}
               </div>

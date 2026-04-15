@@ -131,10 +131,6 @@ export async function cloneSchoolYearStructure(
           scpProgram.gradeRequirements === null
             ? undefined
             : scpProgram.gradeRequirements,
-        documentRequirements:
-          scpProgram.documentRequirements === null
-            ? undefined
-            : scpProgram.documentRequirements,
         rankingFormula:
           scpProgram.rankingFormula === null
             ? undefined

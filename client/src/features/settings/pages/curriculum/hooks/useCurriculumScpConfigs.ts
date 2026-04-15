@@ -4,17 +4,7 @@ import api from "@/shared/api/axiosInstance";
 import { toastApiError } from "@/shared/hooks/useApiToast";
 import { useSettingsStore } from "@/store/settings.slice";
 import { SCP_TYPES } from "../constants";
-import type {
-  ScpConfig,
-  ScpDocumentRequirementDraft,
-  ScpStepConfig,
-} from "../types";
-import {
-  createEmptyDocumentRequirement,
-  getSuggestedDocumentRequirements,
-  normalizeDocumentRequirements,
-  normalizeDocumentRequirementsForSave,
-} from "../utils/documentRequirements";
+import type { ScpConfig, ScpStepConfig } from "../types";
 import { getDefaultProgramSteps, getSteProgramSteps } from "../utils/scpSteps";
 
 export function useCurriculumScpConfigs() {
@@ -41,22 +31,12 @@ export function useCurriculumScpConfigs() {
         const found = fetched.find((config) => config.scpType === type.value);
 
         if (found) {
-          const normalizedDocumentRequirements = normalizeDocumentRequirements(
-            found.documentRequirements,
-          );
-
           return {
             ...found,
             isOffered: found.isOffered ?? false,
             isTwoPhase: found.isTwoPhase ?? false,
             notes: found.notes ?? null,
             gradeRequirements: found.gradeRequirements ?? null,
-            documentRequirements:
-              normalizedDocumentRequirements.length > 0
-                ? normalizedDocumentRequirements
-                : found.isOffered
-                  ? getSuggestedDocumentRequirements(found.scpType)
-                  : [],
             rankingFormula: found.rankingFormula ?? null,
             steps: found.steps ?? [],
           };
@@ -69,7 +49,6 @@ export function useCurriculumScpConfigs() {
           cutoffScore: null,
           notes: null,
           gradeRequirements: null,
-          documentRequirements: [],
           rankingFormula: null,
           artFields: [],
           languages: [],
@@ -109,18 +88,6 @@ export function useCurriculumScpConfigs() {
               steps: getDefaultProgramSteps(scpType, next[index].isTwoPhase),
             };
           }
-
-          if (next[index].documentRequirements.length === 0) {
-            const suggestedRequirements =
-              getSuggestedDocumentRequirements(scpType);
-
-            if (suggestedRequirements.length > 0) {
-              next[index] = {
-                ...next[index],
-                documentRequirements: suggestedRequirements,
-              };
-            }
-          }
         }
 
         if (field === "isTwoPhase") {
@@ -154,63 +121,6 @@ export function useCurriculumScpConfigs() {
     [],
   );
 
-  const patchDocumentRequirement = useCallback(
-    (
-      scpIndex: number,
-      requirementIndex: number,
-      patch: Partial<ScpDocumentRequirementDraft>,
-    ) => {
-      setScpConfigs((current) => {
-        const next = [...current];
-        const requirements = [...next[scpIndex].documentRequirements];
-        requirements[requirementIndex] = {
-          ...requirements[requirementIndex],
-          ...patch,
-        };
-
-        next[scpIndex] = {
-          ...next[scpIndex],
-          documentRequirements: requirements,
-        };
-
-        return next;
-      });
-    },
-    [],
-  );
-
-  const handleAddDocumentRequirement = useCallback((scpIndex: number) => {
-    setScpConfigs((current) => {
-      const next = [...current];
-      const requirements = [...next[scpIndex].documentRequirements];
-      requirements.push(createEmptyDocumentRequirement());
-      next[scpIndex] = {
-        ...next[scpIndex],
-        documentRequirements: requirements,
-      };
-      return next;
-    });
-  }, []);
-
-  const handleRemoveDocumentRequirement = useCallback(
-    (scpIndex: number, requirementIndex: number) => {
-      setScpConfigs((current) => {
-        const next = [...current];
-        const requirements = next[scpIndex].documentRequirements.filter(
-          (_, index) => index !== requirementIndex,
-        );
-
-        next[scpIndex] = {
-          ...next[scpIndex],
-          documentRequirements: requirements,
-        };
-
-        return next;
-      });
-    },
-    [],
-  );
-
   const handleSaveScp = useCallback(async () => {
     if (!ayId) {
       return;
@@ -229,9 +139,6 @@ export function useCurriculumScpConfigs() {
         sportsList: scp.sportsList.map((sport) => sport.trim().toUpperCase()),
         notes: scp.notes ?? null,
         gradeRequirements: scp.gradeRequirements ?? null,
-        documentRequirements: normalizeDocumentRequirementsForSave(
-          scp.documentRequirements,
-        ),
         rankingFormula: scp.rankingFormula ?? null,
         steps: scp.steps.map((step) => ({
           stepOrder: step.stepOrder,
@@ -267,9 +174,6 @@ export function useCurriculumScpConfigs() {
     savingScp,
     handleUpdateScpField,
     handleUpdateStep,
-    patchDocumentRequirement,
-    handleAddDocumentRequirement,
-    handleRemoveDocumentRequirement,
     handleSaveScp,
   };
 }

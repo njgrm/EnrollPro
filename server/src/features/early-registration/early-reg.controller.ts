@@ -136,7 +136,7 @@ function resolveApplicantType(
     .toUpperCase();
 
   if (rawScpType === "REGULAR" || !APPLICANT_TYPE_VALUES.has(rawScpType)) {
-    throw new AppError(400, "Invalid SCP type for application type.");
+    throw new AppError(400, "Selected SCP track is invalid.");
   }
 
   return rawScpType as ApplicantTypeValue;
@@ -173,10 +173,7 @@ function mapCreateRegistrationDuplicateError(error: unknown): AppError | null {
   const isLrnDuplicate =
     hasTarget("lrn") || hasTarget("uq_early_registrants_lrn");
   if (isLrnDuplicate) {
-    return new AppError(
-      409,
-      "Mayroon nang learner na may kaparehong LRN. / A learner with this LRN already exists.",
-    );
+    return new AppError(409, "A learner with this LRN already exists.");
   }
 
   const hasRegistrantField =
@@ -190,13 +187,13 @@ function mapCreateRegistrationDuplicateError(error: unknown): AppError | null {
   if (isRegistrantSchoolYearDuplicate) {
     return new AppError(
       409,
-      "May naunang early registration na para sa learner na ito sa taong panuruan na ito. / An early registration for this learner already exists for this school year.",
+      "An early registration for this learner already exists for this School Year.",
     );
   }
 
   return new AppError(
     409,
-    "May duplicate na early registration record. / A duplicate early registration record was detected.",
+    "A duplicate early registration record was detected.",
   );
 }
 
@@ -213,7 +210,10 @@ async function createRegistration(
     });
 
     if (!settings?.activeSchoolYear) {
-      throw new AppError(400, "No active school year configured.");
+      throw new AppError(
+        400,
+        "No active School Year is set. Please contact the school registrar.",
+      );
     }
 
     const activeYear = settings.activeSchoolYear;
@@ -250,7 +250,7 @@ async function createRegistration(
       if (!offeredScpConfig) {
         throw new AppError(
           422,
-          "Ang napiling SCP track ay hindi available para sa kasalukuyang school year. / The selected SCP track is not available for the active school year.",
+          "The selected SCP track is not available for the active School Year.",
         );
       }
     }
@@ -258,7 +258,7 @@ async function createRegistration(
     // 2. Parse and validate birthdate
     const rawBirthDate = new Date(body.birthdate);
     if (isNaN(rawBirthDate.getTime())) {
-      throw new AppError(400, "Invalid birthdate format.");
+      throw new AppError(400, "Enter a valid birthdate in MM/DD/YYYY format.");
     }
     const birthDate = normalizeDateToUtcNoon(rawBirthDate);
     const age = calculateAge(rawBirthDate);
@@ -278,7 +278,7 @@ async function createRegistration(
       if (existingEarlyReg) {
         throw new AppError(
           409,
-          `Mayroon nang naka-register na may LRN ${lrn} para sa taong panuruan na ito. / A registration with LRN ${lrn} already exists for this school year.`,
+          `A registration with LRN ${lrn} already exists for this School Year.`,
         );
       }
 
@@ -289,7 +289,7 @@ async function createRegistration(
       if (existingApplicant) {
         throw new AppError(
           409,
-          `May application na ang LRN ${lrn} para sa taong panuruan na ito. / An application with LRN ${lrn} already exists for this school year.`,
+          `An application with LRN ${lrn} already exists for this School Year.`,
         );
       }
     }
@@ -451,8 +451,7 @@ async function createRegistration(
       applicantType,
       learnerName: `${body.lastName}, ${body.firstName}`,
       age,
-      message:
-        "Matagumpay na nai-submit ang iyong early registration. / Your early registration has been submitted successfully.",
+      message: "Your early registration has been submitted successfully.",
     });
   } catch (err) {
     console.error("[createRegistration Error]", err);
@@ -470,7 +469,7 @@ export async function checkLrn(
   try {
     const lrn = String(req.params.lrn || "").trim();
     if (!lrn || lrn.length !== 12) {
-      throw new AppError(400, "Invalid LRN format.");
+      throw new AppError(400, "Enter a valid 12-digit LRN.");
     }
 
     const settings = await prisma.schoolSetting.findFirst({
@@ -478,7 +477,10 @@ export async function checkLrn(
     });
 
     if (!settings?.activeSchoolYear) {
-      throw new AppError(400, "No active school year configured.");
+      throw new AppError(
+        400,
+        "No active School Year is set. Please contact the school registrar.",
+      );
     }
 
     const activeYear = settings.activeSchoolYear;
@@ -498,7 +500,7 @@ export async function checkLrn(
       return res.json({
         exists: true,
         type: "EARLY_REGISTRATION",
-        message: `Mayroon nang naka-register na may LRN ${lrn} para sa taong panuruan na ito. / A registration with LRN ${lrn} already exists for this school year.`,
+        message: `A registration with LRN ${lrn} already exists for this School Year.`,
       });
     }
 
@@ -512,7 +514,7 @@ export async function checkLrn(
       return res.json({
         exists: true,
         type: "APPLICANT",
-        message: `May application na ang LRN ${lrn} para sa taong panuruan na ito. / An application with LRN ${lrn} already exists for this school year.`,
+        message: `An application with LRN ${lrn} already exists for this School Year.`,
       });
     }
 

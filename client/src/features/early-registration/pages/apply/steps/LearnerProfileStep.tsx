@@ -8,8 +8,21 @@ import { Checkbox } from "@/shared/ui/checkbox";
 import { Calendar } from "@/shared/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { Button } from "@/shared/ui/button";
-import { AlertCircle, Lock, Mars, Venus, Calendar as CalendarIcon } from "lucide-react";
-import { differenceInYears, isValid, parse, format, isAfter, isBefore } from "date-fns";
+import {
+  AlertCircle,
+  Lock,
+  Mars,
+  Venus,
+  Calendar as CalendarIcon,
+} from "lucide-react";
+import {
+  differenceInYears,
+  isValid,
+  parse,
+  format,
+  isAfter,
+  isBefore,
+} from "date-fns";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/ui/badge";
 
@@ -24,7 +37,9 @@ const DISABILITY_TYPES = [
   { value: "AUTISM", label: "Autism Spectrum Disorder" },
   { value: "CHRONIC_ILLNESS", label: "Chronic Illness" },
   { value: "MULTIPLE", label: "Multiple Disabilities" },
-];
+] as const;
+
+type DisabilityValue = (typeof DISABILITY_TYPES)[number]["value"];
 
 export default function LearnerProfileStep() {
   const {
@@ -39,7 +54,12 @@ export default function LearnerProfileStep() {
   const birthdate = watch("birthdate");
   const isIp = watch("isIpCommunity");
   const isPwd = watch("isLearnerWithDisability");
-  const selectedDisabilities = watch("disabilityTypes") || [];
+  const selectedDisabilities =
+    (watch("disabilityTypes") as DisabilityValue[] | null) || [];
+  const disabilityErrorMessage =
+    typeof errors.disabilityTypes?.message === "string"
+      ? errors.disabilityTypes.message
+      : undefined;
 
   const [dateInput, setDateInput] = React.useState(() => {
     if (birthdate) {
@@ -70,7 +90,7 @@ export default function LearnerProfileStep() {
   const handleDateTyping = (value: string, onChange: (val: string) => void) => {
     const isDeleting = value.length < dateInput.length;
     const cleaned = value.replace(/\D/g, "").slice(0, 8);
-    
+
     let masked = "";
     if (cleaned.length > 0) {
       masked = cleaned.slice(0, 2);
@@ -87,20 +107,24 @@ export default function LearnerProfileStep() {
         masked += cleaned.slice(4, 8);
       }
     }
-    
+
     setDateInput(masked);
 
     // If valid date, update form state
     if (masked.length === 10) {
       const parsedDate = parse(masked, "MM/dd/yyyy", new Date());
-      if (isValid(parsedDate) && !isAfter(parsedDate, new Date()) && !isBefore(parsedDate, new Date(1900, 0, 1))) {
+      if (
+        isValid(parsedDate) &&
+        !isAfter(parsedDate, new Date()) &&
+        !isBefore(parsedDate, new Date(1900, 0, 1))
+      ) {
         onChange(parsedDate.toISOString());
         setCalendarMonth(parsedDate);
       } else {
-        onChange(""); 
+        onChange("");
       }
     } else {
-      onChange(""); 
+      onChange("");
     }
   };
 
@@ -167,7 +191,7 @@ export default function LearnerProfileStep() {
           <Input
             id="middleName"
             {...register("middleName")}
-            placeholder="Write N/A if none"
+            placeholder="Type N/A if none"
             autoComplete="off"
             className="h-11 uppercase font-bold"
             onInput={(e) => {
@@ -209,30 +233,38 @@ export default function LearnerProfileStep() {
                   maxLength={10}
                   inputMode="numeric"
                   value={dateInput}
-                  onChange={(e) => handleDateTyping(e.target.value, field.onChange)}
+                  onChange={(e) =>
+                    handleDateTyping(e.target.value, field.onChange)
+                  }
                   className={cn(
                     "h-11 font-bold pr-12",
-                    errors.birthdate && "border-destructive focus-visible:ring-destructive"
+                    errors.birthdate &&
+                      "border-destructive focus-visible:ring-destructive",
                   )}
                 />
-                <Popover open={isCalendarOpen} onOpenChange={(open) => {
-                  if (open && field.value) {
-                    const d = new Date(field.value);
-                    if (isValid(d)) setCalendarMonth(d);
-                  }
-                  setIsCalendarOpen(open);
-                }}>
+                <Popover
+                  open={isCalendarOpen}
+                  onOpenChange={(open) => {
+                    if (open && field.value) {
+                      const d = new Date(field.value);
+                      if (isValid(d)) setCalendarMonth(d);
+                    }
+                    setIsCalendarOpen(open);
+                  }}>
                   <PopoverTrigger asChild>
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="absolute right-0 top-0 h-full w-10 hover:bg-transparent"
-                    >
-                      <CalendarIcon className={cn(
-                        "w-5 h-5 transition-colors",
-                        isCalendarOpen ? "text-primary" : "text-muted-foreground"
-                      )} />
+                      className="absolute right-0 top-0 h-full w-10 hover:bg-transparent">
+                      <CalendarIcon
+                        className={cn(
+                          "w-5 h-5 transition-colors",
+                          isCalendarOpen
+                            ? "text-primary"
+                            : "text-muted-foreground",
+                        )}
+                      />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="end">
@@ -274,13 +306,13 @@ export default function LearnerProfileStep() {
             {age !== null ? `${age}` : "—"}
           </div>
           <p className="text-[0.625rem] text-muted-foreground italic">
-            Auto-calculated
+            Auto-calculated from Date of Birth.
           </p>
         </div>
 
         <div className="space-y-3">
           <Label className="text-sm font-semibold">
-            Sex <span className="text-destructive">*</span>
+            Sex at Birth <span className="text-destructive">*</span>
           </Label>
           <div className="flex gap-4 pt-1">
             {(
@@ -293,7 +325,7 @@ export default function LearnerProfileStep() {
                 key={s.value}
                 type="button"
                 onClick={() =>
-                  setValue("sex", s.value as any, {
+                  setValue("sex", s.value, {
                     shouldValidate: true,
                   })
                 }
@@ -304,8 +336,7 @@ export default function LearnerProfileStep() {
                     : errors.sex
                       ? "border-destructive hover:bg-destructive/10"
                       : "border-border hover:bg-muted/50",
-                )}
-              >
+                )}>
                 <s.icon
                   className={cn(
                     "w-4 h-4",
@@ -352,7 +383,7 @@ export default function LearnerProfileStep() {
               Sensitive Information
             </p>
             <p className="text-[0.6875rem] text-primary font-medium uppercase tracking-wider">
-              All details are kept strictly confidential.
+              Kept strictly confidential for enrollment processing.
             </p>
           </div>
         </div>
@@ -362,12 +393,11 @@ export default function LearnerProfileStep() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <Label className="text-sm font-bold flex items-center gap-2">
-                Indigenous Peoples (IP) Community?
+                Indigenous Peoples (IP) Affiliation?
               </Label>
               <Badge
                 variant="outline"
-                className="text-[0.625rem] uppercase border-primary/20 text-primary gap-1 font-bold"
-              >
+                className="text-[0.625rem] uppercase border-primary/20 text-primary gap-1 font-bold">
                 <Lock className="w-2.5 h-2.5" /> Confidential
               </Badge>
             </div>
@@ -385,18 +415,16 @@ export default function LearnerProfileStep() {
               />
               <Label
                 htmlFor="is-ip"
-                className="text-sm font-semibold cursor-pointer"
-              >
-                Learner belongs to an IP community
+                className="text-sm font-semibold cursor-pointer">
+                Learner belongs to an IP community.
               </Label>
             </div>
             {isIp && (
               <div className="space-y-2 pt-1 max-w-screen">
                 <Label
                   htmlFor="ipGroupName"
-                  className="text-xs font-bold uppercase text-muted-foreground"
-                >
-                  Specify IP Group/Ethnicity{" "}
+                  className="text-xs font-bold uppercase text-muted-foreground">
+                  IP Group / Ethnicity{" "}
                   <span className="text-destructive">*</span>
                 </Label>
                 <Input
@@ -430,8 +458,7 @@ export default function LearnerProfileStep() {
               </Label>
               <Badge
                 variant="outline"
-                className="text-[0.625rem] uppercase border-primary/20 text-primary gap-1 font-bold"
-              >
+                className="text-[0.625rem] uppercase border-primary/20 text-primary gap-1 font-bold">
                 <Lock className="w-2.5 h-2.5" /> Confidential
               </Badge>
             </div>
@@ -449,22 +476,19 @@ export default function LearnerProfileStep() {
               />
               <Label
                 htmlFor="is-pwd"
-                className="text-sm font-semibold cursor-pointer"
-              >
-                Learner is a person with disability
+                className="text-sm font-semibold cursor-pointer">
+                Learner is a person with disability.
               </Label>
             </div>
             {isPwd && (
               <div className="space-y-3 pt-1">
                 <Label className="text-xs font-bold uppercase text-muted-foreground">
-                  Specify Disability Type(s){" "}
+                  Select Disability Type(s){" "}
                   <span className="text-destructive">*</span>
                 </Label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {DISABILITY_TYPES.map((dt) => {
-                    const isSelected = selectedDisabilities.includes(
-                      dt.value as any,
-                    );
+                    const isSelected = selectedDisabilities.includes(dt.value);
                     return (
                       <Label
                         key={dt.value}
@@ -475,12 +499,11 @@ export default function LearnerProfileStep() {
                             : errors.disabilityTypes
                               ? "border-destructive hover:bg-destructive/10"
                               : "border-border hover:bg-muted/50",
-                        )}
-                      >
+                        )}>
                         <Checkbox
                           checked={isSelected}
                           onCheckedChange={(checked) => {
-                            const current = [...(selectedDisabilities || [])];
+                            const current = [...selectedDisabilities];
                             if (!checked) {
                               setValue(
                                 "disabilityTypes",
@@ -490,7 +513,7 @@ export default function LearnerProfileStep() {
                             } else {
                               setValue(
                                 "disabilityTypes",
-                                [...current, dt.value as any],
+                                [...current, dt.value],
                                 { shouldValidate: true },
                               );
                             }
@@ -502,10 +525,10 @@ export default function LearnerProfileStep() {
                     );
                   })}
                 </div>
-                {errors.disabilityTypes && (
+                {disabilityErrorMessage && (
                   <p className="text-xs text-destructive font-medium flex items-center gap-1">
                     <AlertCircle className="w-3 h-3" />
-                    {(errors.disabilityTypes as any)?.message}
+                    {disabilityErrorMessage}
                   </p>
                 )}
               </div>

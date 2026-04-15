@@ -144,7 +144,6 @@ export async function listScpConfigs(
     ...cfg,
     isTwoPhase: cfg.isTwoPhase ?? false,
     gradeRequirements: cfg.gradeRequirements ?? null,
-    documentRequirements: cfg.documentRequirements ?? null,
     rankingFormula: cfg.rankingFormula ?? null,
     artFields: cfg.options
       .filter((o) => o.optionType === "ART_FIELD")
@@ -186,7 +185,6 @@ export async function updateScpConfigs(
           cutoffScore,
           notes,
           gradeRequirements,
-          documentRequirements,
           rankingFormula,
           artFields,
           languages,
@@ -205,11 +203,6 @@ export async function updateScpConfigs(
         }
         if (Object.prototype.hasOwnProperty.call(config, "gradeRequirements")) {
           scpData.gradeRequirements = gradeRequirements ?? null;
-        }
-        if (
-          Object.prototype.hasOwnProperty.call(config, "documentRequirements")
-        ) {
-          scpData.documentRequirements = documentRequirements ?? null;
         }
         if (Object.prototype.hasOwnProperty.call(config, "rankingFormula")) {
           scpData.rankingFormula = rankingFormula ?? null;

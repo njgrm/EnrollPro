@@ -11,13 +11,13 @@ import {
 
 /** Guardian sub-schema (father / mother / legal guardian row) */
 export const earlyRegGuardianSchema = z.object({
-  lastName: z.string().min(1, "Last name is required").max(100),
-  firstName: z.string().min(1, "First name is required").max(100),
+  lastName: z.string().min(1, "Enter the last name.").max(100),
+  firstName: z.string().min(1, "Enter the first name.").max(100),
   middleName: z.string().max(100).optional().nullable(),
   contactNumber: z.string().max(20).optional().nullable(),
   email: z
     .string()
-    .email("Invalid email")
+    .email("Enter a valid email address.")
     .optional()
     .nullable()
     .or(z.literal("")),
@@ -25,13 +25,16 @@ export const earlyRegGuardianSchema = z.object({
 
 /** Mother maiden name schema */
 const motherSchema = z.object({
-  maidenName: z.string().min(1, "Maiden last name is required").max(100),
-  firstName: z.string().min(1, "First name is required").max(100),
+  maidenName: z
+    .string()
+    .min(1, "Enter the mother's maiden last name.")
+    .max(100),
+  firstName: z.string().min(1, "Enter the first name.").max(100),
   middleName: z.string().max(100).optional().nullable(),
   contactNumber: z.string().max(20).optional().nullable(),
   email: z
     .string()
-    .email("Invalid email")
+    .email("Enter a valid email address.")
     .optional()
     .nullable()
     .or(z.literal("")),
@@ -45,7 +48,7 @@ const optionalGuardianSchema = z.object({
   contactNumber: z.string().max(20).optional().nullable(),
   email: z
     .string()
-    .email("Invalid email")
+    .email("Enter a valid email address.")
     .optional()
     .nullable()
     .or(z.literal("")),
@@ -59,16 +62,16 @@ const optionalGuardianSchema = z.object({
 export const earlyRegistrationSubmitSchema = z
   .object({
     // ── Registration ──────────────────────────────────────
-    schoolYear: z.string().min(1, "School year is required"),
+    schoolYear: z.string().min(1, "Select the School Year."),
     gradeLevel: EarlyRegGradeLevelEnum.or(z.literal("")).refine(
       (v) => v !== "",
       {
-        message: "Grade level is required",
+        message: "Select the Grade Level.",
       },
     ),
     lrn: z
       .string()
-      .regex(/^\d{12}$/, "LRN must be exactly 12 numeric digits")
+      .regex(/^\d{12}$/, "Enter a valid 12-digit LRN.")
       .optional()
       .nullable()
       .or(z.literal("")),
@@ -77,11 +80,14 @@ export const earlyRegistrationSubmitSchema = z
     scpType: ScpTypeEnum.optional().nullable(),
 
     // ── Personal ──────────────────────────────────────────
-    lastName: z.string().min(1, "Last name is required").max(100),
-    firstName: z.string().min(1, "First name is required").max(100),
+    lastName: z.string().min(1, "Enter the last name.").max(100),
+    firstName: z.string().min(1, "Enter the first name.").max(100),
     middleName: z.string().max(100).optional().nullable(),
     extensionName: z.string().max(20).optional().nullable(),
-    birthdate: z.string().min(1, "Date of birth is required").or(z.date()),
+    birthdate: z
+      .string()
+      .min(1, "Enter the learner's date of birth.")
+      .or(z.date()),
     sex: SexEnum,
     religion: z.string().max(100).optional().nullable(),
 
@@ -94,12 +100,12 @@ export const earlyRegistrationSubmitSchema = z
     // ── Address ───────────────────────────────────────────
     houseNoStreet: z.string().max(200).optional().nullable(),
     sitio: z.string().max(100).optional().nullable(),
-    barangay: z.string().min(1, "Barangay is required").max(100),
+    barangay: z.string().min(1, "Enter the Barangay.").max(100),
     cityMunicipality: z
       .string()
-      .min(1, "City/Municipality is required")
+      .min(1, "Enter the City/Municipality.")
       .max(100),
-    province: z.string().min(1, "Province is required").max(100),
+    province: z.string().min(1, "Enter the Province.").max(100),
 
     // ── Guardians ─────────────────────────────────────────
     father: optionalGuardianSchema.optional().nullable(),
@@ -114,25 +120,25 @@ export const earlyRegistrationSubmitSchema = z
       .nullable(),
     contactNumber: z
       .string()
-      .min(1, "Contact number is required")
-      .regex(/^09\d{2}-\d{3}-\d{4}$/, "Format: 09XX-XXX-YYYY"),
+      .min(1, "Enter the primary contact number.")
+      .regex(/^09\d{2}-\d{3}-\d{4}$/, "Use format 09XX-XXX-XXXX."),
     email: z
       .string()
-      .email("Invalid email")
+      .email("Enter a valid email address.")
       .optional()
       .nullable()
       .or(z.literal("")),
 
     // ── Legal / Privacy ───────────────────────────────────
     isPrivacyConsentGiven: z.boolean().refine((v) => v === true, {
-      message: "You must consent to the Data Privacy Act (RA 10173)",
+      message: "Confirm Data Privacy consent to continue.",
     }),
   })
   .superRefine((data, ctx) => {
     if (data.isScpApplication && !data.scpType) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "SCP type is required when SCP application is selected",
+        message: "Select an SCP track to continue.",
         path: ["scpType"],
       });
     }
@@ -144,7 +150,7 @@ export const earlyRegistrationSubmitSchema = z
       if (!lrn) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "LRN is required for Grade 8-10 learners",
+          message: "LRN is required for Grades 8 to 10.",
           path: ["lrn"],
         });
       }
@@ -160,7 +166,7 @@ export const earlyRegistrationSubmitSchema = z
     if (!hasFather && !hasMother && !hasGuardian) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "At least one parent or guardian must be provided",
+        message: "Provide at least one parent or guardian record.",
         path: ["father"],
       });
     }
@@ -170,21 +176,21 @@ export const earlyRegistrationSubmitSchema = z
       if (!data.guardian?.lastName?.trim()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Guardian last name is required",
+          message: "Enter the guardian's last name.",
           path: ["guardian", "lastName"],
         });
       }
       if (!data.guardian?.firstName?.trim()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Guardian first name is required",
+          message: "Enter the guardian's first name.",
           path: ["guardian", "firstName"],
         });
       }
       if (!data.guardianRelationship?.trim()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Guardian relationship is required",
+          message: "Enter the guardian relationship.",
           path: ["guardianRelationship"],
         });
       }
@@ -195,14 +201,14 @@ export const earlyRegistrationSubmitSchema = z
       if (!data.mother?.maidenName?.trim()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Maiden last name is required",
+          message: "Enter the mother's maiden last name.",
           path: ["mother", "maidenName"],
         });
       }
       if (!data.mother?.firstName?.trim()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "First name is required",
+          message: "Enter the mother's first name.",
           path: ["mother", "firstName"],
         });
       }
@@ -213,14 +219,14 @@ export const earlyRegistrationSubmitSchema = z
       if (!data.father?.lastName?.trim()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Last name is required",
+          message: "Enter the father's last name.",
           path: ["father", "lastName"],
         });
       }
       if (!data.father?.firstName?.trim()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "First name is required",
+          message: "Enter the father's first name.",
           path: ["father", "firstName"],
         });
       }
@@ -230,7 +236,7 @@ export const earlyRegistrationSubmitSchema = z
     if (hasGuardian && !data.guardianRelationship?.trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Guardian relationship is required",
+        message: "Enter the guardian relationship.",
         path: ["guardianRelationship"],
       });
     }
@@ -239,7 +245,7 @@ export const earlyRegistrationSubmitSchema = z
     if (data.isIpCommunity && !data.ipGroupName?.trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Specify the IP group/ethnicity name",
+        message: "Enter the learner's IP group or ethnicity.",
         path: ["ipGroupName"],
       });
     }
@@ -251,7 +257,7 @@ export const earlyRegistrationSubmitSchema = z
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Specify at least one disability type",
+        message: "Select at least one disability type.",
         path: ["disabilityTypes"],
       });
     }

@@ -12,16 +12,6 @@ export interface ScpStepConfig {
   cutoffScore: number | null;
 }
 
-export type ScpDocumentPolicy = "REQUIRED" | "OPTIONAL" | "HIDDEN";
-export type ScpDocumentPhase = "EARLY_REGISTRATION" | "ENROLLMENT";
-
-export interface ScpDocumentRequirementDraft {
-  docId: string;
-  policy: ScpDocumentPolicy;
-  phase: ScpDocumentPhase | null;
-  notes: string | null;
-}
-
 export interface ScpConfig {
   id?: number;
   scpType: string;
@@ -30,7 +20,6 @@ export interface ScpConfig {
   cutoffScore: number | null;
   notes?: string | null;
   gradeRequirements?: unknown;
-  documentRequirements: ScpDocumentRequirementDraft[];
   rankingFormula?: unknown;
   artFields: string[];
   languages: string[];

@@ -125,7 +125,7 @@ export default function Apply() {
           isClosed={isClosed}
           logoUrl={logoUrl}
           schoolName={schoolName}
-          title="BASIC EDUCATION EARLY REGISTRATION FORM"
+          title="BASIC EDUCATION ENROLLMENT FORM"
         />
 
         <main
@@ -166,14 +166,12 @@ export default function Apply() {
                   </div>
                   <div className="space-y-4 max-w-lg mx-auto">
                     <h3 className="text-xl sm:text-2xl font-bold text-black">
-                      BASIC EDUCATION EARLY REGISTRATION FORM is Currently
-                      Closed
+                      BASIC EDUCATION ENROLLMENT FORM is Currently Closed
                     </h3>
                     <p className="text-sm sm:text-base text-black leading-relaxed">
-                      The online portal for BASIC EDUCATION EARLY REGISTRATION
-                      FORM is not currently accepting applications. Registration
-                      periods are scheduled according to the DepEd school
-                      calendar.
+                      The online portal for BASIC EDUCATION ENROLLMENT FORM is
+                      not currently accepting applications. Registration periods
+                      are scheduled according to the DepEd school calendar.
                     </p>
                     <p className="text-sm text-black font-medium pt-4 border-t border-border/50">
                       Please stay tuned to our official school social media

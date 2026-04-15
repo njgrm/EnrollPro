@@ -9,24 +9,24 @@ import type {
 const stepper = defineStepper(
   {
     id: "basic-info",
-    title: "Basic & Application Information",
+    title: "Basic Information",
     description:
-      "School year, learner category, grade level, LRN, and application track",
+      "School Year, learner category, Grade Level, LRN, and learning program",
   },
   {
     id: "learner-profile",
     title: "Learner Profile",
-    description: "Name, Birthdate, Sex, IP/PWD status",
+    description: "Name, birthdate, sex at birth, and IP/PWD details",
   },
   {
     id: "address-guardian",
-    title: "Address & Guardian",
-    description: "Home address and parent/guardian details",
+    title: "Address and Contact",
+    description: "Home address, parent/guardian details, and contact person",
   },
   {
     id: "legal-consent",
-    title: "Review & Submit",
-    description: "Final check and submission",
+    title: "Review and Submit",
+    description: "Final review, certification, and submission",
   },
 );
 

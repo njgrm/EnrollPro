@@ -101,8 +101,7 @@ export default function StepProgressBar({
                           ? "border-primary bg-primary text-primary-foreground shadow-[0_0_0_2px_hsl(var(--card)),0_0_0_4px_hsl(var(--primary)/0.25)]"
                           : "border-border bg-card text-muted-foreground",
                     )}
-                    aria-current={isActive ? "step" : undefined}
-                  >
+                    aria-current={isActive ? "step" : undefined}>
                     <StepIcon className="h-3.5 w-3.5" />
                   </div>
                 </div>
@@ -159,8 +158,7 @@ export default function StepProgressBar({
                             ? "border-primary bg-primary text-primary-foreground shadow-[0_0_0_2px_hsl(var(--card)),0_0_0_4px_hsl(var(--primary)/0.25)]"
                             : "border-border bg-card text-muted-foreground",
                       )}
-                      aria-current={isActive ? "step" : undefined}
-                    >
+                      aria-current={isActive ? "step" : undefined}>
                       <StepIcon className="h-4 w-4" />
                     </div>
 
@@ -173,8 +171,7 @@ export default function StepProgressBar({
                             ? "font-semibold text-foreground"
                             : "font-medium text-foreground",
                       )}
-                      title={step.title}
-                    >
+                      title={step.title}>
                       {step.title}
                     </span>
                   </div>

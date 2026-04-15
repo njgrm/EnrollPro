@@ -10,7 +10,7 @@ import api from "@/shared/api/axiosInstance";
 
 const LEARNER_TYPES = [
   { value: "NEW_ENROLLEE", label: "NEW ENROLLEE" },
-  { value: "RETURNING", label: "RETURNING (BALIK-ARAL)" },
+  { value: "RETURNING", label: "RETURNING" },
 ] as const;
 
 const GRADE_OPTIONS = [
@@ -25,33 +25,310 @@ type ScpTypeValue = NonNullable<EarlyRegFormData["scpType"]>;
 const SCP_PROGRAMS: Array<{ id: ScpTypeValue; description: string }> = [
   {
     id: "SCIENCE_TECHNOLOGY_AND_ENGINEERING",
-    description: "Written entrance exam and interview.",
+    description: "Take a written entrance exam and interview.",
   },
   {
     id: "SPECIAL_PROGRAM_IN_THE_ARTS",
-    description: "Written exam, audition, and interview.",
+    description: "Take a written exam, audition, and interview.",
   },
   {
     id: "SPECIAL_PROGRAM_IN_SPORTS",
-    description: "Sports tryout and screening.",
+    description: "Join a sports tryout and screening.",
   },
   {
     id: "SPECIAL_PROGRAM_IN_JOURNALISM",
-    description: "Journalism screening exam and interview.",
+    description: "Take a journalism screening exam and interview.",
   },
   {
     id: "SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE",
-    description: "Language aptitude and screening.",
+    description: "Take a language aptitude screening.",
   },
   {
     id: "SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION",
-    description: "Technical-vocational aptitude assessment.",
+    description: "Take a technical-vocational aptitude assessment.",
   },
 ];
+
+const SCP_GRADE_RULE_TYPES = [
+  "GENERAL_AVERAGE_MIN",
+  "SUBJECT_AVERAGE_MIN",
+  "SUBJECT_MINIMUMS",
+] as const;
+
+type ScpGradeRuleType = (typeof SCP_GRADE_RULE_TYPES)[number];
+type RequirementStatus = "REQUIRED" | "RECOMMENDED";
+
+interface ParsedScpSubjectThreshold {
+  subject: string;
+  min: number;
+}
+
+interface ParsedScpGradeRequirement {
+  ruleType: ScpGradeRuleType;
+  minAverage: number | null;
+  subjects: string[];
+  subjectThresholds: ParsedScpSubjectThreshold[];
+}
+
+interface ScpDocumentRequirementItem {
+  label: string;
+  status: RequirementStatus;
+  note?: string;
+}
+
+interface ScpRequirementCardData {
+  prerequisiteLines: string[];
+  documentaryRequirements: ScpDocumentRequirementItem[];
+  note: string | null;
+  usingConfiguredPrerequisites: boolean;
+}
+
+const SUBJECT_LABELS: Record<string, string> = {
+  ENGLISH: "English",
+  SCIENCE: "Science",
+  MATHEMATICS: "Mathematics",
+  FILIPINO: "Filipino",
+  GENERAL_AVERAGE: "General Average",
+};
+
+const SCP_FALLBACK_PREREQUISITES: Record<ScpTypeValue, string[]> = {
+  SCIENCE_TECHNOLOGY_AND_ENGINEERING: [
+    "Average in English, Science, and Mathematics (Grade 6, Quarters 1-3) must be at least 85%.",
+  ],
+  SPECIAL_PROGRAM_IN_THE_ARTS: [
+    "General Average in the latest report card must be at least 85%.",
+  ],
+  SPECIAL_PROGRAM_IN_SPORTS: [
+    "General Average in the latest SF9 / Report Card must be at least 85%.",
+  ],
+  SPECIAL_PROGRAM_IN_JOURNALISM: [
+    "English and Filipino grades should each be at least 85%.",
+  ],
+  SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE: [
+    "English grade should be at least 85%.",
+  ],
+  SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION: [
+    "General Average should meet the school's baseline passing requirement.",
+    "Learners must demonstrate practical aptitude for technical-vocational training.",
+  ],
+};
+
+const SCP_FALLBACK_DOCUMENTS: Record<
+  ScpTypeValue,
+  ScpDocumentRequirementItem[]
+> = {
+  SCIENCE_TECHNOLOGY_AND_ENGINEERING: [
+    { label: "SF9 / Report Card", status: "REQUIRED" },
+    { label: "PSA Birth Certificate", status: "REQUIRED" },
+    {
+      label: "Certificate of Good Moral Character",
+      status: "REQUIRED",
+    },
+    { label: "Medical Certificate", status: "REQUIRED" },
+    {
+      label: "1x1 or 2x2 ID Picture (2 pieces)",
+      status: "REQUIRED",
+    },
+    { label: "Long Plastic Envelope (1 piece)", status: "REQUIRED" },
+  ],
+  SPECIAL_PROGRAM_IN_THE_ARTS: [
+    { label: "Accomplished Application Form", status: "REQUIRED" },
+    { label: "SF9 / Report Card", status: "REQUIRED" },
+    { label: "PSA Birth Certificate", status: "REQUIRED" },
+  ],
+  SPECIAL_PROGRAM_IN_SPORTS: [
+    { label: "Accomplished Application Form", status: "REQUIRED" },
+    { label: "SF9 / Report Card", status: "REQUIRED" },
+    { label: "PSA Birth Certificate", status: "REQUIRED" },
+    {
+      label: "Awards / Certificates of Recognition in chosen sport",
+      status: "REQUIRED",
+    },
+  ],
+  SPECIAL_PROGRAM_IN_JOURNALISM: [
+    { label: "Accomplished Application Form", status: "REQUIRED" },
+    { label: "SF9 / Report Card", status: "REQUIRED" },
+    { label: "PSA Birth Certificate", status: "REQUIRED" },
+    {
+      label: "Portfolio of published works",
+      status: "RECOMMENDED",
+      note: "Highly recommended if available.",
+    },
+  ],
+  SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE: [
+    { label: "Accomplished Application Form", status: "REQUIRED" },
+    { label: "SF9 / Report Card", status: "REQUIRED" },
+    { label: "PSA Birth Certificate", status: "REQUIRED" },
+  ],
+  SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION: [
+    { label: "Accomplished Application Form", status: "REQUIRED" },
+    { label: "SF9 / Report Card", status: "REQUIRED" },
+    { label: "PSA Birth Certificate", status: "REQUIRED" },
+    {
+      label: "Certificate of Good Moral Character",
+      status: "REQUIRED",
+    },
+  ],
+};
+
+const SCP_FALLBACK_NOTES: Partial<Record<ScpTypeValue, string>> = {
+  SPECIAL_PROGRAM_IN_THE_ARTS:
+    "SPA entrance exam / audition is administered during the enrollment phase.",
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const normalizePercent = (value: unknown): number | null => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+
+  const rounded = Number(value.toFixed(2));
+  return rounded >= 0 && rounded <= 100 ? rounded : null;
+};
+
+const formatSubjectToken = (token: string): string => {
+  const normalized = token.trim().toUpperCase();
+  if (SUBJECT_LABELS[normalized]) {
+    return SUBJECT_LABELS[normalized];
+  }
+
+  return normalized
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+};
+
+const formatSubjectList = (subjects: string[]): string => {
+  const labels = subjects.map((subject) => formatSubjectToken(subject));
+
+  if (labels.length === 0) return "";
+  if (labels.length === 1) return labels[0];
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
+
+  return `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
+};
+
+const parseGradeRequirements = (
+  value: unknown,
+): ParsedScpGradeRequirement[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const parsed: ParsedScpGradeRequirement[] = [];
+
+  for (const rule of value) {
+    if (!isRecord(rule) || typeof rule.ruleType !== "string") {
+      continue;
+    }
+
+    const normalizedRuleType = rule.ruleType.toUpperCase();
+    if (
+      !SCP_GRADE_RULE_TYPES.includes(normalizedRuleType as ScpGradeRuleType)
+    ) {
+      continue;
+    }
+
+    const subjects = Array.isArray(rule.subjects)
+      ? rule.subjects
+          .filter((subject): subject is string => typeof subject === "string")
+          .map((subject) => subject.trim().toUpperCase())
+          .filter(Boolean)
+      : [];
+
+    const subjectThresholds = Array.isArray(rule.subjectThresholds)
+      ? rule.subjectThresholds.reduce<ParsedScpSubjectThreshold[]>(
+          (acc, threshold) => {
+            if (!isRecord(threshold) || typeof threshold.subject !== "string") {
+              return acc;
+            }
+
+            const min = normalizePercent(threshold.min);
+            if (min === null) {
+              return acc;
+            }
+
+            acc.push({
+              subject: threshold.subject.trim().toUpperCase(),
+              min,
+            });
+
+            return acc;
+          },
+          [],
+        )
+      : [];
+
+    parsed.push({
+      ruleType: normalizedRuleType as ScpGradeRuleType,
+      minAverage: normalizePercent(rule.minAverage),
+      subjects,
+      subjectThresholds,
+    });
+  }
+
+  return parsed;
+};
+
+const buildPrerequisiteLines = (
+  requirements: ParsedScpGradeRequirement[],
+): string[] => {
+  const lines: string[] = [];
+
+  for (const requirement of requirements) {
+    if (
+      requirement.ruleType === "GENERAL_AVERAGE_MIN" &&
+      requirement.minAverage !== null
+    ) {
+      lines.push(
+        `General Average must be at least ${requirement.minAverage}%.`,
+      );
+      continue;
+    }
+
+    if (
+      requirement.ruleType === "SUBJECT_AVERAGE_MIN" &&
+      requirement.minAverage !== null &&
+      requirement.subjects.length > 0
+    ) {
+      lines.push(
+        `Average in ${formatSubjectList(requirement.subjects)} must be at least ${requirement.minAverage}%.`,
+      );
+      continue;
+    }
+
+    if (
+      requirement.ruleType === "SUBJECT_MINIMUMS" &&
+      requirement.subjectThresholds.length > 0
+    ) {
+      const formattedThresholds = requirement.subjectThresholds
+        .map(
+          (threshold) =>
+            `${formatSubjectToken(threshold.subject)} >= ${threshold.min}%`,
+        )
+        .join(", ");
+
+      lines.push(`Subject minimums: ${formattedThresholds}.`);
+    }
+  }
+
+  return Array.from(new Set(lines));
+};
 
 interface PublicScpProgramConfig {
   scpType: unknown;
   isOffered?: boolean;
+  gradeRequirements?: unknown;
+  notes?: unknown;
+}
+
+interface OfferedScpProgramConfig {
+  scpType: ScpTypeValue;
+  gradeRequirements: unknown;
+  notes: string | null;
 }
 
 interface PublicScpConfigResponse {
@@ -79,15 +356,44 @@ export default function BasicInfoStep() {
   const isScpApplication = watch("isScpApplication");
   const scpType = watch("scpType");
   const isScpEligible = learnerType === "NEW_ENROLLEE" && gradeLevel === "7";
-  const [isLoadingScpConfig, setIsLoadingScpConfig] = useState(false);
+  const [isLoadingScpConfig, setIsLoadingScpConfig] = useState(true);
   const [scpConfigError, setScpConfigError] = useState<string | null>(null);
-  const [offeredScpTypes, setOfferedScpTypes] = useState<ScpTypeValue[]>([]);
+  const [offeredScpConfigs, setOfferedScpConfigs] = useState<
+    OfferedScpProgramConfig[]
+  >([]);
 
   const availableScpPrograms = useMemo(
     () =>
-      SCP_PROGRAMS.filter((program) => offeredScpTypes.includes(program.id)),
-    [offeredScpTypes],
+      SCP_PROGRAMS.filter((program) =>
+        offeredScpConfigs.some((config) => config.scpType === program.id),
+      ),
+    [offeredScpConfigs],
   );
+  const offeredScpConfigByType = useMemo(
+    () => new Map(offeredScpConfigs.map((config) => [config.scpType, config])),
+    [offeredScpConfigs],
+  );
+  const selectedScpRequirementCard =
+    useMemo<ScpRequirementCardData | null>(() => {
+      if (!scpType) {
+        return null;
+      }
+
+      const selectedConfig = offeredScpConfigByType.get(scpType);
+      const configuredPrerequisites = buildPrerequisiteLines(
+        parseGradeRequirements(selectedConfig?.gradeRequirements),
+      );
+
+      return {
+        prerequisiteLines:
+          configuredPrerequisites.length > 0
+            ? configuredPrerequisites
+            : SCP_FALLBACK_PREREQUISITES[scpType],
+        documentaryRequirements: SCP_FALLBACK_DOCUMENTS[scpType],
+        note: selectedConfig?.notes ?? SCP_FALLBACK_NOTES[scpType] ?? null,
+        usingConfiguredPrerequisites: configuredPrerequisites.length > 0,
+      };
+    }, [scpType, offeredScpConfigByType]);
   const hasOfferedScpPrograms = availableScpPrograms.length > 0;
   const canSelectScpTrack =
     isScpEligible && !isLoadingScpConfig && hasOfferedScpPrograms;
@@ -105,22 +411,32 @@ export default function BasicInfoStep() {
         );
 
         const offered = (response.data.scpProgramConfigs ?? []).reduce<
-          ScpTypeValue[]
+          OfferedScpProgramConfig[]
         >((acc, config) => {
           if (config.isOffered !== false && isScpTypeValue(config.scpType)) {
-            acc.push(config.scpType);
+            acc.push({
+              scpType: config.scpType,
+              gradeRequirements: config.gradeRequirements ?? null,
+              notes:
+                typeof config.notes === "string" && config.notes.trim()
+                  ? config.notes.trim()
+                  : null,
+            });
           }
           return acc;
         }, []);
 
         if (!isMounted) return;
-        setOfferedScpTypes(Array.from(new Set(offered)));
+        const deduped = Array.from(
+          new Map(offered.map((config) => [config.scpType, config])).values(),
+        );
+        setOfferedScpConfigs(deduped);
       } catch (error) {
         console.error("Failed to load SCP configuration:", error);
         if (!isMounted) return;
-        setOfferedScpTypes([]);
+        setOfferedScpConfigs([]);
         setScpConfigError(
-          "Unable to load available SCP programs right now. Please try again later.",
+          "We could not load available SCP tracks right now. Please try again in a few minutes.",
         );
       } finally {
         if (isMounted) {
@@ -262,7 +578,7 @@ export default function BasicInfoStep() {
               <Input
                 id="lrn"
                 {...register("lrn")}
-                placeholder="Enter 12-digit LRN"
+                placeholder="12-digit LRN (from SF9 Report Card)"
                 maxLength={12}
                 inputMode="numeric"
                 className={cn(
@@ -280,8 +596,8 @@ export default function BasicInfoStep() {
             <p className="font-bold text-xs italic flex items-center gap-1 mt-2 text-muted-foreground">
               <Info className="w-4 h-4" />
               {lrnRequired
-                ? "LRN is required for your grade level."
-                : "Found on the upper left of the SF9 (Report Card)."}
+                ? "LRN is required for Grades 8 to 10."
+                : "You can find the LRN on the upper-left part of SF9 (Report Card)."}
             </p>
             {errors.lrn && (
               <p className="text-xs text-destructive font-medium flex items-center gap-1 mt-1">
@@ -393,7 +709,7 @@ export default function BasicInfoStep() {
                 <BookOpen className="w-5 h-5 text-primary" />
               </div>
               <Label className="text-base font-bold text-primary">
-                Application Track <span className="text-destructive">*</span>
+                Learning Program <span className="text-destructive">*</span>
               </Label>
             </div>
 
@@ -427,12 +743,12 @@ export default function BasicInfoStep() {
                 </div>
                 <p
                   className={cn(
-                    "text-[0.6875rem] pl-8",
+                    "text-xs pl-8",
                     !isScpApplication
                       ? "text-primary-foreground/80"
                       : "text-muted-foreground",
                   )}>
-                  Standard admission track without SCP specialization.
+                  Standard Junior High curriculum.
                 </p>
               </button>
 
@@ -467,16 +783,16 @@ export default function BasicInfoStep() {
                   </div>
                   <p
                     className={cn(
-                      "text-[0.6875rem] pl-8",
+                      "text-xs pl-8",
                       isScpApplication
                         ? "text-primary-foreground/80"
                         : "text-muted-foreground",
                     )}>
                     {isLoadingScpConfig
-                      ? "Loading currently offered SCP tracks..."
+                      ? "Loading available SCP tracks..."
                       : hasOfferedScpPrograms
-                        ? "Select this if applying for an SCP track."
-                        : "No SCP tracks are currently open for this school year."}
+                        ? "Choose this if the learner will apply for an SCP track."
+                        : "No SCP tracks are open for this School Year."}
                   </p>
                 </button>
               )}
@@ -502,21 +818,21 @@ export default function BasicInfoStep() {
               !hasOfferedScpPrograms && (
                 <p className="font-bold text-xs italic flex items-center gap-1 mt-2 text-muted-foreground">
                   <Info className="w-4 h-4" />
-                  No SCP programs are currently offered for this school year.
+                  No SCP programs are currently offered for this School Year.
                 </p>
               )}
 
             {!isScpEligible && (
               <p className="font-bold text-xs italic flex items-center gap-1 mt-2 text-muted-foreground">
                 <Info className="w-4 h-4" />
-                SCP option is available only for NEW ENROLLEE in GRADE 7.
+                SCP is available only for New Enrollees in Grade 7.
               </p>
             )}
 
             {isScpEligible && isScpApplication && hasOfferedScpPrograms && (
               <div className="space-y-3 pt-2">
                 <Label className="text-sm font-bold uppercase tracking-widest text-primary">
-                  Select SCP Program <span className="text-destructive">*</span>
+                  Select SCP Track <span className="text-destructive">*</span>
                 </Label>
 
                 <div className="grid grid-cols-1 gap-3">
@@ -553,7 +869,7 @@ export default function BasicInfoStep() {
                       </div>
                       <p
                         className={cn(
-                          "text-[0.6875rem] pl-8 italic",
+                          "text-xs pl-8 italic",
                           scpType === program.id
                             ? "text-primary-foreground/80"
                             : "text-muted-foreground",
@@ -569,6 +885,97 @@ export default function BasicInfoStep() {
                     <AlertCircle className="w-3 h-3" />
                     {errors.scpType.message}
                   </p>
+                )}
+
+                {scpType && selectedScpRequirementCard && (
+                  <div className="rounded-2xl border border-primary/20 bg-white p-4 sm:p-5 space-y-4">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-[0.625rem] font-bold uppercase tracking-widest text-primary/70">
+                          SCP Track Requirements
+                        </p>
+                        <p className="text-sm font-bold text-primary mt-1">
+                          {SCP_LABELS[scpType]}
+                        </p>
+                      </div>
+
+                      <span
+                        className={cn(
+                          "inline-flex items-center rounded-full border px-2 py-0.5 text-[0.625rem] font-bold uppercase tracking-wide",
+                          selectedScpRequirementCard.usingConfiguredPrerequisites
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            : "border-amber-200 bg-amber-50 text-amber-700",
+                        )}>
+                        {selectedScpRequirementCard.usingConfiguredPrerequisites
+                          ? "Config-Based"
+                          : "Policy Default"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                      <div className="space-y-2">
+                        <p className="text-[0.6875rem] font-bold uppercase tracking-wider text-primary">
+                          Prerequisites
+                        </p>
+                        <ul className="space-y-2">
+                          {selectedScpRequirementCard.prerequisiteLines.map(
+                            (line, index) => (
+                              <li
+                                key={`${scpType}-prerequisite-${index}`}
+                                className="flex items-start gap-2 text-xs text-foreground">
+                                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                                <span>{line}</span>
+                              </li>
+                            ),
+                          )}
+                        </ul>
+                      </div>
+
+                      <div className="space-y-2">
+                        <p className="text-[0.6875rem] font-bold uppercase tracking-wider text-primary">
+                          Documentary Requirements
+                        </p>
+                        <ul className="space-y-2">
+                          {selectedScpRequirementCard.documentaryRequirements.map(
+                            (requirement, index) => (
+                              <li
+                                key={`${scpType}-document-${requirement.label}-${index}`}
+                                className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className="text-xs font-medium text-foreground">
+                                    {requirement.label}
+                                  </p>
+                                  <span
+                                    className={cn(
+                                      "shrink-0 rounded-full border px-2 py-0.5 text-[0.625rem] font-bold uppercase tracking-wide",
+                                      requirement.status === "REQUIRED"
+                                        ? "border-red-200 bg-red-50 text-red-700"
+                                        : "border-blue-200 bg-blue-50 text-blue-700",
+                                    )}>
+                                    {requirement.status === "REQUIRED"
+                                      ? "Required"
+                                      : "Recommended"}
+                                  </span>
+                                </div>
+                                {requirement.note && (
+                                  <p className="mt-1 text-[0.6875rem] text-muted-foreground">
+                                    {requirement.note}
+                                  </p>
+                                )}
+                              </li>
+                            ),
+                          )}
+                        </ul>
+                      </div>
+                    </div>
+
+                    {selectedScpRequirementCard.note && (
+                      <p className="font-bold text-xs italic flex items-start gap-1 text-muted-foreground">
+                        <Info className="w-4 h-4 shrink-0 mt-[1px]" />
+                        <span>{selectedScpRequirementCard.note}</span>
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             )}

@@ -31,6 +31,17 @@ interface EarlyRegFormProps {
   onSuccess?: (data: { id: number; learnerName: string }) => void;
 }
 
+const collectErrorMessages = (errorValue: unknown): string[] => {
+  if (!errorValue || typeof errorValue !== "object") return [];
+
+  const maybeMessage = (errorValue as { message?: unknown }).message;
+  if (typeof maybeMessage === "string") {
+    return [maybeMessage];
+  }
+
+  return Object.values(errorValue).flatMap(collectErrorMessages);
+};
+
 export default function EarlyRegistrationForm({
   onSuccess,
 }: EarlyRegFormProps) {
@@ -190,8 +201,7 @@ export default function EarlyRegistrationForm({
         setError("lrn", {
           type: "manual",
           message:
-            response.data?.message ||
-            "Mayroon nang learner na may kaparehong LRN. / A learner with this LRN already exists.",
+            response.data?.message || "A learner with this LRN already exists.",
         });
         return false;
       }
@@ -204,8 +214,7 @@ export default function EarlyRegistrationForm({
     } catch {
       setError("lrn", {
         type: "manual",
-        message:
-          "Hindi ma-verify ang LRN ngayon. Pakisubukan muli. / Unable to verify LRN right now. Please try again.",
+        message: "Unable to verify the LRN right now. Please try again.",
       });
       return false;
     } finally {
@@ -266,7 +275,7 @@ export default function EarlyRegistrationForm({
       const response = await api.post("/early-registrations", payload);
 
       sileo.success({
-        title: "Matagumpay! / Success!",
+        title: "Success!",
         description: response.data.message,
       });
 
@@ -288,8 +297,7 @@ export default function EarlyRegistrationForm({
     } catch (error: unknown) {
       const message =
         (error as { response?: { data?: { message?: string } } })?.response
-          ?.data?.message ||
-        "Hindi ma-submit ang registration. Subukan muli. / Failed to submit. Please try again.";
+          ?.data?.message || "Failed to submit registration. Please try again.";
       setSubmitError(message);
       scrollToTop();
     } finally {
@@ -367,18 +375,13 @@ export default function EarlyRegistrationForm({
                   className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl space-y-2 mt-6">
                   <div className="flex items-center gap-2 text-destructive font-bold text-sm">
                     <AlertCircle className="w-4 h-4" />
-                    Please provide the following required information:
+                    Please complete the required fields below.
                   </div>
                   <ul className="list-disc pl-6 text-xs font-bold text-destructive/80 space-y-1">
                     {Array.from(
                       new Set(
                         Object.values(methods.formState.errors).flatMap(
-                          (err: any) =>
-                            err?.message
-                              ? [err.message]
-                              : Object.values(err || {})
-                                  .map((e: any) => e?.message)
-                                  .filter(Boolean),
+                          (errorValue) => collectErrorMessages(errorValue),
                         ),
                       ),
                     ).map((msg, i) => (
@@ -410,7 +413,7 @@ export default function EarlyRegistrationForm({
                       isSubmitting || hasBlockingErrors || isCheckingLrn
                     }
                     className="h-12 px-8 font-semibold sm:w-auto w-full bg-primary text-primary-foreground hover:bg-primary/90">
-                    {isEditing ? "Update & Review" : "Next Step"}
+                    {isEditing ? "Update and Review" : "Next Step"}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 )}

@@ -1,13 +1,8 @@
 import { Badge } from "@/shared/ui/badge";
 import { Switch } from "@/shared/ui/switch";
 import { SCP_TYPES } from "../constants";
-import type {
-  ScpConfig,
-  ScpDocumentRequirementDraft,
-  ScpStepConfig,
-} from "../types";
+import type { ScpConfig, ScpStepConfig } from "../types";
 import { AdmissionStepsSection } from "./AdmissionStepsSection";
-import { DocumentRequirementsSection } from "./DocumentRequirementsSection";
 import { ProgramSpecificFieldsSection } from "./ProgramSpecificFieldsSection";
 
 interface ScpProgramCardProps {
@@ -26,16 +21,6 @@ interface ScpProgramCardProps {
     field: keyof ScpStepConfig,
     value: string | boolean | number | null,
   ) => void;
-  onPatchDocumentRequirement: (
-    scpIndex: number,
-    requirementIndex: number,
-    patch: Partial<ScpDocumentRequirementDraft>,
-  ) => void;
-  onAddDocumentRequirement: (scpIndex: number) => void;
-  onRemoveDocumentRequirement: (
-    scpIndex: number,
-    requirementIndex: number,
-  ) => void;
 }
 
 export function ScpProgramCard({
@@ -45,9 +30,6 @@ export function ScpProgramCard({
   scpYearEnd,
   onUpdateScpField,
   onUpdateStep,
-  onPatchDocumentRequirement,
-  onAddDocumentRequirement,
-  onRemoveDocumentRequirement,
 }: ScpProgramCardProps) {
   return (
     <div className="rounded-xl border border-border overflow-hidden bg-card">
@@ -82,14 +64,6 @@ export function ScpProgramCard({
             scpYearEnd={scpYearEnd}
             onUpdateScpField={onUpdateScpField}
             onUpdateStep={onUpdateStep}
-          />
-
-          <DocumentRequirementsSection
-            scp={scp}
-            scpIndex={scpIndex}
-            onAddDocumentRequirement={onAddDocumentRequirement}
-            onRemoveDocumentRequirement={onRemoveDocumentRequirement}
-            onPatchDocumentRequirement={onPatchDocumentRequirement}
           />
 
           <ProgramSpecificFieldsSection

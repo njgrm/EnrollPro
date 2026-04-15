@@ -7,7 +7,14 @@ import {
   CardDescription,
 } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
-import { CheckCircle2, FileText, Download, Home, Loader2, ArrowLeft } from "lucide-react";
+import {
+  CheckCircle2,
+  FileText,
+  Download,
+  Home,
+  Loader2,
+  ArrowLeft,
+} from "lucide-react";
 import { useSettingsStore } from "@/store/settings.slice";
 import { cn, formatManilaDate, getManilaNow } from "@/shared/lib/utils";
 import html2canvas from "html2canvas";
@@ -43,20 +50,20 @@ export default function EarlyRegSuccessView({
 
   const steps = [
     {
-      title: "Check your email",
-      desc: "A confirmation has been sent to your primary contact email address.",
+      title: "Check your email inbox",
+      desc: "A confirmation was sent to your primary contact email.",
     },
     {
-      title: "Document Preparation",
+      title: "Prepare required documents",
       desc: "Prepare original and photocopies of PSA Birth Certificate and SF9 (Report Card).",
     },
     {
-      title: "Wait for verification",
-      desc: "Our School Registrar will review your registration within 3-5 working days.",
+      title: "Wait for school verification",
+      desc: "The School Registrar will review your registration within 3 to 5 working days.",
     },
     {
       title: "Save your Reference Number",
-      desc: "Use this number to track your registration status or during on-campus inquiries.",
+      desc: "Use this number when tracking status or asking at school.",
     },
   ];
 
@@ -99,7 +106,9 @@ export default function EarlyRegSuccessView({
       element.style.position = "absolute";
     } catch (error) {
       console.error("PDF Generation failed:", error);
-      alert("Failed to generate PDF. Please try printing the page instead.");
+      alert(
+        "Unable to generate the PDF right now. Please try again, or print this page instead.",
+      );
     } finally {
       setIsGenerating(false);
     }
@@ -156,9 +165,7 @@ export default function EarlyRegSuccessView({
               <div
                 style={{ backgroundColor: "#061E29", color: "#ffffff" }}
                 className="flex items-center justify-center px-6 py-3 rounded-xl text-xs font-black tracking-widest uppercase text-center">
-                <p className="-mt-3">
-                  Official Confirmation Slip
-                </p>
+                <p className="-mt-3">Official Confirmation Slip</p>
               </div>
             </div>
           </div>
@@ -169,10 +176,14 @@ export default function EarlyRegSuccessView({
             <h2
               style={{ color: "#061E29" }}
               className="text-4xl font-black tracking-tight">
-              Registration Received!
+              Registration Submitted!
             </h2>
             <p style={{ color: "#4b5563" }} className="text-xl font-medium">
-              Early registration for <span style={{ color: "#061E29" }} className="font-bold">{learnerName}</span> has been successfully submitted.
+              Early registration for{" "}
+              <span style={{ color: "#061E29" }} className="font-bold">
+                {learnerName}
+              </span>{" "}
+              was submitted successfully.
             </p>
           </div>
 
@@ -276,7 +287,7 @@ export default function EarlyRegSuccessView({
                 style={{ color: "#9ca3af" }}
                 className="text-[0.625rem] font-bold">
                 This document is electronically generated. No physical signature
-                required.
+                is required.
               </p>
             </div>
           </div>
@@ -293,10 +304,10 @@ export default function EarlyRegSuccessView({
             </div>
           </div>
           <CardTitle className="text-3xl font-black text-primary uppercase tracking-tight">
-            Registration Successful!
+            Registration Submitted
           </CardTitle>
           <CardDescription className="text-lg font-medium text-muted-foreground mt-2">
-            Nai-submit na ang early registration ni{" "}
+            Early registration for{" "}
             <span className="font-bold text-foreground">{learnerName}</span>.
           </CardDescription>
         </CardHeader>
@@ -320,7 +331,9 @@ export default function EarlyRegSuccessView({
             <p
               className={cn(
                 "text-xs font-black tracking-widest transition-all duration-300",
-                copied ? "text-primary scale-110" : "text-muted-foreground group-hover:text-primary/70",
+                copied
+                  ? "text-primary scale-110"
+                  : "text-muted-foreground group-hover:text-primary/70",
               )}>
               {copied ? "COPIED TO CLIPBOARD!" : "CLICK TO COPY"}
             </p>
@@ -357,7 +370,7 @@ export default function EarlyRegSuccessView({
               className="h-14 px-8 font-black flex-1 gap-2 rounded-2xl border-2 uppercase tracking-widest text-xs hover:bg-muted"
               onClick={onRegisterAnother}>
               <ArrowLeft className="w-4 h-4" />
-              Register Another
+              Register Another Learner
             </Button>
             <Button
               size="lg"
@@ -374,14 +387,14 @@ export default function EarlyRegSuccessView({
                 : "Download Confirmation Slip"}
             </Button>
           </div>
-          
+
           <div className="text-center">
             <Button
               variant="link"
               className="text-muted-foreground font-bold hover:text-primary transition-colors gap-2 group"
-              onClick={() => window.location.href = "/"}>
+              onClick={() => (window.location.href = "/")}>
               <Home className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform" />
-              Return to Website Home
+              Return to Home Page
             </Button>
           </div>
         </CardContent>

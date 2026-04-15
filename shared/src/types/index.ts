@@ -21,7 +21,6 @@ import type {
   scheduleInterviewSchema,
   recordInterviewResultSchema,
   scpGradeRequirementSchema,
-  scpDocumentRequirementSchema,
   scpRankingFormulaSchema,
   scpProgramConfigUpdateSchema,
   updateScpProgramConfigsSchema,
@@ -85,9 +84,6 @@ export type RecordInterviewResultInput = z.infer<
 >;
 export type ScpGradeRequirementInput = z.infer<
   typeof scpGradeRequirementSchema
->;
-export type ScpDocumentRequirementInput = z.infer<
-  typeof scpDocumentRequirementSchema
 >;
 export type ScpRankingFormulaInput = z.infer<typeof scpRankingFormulaSchema>;
 export type ScpProgramConfigUpdateInput = z.infer<

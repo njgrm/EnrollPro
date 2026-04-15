@@ -172,13 +172,13 @@ export default function EarlyRegistrationSuccess({
               <p
                 style={{ color: "#4b5563" }}
                 className="text-base font-bold uppercase tracking-[0.2em] mb-2">
-                BASIC EDUCATION EARLY REGISTRATION FORM Portal
+                BASIC EDUCATION ENROLLMENT FORM Portal
               </p>
               <div
                 style={{ backgroundColor: "#061E29", color: "#ffffff" }}
                 className="flex items-center justify-center px-6 py-3 rounded-xl text-xs font-black tracking-widest uppercase text-center">
                 <p className="-mt-3">
-                  Official BASIC EDUCATION EARLY REGISTRATION FORM Confirmation Slip
+                  Official BASIC EDUCATION ENROLLMENT FORM Confirmation Slip
                 </p>
               </div>
             </div>

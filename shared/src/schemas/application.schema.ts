@@ -295,15 +295,6 @@ export const scpGradeRequirementSchema = z
     }
   });
 
-export const scpDocumentPolicyEnum = z.enum(["REQUIRED", "OPTIONAL", "HIDDEN"]);
-
-export const scpDocumentRequirementSchema = z.object({
-  docId: z.string().min(1).max(80),
-  policy: scpDocumentPolicyEnum,
-  phase: z.enum(["EARLY_REGISTRATION", "ENROLLMENT"]).optional().nullable(),
-  notes: z.string().optional().nullable(),
-});
-
 export const scpRankingComponentSchema = z.object({
   key: z.enum(["EXAM", "INTERVIEW", "GRADE", "AUDITION", "TRYOUT", "OTHER"]),
   label: z.string().min(1),
@@ -351,10 +342,6 @@ export const scpProgramConfigUpdateSchema = z.object({
   cutoffScore: z.number().min(0).max(100).optional().nullable(),
   notes: z.string().optional().nullable(),
   gradeRequirements: z.array(scpGradeRequirementSchema).optional().nullable(),
-  documentRequirements: z
-    .array(scpDocumentRequirementSchema)
-    .optional()
-    .nullable(),
   rankingFormula: scpRankingFormulaSchema.optional().nullable(),
   artFields: z.array(z.string()).optional().default([]),
   languages: z.array(z.string()).optional().default([]),

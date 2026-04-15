@@ -77,7 +77,7 @@ const DataItem = ({
           : typeof value === "string"
             ? value.toUpperCase()
             : value
-        : "----"}
+        : "NOT PROVIDED"}
     </p>
   </div>
 );
@@ -104,7 +104,7 @@ export default function LegalConsentStep({
           onEdit={onEdit}>
           <DataItem label="School Year" value={data.schoolYear} />
           <DataItem
-            label="Grade Level To Enroll"
+            label="Grade Level to Enroll"
             value={`Grade ${data.gradeLevel}`}
           />
           <DataItem
@@ -113,7 +113,7 @@ export default function LegalConsentStep({
           />
           <DataItem label="LEARNER REFERENCE NUMBER" value={data.lrn} />
           <DataItem
-            label="Application Track"
+            label="Learning Program"
             value={
               data.isScpApplication
                 ? "Special Curricular Program (SCP)"
@@ -141,7 +141,7 @@ export default function LegalConsentStep({
             label="Full Name"
             value={`${data.lastName}, ${data.firstName} ${data.middleName || ""} ${data.extensionName || ""}`}
           />
-          <DataItem label="Sex" value={data.sex} />
+          <DataItem label="Sex at Birth" value={data.sex} />
           <DataItem
             label="Birthdate"
             value={
@@ -165,7 +165,7 @@ export default function LegalConsentStep({
         </SummaryCard>
 
         <SummaryCard
-          title="Address & Contact"
+          title="Address and Contact"
           icon={Home}
           stepId={3}
           onEdit={onEdit}>
@@ -227,7 +227,7 @@ export default function LegalConsentStep({
         </SummaryCard>
 
         <SummaryCard
-          title="Parent/Guardian"
+          title="Parent and Guardian"
           icon={Users}
           stepId={3}
           onEdit={onEdit}>
@@ -288,15 +288,9 @@ export default function LegalConsentStep({
                       htmlFor="certify-check"
                       className="text-sm font-medium leading-relaxed cursor-pointer select-none space-y-3 block">
                       <p>
-                        I certify that all information I have provided on this
-                        form is true, correct, and complete to the best of my
-                        knowledge and belief. I understand that any false
-                        information may be grounds for disqualification.
-                      </p>
-                      <p className="italic text-muted-foreground border-l-2 border-primary/30 pl-3 py-1">
-                        Nagapamatuod ako nga ang tanan nga impormasyon nga akon
-                        ginhatag sa sini nga porma matuod, husto, kag kompleto
-                        sa akon nahibaluan.
+                        I confirm that all information in this form is true,
+                        correct, and complete to the best of my knowledge. I
+                        understand that false information may affect enrollment.
                       </p>
                     </Label>
                   </div>
@@ -319,15 +313,15 @@ export default function LegalConsentStep({
             {isSubmitting ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Submitting Registration…
+                Submitting Registration...
               </>
             ) : (
-              "Confirm & Submit Registration"
+              "Review Complete, Submit Registration"
             )}
           </Button>
           <p className="text-xs text-muted-foreground flex items-center gap-1.5 font-medium">
             <Info className="w-3.5 h-3.5" />
-            Data Privacy consent recorded at initial login.
+            Data Privacy consent was recorded before this form.
           </p>
         </div>
       </div>

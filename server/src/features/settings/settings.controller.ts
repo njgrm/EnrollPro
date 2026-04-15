@@ -244,7 +244,6 @@ export async function getScpConfig(req: Request, res: Response): Promise<void> {
       isTwoPhase: true,
       cutoffScore: true,
       gradeRequirements: true,
-      documentRequirements: true,
       rankingFormula: true,
       notes: true,
     },
