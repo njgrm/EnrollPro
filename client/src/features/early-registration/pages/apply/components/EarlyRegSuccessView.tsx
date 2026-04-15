@@ -23,13 +23,13 @@ import jsPDF from "jspdf";
 const API_BASE = import.meta.env.VITE_API_URL?.replace("/api", "") || "";
 
 interface EarlyRegSuccessViewProps {
-  registrationId: number;
+  trackingNumber: string;
   learnerName: string;
   onRegisterAnother?: () => void;
 }
 
 export default function EarlyRegSuccessView({
-  registrationId,
+  trackingNumber,
   learnerName,
   onRegisterAnother,
 }: EarlyRegSuccessViewProps) {
@@ -38,12 +38,8 @@ export default function EarlyRegSuccessView({
   const [isGenerating, setIsGenerating] = useState(false);
   const pdfRef = useRef<HTMLDivElement>(null);
 
-  // Format ID as a tracking-like number: REG-2026-XXXX
-  const currentYear = new Date().getFullYear();
-  const referenceNumber = `REG-${currentYear}-${registrationId.toString().padStart(4, "0")}`;
-
   const handleCopy = () => {
-    navigator.clipboard.writeText(referenceNumber);
+    navigator.clipboard.writeText(trackingNumber);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -62,7 +58,7 @@ export default function EarlyRegSuccessView({
       desc: "The School Registrar will review your registration within 3 to 5 working days.",
     },
     {
-      title: "Save your Reference Number",
+      title: "Save your Tracking Number",
       desc: "Use this number when tracking status or asking at school.",
     },
   ];
@@ -100,7 +96,7 @@ export default function EarlyRegSuccessView({
       });
 
       pdf.addImage(imgData, "JPEG", 0, 0, imgWidth, imgHeight);
-      pdf.save(`Early_Registration_Slip_${referenceNumber}.pdf`);
+      pdf.save(`Early_Registration_Slip_${trackingNumber}.pdf`);
 
       element.style.visibility = "hidden";
       element.style.position = "absolute";
@@ -193,12 +189,12 @@ export default function EarlyRegSuccessView({
             <p
               style={{ color: "#6b7280" }}
               className="text-xs uppercase tracking-[0.3em] font-black">
-              Registration Reference Number
+              Registration Tracking Number
             </p>
             <p
               style={{ color: "#061E29" }}
               className="text-7xl  font-black tracking-tighter">
-              {referenceNumber}
+              {trackingNumber}
             </p>
 
             <div className="pt-6 flex justify-center gap-12 text-center">
@@ -274,7 +270,7 @@ export default function EarlyRegSuccessView({
               <div
                 style={{ backgroundColor: "#061E29", color: "#ffffff" }}
                 className="px-4 py-2  text-xs font-bold uppercase">
-                VALID_EARLY_REG_{referenceNumber.replace(/-/g, "_")}
+                VALID_EARLY_REG_{trackingNumber.replace(/-/g, "_")}
               </div>
             </div>
             <div className="text-right space-y-1">
@@ -321,11 +317,11 @@ export default function EarlyRegSuccessView({
                 : "border-muted-foreground/20 hover:border-primary/50 hover:bg-primary/5",
             )}>
             <p className="text-[0.7rem] text-muted-foreground uppercase tracking-[0.3em] font-black">
-              Your Reference Number
+              Your Tracking Number
             </p>
             <div className="flex items-center justify-center gap-4">
               <p className="text-3xl sm:text-5xl font-black text-primary tracking-tighter tabular-nums">
-                {referenceNumber}
+                {trackingNumber}
               </p>
             </div>
             <p

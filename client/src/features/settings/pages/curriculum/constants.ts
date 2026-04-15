@@ -1,5 +1,3 @@
-import type { ScpType } from "@enrollpro/shared";
-
 export const SCP_TYPES = [
   {
     value: "SCIENCE_TECHNOLOGY_AND_ENGINEERING",

@@ -18,8 +18,9 @@ export function createSchoolYearQueryController(
         _count: {
           select: {
             gradeLevels: true,
-            applicants: true,
-            enrollments: true,
+            earlyRegistrationApplications: true,
+            enrollmentApplications: true,
+            enrollmentRecords: true,
           },
         },
       },
@@ -42,11 +43,17 @@ export function createSchoolYearQueryController(
           orderBy: { displayOrder: "asc" },
           include: {
             sections: {
-              include: { _count: { select: { enrollments: true } } },
+              include: { _count: { select: { enrollmentRecords: true } } },
             },
           },
         },
-        _count: { select: { applicants: true, enrollments: true } },
+        _count: {
+          select: {
+            earlyRegistrationApplications: true,
+            enrollmentApplications: true,
+            enrollmentRecords: true,
+          },
+        },
       },
     });
 

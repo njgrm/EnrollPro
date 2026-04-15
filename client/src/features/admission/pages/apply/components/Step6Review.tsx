@@ -1,6 +1,6 @@
 import React from "react";
 import { useFormContext, Controller } from "react-hook-form";
-import type { EarlyRegistrationFormData } from "../types";
+import type { EnrollmentFormData } from "../types";
 import { Button } from "@/shared/ui/button";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Label } from "@/shared/ui/label";
@@ -96,7 +96,7 @@ export default function Step6Review({
     watch,
     control,
     formState: { errors },
-  } = useFormContext<EarlyRegistrationFormData>();
+  } = useFormContext<EnrollmentFormData>();
 
   const { schoolName } = useSettingsStore();
   const data = watch();

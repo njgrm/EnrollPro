@@ -40,8 +40,8 @@ const trackSchema = z.object({
     .string()
     .min(1, "Tracking number is required")
     .regex(
-      /^APP-\d{4}-\d{5}$/,
-      "Invalid tracking number format (e.g. APP-2026-00000)",
+      /^[A-Z]{3,5}-\d{4}-\d{5}$/,
+      "Invalid tracking number format (e.g. REG-2026-00001)",
     ),
 });
 
@@ -314,7 +314,7 @@ export default function TrackApplication({
                 <Input
                   id="trackingNumber"
                   {...register("trackingNumber")}
-                  placeholder="APP-2026-XXXXX"
+                  placeholder="REG-2026-00001"
                   className={cn(
                     "h-14 pl-12 text-lg font-black border-2 transition-all",
                     errors.trackingNumber

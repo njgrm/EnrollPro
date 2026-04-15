@@ -112,7 +112,13 @@ export function createSchoolYearAdminController(
       where: { id: year.id },
       include: {
         gradeLevels: { orderBy: { displayOrder: "asc" } },
-        _count: { select: { applicants: true, enrollments: true } },
+        _count: {
+          select: {
+            earlyRegistrationApplications: true,
+            enrollmentApplications: true,
+            enrollmentRecords: true,
+          },
+        },
       },
     });
 

@@ -57,6 +57,7 @@ const submitLimiter = rateLimit({
 // Public routes
 router.post('/', submitLimiter, validate(applicationSubmitSchema), ctrl.store);
 router.get('/track/:trackingNumber', ctrl.track);
+router.get('/lookup-lrn/:lrn', submitLimiter, ctrl.lookupByLrn);
 
 // F2F Walk-in EARLY REGISTRATION - REGISTRAR + SYSTEM_ADMIN (authenticated)
 router.post(
@@ -74,6 +75,14 @@ router.patch(
 	authorize('REGISTRAR', 'SYSTEM_ADMIN'),
 	validate(batchProcessSchema),
 	ctrl.batchProcess,
+);
+
+// SCP Rankings — must be before /:id routes
+router.get(
+	'/scp-rankings',
+	authenticate,
+	authorize('REGISTRAR', 'SYSTEM_ADMIN'),
+	ctrl.getRankings,
 );
 
 // Protected routes - REGISTRAR + SYSTEM_ADMIN

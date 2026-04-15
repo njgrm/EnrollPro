@@ -141,11 +141,8 @@ export function useCurriculumScpConfigs() {
         gradeRequirements: scp.gradeRequirements ?? null,
         rankingFormula: scp.rankingFormula ?? null,
         steps: scp.steps.map((step) => ({
-          stepOrder: step.stepOrder,
-          scheduledDate: step.scheduledDate,
-          scheduledTime: step.scheduledTime,
+          ...step,
           venue: step.venue?.trim().toUpperCase() || null,
-          notes: step.notes,
           cutoffScore: step.cutoffScore ?? null,
         })),
       }));

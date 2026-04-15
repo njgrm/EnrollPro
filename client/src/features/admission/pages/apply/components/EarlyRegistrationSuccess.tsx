@@ -7,11 +7,12 @@ import {
   CardDescription,
 } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
-import { CheckCircle2, FileText, Download, Home, Loader2 } from "lucide-react";
+import { CheckCircle2, FileText, Download, Home, Loader2, Search } from "lucide-react";
 import { useSettingsStore } from "@/store/settings.slice";
 import { cn, formatManilaDate, getManilaNow } from "@/shared/lib/utils";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { useNavigate } from "react-router";
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace("/api", "") || "";
 
@@ -30,6 +31,7 @@ export default function EarlyRegistrationSuccess({
   const [copied, setCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const pdfRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   const handleCopy = () => {
     navigator.clipboard.writeText(trackingNumber);
@@ -209,6 +211,7 @@ export default function EarlyRegistrationSuccess({
               className="text-xs uppercase tracking-[0.3em] font-black">
               Application Tracking Number
             </p>
+
             <p
               style={{ color: "#061E29" }}
               className="text-7xl  font-black tracking-tighter">
@@ -342,7 +345,7 @@ export default function EarlyRegistrationSuccess({
             </div>
             <p
               className={cn(
-                "text-xs font-bold transition-all duration-200",
+                "text-xs font-black transition-all duration-200",
                 copied ? "text-primary scale-110" : "text-muted-foreground",
               )}>
               {copied ? "COPIED TO CLIPBOARD!" : "CLICK TO COPY"}
@@ -373,6 +376,13 @@ export default function EarlyRegistrationSuccess({
             </Button>
             <Button
               className="h-12 px-8 font-bold flex-1 gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => navigate("/monitor")}
+              >
+              <Search className="w-4 h-4" />
+              Monitor Status
+            </Button>
+            <Button
+              className="h-12 px-8 font-bold flex-1 gap-2 bg-slate-800 text-white hover:bg-slate-700"
               onClick={downloadPDF}
               disabled={isGenerating}>
               {isGenerating ? (
@@ -381,8 +391,8 @@ export default function EarlyRegistrationSuccess({
                 <Download className="w-4 h-4" />
               )}
               {isGenerating
-                ? "Generating PDF..."
-                : "Download Confirmation Slip (PDF)"}
+                ? "Generating..."
+                : "Download Slip"}
             </Button>
           </div>
         </CardContent>
@@ -390,3 +400,4 @@ export default function EarlyRegistrationSuccess({
     </div>
   );
 }
+

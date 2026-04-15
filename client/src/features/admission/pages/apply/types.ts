@@ -1,12 +1,15 @@
 import { z } from "zod";
 
-export const EarlyRegistrationSchema = z.object({
+export const EnrollmentFormSchema = z.object({
   // Phase 0: Data Privacy
   isPrivacyConsentGiven: z.boolean().refine((val) => val === true, {
     message: "You must agree to the Data Privacy Notice.",
   }),
 
-  // Section 1: Reference Numbers
+  // Internal Reference
+  earlyRegistrationId: z.number().optional().nullable(),
+
+  // Section 1: Tracking Numbers
   schoolYear: z.string().min(1, "School year is required"),
   lrn: z
     .string()
@@ -169,7 +172,7 @@ export const EarlyRegistrationSchema = z.object({
   }
 });
 
-export type EarlyRegistrationFormData = z.infer<typeof EarlyRegistrationSchema>;
+export type EnrollmentFormData = z.infer<typeof EnrollmentFormSchema>;
 
 export const DISABILITY_TYPES_A1 = [
   "Attention Deficit Hyperactivity Disorder",
@@ -245,3 +248,7 @@ export const SPFL_LANGUAGES = [
   "Chinese (Mandarin)",
   "Korean",
 ];
+
+// Aliases for backward compatibility
+export const EarlyRegistrationSchema = EnrollmentFormSchema;
+export type EarlyRegistrationFormData = EnrollmentFormData;

@@ -1,5 +1,5 @@
 import { useFormContext } from 'react-hook-form';
-import type { EarlyRegistrationFormData } from '../types';
+import type { EnrollmentFormData } from '../types';
 import { DISABILITY_TYPES_A1, DISABILITY_TYPES_A2 } from '../types';
 import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from 'motion/react';
 
 export default function Step3Background() {
 	const { register, watch, setValue } =
-		useFormContext<EarlyRegistrationFormData>();
+		useFormContext<EnrollmentFormData>();
 
 	const isIpCommunity = watch('isIpCommunity');
 	const is4PsBeneficiary = watch('is4PsBeneficiary');

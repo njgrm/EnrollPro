@@ -14,16 +14,22 @@ export const createStudentsHealthController = (
 ) => {
   const getHealthRecords = async (req: Request, res: Response) => {
     try {
-      const parsedApplicantId = Number.parseInt(
-        String(req.params.id ?? ""),
-        10,
-      );
-      if (Number.isNaN(parsedApplicantId)) {
+      const parsedId = Number.parseInt(String(req.params.id ?? ""), 10);
+      if (Number.isNaN(parsedId)) {
         return res.status(400).json({ message: "Invalid student id" });
       }
 
+      // Resolve learnerId from enrollment application
+      const app = await deps.prisma.enrollmentApplication.findUnique({
+        where: { id: parsedId },
+        select: { learnerId: true },
+      });
+      if (!app) {
+        return res.status(404).json({ message: "Student not found" });
+      }
+
       const records = await deps.prisma.healthRecord.findMany({
-        where: { applicantId: parsedApplicantId },
+        where: { learnerId: app.learnerId },
         include: {
           schoolYear: {
             select: { yearLabel: true },
@@ -58,21 +64,27 @@ export const createStudentsHealthController = (
         notes,
       } = req.body;
 
-      const parsedApplicantId = Number.parseInt(
-        String(req.params.id ?? ""),
-        10,
-      );
+      const parsedId = Number.parseInt(String(req.params.id ?? ""), 10);
       const parsedSchoolYearId = Number.parseInt(schoolYearId as string, 10);
 
-      if (Number.isNaN(parsedApplicantId) || Number.isNaN(parsedSchoolYearId)) {
+      if (Number.isNaN(parsedId) || Number.isNaN(parsedSchoolYearId)) {
         return res
           .status(400)
           .json({ message: "Invalid student or school year id" });
       }
 
+      // Resolve learnerId from enrollment application
+      const app = await deps.prisma.enrollmentApplication.findUnique({
+        where: { id: parsedId },
+        select: { learnerId: true },
+      });
+      if (!app) {
+        return res.status(404).json({ message: "Student not found" });
+      }
+
       const existingRecord = await deps.prisma.healthRecord.findFirst({
         where: {
-          applicantId: parsedApplicantId,
+          learnerId: app.learnerId,
           schoolYearId: parsedSchoolYearId,
           assessmentPeriod,
         },
@@ -91,7 +103,7 @@ export const createStudentsHealthController = (
 
       const record = await deps.prisma.healthRecord.create({
         data: {
-          applicantId: parsedApplicantId,
+          learnerId: app.learnerId,
           schoolYearId: parsedSchoolYearId,
           assessmentPeriod,
           assessmentDate: deps.normalizeDateToUtcNoon(new Date(assessmentDate)),
@@ -102,7 +114,7 @@ export const createStudentsHealthController = (
         },
         include: {
           schoolYear: true,
-          applicant: true,
+          learner: true,
           recordedBy: true,
         },
       });
@@ -110,7 +122,7 @@ export const createStudentsHealthController = (
       const userName = record.recordedBy
         ? `${record.recordedBy.firstName} ${record.recordedBy.lastName}`
         : "Registrar";
-      const learnerName = `${record.applicant.firstName} ${record.applicant.lastName}`;
+      const learnerName = `${record.learner.firstName} ${record.learner.lastName}`;
       const yearLabel = record.schoolYear.yearLabel;
       const periodLabel = assessmentPeriod === "BOSY" ? "BoSY" : "EoSY";
 
@@ -165,7 +177,7 @@ export const createStudentsHealthController = (
           notes,
         },
         include: {
-          applicant: true,
+          learner: true,
         },
       });
 
@@ -176,7 +188,7 @@ export const createStudentsHealthController = (
       const userName = user
         ? `${user.firstName} ${user.lastName}`
         : "Registrar";
-      const learnerName = `${record.applicant.firstName} ${record.applicant.lastName}`;
+      const learnerName = `${record.learner.firstName} ${record.learner.lastName}`;
 
       const changedFields = [];
       if (assessmentPeriod) changedFields.push("period");

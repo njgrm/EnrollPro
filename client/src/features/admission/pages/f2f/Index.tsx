@@ -3,8 +3,8 @@ import { useForm, FormProvider, type FieldPath } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useStepper, steps } from "../apply/stepper";
 import {
-  EarlyRegistrationSchema,
-  type EarlyRegistrationFormData,
+  EnrollmentFormSchema,
+  type EnrollmentFormData,
 } from "../apply/types";
 
 import Step1Personal from "../apply/components/Step1Personal";
@@ -100,13 +100,13 @@ export default function F2FEarlyRegistration() {
   const applyOverride = isFefe01 || isLightColor;
 
   const methods = useForm<
-    EarlyRegistrationFormData,
+    EnrollmentFormData,
     unknown,
-    EarlyRegistrationFormData
+    EnrollmentFormData
   >({
     resolver: zodResolver(
-      EarlyRegistrationSchema,
-    ) as import("react-hook-form").Resolver<EarlyRegistrationFormData>,
+      EnrollmentFormSchema,
+    ) as import("react-hook-form").Resolver<EnrollmentFormData>,
     defaultValues: initialDraft || {
       schoolYear: "2026-2027",
       isPrivacyConsentGiven: true,
@@ -221,7 +221,7 @@ export default function F2FEarlyRegistration() {
   }, [stepper.state.current.data.id]);
 
   const nextStep = async () => {
-    let fieldsToValidate: FieldPath<EarlyRegistrationFormData>[] = [];
+    let fieldsToValidate: FieldPath<EnrollmentFormData>[] = [];
 
     if (stepper.state.current.data.id === "personal") {
       fieldsToValidate = [
@@ -242,7 +242,7 @@ export default function F2FEarlyRegistration() {
         "father.lastName",
         "father.firstName",
         "email",
-      ] as FieldPath<EarlyRegistrationFormData>[];
+      ] as FieldPath<EnrollmentFormData>[];
     } else if (stepper.state.current.data.id === "previousSchool") {
       fieldsToValidate = [
         "lastSchoolName",
@@ -288,7 +288,7 @@ export default function F2FEarlyRegistration() {
     }
   };
 
-  const onSubmit = async (data: EarlyRegistrationFormData) => {
+  const onSubmit = async (data: EnrollmentFormData) => {
     setShowSubmitConfirm(false);
     setIsSubmitting(true);
     setSubmitError("");

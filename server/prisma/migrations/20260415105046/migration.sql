@@ -1,23 +1,23 @@
 -- CreateEnum
-CREATE TYPE "user_role" AS ENUM ('REGISTRAR', 'SYSTEM_ADMIN');
+CREATE TYPE "user_role" AS ENUM ('REGISTRAR', 'SYSTEM_ADMIN', 'TEACHER');
+
+-- CreateEnum
+CREATE TYPE "compliance_status" AS ENUM ('PENDING', 'COMPLIED', 'OVERDUE');
+
+-- CreateEnum
+CREATE TYPE "primary_contact_type" AS ENUM ('FATHER', 'MOTHER', 'GUARDIAN');
 
 -- CreateEnum
 CREATE TYPE "sex" AS ENUM ('MALE', 'FEMALE');
 
 -- CreateEnum
-CREATE TYPE "application_status" AS ENUM ('SUBMITTED', 'UNDER_REVIEW', 'FOR_REVISION', 'ELIGIBLE', 'ASSESSMENT_SCHEDULED', 'ASSESSMENT_TAKEN', 'PASSED', 'PRE_REGISTERED', 'TEMPORARILY_ENROLLED', 'NOT_QUALIFIED', 'ENROLLED', 'REJECTED', 'WITHDRAWN');
+CREATE TYPE "application_status" AS ENUM ('SUBMITTED', 'UNDER_REVIEW', 'FOR_REVISION', 'ELIGIBLE', 'ASSESSMENT_SCHEDULED', 'ASSESSMENT_TAKEN', 'PASSED', 'INTERVIEW_SCHEDULED', 'PRE_REGISTERED', 'TEMPORARILY_ENROLLED', 'NOT_QUALIFIED', 'ENROLLED', 'REJECTED', 'WITHDRAWN');
 
 -- CreateEnum
 CREATE TYPE "school_year_status" AS ENUM ('DRAFT', 'UPCOMING', 'ACTIVE', 'ARCHIVED');
 
 -- CreateEnum
-CREATE TYPE "curriculum_type" AS ENUM ('OLD_STRAND', 'ELECTIVE_CLUSTER');
-
--- CreateEnum
-CREATE TYPE "shs_track" AS ENUM ('ACADEMIC', 'TECHPRO');
-
--- CreateEnum
-CREATE TYPE "applicant_type" AS ENUM ('REGULAR', 'SCIENCE_TECHNOLOGY_AND_ENGINEERING', 'SPECIAL_PROGRAM_IN_THE_ARTS', 'SPECIAL_PROGRAM_IN_SPORTS', 'SPECIAL_PROGRAM_IN_JOURNALISM', 'SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE', 'SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION', 'STEM_GRADE_11');
+CREATE TYPE "applicant_type" AS ENUM ('REGULAR', 'SCIENCE_TECHNOLOGY_AND_ENGINEERING', 'SPECIAL_PROGRAM_IN_THE_ARTS', 'SPECIAL_PROGRAM_IN_SPORTS', 'SPECIAL_PROGRAM_IN_JOURNALISM', 'SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE', 'SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION');
 
 -- CreateEnum
 CREATE TYPE "email_trigger" AS ENUM ('APPLICATION_SUBMITTED', 'APPLICATION_APPROVED', 'APPLICATION_REJECTED', 'EXAM_SCHEDULED', 'ASSESSMENT_PASSED', 'ASSESSMENT_FAILED');
@@ -32,7 +32,7 @@ CREATE TYPE "admission_channel" AS ENUM ('ONLINE', 'F2F');
 CREATE TYPE "document_status" AS ENUM ('SUBMITTED', 'VERIFIED', 'REJECTED', 'MISSING');
 
 -- CreateEnum
-CREATE TYPE "document_type" AS ENUM ('PSA_BIRTH_CERTIFICATE', 'SECONDARY_BIRTH_PROOF', 'SF9_REPORT_CARD', 'SF10_PERMANENT_RECORD', 'GOOD_MORAL_CERTIFICATE', 'MEDICAL_CERTIFICATE', 'MEDICAL_EVALUATION', 'PEPT_AE_CERTIFICATE', 'PWD_ID', 'PSA_MARRIAGE_CERTIFICATE', 'UNDERTAKING', 'AFFIDAVIT_OF_UNDERTAKING', 'CONFIRMATION_SLIP', 'OTHERS');
+CREATE TYPE "document_type" AS ENUM ('PSA_BIRTH_CERTIFICATE', 'SECONDARY_BIRTH_PROOF', 'SF9_REPORT_CARD', 'SF10_PERMANENT_RECORD', 'GOOD_MORAL_CERTIFICATE', 'MEDICAL_CERTIFICATE', 'CERTIFICATE_OF_RECOGNITION', 'MEDICAL_EVALUATION', 'PEPT_AE_CERTIFICATE', 'PWD_ID', 'PSA_MARRIAGE_CERTIFICATE', 'UNDERTAKING', 'AFFIDAVIT_OF_UNDERTAKING', 'CONFIRMATION_SLIP', 'OTHERS');
 
 -- CreateEnum
 CREATE TYPE "learner_type" AS ENUM ('NEW_ENROLLEE', 'TRANSFEREE', 'RETURNING', 'CONTINUING', 'OSCYA', 'ALS');
@@ -136,18 +136,6 @@ CREATE TABLE "grade_levels" (
 );
 
 -- CreateTable
-CREATE TABLE "strands" (
-    "id" SERIAL NOT NULL,
-    "name" TEXT NOT NULL,
-    "school_year_id" INTEGER NOT NULL,
-    "curriculum_type" "curriculum_type" NOT NULL DEFAULT 'OLD_STRAND',
-    "track" "shs_track",
-    "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "strands_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "sections" (
     "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
@@ -161,109 +149,91 @@ CREATE TABLE "sections" (
 );
 
 -- CreateTable
-CREATE TABLE "applicants" (
+CREATE TABLE "learners" (
     "id" SERIAL NOT NULL,
-    "student_photo" TEXT,
     "lrn" VARCHAR(12),
-    "psa_birth_cert_number" TEXT,
-    "last_name" TEXT NOT NULL,
     "first_name" TEXT NOT NULL,
+    "last_name" TEXT NOT NULL,
     "middle_name" TEXT,
-    "suffix" TEXT,
-    "birth_date" DATE NOT NULL,
+    "extension_name" TEXT,
+    "birthdate" DATE NOT NULL,
     "sex" "sex" NOT NULL,
     "place_of_birth" TEXT,
     "religion" TEXT,
     "mother_tongue" TEXT,
-    "email_address" TEXT,
     "is_ip_community" BOOLEAN NOT NULL DEFAULT false,
     "ip_group_name" TEXT,
-    "is_4ps_beneficiary" BOOLEAN NOT NULL DEFAULT false,
-    "household_id_4ps" TEXT,
-    "is_balik_aral" BOOLEAN NOT NULL DEFAULT false,
-    "last_year_enrolled" TEXT,
     "is_learner_with_disability" BOOLEAN NOT NULL DEFAULT false,
     "disability_types" TEXT[],
-    "learner_type" "learner_type" NOT NULL DEFAULT 'NEW_ENROLLEE',
-    "elective_cluster" TEXT,
-    "tracking_number" TEXT NOT NULL,
-    "status" "application_status" NOT NULL DEFAULT 'SUBMITTED',
-    "rejection_reason" TEXT,
-    "grade_level_id" INTEGER NOT NULL,
-    "strand_id" INTEGER,
-    "school_year_id" INTEGER NOT NULL,
-    "applicant_type" "applicant_type" NOT NULL DEFAULT 'REGULAR',
-    "shs_track" "shs_track",
-    "is_privacy_consent_given" BOOLEAN NOT NULL DEFAULT false,
+    "is_4ps_beneficiary" BOOLEAN NOT NULL DEFAULT false,
+    "household_id_4ps" TEXT,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ NOT NULL,
-    "admission_channel" "admission_channel" NOT NULL DEFAULT 'ONLINE',
+
+    CONSTRAINT "learners_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "early_registration_applications" (
+    "id" SERIAL NOT NULL,
+    "learner_id" INTEGER NOT NULL,
+    "school_year_id" INTEGER NOT NULL,
+    "grade_level_id" INTEGER NOT NULL,
+    "tracking_number" TEXT NOT NULL,
+    "applicant_type" "applicant_type" NOT NULL DEFAULT 'REGULAR',
+    "learner_type" "learner_type" NOT NULL DEFAULT 'NEW_ENROLLEE',
+    "status" "application_status" NOT NULL DEFAULT 'SUBMITTED',
+    "channel" "admission_channel" NOT NULL DEFAULT 'ONLINE',
+    "contact_number" TEXT NOT NULL,
+    "email" TEXT,
+    "primary_contact" "primary_contact_type",
+    "is_privacy_consent_given" BOOLEAN NOT NULL,
     "encoded_by_id" INTEGER,
-    "special_needs_category" TEXT,
-    "has_pwd_id" BOOLEAN NOT NULL DEFAULT false,
-    "learning_modalities" TEXT[],
-    "is_temporarily_enrolled" BOOLEAN NOT NULL DEFAULT false,
-    "portal_pin" TEXT,
-    "portal_pin_changed_at" TIMESTAMPTZ,
+    "verified_at" TIMESTAMPTZ,
+    "verified_by_id" INTEGER,
+    "submitted_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ NOT NULL,
 
-    CONSTRAINT "applicants_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "early_registration_applications_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "applicant_addresses" (
+CREATE TABLE "early_registration_guardians" (
     "id" SERIAL NOT NULL,
-    "applicant_id" INTEGER NOT NULL,
-    "address_type" "address_type" NOT NULL,
-    "house_no" TEXT,
-    "street" TEXT,
-    "barangay" TEXT,
-    "city_municipality" TEXT,
-    "province" TEXT,
-    "country" TEXT DEFAULT 'PHILIPPINES',
-    "zip_code" TEXT,
-
-    CONSTRAINT "applicant_addresses_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "applicant_family_members" (
-    "id" SERIAL NOT NULL,
-    "applicant_id" INTEGER NOT NULL,
+    "application_id" INTEGER NOT NULL,
     "relationship" "family_relationship" NOT NULL,
-    "first_name" TEXT NOT NULL,
     "last_name" TEXT NOT NULL,
+    "first_name" TEXT NOT NULL,
     "middle_name" TEXT,
     "contact_number" TEXT,
     "email" TEXT,
     "occupation" TEXT,
 
-    CONSTRAINT "applicant_family_members_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "early_registration_guardians_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "applicant_previous_schools" (
+CREATE TABLE "early_registration_documents" (
     "id" SERIAL NOT NULL,
-    "applicant_id" INTEGER NOT NULL,
-    "school_name" TEXT,
-    "school_deped_id" TEXT,
-    "grade_completed" TEXT,
-    "school_year_attended" TEXT,
-    "school_address" TEXT,
-    "school_type" TEXT,
-    "nat_score" DOUBLE PRECISION,
-    "grade10_science_grade" DOUBLE PRECISION,
-    "grade10_math_grade" DOUBLE PRECISION,
-    "general_average" DOUBLE PRECISION,
+    "application_id" INTEGER NOT NULL,
+    "document_type" "document_type" NOT NULL,
+    "status" "document_status" NOT NULL DEFAULT 'SUBMITTED',
+    "file_name" TEXT,
+    "original_name" TEXT,
+    "mime_type" TEXT,
+    "size" INTEGER,
+    "verification_note" TEXT,
+    "uploaded_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "applicant_previous_schools_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "early_registration_documents_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "applicant_assessments" (
+CREATE TABLE "early_registration_assessments" (
     "id" SERIAL NOT NULL,
-    "applicant_id" INTEGER NOT NULL,
+    "application_id" INTEGER NOT NULL,
     "assessment_kind" "assessment_kind" NOT NULL,
-    "step_order" INTEGER,
     "scheduled_date" DATE,
     "scheduled_time" TEXT,
     "venue" TEXT,
@@ -273,25 +243,105 @@ CREATE TABLE "applicant_assessments" (
     "conducted_at" TIMESTAMPTZ,
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "applicant_assessments_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "early_registration_assessments_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "applicant_program_details" (
+CREATE TABLE "enrollment_applications" (
     "id" SERIAL NOT NULL,
-    "applicant_id" INTEGER NOT NULL,
+    "learner_id" INTEGER NOT NULL,
+    "early_registration_id" INTEGER,
+    "school_year_id" INTEGER NOT NULL,
+    "grade_level_id" INTEGER NOT NULL,
+    "applicant_type" "applicant_type" NOT NULL DEFAULT 'REGULAR',
+    "learner_type" "learner_type" NOT NULL DEFAULT 'NEW_ENROLLEE',
+    "status" "application_status" NOT NULL DEFAULT 'SUBMITTED',
+    "admission_channel" "admission_channel" NOT NULL DEFAULT 'ONLINE',
+    "tracking_number" TEXT,
+    "student_photo" TEXT,
+    "is_balik_aral" BOOLEAN NOT NULL DEFAULT false,
+    "last_year_enrolled" TEXT,
+    "special_needs_category" TEXT,
+    "has_pwd_id" BOOLEAN NOT NULL DEFAULT false,
+    "learning_modalities" TEXT[],
+    "is_temporarily_enrolled" BOOLEAN NOT NULL DEFAULT false,
+    "documentary_deadline_at" DATE,
+    "compliance_status" "compliance_status",
+    "rejection_reason" TEXT,
+    "is_privacy_consent_given" BOOLEAN NOT NULL DEFAULT false,
+    "portal_pin" TEXT,
+    "portal_pin_changed_at" TIMESTAMPTZ,
+    "encoded_by_id" INTEGER,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ NOT NULL,
+
+    CONSTRAINT "enrollment_applications_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "enrollment_addresses" (
+    "id" SERIAL NOT NULL,
+    "application_id" INTEGER NOT NULL,
+    "address_type" "address_type" NOT NULL,
+    "house_no" TEXT,
+    "street" TEXT,
+    "sitio" TEXT,
+    "barangay" TEXT,
+    "city_municipality" TEXT,
+    "province" TEXT,
+    "country" TEXT DEFAULT 'PHILIPPINES',
+    "zip_code" TEXT,
+
+    CONSTRAINT "enrollment_addresses_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "enrollment_family_members" (
+    "id" SERIAL NOT NULL,
+    "application_id" INTEGER NOT NULL,
+    "relationship" "family_relationship" NOT NULL,
+    "first_name" TEXT NOT NULL,
+    "last_name" TEXT NOT NULL,
+    "middle_name" TEXT,
+    "contact_number" TEXT,
+    "email" TEXT,
+    "occupation" TEXT,
+
+    CONSTRAINT "enrollment_family_members_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "enrollment_previous_schools" (
+    "id" SERIAL NOT NULL,
+    "application_id" INTEGER NOT NULL,
+    "school_name" TEXT,
+    "school_deped_id" TEXT,
+    "grade_completed" TEXT,
+    "school_year_attended" TEXT,
+    "school_address" TEXT,
+    "school_type" TEXT,
+    "nat_score" DOUBLE PRECISION,
+    "general_average" DOUBLE PRECISION,
+
+    CONSTRAINT "enrollment_previous_schools_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "enrollment_program_details" (
+    "id" SERIAL NOT NULL,
+    "application_id" INTEGER NOT NULL,
     "scp_type" "applicant_type" NOT NULL,
     "art_field" TEXT,
     "foreign_language" TEXT,
     "sports_list" TEXT[],
 
-    CONSTRAINT "applicant_program_details_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "enrollment_program_details_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "applicant_documents" (
+CREATE TABLE "enrollment_documents" (
     "id" SERIAL NOT NULL,
-    "applicant_id" INTEGER NOT NULL,
+    "application_id" INTEGER NOT NULL,
     "document_type" "document_type" NOT NULL,
     "status" "document_status" NOT NULL DEFAULT 'SUBMITTED',
     "file_name" TEXT,
@@ -305,37 +355,38 @@ CREATE TABLE "applicant_documents" (
     "verified_at" TIMESTAMPTZ,
     "verified_by_id" INTEGER,
 
-    CONSTRAINT "applicant_documents_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "enrollment_documents_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "applicant_checklists" (
+CREATE TABLE "enrollment_checklists" (
     "id" SERIAL NOT NULL,
-    "applicant_id" INTEGER NOT NULL,
+    "application_id" INTEGER NOT NULL,
     "is_psa_birth_cert_presented" BOOLEAN NOT NULL DEFAULT false,
     "is_original_psa_bc_collected" BOOLEAN NOT NULL DEFAULT false,
     "is_sf9_submitted" BOOLEAN NOT NULL DEFAULT false,
     "is_sf10_requested" BOOLEAN NOT NULL DEFAULT false,
     "is_good_moral_presented" BOOLEAN NOT NULL DEFAULT false,
     "is_medical_eval_submitted" BOOLEAN NOT NULL DEFAULT false,
+    "is_cert_of_recognition_presented" BOOLEAN NOT NULL DEFAULT false,
     "is_undertaking_signed" BOOLEAN NOT NULL DEFAULT false,
     "is_confirmation_slip_received" BOOLEAN NOT NULL DEFAULT false,
     "updated_at" TIMESTAMPTZ NOT NULL,
     "updated_by_id" INTEGER,
 
-    CONSTRAINT "applicant_checklists_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "enrollment_checklists_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "enrollments" (
+CREATE TABLE "enrollment_records" (
     "id" SERIAL NOT NULL,
-    "applicant_id" INTEGER NOT NULL,
+    "enrollment_application_id" INTEGER NOT NULL,
     "section_id" INTEGER NOT NULL,
     "school_year_id" INTEGER NOT NULL,
     "enrolled_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "enrolled_by_id" INTEGER NOT NULL,
 
-    CONSTRAINT "enrollments_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "enrollment_records_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -372,7 +423,7 @@ CREATE TABLE "email_logs" (
     "subject" TEXT NOT NULL,
     "trigger" "email_trigger" NOT NULL,
     "status" "email_status" NOT NULL DEFAULT 'PENDING',
-    "applicant_id" INTEGER,
+    "application_id" INTEGER,
     "error_message" TEXT,
     "attempted_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "sent_at" TIMESTAMPTZ,
@@ -383,7 +434,7 @@ CREATE TABLE "email_logs" (
 -- CreateTable
 CREATE TABLE "health_records" (
     "id" SERIAL NOT NULL,
-    "applicant_id" INTEGER NOT NULL,
+    "learner_id" INTEGER NOT NULL,
     "school_year_id" INTEGER NOT NULL,
     "assessment_period" "assessment_period" NOT NULL,
     "assessment_date" DATE NOT NULL,
@@ -403,7 +454,10 @@ CREATE TABLE "scp_program_configs" (
     "school_year_id" INTEGER NOT NULL,
     "scp_type" "applicant_type" NOT NULL,
     "is_offered" BOOLEAN NOT NULL DEFAULT false,
+    "is_two_phase" BOOLEAN NOT NULL DEFAULT false,
     "cutoff_score" DOUBLE PRECISION,
+    "grade_requirements" JSONB,
+    "ranking_formula" JSONB,
     "notes" TEXT,
 
     CONSTRAINT "scp_program_configs_pkey" PRIMARY KEY ("id")
@@ -438,14 +492,6 @@ CREATE TABLE "scp_program_options" (
 );
 
 -- CreateTable
-CREATE TABLE "strand_grade_levels" (
-    "strand_id" INTEGER NOT NULL,
-    "grade_level_id" INTEGER NOT NULL,
-
-    CONSTRAINT "strand_grade_levels_pkey" PRIMARY KEY ("strand_id","grade_level_id")
-);
-
--- CreateTable
 CREATE TABLE "teacher_subjects" (
     "id" SERIAL NOT NULL,
     "teacher_id" INTEGER NOT NULL,
@@ -467,58 +513,67 @@ CREATE UNIQUE INDEX "uq_teachers_employee_id" ON "teachers"("employee_id");
 CREATE UNIQUE INDEX "uq_school_years_year_label" ON "school_years"("year_label");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "uq_applicants_tracking_number" ON "applicants"("tracking_number");
+CREATE INDEX "idx_grade_levels_school_year_id" ON "grade_levels"("school_year_id");
 
 -- CreateIndex
-CREATE INDEX "idx_applicants_status_sy" ON "applicants"("status", "school_year_id");
+CREATE INDEX "idx_sections_grade_level_id" ON "sections"("grade_level_id");
 
 -- CreateIndex
-CREATE INDEX "idx_applicants_lrn" ON "applicants"("lrn");
+CREATE UNIQUE INDEX "uq_learners_lrn" ON "learners"("lrn");
 
 -- CreateIndex
-CREATE INDEX "idx_applicants_type_status" ON "applicants"("applicant_type", "status");
+CREATE INDEX "idx_learners_dedup" ON "learners"("last_name", "first_name", "birthdate");
 
 -- CreateIndex
-CREATE INDEX "idx_applicants_tracking_no" ON "applicants"("tracking_number");
+CREATE UNIQUE INDEX "uq_early_reg_tracking_number" ON "early_registration_applications"("tracking_number");
 
 -- CreateIndex
-CREATE INDEX "idx_applicants_encoded_by" ON "applicants"("encoded_by_id");
+CREATE INDEX "idx_early_reg_sy_status" ON "early_registration_applications"("school_year_id", "status");
 
 -- CreateIndex
-CREATE INDEX "idx_applicant_addresses_applicant_id" ON "applicant_addresses"("applicant_id");
+CREATE INDEX "idx_early_reg_tracking_no" ON "early_registration_applications"("tracking_number");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "applicant_addresses_applicant_id_address_type_key" ON "applicant_addresses"("applicant_id", "address_type");
+CREATE UNIQUE INDEX "early_registration_applications_learner_id_school_year_id_key" ON "early_registration_applications"("learner_id", "school_year_id");
 
 -- CreateIndex
-CREATE INDEX "idx_applicant_family_members_applicant_id" ON "applicant_family_members"("applicant_id");
+CREATE INDEX "idx_early_reg_guardians_app_id" ON "early_registration_guardians"("application_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "applicant_family_members_applicant_id_relationship_key" ON "applicant_family_members"("applicant_id", "relationship");
+CREATE INDEX "idx_early_reg_docs_app_id" ON "early_registration_documents"("application_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "uq_applicant_previous_schools_id" ON "applicant_previous_schools"("applicant_id");
+CREATE INDEX "idx_early_reg_assessments_app_id" ON "early_registration_assessments"("application_id");
 
 -- CreateIndex
-CREATE INDEX "idx_assessments_applicant_id" ON "applicant_assessments"("applicant_id");
+CREATE UNIQUE INDEX "uq_enrollment_tracking_number" ON "enrollment_applications"("tracking_number");
 
 -- CreateIndex
-CREATE INDEX "idx_assessments_applicant_type" ON "applicant_assessments"("applicant_id", "assessment_kind");
+CREATE INDEX "idx_enrollment_apps_status_sy" ON "enrollment_applications"("status", "school_year_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "uq_applicant_program_details_id" ON "applicant_program_details"("applicant_id");
+CREATE UNIQUE INDEX "enrollment_addresses_application_id_address_type_key" ON "enrollment_addresses"("application_id", "address_type");
 
 -- CreateIndex
-CREATE INDEX "idx_documents_applicant_id" ON "applicant_documents"("applicant_id");
+CREATE UNIQUE INDEX "enrollment_family_members_application_id_relationship_key" ON "enrollment_family_members"("application_id", "relationship");
 
 -- CreateIndex
-CREATE INDEX "idx_documents_applicant_type" ON "applicant_documents"("applicant_id", "document_type");
+CREATE UNIQUE INDEX "uq_enrollment_prev_school_app_id" ON "enrollment_previous_schools"("application_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "uq_applicant_checklists_id" ON "applicant_checklists"("applicant_id");
+CREATE UNIQUE INDEX "uq_enrollment_prog_detail_app_id" ON "enrollment_program_details"("application_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "uq_enrollments_applicant_id" ON "enrollments"("applicant_id");
+CREATE INDEX "idx_enrollment_docs_app_id" ON "enrollment_documents"("application_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "uq_enrollment_checklist_app_id" ON "enrollment_checklists"("application_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "uq_enroll_record_app_id" ON "enrollment_records"("enrollment_application_id");
+
+-- CreateIndex
+CREATE INDEX "idx_enroll_records_section_id" ON "enrollment_records"("section_id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "uq_departments_code" ON "departments"("code");
@@ -539,16 +594,10 @@ CREATE INDEX "idx_email_logs_status" ON "email_logs"("status");
 CREATE INDEX "idx_email_logs_trigger" ON "email_logs"("trigger");
 
 -- CreateIndex
-CREATE INDEX "idx_health_records_applicant_id" ON "health_records"("applicant_id");
+CREATE INDEX "idx_health_records_learner_id" ON "health_records"("learner_id");
 
 -- CreateIndex
-CREATE INDEX "idx_health_records_applicant_sy" ON "health_records"("applicant_id", "school_year_id");
-
--- CreateIndex
-CREATE INDEX "idx_health_records_recorded_by_id" ON "health_records"("recorded_by_id");
-
--- CreateIndex
-CREATE UNIQUE INDEX "health_records_applicant_id_school_year_id_assessment_perio_key" ON "health_records"("applicant_id", "school_year_id", "assessment_period");
+CREATE UNIQUE INDEX "health_records_learner_id_school_year_id_assessment_period_key" ON "health_records"("learner_id", "school_year_id", "assessment_period");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "scp_program_configs_school_year_id_scp_type_key" ON "scp_program_configs"("school_year_id", "scp_type");
@@ -584,73 +633,97 @@ ALTER TABLE "school_years" ADD CONSTRAINT "school_years_cloned_from_id_fkey" FOR
 ALTER TABLE "grade_levels" ADD CONSTRAINT "grade_levels_school_year_id_fkey" FOREIGN KEY ("school_year_id") REFERENCES "school_years"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "strands" ADD CONSTRAINT "strands_school_year_id_fkey" FOREIGN KEY ("school_year_id") REFERENCES "school_years"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "sections" ADD CONSTRAINT "sections_advising_teacher_id_fkey" FOREIGN KEY ("advising_teacher_id") REFERENCES "teachers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "sections" ADD CONSTRAINT "sections_grade_level_id_fkey" FOREIGN KEY ("grade_level_id") REFERENCES "grade_levels"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "applicants" ADD CONSTRAINT "applicants_school_year_id_fkey" FOREIGN KEY ("school_year_id") REFERENCES "school_years"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "early_registration_applications" ADD CONSTRAINT "early_registration_applications_learner_id_fkey" FOREIGN KEY ("learner_id") REFERENCES "learners"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "applicants" ADD CONSTRAINT "applicants_encoded_by_id_fkey" FOREIGN KEY ("encoded_by_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "early_registration_applications" ADD CONSTRAINT "early_registration_applications_school_year_id_fkey" FOREIGN KEY ("school_year_id") REFERENCES "school_years"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "applicants" ADD CONSTRAINT "applicants_grade_level_id_fkey" FOREIGN KEY ("grade_level_id") REFERENCES "grade_levels"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "early_registration_applications" ADD CONSTRAINT "early_registration_applications_grade_level_id_fkey" FOREIGN KEY ("grade_level_id") REFERENCES "grade_levels"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "applicants" ADD CONSTRAINT "applicants_strand_id_fkey" FOREIGN KEY ("strand_id") REFERENCES "strands"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "early_registration_applications" ADD CONSTRAINT "early_registration_applications_encoded_by_id_fkey" FOREIGN KEY ("encoded_by_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "applicant_addresses" ADD CONSTRAINT "applicant_addresses_applicant_id_fkey" FOREIGN KEY ("applicant_id") REFERENCES "applicants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "early_registration_applications" ADD CONSTRAINT "early_registration_applications_verified_by_id_fkey" FOREIGN KEY ("verified_by_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "applicant_family_members" ADD CONSTRAINT "applicant_family_members_applicant_id_fkey" FOREIGN KEY ("applicant_id") REFERENCES "applicants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "early_registration_guardians" ADD CONSTRAINT "early_registration_guardians_application_id_fkey" FOREIGN KEY ("application_id") REFERENCES "early_registration_applications"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "applicant_previous_schools" ADD CONSTRAINT "applicant_previous_schools_applicant_id_fkey" FOREIGN KEY ("applicant_id") REFERENCES "applicants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "early_registration_documents" ADD CONSTRAINT "early_registration_documents_application_id_fkey" FOREIGN KEY ("application_id") REFERENCES "early_registration_applications"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "applicant_assessments" ADD CONSTRAINT "applicant_assessments_applicant_id_fkey" FOREIGN KEY ("applicant_id") REFERENCES "applicants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "early_registration_assessments" ADD CONSTRAINT "early_registration_assessments_application_id_fkey" FOREIGN KEY ("application_id") REFERENCES "early_registration_applications"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "applicant_program_details" ADD CONSTRAINT "applicant_program_details_applicant_id_fkey" FOREIGN KEY ("applicant_id") REFERENCES "applicants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "enrollment_applications" ADD CONSTRAINT "enrollment_applications_learner_id_fkey" FOREIGN KEY ("learner_id") REFERENCES "learners"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "applicant_documents" ADD CONSTRAINT "applicant_documents_applicant_id_fkey" FOREIGN KEY ("applicant_id") REFERENCES "applicants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "enrollment_applications" ADD CONSTRAINT "enrollment_applications_early_registration_id_fkey" FOREIGN KEY ("early_registration_id") REFERENCES "early_registration_applications"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "applicant_documents" ADD CONSTRAINT "applicant_documents_uploaded_by_id_fkey" FOREIGN KEY ("uploaded_by_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "enrollment_applications" ADD CONSTRAINT "enrollment_applications_school_year_id_fkey" FOREIGN KEY ("school_year_id") REFERENCES "school_years"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "applicant_checklists" ADD CONSTRAINT "applicant_checklists_applicant_id_fkey" FOREIGN KEY ("applicant_id") REFERENCES "applicants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "enrollment_applications" ADD CONSTRAINT "enrollment_applications_grade_level_id_fkey" FOREIGN KEY ("grade_level_id") REFERENCES "grade_levels"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "applicant_checklists" ADD CONSTRAINT "applicant_checklists_updated_by_id_fkey" FOREIGN KEY ("updated_by_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "enrollment_applications" ADD CONSTRAINT "enrollment_applications_encoded_by_id_fkey" FOREIGN KEY ("encoded_by_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "enrollments" ADD CONSTRAINT "enrollments_school_year_id_fkey" FOREIGN KEY ("school_year_id") REFERENCES "school_years"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "enrollment_addresses" ADD CONSTRAINT "enrollment_addresses_application_id_fkey" FOREIGN KEY ("application_id") REFERENCES "enrollment_applications"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "enrollments" ADD CONSTRAINT "enrollments_applicant_id_fkey" FOREIGN KEY ("applicant_id") REFERENCES "applicants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "enrollment_family_members" ADD CONSTRAINT "enrollment_family_members_application_id_fkey" FOREIGN KEY ("application_id") REFERENCES "enrollment_applications"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "enrollments" ADD CONSTRAINT "enrollments_enrolled_by_id_fkey" FOREIGN KEY ("enrolled_by_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "enrollment_previous_schools" ADD CONSTRAINT "enrollment_previous_schools_application_id_fkey" FOREIGN KEY ("application_id") REFERENCES "enrollment_applications"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "enrollments" ADD CONSTRAINT "enrollments_section_id_fkey" FOREIGN KEY ("section_id") REFERENCES "sections"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "enrollment_program_details" ADD CONSTRAINT "enrollment_program_details_application_id_fkey" FOREIGN KEY ("application_id") REFERENCES "enrollment_applications"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "enrollment_documents" ADD CONSTRAINT "enrollment_documents_application_id_fkey" FOREIGN KEY ("application_id") REFERENCES "enrollment_applications"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "enrollment_documents" ADD CONSTRAINT "enrollment_documents_uploaded_by_id_fkey" FOREIGN KEY ("uploaded_by_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "enrollment_documents" ADD CONSTRAINT "enrollment_documents_verified_by_id_fkey" FOREIGN KEY ("verified_by_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "enrollment_checklists" ADD CONSTRAINT "enrollment_checklists_application_id_fkey" FOREIGN KEY ("application_id") REFERENCES "enrollment_applications"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "enrollment_checklists" ADD CONSTRAINT "enrollment_checklists_updated_by_id_fkey" FOREIGN KEY ("updated_by_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "enrollment_records" ADD CONSTRAINT "enrollment_records_school_year_id_fkey" FOREIGN KEY ("school_year_id") REFERENCES "school_years"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "enrollment_records" ADD CONSTRAINT "enrollment_records_enrollment_application_id_fkey" FOREIGN KEY ("enrollment_application_id") REFERENCES "enrollment_applications"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "enrollment_records" ADD CONSTRAINT "enrollment_records_enrolled_by_id_fkey" FOREIGN KEY ("enrolled_by_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "enrollment_records" ADD CONSTRAINT "enrollment_records_section_id_fkey" FOREIGN KEY ("section_id") REFERENCES "sections"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "email_logs" ADD CONSTRAINT "email_logs_applicant_id_fkey" FOREIGN KEY ("applicant_id") REFERENCES "applicants"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "email_logs" ADD CONSTRAINT "email_logs_application_id_fkey" FOREIGN KEY ("application_id") REFERENCES "enrollment_applications"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "health_records" ADD CONSTRAINT "health_records_applicant_id_fkey" FOREIGN KEY ("applicant_id") REFERENCES "applicants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "health_records" ADD CONSTRAINT "health_records_learner_id_fkey" FOREIGN KEY ("learner_id") REFERENCES "learners"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "health_records" ADD CONSTRAINT "health_records_school_year_id_fkey" FOREIGN KEY ("school_year_id") REFERENCES "school_years"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -666,12 +739,6 @@ ALTER TABLE "scp_program_steps" ADD CONSTRAINT "scp_program_steps_scp_program_co
 
 -- AddForeignKey
 ALTER TABLE "scp_program_options" ADD CONSTRAINT "scp_program_options_scp_program_config_id_fkey" FOREIGN KEY ("scp_program_config_id") REFERENCES "scp_program_configs"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "strand_grade_levels" ADD CONSTRAINT "strand_grade_levels_strand_id_fkey" FOREIGN KEY ("strand_id") REFERENCES "strands"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "strand_grade_levels" ADD CONSTRAINT "strand_grade_levels_grade_level_id_fkey" FOREIGN KEY ("grade_level_id") REFERENCES "grade_levels"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "teacher_subjects" ADD CONSTRAINT "teacher_subjects_teacher_id_fkey" FOREIGN KEY ("teacher_id") REFERENCES "teachers"("id") ON DELETE CASCADE ON UPDATE CASCADE;

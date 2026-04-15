@@ -67,34 +67,38 @@ export const createStudentsQueryController = (
 ) => {
   const getStudents = async (req: Request, res: Response) => {
     try {
-      const { applicants, total, pageNum, limitNum } =
-        await deps.searchStudents(req.query as any);
+      const {
+        applications,
+        total,
+        page: pageNum,
+        limit: limitNum,
+      } = await deps.searchStudents(req.query as any);
 
-      const students = applicants.map((applicant) => {
+      const students = applications.map((applicant: any) => {
         const parentOrGuardian = pickParentOrGuardian(
           applicant.familyMembers as FamilyMemberLike[],
         );
 
         return {
           id: applicant.id,
-          lrn: applicant.lrn,
-          fullName: buildFullName(applicant),
-          firstName: applicant.firstName,
-          lastName: applicant.lastName,
-          middleName: applicant.middleName,
-          suffix: applicant.suffix,
-          sex: applicant.sex,
-          birthDate: applicant.birthDate,
+          lrn: applicant.learner?.lrn,
+          fullName: applicant.learner ? buildFullName(applicant.learner) : "",
+          firstName: applicant.learner?.firstName,
+          lastName: applicant.learner?.lastName,
+          middleName: applicant.learner?.middleName,
+          suffix: applicant.learner?.extensionName,
+          sex: applicant.learner?.sex,
+          birthDate: applicant.learner?.birthdate,
           address: buildAddress(applicant.addresses as AddressLike[]),
           parentGuardianName: parentOrGuardian.name,
           parentGuardianContact: parentOrGuardian.contact,
-          emailAddress: applicant.emailAddress,
+          emailAddress: applicant.earlyRegistration?.email ?? null,
           trackingNumber: applicant.trackingNumber,
           status: applicant.status,
           gradeLevel: applicant.gradeLevel.name,
           gradeLevelId: applicant.gradeLevelId,
-          section: applicant.enrollment?.section.name || null,
-          sectionId: applicant.enrollment?.sectionId || null,
+          section: applicant.enrollmentRecord?.section.name || null,
+          sectionId: applicant.enrollmentRecord?.sectionId || null,
           createdAt: applicant.createdAt,
           updatedAt: applicant.updatedAt,
         };
@@ -122,15 +126,17 @@ export const createStudentsQueryController = (
         return res.status(400).json({ message: "Invalid student id" });
       }
 
-      const applicant = await deps.prisma.applicant.findUnique({
+      const applicant = await deps.prisma.enrollmentApplication.findUnique({
         where: { id: parsedId },
         include: {
+          learner: true,
           gradeLevel: true,
           schoolYear: true,
           addresses: true,
           familyMembers: true,
           previousSchool: true,
-          enrollment: {
+          earlyRegistration: true,
+          enrollmentRecord: {
             include: {
               section: {
                 include: {
@@ -174,14 +180,14 @@ export const createStudentsQueryController = (
 
       const student = {
         id: applicant.id,
-        lrn: applicant.lrn,
-        fullName: buildFullName(applicant),
-        firstName: applicant.firstName,
-        lastName: applicant.lastName,
-        middleName: applicant.middleName,
-        suffix: applicant.suffix,
-        sex: applicant.sex,
-        birthDate: applicant.birthDate,
+        lrn: applicant.learner?.lrn,
+        fullName: applicant.learner ? buildFullName(applicant.learner) : "",
+        firstName: applicant.learner?.firstName,
+        lastName: applicant.learner?.lastName,
+        middleName: applicant.learner?.middleName,
+        suffix: applicant.learner?.extensionName,
+        sex: applicant.learner?.sex,
+        birthDate: applicant.learner?.birthdate,
         address: buildAddress(addresses),
         currentAddress: currentAddr || null,
         permanentAddress: permanentAddr || null,
@@ -190,7 +196,7 @@ export const createStudentsQueryController = (
         guardianInfo: guardian || null,
         parentGuardianName: parentOrGuardian.name,
         parentGuardianContact: parentOrGuardian.contact,
-        emailAddress: applicant.emailAddress,
+        emailAddress: applicant.earlyRegistration?.email ?? null,
         trackingNumber: applicant.trackingNumber,
         status: applicant.status,
         rejectionReason: applicant.rejectionReason,
@@ -198,16 +204,19 @@ export const createStudentsQueryController = (
         gradeLevelId: applicant.gradeLevelId,
         schoolYear: applicant.schoolYear.yearLabel,
         schoolYearId: applicant.schoolYearId,
-        enrollment: applicant.enrollment
+        enrollment: applicant.enrollmentRecord
           ? {
-              id: applicant.enrollment.id,
-              section: applicant.enrollment.section.name,
-              sectionId: applicant.enrollment.sectionId,
-              advisingTeacher: applicant.enrollment.section.advisingTeacher
-                ? buildFullName(applicant.enrollment.section.advisingTeacher)
+              id: applicant.enrollmentRecord.id,
+              section: applicant.enrollmentRecord.section.name,
+              sectionId: applicant.enrollmentRecord.sectionId,
+              advisingTeacher: applicant.enrollmentRecord.section
+                .advisingTeacher
+                ? buildFullName(
+                    applicant.enrollmentRecord.section.advisingTeacher,
+                  )
                 : null,
-              enrolledAt: applicant.enrollment.enrolledAt,
-              enrolledBy: `${applicant.enrollment.enrolledBy.lastName}, ${applicant.enrollment.enrolledBy.firstName}`,
+              enrolledAt: applicant.enrollmentRecord.enrolledAt,
+              enrolledBy: `${applicant.enrollmentRecord.enrolledBy.lastName}, ${applicant.enrollmentRecord.enrolledBy.firstName}`,
             }
           : null,
         createdAt: applicant.createdAt,

@@ -1,10 +1,10 @@
 import { useFormContext } from "react-hook-form";
-import type { EarlyRegistrationFormData } from "../types";
+import type { EnrollmentFormData } from "../types";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group";
 import { DatePicker } from "@/shared/ui/date-picker";
-import { Info, AlertCircle, Camera, X } from "lucide-react";
+import { AlertCircle, Camera, X, Loader2, CheckCircle2, Search } from "lucide-react";
 import { differenceInYears } from "date-fns";
 import { cn } from "@/shared/lib/utils";
 import {
@@ -14,6 +14,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select";
+import { useState, useEffect } from "react";
+import api from "@/shared/api/axiosInstance";
+import { sileo } from "sileo";
 
 export default function Step1Personal() {
   const {
@@ -21,9 +24,109 @@ export default function Step1Personal() {
     watch,
     setValue,
     formState: { errors },
-  } = useFormContext<EarlyRegistrationFormData>();
+  } = useFormContext<EnrollmentFormData>();
   const birthdate = watch("birthdate");
   const studentPhoto = watch("studentPhoto");
+  const lrn = watch("lrn");
+
+  const [isLookingUp, setIsLookingUp] = useState(false);
+  const [lookupSuccess, setLookupSuccess] = useState(false);
+
+  // Auto-lookup when LRN reaches 12 digits
+  useEffect(() => {
+    const fetchEarlyRegData = async () => {
+      if (lrn && lrn.length === 12 && !lookupSuccess && !isLookingUp) {
+        setIsLookingUp(true);
+        try {
+          const response = await api.get(`/applications/lookup-by-lrn/${lrn}`);
+          const data = response.data;
+
+          if (data) {
+            // Map fetched data to form fields
+            // The backend returns a structured object matching most form fields
+            sileo.info({
+              title: "Early Registration Found",
+              description: `Fetched data for ${data.firstName} ${data.lastName}.`,
+            });
+
+            // Update form values
+            setValue("earlyRegistrationId", data.earlyRegistrationId);
+            setValue("firstName", data.firstName);
+            setValue("lastName", data.lastName);
+            setValue("middleName", data.middleName || "");
+            setValue("extensionName", data.extensionName || "N/A");
+            if (data.birthdate) {
+              const bday = new Date(data.birthdate);
+              setValue("birthdate", bday);
+              setValue("age", differenceInYears(new Date(), bday));
+            }
+            setValue("sex", data.sex === "MALE" ? "Male" : "Female");
+            setValue("religion", data.religion || "");
+            setValue("isIpCommunity", data.isIpCommunity);
+            setValue("ipGroupName", data.ipGroupName || "");
+            setValue("isLearnerWithDisability", data.isLearnerWithDisability);
+            setValue("disabilityTypes", data.disabilityTypes || []);
+            
+            if (data.currentAddress) {
+              setValue("currentAddress.houseNo", data.currentAddress.houseNo || "");
+              setValue("currentAddress.barangay", data.currentAddress.barangay || "");
+              setValue("currentAddress.cityMunicipality", data.currentAddress.cityMunicipality || "");
+              setValue("currentAddress.province", data.currentAddress.province || "");
+            }
+
+            if (data.father) {
+              setValue("father.firstName", data.father.firstName);
+              setValue("father.lastName", data.father.lastName);
+              setValue("father.middleName", data.father.middleName || "");
+              setValue("father.contactNumber", data.father.contactNumber || "");
+            }
+
+            if (data.mother) {
+              setValue("mother.firstName", data.mother.firstName);
+              setValue("mother.lastName", data.mother.lastName);
+              setValue("mother.middleName", data.mother.middleName || "");
+              setValue("mother.contactNumber", data.mother.contactNumber || "");
+            }
+
+            if (data.guardian) {
+              setValue("guardian.firstName", data.guardian.firstName);
+              setValue("guardian.lastName", data.guardian.lastName);
+              setValue("guardian.middleName", data.guardian.middleName || "");
+              setValue("guardian.contactNumber", data.guardian.contactNumber || "");
+            }
+
+            setValue("email", data.email || "");
+            setValue("learnerType", data.learnerType);
+            
+            if (data.applicantType && data.applicantType !== "REGULAR") {
+              setValue("isScpApplication", true);
+              setValue("scpType", data.applicantType);
+            } else {
+              setValue("isScpApplication", false);
+            }
+
+            setLookupSuccess(true);
+          }
+        } catch (error: any) {
+          if (error.response?.status === 404) {
+            // Silently fail or show minor info if not found
+          } else {
+            sileo.error({
+              title: "Lookup Failed",
+              description: "Could not fetch early registration data.",
+            });
+          }
+        } finally {
+          setIsLookingUp(false);
+        }
+      } else if (!lrn || lrn.length < 12) {
+        setLookupSuccess(false);
+      }
+    };
+
+    const timer = setTimeout(fetchEarlyRegData, 500);
+    return () => clearTimeout(timer);
+  }, [lrn, lookupSuccess, isLookingUp, setValue]);
 
   const onBirthdateChange = (date: Date | undefined) => {
     if (date) {
@@ -37,13 +140,11 @@ export default function Step1Personal() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validation: 2MB limit
     if (file.size > 5 * 1024 * 1024) {
       alert("File size must be less than 5MB");
       return;
     }
 
-    // Validation: JPG/PNG only
     if (!["image/jpeg", "image/png", "image/jpg"].includes(file.type)) {
       alert("Only JPG and PNG files are accepted");
       return;
@@ -64,6 +165,50 @@ export default function Step1Personal() {
 
   return (
     <div className="space-y-8">
+      {/* ─── LRN Lookup Section ─── */}
+      <div className="p-6 bg-primary/5 border border-primary/20 rounded-2xl space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+            <Search className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-primary">
+              Quick Fill via LRN
+            </h3>
+            <p className="text-xs text-muted-foreground font-bold">
+              Type your 12-digit LRN to automatically fetch your Early Registration information.
+            </p>
+          </div>
+        </div>
+
+        <div className="relative">
+          <Input
+            id="lrn"
+            {...register("lrn")}
+            autoComplete="off"
+            placeholder="ENTER 12-DIGIT LRN"
+            maxLength={12}
+            className={cn(
+              "h-14 text-lg tracking-[0.25em] font-black text-center border-2",
+              errors.lrn ? "border-destructive" : "border-primary/30 focus:border-primary",
+              lookupSuccess && "border-green-500 bg-green-50/30"
+            )}
+            onInput={(e) => {
+              e.currentTarget.value = e.currentTarget.value.replace(/[^0-9]/g, "");
+            }}
+          />
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+            {isLookingUp && <Loader2 className="w-5 h-5 animate-spin text-primary" />}
+            {lookupSuccess && <CheckCircle2 className="w-5 h-5 text-green-600" />}
+          </div>
+        </div>
+        {errors.lrn && (
+          <p className="text-xs text-destructive font-bold flex items-center gap-1 mt-1">
+            <AlertCircle className="w-3 h-3" /> {errors.lrn.message}
+          </p>
+        )}
+      </div>
+
       {/* ─── Name & Photo Section ─── */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
         {/* PHOTO UPLOADER COLUMN */}
@@ -104,7 +249,6 @@ export default function Step1Personal() {
                 </div>
               )}
             </div>
-            {/* Professional Hidden Input */}
             <input
               type="file"
               className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed z-10"
@@ -113,11 +257,6 @@ export default function Step1Personal() {
               title="Upload student photo"
             />
           </div>
-          <p className="text-[0.625rem] text-center text-muted-foreground leading-tight">
-            Accepted formats: JPG, PNG.
-            <br />
-            Max size: 5MB.
-          </p>
         </div>
 
         {/* NAME FIELDS COLUMN */}
@@ -185,7 +324,7 @@ export default function Step1Personal() {
             </Label>
             <Select
               onValueChange={(val) => setValue("extensionName", val)}
-              defaultValue={watch("extensionName") || "N/A"}
+              value={watch("extensionName") || "N/A"}
             >
               <SelectTrigger className="h-11 font-bold">
                 <SelectValue placeholder="Select Suffix" />
@@ -237,9 +376,6 @@ export default function Step1Personal() {
             readOnly
             className="h-11 font-bold cursor-not-allowed "
           />
-          <p className="text-xs text-muted-foreground italic">
-            Auto-calculated
-          </p>
         </div>
 
         <div className="space-y-3">
@@ -247,7 +383,7 @@ export default function Step1Personal() {
             Sex <span className="text-destructive">*</span>
           </Label>
           <RadioGroup
-            defaultValue={watch("sex")}
+            value={watch("sex")}
             onValueChange={(val) => setValue("sex", val as "Male" | "Female")}
             className="flex gap-6 pt-1"
           >
@@ -278,9 +414,6 @@ export default function Step1Personal() {
               </Label>
             </div>
           </RadioGroup>
-          <p className="text-xs text-muted-foreground italic">
-            As recorded on PSA Birth Certificate
-          </p>
         </div>
       </div>
 
@@ -321,44 +454,7 @@ export default function Step1Personal() {
       </div>
 
       <div className="pt-6 border-t border-border/40">
-        <h3 className="text-sm font-bold uppercase tracking-widest text-[#061E29] mb-6">
-          Reference Numbers
-        </h3>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="lrn" className="text-sm font-semibold">
-                Learner Reference Number (LRN), if applicable
-              </Label>
-              <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-            </div>
-            <Input
-              id="lrn"
-              {...register("lrn")}
-              autoComplete="off"
-              placeholder="000000000000"
-              maxLength={12}
-              className={cn(
-                "h-11  tracking-widest font-bold",
-                errors.lrn && "border-destructive",
-              )}
-              onInput={(e) => {
-                e.currentTarget.value = e.currentTarget.value.replace(
-                  /[^0-9]/g,
-                  "",
-                );
-              }}
-            />
-            <p className="text-[0.625rem] text-muted-foreground italic">
-              12 digits • found on the learner's Grade 6 Report Card (SF9).
-            </p>
-            {errors.lrn && (
-              <p className="text-xs text-destructive font-medium flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" /> {errors.lrn.message}
-              </p>
-            )}
-          </div>
-
           <div className="space-y-2">
             <Label
               htmlFor="psaBirthCertNumber"
@@ -373,10 +469,6 @@ export default function Step1Personal() {
               placeholder="PSA BC Number"
               className="h-11 font-bold"
             />
-            <p className="text-[0.625rem] text-muted-foreground italic">
-              Found on the birth certificate (While this field is optional, the
-              physical document must be submitted for verification.).
-            </p>
           </div>
         </div>
       </div>

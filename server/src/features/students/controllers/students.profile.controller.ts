@@ -34,8 +34,9 @@ export const createStudentsProfileController = (
         emailAddress,
       } = req.body;
 
-      const applicant = await deps.prisma.applicant.findUnique({
+      const applicant = await deps.prisma.enrollmentApplication.findUnique({
         where: { id: parsedId },
+        include: { learner: true },
       });
 
       if (!applicant) {
@@ -44,16 +45,16 @@ export const createStudentsProfileController = (
 
       const updated = await deps.prisma.$transaction(async (tx) => {
         if (currentAddress) {
-          await tx.applicantAddress.upsert({
+          await tx.enrollmentAddress.upsert({
             where: {
-              uq_applicant_addresses_type: {
-                applicantId: parsedId,
+              uq_enrollment_addresses_type: {
+                applicationId: parsedId,
                 addressType: "CURRENT",
               },
             },
             update: currentAddress,
             create: {
-              applicantId: parsedId,
+              applicationId: parsedId,
               addressType: "CURRENT",
               ...currentAddress,
             },
@@ -61,16 +62,16 @@ export const createStudentsProfileController = (
         }
 
         if (permanentAddress) {
-          await tx.applicantAddress.upsert({
+          await tx.enrollmentAddress.upsert({
             where: {
-              uq_applicant_addresses_type: {
-                applicantId: parsedId,
+              uq_enrollment_addresses_type: {
+                applicationId: parsedId,
                 addressType: "PERMANENT",
               },
             },
             update: permanentAddress,
             create: {
-              applicantId: parsedId,
+              applicationId: parsedId,
               addressType: "PERMANENT",
               ...permanentAddress,
             },
@@ -78,16 +79,16 @@ export const createStudentsProfileController = (
         }
 
         if (motherName) {
-          await tx.applicantFamilyMember.upsert({
+          await tx.enrollmentFamilyMember.upsert({
             where: {
-              uq_applicant_family_members_rel: {
-                applicantId: parsedId,
+              uq_enrollment_family_members_rel: {
+                applicationId: parsedId,
                 relationship: "MOTHER",
               },
             },
             update: motherName,
             create: {
-              applicantId: parsedId,
+              applicationId: parsedId,
               relationship: "MOTHER",
               ...motherName,
             },
@@ -95,16 +96,16 @@ export const createStudentsProfileController = (
         }
 
         if (fatherName) {
-          await tx.applicantFamilyMember.upsert({
+          await tx.enrollmentFamilyMember.upsert({
             where: {
-              uq_applicant_family_members_rel: {
-                applicantId: parsedId,
+              uq_enrollment_family_members_rel: {
+                applicationId: parsedId,
                 relationship: "FATHER",
               },
             },
             update: fatherName,
             create: {
-              applicantId: parsedId,
+              applicationId: parsedId,
               relationship: "FATHER",
               ...fatherName,
             },
@@ -112,40 +113,45 @@ export const createStudentsProfileController = (
         }
 
         if (guardianInfo) {
-          await tx.applicantFamilyMember.upsert({
+          await tx.enrollmentFamilyMember.upsert({
             where: {
-              uq_applicant_family_members_rel: {
-                applicantId: parsedId,
+              uq_enrollment_family_members_rel: {
+                applicationId: parsedId,
                 relationship: "GUARDIAN",
               },
             },
             update: guardianInfo,
             create: {
-              applicantId: parsedId,
+              applicationId: parsedId,
               relationship: "GUARDIAN",
               ...guardianInfo,
             },
           });
         }
 
-        return tx.applicant.update({
-          where: { id: parsedId },
+        // Update personal fields on Learner
+        await tx.learner.update({
+          where: { id: applicant!.learnerId },
           data: {
             firstName,
             lastName,
             middleName,
-            suffix,
+            extensionName: suffix,
             sex,
-            birthDate: birthDate
+            birthdate: birthDate
               ? deps.normalizeDateToUtcNoon(new Date(birthDate))
               : undefined,
-            emailAddress,
           },
+        });
+
+        return tx.enrollmentApplication.findUnique({
+          where: { id: parsedId },
           include: {
+            learner: true,
             gradeLevel: true,
             addresses: true,
             familyMembers: true,
-            enrollment: {
+            enrollmentRecord: {
               include: {
                 section: true,
               },
@@ -158,9 +164,9 @@ export const createStudentsProfileController = (
         data: {
           userId: getRequestUserId(req),
           actionType: "STUDENT_UPDATED",
-          description: `Updated student record for ${updated.firstName} ${updated.lastName} (LRN: ${updated.lrn})`,
-          subjectType: "Applicant",
-          recordId: updated.id,
+          description: `Updated student record for ${updated!.learner.firstName} ${updated!.learner.lastName} (LRN: ${updated!.learner.lrn})`,
+          subjectType: "EnrollmentApplication",
+          recordId: updated!.id,
           ipAddress: req.ip || "unknown",
           userAgent: req.headers["user-agent"] || null,
         },
@@ -187,12 +193,13 @@ export const createStudentsProfileController = (
 
       const { raw: newPin, hash: hashedPin } = deps.generatePortalPin();
 
-      const applicant = await deps.prisma.applicant.update({
+      const applicant = await deps.prisma.enrollmentApplication.update({
         where: { id: parsedId },
         data: {
           portalPin: hashedPin,
           portalPinChangedAt: new Date(),
         },
+        include: { learner: true },
       });
 
       const user = await deps.prisma.user.findUnique({
@@ -202,14 +209,14 @@ export const createStudentsProfileController = (
       const userName = user
         ? `${user.firstName} ${user.lastName}`
         : "Registrar";
-      const learnerName = `${applicant.firstName} ${applicant.lastName}`;
+      const learnerName = `${applicant.learner.firstName} ${applicant.learner.lastName}`;
 
       await deps.prisma.auditLog.create({
         data: {
           userId,
           actionType: "PORTAL_PIN_RESET",
-          description: `${userName} reset portal PIN for LRN ${applicant.lrn} - ${learnerName}`,
-          subjectType: "Applicant",
+          description: `${userName} reset portal PIN for LRN ${applicant.learner.lrn} - ${learnerName}`,
+          subjectType: "EnrollmentApplication",
           recordId: parsedId,
           ipAddress: req.ip || "unknown",
           userAgent: req.headers["user-agent"] || null,

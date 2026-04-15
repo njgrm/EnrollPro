@@ -79,7 +79,15 @@ export function createSchoolYearLifecycleController(
 
     const year = await deps.prisma.schoolYear.findUnique({
       where: { id },
-      include: { _count: { select: { applicants: true, enrollments: true } } },
+      include: {
+        _count: {
+          select: {
+            earlyRegistrationApplications: true,
+            enrollmentApplications: true,
+            enrollmentRecords: true,
+          },
+        },
+      },
     });
 
     if (!year) {
@@ -87,7 +95,11 @@ export function createSchoolYearLifecycleController(
       return;
     }
 
-    if (year._count.applicants > 0 || year._count.enrollments > 0) {
+    if (
+      year._count.earlyRegistrationApplications > 0 ||
+      year._count.enrollmentApplications > 0 ||
+      year._count.enrollmentRecords > 0
+    ) {
       res
         .status(400)
         .json({ message: "Cannot delete a school year with existing records" });

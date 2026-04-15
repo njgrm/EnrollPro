@@ -1,5 +1,5 @@
 import { useFormContext } from "react-hook-form";
-import type { EarlyRegistrationFormData } from "../types";
+import type { EnrollmentFormData } from "../types";
 import { SPA_ART_FIELDS, SPS_SPORTS, SPFL_LANGUAGES } from "../types";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -24,7 +24,7 @@ export default function Step3Preferences() {
     watch,
     setValue,
     formState: { errors },
-  } = useFormContext<EarlyRegistrationFormData>();
+  } = useFormContext<EnrollmentFormData>();
   const { schoolName } = useSettingsStore();
 
   const isScpApplication = watch("isScpApplication");
@@ -73,7 +73,7 @@ export default function Step3Preferences() {
                   onValueChange={(val: string) =>
                     setValue(
                       "scpType",
-                      val as EarlyRegistrationFormData["scpType"],
+                      val as EnrollmentFormData["scpType"],
                     )
                   }>
                   <SelectTrigger className="font-bold">

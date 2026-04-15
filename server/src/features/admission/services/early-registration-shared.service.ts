@@ -1,5 +1,9 @@
 import { AppError } from "../../../lib/AppError.js";
-import type { Applicant, ApplicationStatus } from "../../../generated/prisma";
+import type {
+  EnrollmentApplication,
+  EarlyRegistrationApplication,
+  ApplicationStatus,
+} from "../../../generated/prisma/index.js";
 import type { AdmissionControllerDeps } from "./admission-controller.deps.js";
 
 export const VALID_TRANSITIONS: Record<string, ApplicationStatus[]> = {
@@ -45,38 +49,59 @@ export const VALID_TRANSITIONS: Record<string, ApplicationStatus[]> = {
 export function createEarlyRegistrationSharedService(
   deps: AdmissionControllerDeps,
 ) {
-  async function findApplicantOrThrow(id: number): Promise<Applicant> {
-    const applicant = await deps.prisma.applicant.findUnique({ where: { id } });
-    if (!applicant) throw new AppError(404, "Applicant not found");
+  async function findApplicantOrThrow(
+    id: number,
+  ): Promise<
+    EnrollmentApplication & { learner: any; earlyRegistration?: any }
+  > {
+    const applicant = await deps.prisma.enrollmentApplication.findUnique({
+      where: { id },
+      include: { learner: true, earlyRegistration: true },
+    });
+    if (!applicant) throw new AppError(404, "Enrollment application not found");
     return applicant;
   }
 
+  async function findEarlyRegOrThrow(
+    id: number,
+  ): Promise<
+    EarlyRegistrationApplication & {
+      learner: { firstName: string; lastName: string; lrn: string | null };
+    }
+  > {
+    const earlyReg = await deps.prisma.earlyRegistrationApplication.findUnique({
+      where: { id },
+      include: { learner: true },
+    });
+    if (!earlyReg)
+      throw new AppError(404, "Early registration application not found");
+    return earlyReg as any;
+  }
+
   function assertTransition(
-    applicant: Applicant,
+    application: { status: ApplicationStatus },
     to: ApplicationStatus,
     contextMessage?: string,
   ): void {
-    if (!(VALID_TRANSITIONS[applicant.status]?.includes(to) ?? false)) {
+    if (!(VALID_TRANSITIONS[application.status]?.includes(to) ?? false)) {
       throw new AppError(
         422,
         contextMessage ??
-          `Cannot transition from "${applicant.status}" to "${to}".`,
+          `Cannot transition from "${application.status}" to "${to}".`,
       );
     }
   }
 
   async function queueEmail(
-    applicantId: number,
+    applicationId: number,
     recipient: string | null,
     subject: string,
-    trigger: Parameters<
-      typeof deps.prisma.emailLog.create
-    >[0]["data"]["trigger"],
+    trigger: any,
   ): Promise<void> {
     if (!recipient) return;
     try {
       await deps.prisma.emailLog.create({
-        data: { recipient, subject, trigger, status: "PENDING", applicantId },
+        data: { recipient, subject, trigger, status: "PENDING", applicationId },
       });
     } catch {
       // Non-critical: don't fail request on email queue errors
@@ -84,7 +109,10 @@ export function createEarlyRegistrationSharedService(
   }
 
   async function flattenAssessmentData(application: Record<string, any>) {
-    const assessments = (application.assessments ?? []) as Array<{
+    // Check if it's EarlyRegistrationApplication or EnrollmentApplication
+    const assessments = (application.assessments ||
+      application.earlyRegistration?.assessments ||
+      []) as Array<{
       id: number;
       type: string;
       stepOrder: number | null;
@@ -140,9 +168,7 @@ export function createEarlyRegistrationSharedService(
     }
 
     const steps = pipelineSteps.map((step) => {
-      const match =
-        assessments.find((a) => a.stepOrder === step.stepOrder) ??
-        assessments.find((a) => a.type === step.kind);
+      const match = assessments.find((a) => a.type === step.kind);
 
       let stepStatus: "PENDING" | "SCHEDULED" | "COMPLETED" = "PENDING";
       if (match?.conductedAt || match?.result != null || match?.score != null) {
@@ -177,10 +203,21 @@ export function createEarlyRegistrationSharedService(
     const primary = assessments[0] ?? null;
     const interview = assessments.find((a) => a.type === "INTERVIEW") ?? null;
 
+    // Normalize name fields if it's joined from learner table
+    const learner = application.learner || application;
+
     return {
       ...application,
+      firstName: learner.firstName,
+      lastName: learner.lastName,
+      middleName: learner.middleName,
+      lrn: learner.lrn,
       isScpApplication: application.applicantType !== "REGULAR",
-      scpType: scpDetail?.scpType ?? null,
+      scpType:
+        scpDetail?.scpType ??
+        (application.applicantType !== "REGULAR"
+          ? application.applicantType
+          : null),
       artField: scpDetail?.artField ?? null,
       foreignLanguage: scpDetail?.foreignLanguage ?? null,
       sportsList: scpDetail?.sportsList ?? [],
@@ -227,6 +264,7 @@ export function createEarlyRegistrationSharedService(
 
   return {
     findApplicantOrThrow,
+    findEarlyRegOrThrow,
     assertTransition,
     queueEmail,
     flattenAssessmentData,

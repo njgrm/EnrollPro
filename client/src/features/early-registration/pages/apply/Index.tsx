@@ -17,6 +17,7 @@ export default function EarlyRegistrationApply() {
   );
   const [successData, setSuccessData] = useState<{
     id: number;
+    trackingNumber: string;
     learnerName: string;
   } | null>(null);
 
@@ -177,7 +178,7 @@ export default function EarlyRegistrationApply() {
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ duration: 0.4 }}>
                     <EarlyRegSuccessView
-                      registrationId={successData.id}
+                      trackingNumber={successData.trackingNumber}
                       learnerName={successData.learnerName}
                       onRegisterAnother={handleReset}
                     />

@@ -18,7 +18,7 @@ export async function listSections(req: Request, res: Response): Promise<void> {
             middleName: true,
           },
         },
-        _count: { select: { enrollments: true } },
+        _count: { select: { enrollmentRecords: true } },
       },
       orderBy: { name: "asc" },
     });
@@ -60,7 +60,7 @@ export async function listSections(req: Request, res: Response): Promise<void> {
               middleName: true,
             },
           },
-          _count: { select: { enrollments: true } },
+          _count: { select: { enrollmentRecords: true } },
         },
       },
     },
@@ -74,10 +74,10 @@ export async function listSections(req: Request, res: Response): Promise<void> {
       id: s.id,
       name: s.name,
       maxCapacity: s.maxCapacity,
-      enrolledCount: s._count.enrollments,
+      enrolledCount: s._count.enrollmentRecords,
       fillPercent:
         s.maxCapacity > 0
-          ? Math.round((s._count.enrollments / s.maxCapacity) * 100)
+          ? Math.round((s._count.enrollmentRecords / s.maxCapacity) * 100)
           : 0,
       advisingTeacher: s.advisingTeacher
         ? {
@@ -188,7 +188,7 @@ export async function deleteSection(
 
   const section = await prisma.section.findUnique({
     where: { id },
-    include: { _count: { select: { enrollments: true } } },
+    include: { _count: { select: { enrollmentRecords: true } } },
   });
 
   if (!section) {
@@ -196,7 +196,7 @@ export async function deleteSection(
     return;
   }
 
-  if (section._count.enrollments > 0) {
+  if (section._count.enrollmentRecords > 0) {
     res
       .status(400)
       .json({ message: "Cannot delete a section with enrolled students" });

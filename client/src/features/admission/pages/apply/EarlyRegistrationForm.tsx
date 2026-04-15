@@ -3,8 +3,8 @@ import { useForm, FormProvider, type FieldPath } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useStepper, steps } from "./stepper";
 import {
-  EarlyRegistrationSchema,
-  type EarlyRegistrationFormData,
+  EnrollmentFormSchema,
+  type EnrollmentFormData,
 } from "./types";
 
 import Step1Personal from "./components/Step1Personal";
@@ -23,10 +23,10 @@ import { ConfirmationModal } from "@/shared/ui/confirmation-modal";
 import { toUpperCaseRecursive } from "@/shared/lib/utils";
 import { sileo } from "sileo";
 
-const DRAFT_KEY = "enrollpro_apply_draft";
-const STEP_KEY = "enrollpro_apply_step";
-const MAX_STEP_KEY = "enrollpro_apply_max_step";
-const EDITING_KEY = "enrollpro_apply_editing";
+const DRAFT_KEY = "enrollpro_enrollment_draft";
+const STEP_KEY = "enrollpro_enrollment_step";
+const MAX_STEP_KEY = "enrollpro_enrollment_max_step";
+const EDITING_KEY = "enrollpro_enrollment_editing";
 
 const DEFAULT_VALUES = {
   schoolYear: "2026-2027",
@@ -43,7 +43,7 @@ const DEFAULT_VALUES = {
   isCertifiedTrue: false,
 } as const;
 
-export default function EarlyRegistrationForm({
+export default function EnrollmentForm({
   onSuccess,
 }: {
   onSuccess?: (trackingNumber: string, applicantType?: string) => void;
@@ -81,13 +81,13 @@ export default function EarlyRegistrationForm({
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
 
   const methods = useForm<
-    EarlyRegistrationFormData,
+    EnrollmentFormData,
     unknown,
-    EarlyRegistrationFormData
+    EnrollmentFormData
   >({
     resolver: zodResolver(
-      EarlyRegistrationSchema,
-    ) as import("react-hook-form").Resolver<EarlyRegistrationFormData>,
+      EnrollmentFormSchema,
+    ) as import("react-hook-form").Resolver<EnrollmentFormData>,
     defaultValues: initialDraft || {
       ...DEFAULT_VALUES,
       dateAccomplished: new Date(),
@@ -110,7 +110,7 @@ export default function EarlyRegistrationForm({
       setMaxStepReached(currentIndex);
       sessionStorage.setItem(MAX_STEP_KEY, currentIndex.toString());
     }
-  }, [currentIndex, maxStepReached, stepper.state]);
+  }, [currentIndex, maxStepReached]);
 
   // Clear editing mode when reaching review step
   useEffect(() => {
@@ -118,7 +118,7 @@ export default function EarlyRegistrationForm({
       setIsEditing(false);
       sessionStorage.removeItem(EDITING_KEY);
     }
-  }, [stepper.state.current.data.id, stepper.state]);
+  }, [stepper.state.current.data.id]);
 
   // Initial load of step meta
   useEffect(() => {
@@ -149,15 +149,15 @@ export default function EarlyRegistrationForm({
     if (stepper.state.current.data.id) {
       sessionStorage.setItem(STEP_KEY, stepper.state.current.data.id);
     }
-  }, [stepper.state.current.data.id, stepper.state]);
+  }, [stepper.state.current.data.id]);
 
-  // Keep each step mounted at the top without smooth scrolling animation.
+  // Keep each step mounted at the top
   useEffect(() => {
     scrollToTopInstant();
   }, [stepper.state.current.data.id]);
 
   const nextStep = async () => {
-    let fieldsToValidate: FieldPath<EarlyRegistrationFormData>[] = [];
+    let fieldsToValidate: FieldPath<EnrollmentFormData>[] = [];
 
     if (stepper.state.current.data.id === "personal") {
       fieldsToValidate = [
@@ -178,7 +178,7 @@ export default function EarlyRegistrationForm({
         "father.lastName",
         "father.firstName",
         "email",
-      ] as FieldPath<EarlyRegistrationFormData>[];
+      ] as FieldPath<EnrollmentFormData>[];
     } else if (stepper.state.current.data.id === "previousSchool") {
       fieldsToValidate = [
         "lastSchoolName",
@@ -224,7 +224,7 @@ export default function EarlyRegistrationForm({
     }
   };
 
-  const onSubmit = async (data: EarlyRegistrationFormData) => {
+  const onSubmit = async (data: EnrollmentFormData) => {
     setShowSubmitConfirm(false);
     setIsSubmitting(true);
     setSubmitError("");
@@ -246,11 +246,10 @@ export default function EarlyRegistrationForm({
       const response = await api.post("/applications", payload);
 
       sileo.success({
-        title: "Application Submitted!",
-        description: `Your tracking number is ${response.data.trackingNumber}. Keep it safe!`,
+        title: "Enrollment Form Submitted!",
+        description: `Your tracking number is ${response.data.trackingNumber}.`,
       });
 
-      // Prepare for potential new application or fresh state when going back
       if (onSuccess) {
         onSuccess(
           response.data.trackingNumber,
@@ -361,20 +360,11 @@ export default function EarlyRegistrationForm({
                     {Array.from(
                       new Set(
                         Object.values(methods.formState.errors).flatMap(
-                          (
-                            err:
-                              | Record<string, { message?: string }>
-                              | { message?: string },
-                          ) =>
-                            (err as { message?: string })?.message
-                              ? [(err as { message?: string }).message!]
-                              : Object.values(
-                                  (err as Record<
-                                    string,
-                                    { message?: string }
-                                  >) || {},
-                                )
-                                  .map((e) => e?.message)
+                          (err: any) =>
+                            err?.message
+                              ? [err.message]
+                              : Object.values(err || {})
+                                  .map((e: any) => e?.message)
                                   .filter(Boolean),
                         ),
                       ),
@@ -416,7 +406,7 @@ export default function EarlyRegistrationForm({
       <ConfirmationModal
         open={showSubmitConfirm}
         onOpenChange={setShowSubmitConfirm}
-        title="Finalize Application"
+        title="Finalize Enrollment Application"
         description="Please confirm that all information provided is accurate and complete. Once submitted, you will no longer be able to modify your application during the initial review phase."
         confirmText="Confirm Submission"
         onConfirm={() => handleSubmit(onSubmit)()}

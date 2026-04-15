@@ -2,6 +2,13 @@ import { Request, Response, NextFunction } from "express";
 import { prisma } from "../../lib/prisma.js";
 import { auditLog } from "../audit-logs/audit-logs.service.js";
 import { AppError } from "../../lib/AppError.js";
+import {
+  LearnerType,
+  FamilyRelationship,
+  ApplicationStatus,
+  AdmissionChannel,
+  PrimaryContactType,
+} from "../../generated/prisma/index.js";
 
 // ── Helpers ──
 
@@ -90,37 +97,20 @@ function normalizeGradeLevelToken(value: unknown): string {
   return digitMatch?.[0] ?? raw;
 }
 
-function toLearnerTypeV2(
-  value: unknown,
-):
-  | "NEW_ENROLLEE"
-  | "TRANSFEREE"
-  | "RETURNING"
-  | "CONTINUING"
-  | "OSCYA"
-  | "ALS"
-  | null {
+function toLearnerTypeV2(value: unknown): LearnerType | null {
   const raw = String(value ?? "")
     .trim()
     .toUpperCase();
   if (!LEARNER_TYPE_VALUES.has(raw)) return null;
-  return raw as
-    | "NEW_ENROLLEE"
-    | "TRANSFEREE"
-    | "RETURNING"
-    | "CONTINUING"
-    | "OSCYA"
-    | "ALS";
+  return raw as LearnerType;
 }
 
-function toPrimaryContactV2(
-  value: unknown,
-): "FATHER" | "MOTHER" | "GUARDIAN" | null {
+function toPrimaryContactV2(value: unknown): PrimaryContactType | null {
   const raw = String(value ?? "")
     .trim()
     .toUpperCase();
   if (!PRIMARY_CONTACT_VALUES.has(raw)) return null;
-  return raw as "FATHER" | "MOTHER" | "GUARDIAN";
+  return raw as PrimaryContactType;
 }
 
 function resolveApplicantType(
@@ -145,7 +135,7 @@ function resolveApplicantType(
 // ── Shared store logic for both public and F2F ──
 
 interface StoreOptions {
-  channel: "ONLINE" | "F2F";
+  channel: AdmissionChannel;
   encodedById?: number | null;
 }
 
@@ -170,19 +160,15 @@ function mapCreateRegistrationDuplicateError(error: unknown): AppError | null {
   const hasTarget = (needle: string) =>
     targets.some((target) => target.includes(needle));
 
-  const isLrnDuplicate =
-    hasTarget("lrn") || hasTarget("uq_early_registrants_lrn");
+  const isLrnDuplicate = hasTarget("lrn") || hasTarget("uq_learners_lrn");
   if (isLrnDuplicate) {
     return new AppError(409, "A learner with this LRN already exists.");
   }
 
-  const hasRegistrantField =
-    hasTarget("registrantid") || hasTarget("registrant_id");
-  const hasSchoolYearField =
-    hasTarget("schoolyearid") || hasTarget("school_year_id");
   const isRegistrantSchoolYearDuplicate =
-    hasTarget("uq_early_registrations_per_sy") ||
-    (hasRegistrantField && hasSchoolYearField);
+    hasTarget("uq_early_reg_per_sy") ||
+    ((hasTarget("learnerid") || hasTarget("learner_id")) &&
+      (hasTarget("schoolyearid") || hasTarget("school_year_id")));
 
   if (isRegistrantSchoolYearDuplicate) {
     return new AppError(
@@ -224,12 +210,26 @@ async function createRegistration(
       where: {
         schoolYearId: activeYear.id,
         OR: [
-          { name: normalizedGradeLevel },
-          { name: `GRADE ${normalizedGradeLevel}` },
+          { name: { equals: normalizedGradeLevel, mode: "insensitive" } },
+          {
+            name: {
+              equals: `GRADE ${normalizedGradeLevel}`,
+              mode: "insensitive",
+            },
+          },
+          { name: { equals: `G${normalizedGradeLevel}`, mode: "insensitive" } },
         ],
       },
       select: { id: true },
     });
+
+    if (!gradeLevelV2) {
+      throw new AppError(
+        400,
+        `Grade Level "${body.gradeLevel}" not found for the active School Year.`,
+      );
+    }
+
     const learnerTypeV2 = toLearnerTypeV2(body.learnerType);
     const primaryContactV2 = toPrimaryContactV2(body.primaryContact);
     const applicantType = resolveApplicantType(
@@ -263,13 +263,13 @@ async function createRegistration(
     const birthDate = normalizeDateToUtcNoon(rawBirthDate);
     const age = calculateAge(rawBirthDate);
 
-    // 3. Check duplicate LRN in same School Year (both early reg + applicant tables)
+    // 3. Check duplicate LRN in same School Year (both early reg + enrollment app tables)
     const lrn: string | null = body.lrn?.trim() || null;
     if (lrn) {
-      const existingEarlyReg = await prisma.earlyRegistrant.findFirst({
+      const existingEarlyReg = await prisma.learner.findFirst({
         where: {
           lrn,
-          registrations: {
+          earlyRegistrationApplications: {
             some: { schoolYearId: activeYear.id },
           },
         },
@@ -282,26 +282,28 @@ async function createRegistration(
         );
       }
 
-      const existingApplicant = await prisma.applicant.findFirst({
-        where: { lrn, schoolYearId: activeYear.id },
-        select: { id: true },
-      });
-      if (existingApplicant) {
+      const existingEnrollmentApp =
+        await prisma.enrollmentApplication.findFirst({
+          where: { learner: { lrn }, schoolYearId: activeYear.id },
+          select: { id: true },
+        });
+      if (existingEnrollmentApp) {
         throw new AppError(
           409,
-          `An application with LRN ${lrn} already exists for this School Year.`,
+          `An enrollment application with LRN ${lrn} already exists for this School Year.`,
         );
       }
     }
 
     // 4. Build guardian data
     const guardianData: {
-      relationship: string;
+      relationship: FamilyRelationship;
       lastName: string;
       firstName: string;
       middleName?: string | null;
       contactNumber?: string | null;
       email?: string | null;
+      occupation?: string | null;
     }[] = [];
 
     if (body.father?.lastName && body.father?.firstName) {
@@ -312,6 +314,7 @@ async function createRegistration(
         middleName: body.father.middleName || null,
         contactNumber: body.father.contactNumber || null,
         email: body.father.email || null,
+        occupation: body.father.occupation || null,
       });
     }
     if (body.mother?.maidenName && body.mother?.firstName) {
@@ -322,6 +325,7 @@ async function createRegistration(
         middleName: body.mother.middleName || null,
         contactNumber: body.mother.contactNumber || null,
         email: body.mother.email || null,
+        occupation: body.mother.occupation || null,
       });
     }
     if (body.guardian?.lastName && body.guardian?.firstName) {
@@ -332,11 +336,12 @@ async function createRegistration(
         middleName: body.guardian.middleName || null,
         contactNumber: body.guardian.contactNumber || null,
         email: body.guardian.email || null,
+        occupation: body.guardian.occupation || null,
       });
     }
 
-    // 5. Create/reuse registrant + guardians + registration in a transaction
-    const registrantPayload = {
+    // 5. Create/reuse learner + guardians + registration in a transaction
+    const learnerPayload = {
       lrn,
       firstName: body.firstName,
       lastName: body.lastName,
@@ -351,102 +356,105 @@ async function createRegistration(
       disabilityTypes: body.isLearnerWithDisability
         ? body.disabilityTypes || []
         : [],
-      houseNoStreet: body.houseNoStreet || null,
-      sitio: body.sitio || null,
-      barangay: body.barangay,
-      cityMunicipality: body.cityMunicipality,
-      province: body.province,
     };
 
     const result = await prisma.$transaction(async (tx) => {
-      let registrant: { id: number };
+      let learner: { id: number };
 
       if (lrn) {
-        const existingRegistrant = await tx.earlyRegistrant.findUnique({
+        const existingLearner = await tx.learner.findUnique({
           where: { lrn },
           select: { id: true },
         });
 
-        if (existingRegistrant) {
-          registrant = await tx.earlyRegistrant.update({
-            where: { id: existingRegistrant.id },
-            data: {
-              ...registrantPayload,
-              guardians: {
-                deleteMany: {},
-                ...(guardianData.length > 0
-                  ? { createMany: { data: guardianData } }
-                  : {}),
-              },
-            },
+        if (existingLearner) {
+          learner = await tx.learner.update({
+            where: { id: existingLearner.id },
+            data: learnerPayload,
             select: { id: true },
           });
         } else {
-          registrant = await tx.earlyRegistrant.create({
-            data: {
-              ...registrantPayload,
-              guardians:
-                guardianData.length > 0
-                  ? { createMany: { data: guardianData } }
-                  : undefined,
-            },
+          learner = await tx.learner.create({
+            data: learnerPayload,
             select: { id: true },
           });
         }
       } else {
-        registrant = await tx.earlyRegistrant.create({
-          data: {
-            ...registrantPayload,
-            guardians:
-              guardianData.length > 0
-                ? { createMany: { data: guardianData } }
-                : undefined,
-          },
+        learner = await tx.learner.create({
+          data: learnerPayload,
           select: { id: true },
         });
       }
 
-      const registration = await tx.earlyRegistration.create({
+      // Temporary tracking number
+      const tempTracking = `EREG-${new Date().getFullYear()}-TEMP-${Date.now()}`;
+
+      const application = await tx.earlyRegistrationApplication.create({
         data: {
-          registrantId: registrant.id,
+          learnerId: learner.id,
           schoolYearId: activeYear.id,
-          gradeLevel: body.gradeLevel,
-          learnerType: body.learnerType,
+          gradeLevelId: gradeLevelV2.id,
           applicantType,
+          learnerType: (body.learnerType as LearnerType) || "NEW_ENROLLEE",
           status: "SUBMITTED",
           channel: options.channel,
-          gradeLevelIdV2: gradeLevelV2?.id ?? null,
-          learnerTypeV2,
-          statusV2: "SUBMITTED",
-          channelV2: options.channel,
           contactNumber: body.contactNumber,
           email: body.email || null,
-          primaryContact: body.primaryContact || null,
-          primaryContactV2,
-          hasNoMother: body.hasNoMother ?? false,
-          hasNoFather: body.hasNoFather ?? false,
+          primaryContact: primaryContactV2,
           isPrivacyConsentGiven: body.isPrivacyConsentGiven ?? false,
           encodedById: options.encodedById ?? null,
+          trackingNumber: tempTracking,
+          guardians: {
+            createMany: { data: guardianData },
+          },
         },
-        select: { id: true },
+        select: { id: true, applicantType: true },
       });
 
-      return { registrant, registration };
+      // Update with final tracking number
+      let prefix = "REG";
+      if (application.applicantType === "SCIENCE_TECHNOLOGY_AND_ENGINEERING") {
+        prefix = "STE";
+      } else if (application.applicantType === "SPECIAL_PROGRAM_IN_THE_ARTS") {
+        prefix = "SPA";
+      } else if (application.applicantType === "SPECIAL_PROGRAM_IN_SPORTS") {
+        prefix = "SPS";
+      } else if (application.applicantType === "SPECIAL_PROGRAM_IN_JOURNALISM") {
+        prefix = "SPJ";
+      } else if (
+        application.applicantType === "SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE"
+      ) {
+        prefix = "SPFL";
+      } else if (
+        application.applicantType ===
+        "SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION"
+      ) {
+        prefix = "SPTVE";
+      }
+
+      const trackingNumber = `${prefix}-${new Date().getFullYear()}-${String(application.id).padStart(5, "0")}`;
+      await tx.earlyRegistrationApplication.update({
+        where: { id: application.id },
+        data: { trackingNumber },
+      });
+
+      return { learner, application, trackingNumber };
     });
 
     // 6. Audit log (non-blocking)
     auditLog({
       userId: options.encodedById ?? null,
       actionType: "EARLY_REGISTRATION_SUBMITTED",
-      description: `Early registration submitted for ${body.lastName}, ${body.firstName} — Grade ${body.gradeLevel} (${options.channel}). Age: ${age}.`,
-      subjectType: "EarlyRegistration",
-      recordId: result.registration.id,
+      description: `Early registration submitted for ${body.lastName}, ${body.firstName} — Grade ${body.gradeLevel} (${options.channel}). Tracking: ${result.trackingNumber}.`,
+      subjectType: "EarlyRegistrationApplication",
+      recordId: result.application.id,
       req,
     }).catch(() => {});
 
     res.status(201).json({
-      id: result.registration.id,
-      registrantId: result.registrant.id,
+      id: result.application.id,
+      trackingNumber: result.trackingNumber,
+      learnerId: result.learner.id,
       gradeLevel: body.gradeLevel,
       applicantType,
       learnerName: `${body.lastName}, ${body.firstName}`,
@@ -486,10 +494,10 @@ export async function checkLrn(
     const activeYear = settings.activeSchoolYear;
 
     // Check early registrations
-    const existingEarlyReg = await prisma.earlyRegistrant.findFirst({
+    const existingEarlyReg = await prisma.learner.findFirst({
       where: {
         lrn,
-        registrations: {
+        earlyRegistrationApplications: {
           some: { schoolYearId: activeYear.id },
         },
       },
@@ -504,17 +512,17 @@ export async function checkLrn(
       });
     }
 
-    // Check applicants table
-    const existingApplicant = await prisma.applicant.findFirst({
-      where: { lrn, schoolYearId: activeYear.id },
+    // Check enrollment applications
+    const existingEnrollmentApp = await prisma.enrollmentApplication.findFirst({
+      where: { learner: { lrn }, schoolYearId: activeYear.id },
       select: { id: true },
     });
 
-    if (existingApplicant) {
+    if (existingEnrollmentApp) {
       return res.json({
         exists: true,
-        type: "APPLICANT",
-        message: `An application with LRN ${lrn} already exists for this School Year.`,
+        type: "ENROLLMENT",
+        message: `An enrollment application with LRN ${lrn} already exists for this School Year.`,
       });
     }
 
@@ -570,13 +578,13 @@ export async function index(req: Request, res: Response, next: NextFunction) {
     }
     const resolvedSchoolYearId = schoolYearId;
 
-    const where: Record<string, unknown> = {
+    const where: any = {
       schoolYearId: resolvedSchoolYearId,
     };
-    const andFilters: Record<string, unknown>[] = [];
+    const andFilters: any[] = [];
 
     if (status) {
-      andFilters.push({ OR: [{ status }, { statusV2: status }] });
+      andFilters.push({ status });
     }
 
     if (applicantType) {
@@ -595,24 +603,26 @@ export async function index(req: Request, res: Response, next: NextFunction) {
         where: {
           schoolYearId: resolvedSchoolYearId,
           OR: [
-            { name: normalizedGradeLevel },
-            { name: `GRADE ${normalizedGradeLevel}` },
+            { name: { equals: normalizedGradeLevel, mode: "insensitive" } },
+            {
+              name: {
+                equals: `GRADE ${normalizedGradeLevel}`,
+                mode: "insensitive",
+              },
+            },
+            {
+              name: { equals: `G${normalizedGradeLevel}`, mode: "insensitive" },
+            },
           ],
         },
         select: { id: true },
       });
 
-      const gradeLevelFilters: Record<string, unknown>[] = [
-        { gradeLevel: normalizedGradeLevel },
-      ];
-
       if (matchingGradeLevels.length > 0) {
-        gradeLevelFilters.push({
-          gradeLevelIdV2: { in: matchingGradeLevels.map((g) => g.id) },
+        andFilters.push({
+          gradeLevelId: { in: matchingGradeLevels.map((g) => g.id) },
         });
       }
-
-      andFilters.push({ OR: gradeLevelFilters });
     }
 
     if (andFilters.length > 0) {
@@ -620,7 +630,7 @@ export async function index(req: Request, res: Response, next: NextFunction) {
     }
 
     if (search) {
-      where.registrant = {
+      where.learner = {
         OR: [
           { lastName: { contains: search, mode: "insensitive" } },
           { firstName: { contains: search, mode: "insensitive" } },
@@ -630,13 +640,12 @@ export async function index(req: Request, res: Response, next: NextFunction) {
     }
 
     const [registrations, total] = await Promise.all([
-      prisma.earlyRegistration.findMany({
-        where: where as any,
+      prisma.earlyRegistrationApplication.findMany({
+        where: where,
         include: {
-          registrant: {
-            include: { guardians: true },
-          },
-          gradeLevelV2: { select: { id: true, name: true } },
+          learner: true,
+          guardians: true,
+          gradeLevel: { select: { id: true, name: true } },
           schoolYear: { select: { yearLabel: true } },
           encodedBy: { select: { firstName: true, lastName: true } },
           verifiedBy: { select: { firstName: true, lastName: true } },
@@ -645,7 +654,7 @@ export async function index(req: Request, res: Response, next: NextFunction) {
         skip: (page - 1) * limit,
         take: limit,
       }),
-      prisma.earlyRegistration.count({ where: where as any }),
+      prisma.earlyRegistrationApplication.count({ where: where }),
     ]);
 
     res.json({
@@ -666,13 +675,12 @@ export async function index(req: Request, res: Response, next: NextFunction) {
 export async function show(req: Request, res: Response, next: NextFunction) {
   try {
     const id = parseInt(String(req.params.id));
-    const registration = await prisma.earlyRegistration.findUnique({
+    const registration = await prisma.earlyRegistrationApplication.findUnique({
       where: { id },
       include: {
-        registrant: {
-          include: { guardians: true },
-        },
-        gradeLevelV2: { select: { id: true, name: true } },
+        learner: true,
+        guardians: true,
+        gradeLevel: { select: { id: true, name: true } },
         schoolYear: { select: { yearLabel: true } },
         encodedBy: { select: { firstName: true, lastName: true } },
         verifiedBy: { select: { firstName: true, lastName: true } },
@@ -693,7 +701,7 @@ export async function show(req: Request, res: Response, next: NextFunction) {
 export async function verify(req: Request, res: Response, next: NextFunction) {
   try {
     const id = parseInt(String(req.params.id));
-    const registration = await prisma.earlyRegistration.findUnique({
+    const registration = await prisma.earlyRegistrationApplication.findUnique({
       where: { id },
     });
 
@@ -708,11 +716,10 @@ export async function verify(req: Request, res: Response, next: NextFunction) {
       );
     }
 
-    const updated = await prisma.earlyRegistration.update({
+    const updated = await prisma.earlyRegistrationApplication.update({
       where: { id },
       data: {
-        status: "VERIFIED",
-        statusV2: "VERIFIED",
+        status: "VERIFIED" as ApplicationStatus,
         verifiedAt: new Date(),
         verifiedById: req.user!.userId,
       },
@@ -722,7 +729,7 @@ export async function verify(req: Request, res: Response, next: NextFunction) {
       userId: req.user!.userId,
       actionType: "EARLY_REGISTRATION_VERIFIED",
       description: `Early registration #${id} verified.`,
-      subjectType: "EarlyRegistration",
+      subjectType: "EarlyRegistrationApplication",
       recordId: id,
       req,
     }).catch(() => {});

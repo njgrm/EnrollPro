@@ -293,7 +293,22 @@ async function seed() {
 			// 5. Seed 3 Students per SCP
 			for (let i = 1; i <= 3; i++) {
 				const seedNumber = globalCounter;
-				const trackingNumber = `APP-2026-${seedNumber.toString().padStart(5, '0')}`;
+				let prefix = 'REG';
+				if (scpType === 'SCIENCE_TECHNOLOGY_AND_ENGINEERING') {
+					prefix = 'STE';
+				} else if (scpType === 'SPECIAL_PROGRAM_IN_THE_ARTS') {
+					prefix = 'SPA';
+				} else if (scpType === 'SPECIAL_PROGRAM_IN_SPORTS') {
+					prefix = 'SPS';
+				} else if (scpType === 'SPECIAL_PROGRAM_IN_JOURNALISM') {
+					prefix = 'SPJ';
+				} else if (scpType === 'SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE') {
+					prefix = 'SPFL';
+				} else if (scpType === 'SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION') {
+					prefix = 'SPTVE';
+				}
+
+				const trackingNumber = `${prefix}-2026-${seedNumber.toString().padStart(5, '0')}`;
 				globalCounter++;
 
 				const firstName =

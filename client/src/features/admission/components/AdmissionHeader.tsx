@@ -1,6 +1,9 @@
 import depedLogo from "@/assets/DepEd-logo.png";
 import bagongPilipinasLogo from "@/assets/bagong-pilipinas.png";
 import educationSvg from "@/assets/Department_of_Education.svg";
+import { Search } from "lucide-react";
+import { Link, useLocation } from "react-router";
+import { cn } from "@/shared/lib/utils";
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace("/api", "") || "";
 
@@ -17,11 +20,14 @@ export default function AdmissionHeader({
   schoolName,
   title,
 }: AdmissionHeaderProps) {
+  const location = useLocation();
+  const isMonitorPage = location.pathname === "/monitor";
+
   if (isClosed) return null;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-card shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 h-auto py-4 sm:min-h-25 grid grid-cols-[15%_70%_15%] md:grid-cols-[22%_50%_28%] lg:grid-cols-3 items-center gap-1 sm:gap-6">
+      <div className="max-w-7xl mx-auto px-4 h-auto py-4 sm:min-h-25 grid grid-cols-[15%_70%_15%] md:grid-cols-[22%_50%_28%] lg:grid-cols-3 items-center gap-1 sm:gap-6 relative">
         {/* 1. School Logo (Mobile) / Logo + Education SVG (Desktop) */}
         <div className="flex items-center justify-center sm:justify-end gap-2 sm:gap-3 overflow-hidden">
           {logoUrl ? (
@@ -56,7 +62,7 @@ export default function AdmissionHeader({
           </span>
         </div>
 
-        {/* 3. Education SVG (Mobile) / DepEd + Bagong Pilipinas Logo (Desktop) */}
+        {/* 3. Education SVG (Mobile) / DepEd + Bagong Pilipinas Logo (Desktop) + Monitor Link */}
         <div className="flex items-center justify-center sm:justify-start gap-2 sm:gap-3 overflow-hidden">
           {/* Education SVG only on mobile in this column */}
           <img
@@ -77,7 +83,22 @@ export default function AdmissionHeader({
             className="hidden sm:block h-10 w-10 sm:h-20 sm:w-20 max-w-full object-contain"
           />
         </div>
+
+        {/* Monitor Floating Link for Applicants */}
+        {!isMonitorPage && (
+          <Link
+            to="/monitor"
+            className={cn(
+              "absolute right-4 top-1/2 -translate-y-1/2 hidden xl:flex items-center gap-2 px-4 py-2 rounded-full",
+              "bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-lg shadow-primary/20",
+              "text-[0.625rem] font-black uppercase tracking-widest",
+            )}>
+            <Search className="w-3.5 h-3.5" />
+            Monitor Application
+          </Link>
+        )}
       </div>
     </header>
   );
 }
+

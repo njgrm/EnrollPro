@@ -214,7 +214,7 @@ export default function Apply() {
                       exit={{ opacity: 0, scale: 1.02 }}
                       transition={{ duration: 0.4, ease: "easeOut" }}>
                       <EarlyRegistrationForm
-                        onSuccess={(tracking, type) => {
+                        onSuccess={(tracking: string, type?: string) => {
                           setSubmittedTrackingNumber(tracking);
                           setSubmittedApplicantType(type || null);
                         }}

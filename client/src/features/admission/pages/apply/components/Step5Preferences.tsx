@@ -1,5 +1,5 @@
 import { useFormContext } from "react-hook-form";
-import type { EarlyRegistrationFormData } from "../types";
+import type { EnrollmentFormData } from "../types";
 import {
   SPA_ART_FIELDS,
   SPS_SPORTS,
@@ -22,7 +22,7 @@ import { motion, AnimatePresence } from "motion/react";
 
 export default function Step5Enrollment() {
   const { register, watch, setValue } =
-    useFormContext<EarlyRegistrationFormData>();
+    useFormContext<EnrollmentFormData>();
 
   const isScpApplication = watch("isScpApplication");
   const scpType = watch("scpType");
@@ -188,7 +188,7 @@ export default function Step5Enrollment() {
                             onClick={() =>
                               setValue(
                                 "scpType",
-                                p.id as EarlyRegistrationFormData["scpType"],
+                                p.id as EnrollmentFormData["scpType"],
                               )
                             }>
                             <div className="flex items-center gap-3 mb-1">

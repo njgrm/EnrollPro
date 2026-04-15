@@ -35,23 +35,23 @@ export function createEarlyRegistrationLifecycleController(
 
         if (!section) throw new AppError(404, "Section not found");
 
-        const enrolledCount = await tx.enrollment.count({
+        const enrolledCount = await tx.enrollmentRecord.count({
           where: { sectionId },
         });
         if (enrolledCount >= section.maxCapacity) {
           throw new AppError(422, "This section has reached maximum capacity");
         }
 
-        const enrollment = await tx.enrollment.create({
+        const enrollment = await tx.enrollmentRecord.create({
           data: {
-            applicantId,
+            enrollmentApplicationId: applicantId,
             sectionId,
             schoolYearId: applicant.schoolYearId,
             enrolledById: req.user!.userId,
           },
         });
 
-        await tx.applicant.update({
+        await tx.enrollmentApplication.update({
           where: { id: applicantId },
           data: { status: "PRE_REGISTERED" },
         });
@@ -62,15 +62,15 @@ export function createEarlyRegistrationLifecycleController(
       await auditLog({
         userId: req.user!.userId,
         actionType: "APPLICATION_APPROVED",
-        description: `Approved application #${applicantId} for ${applicant.firstName} ${applicant.lastName} and pre-registered to section ${sectionId}`,
-        subjectType: "Applicant",
+        description: `Approved application #${applicantId} for ${applicant.learner.firstName} ${applicant.learner.lastName} and pre-registered to section ${sectionId}`,
+        subjectType: "EnrollmentApplication",
         recordId: applicantId,
         req,
       });
 
       await queueEmail(
         applicantId,
-        applicant.emailAddress,
+        applicant.earlyRegistration?.email ?? null,
         `Application Approved - ${applicant.trackingNumber}`,
         "APPLICATION_APPROVED",
       );
@@ -86,14 +86,16 @@ export function createEarlyRegistrationLifecycleController(
     try {
       const applicantId = parseInt(String(req.params.id));
 
-      const applicant = await prisma.applicant.findUnique({
+      const applicant = await prisma.enrollmentApplication.findUnique({
         where: { id: applicantId },
         include: {
           gradeLevel: true,
           checklist: true,
+          learner: true,
         },
       });
-      if (!applicant) throw new AppError(404, "Applicant not found");
+      if (!applicant)
+        throw new AppError(404, "Enrollment application not found");
 
       assertTransition(
         applicant,
@@ -106,7 +108,7 @@ export function createEarlyRegistrationLifecycleController(
         learnerType: applicant.learnerType,
         gradeLevel: applicant.gradeLevel.name,
         applicantType: applicant.applicantType,
-        isLwd: applicant.isLearnerWithDisability,
+        isLwd: applicant.learner.isLearnerWithDisability,
         isPeptAePasser: false, // Default
       });
 
@@ -168,7 +170,7 @@ export function createEarlyRegistrationLifecycleController(
         await import("../../learner/portal-pin.service.js");
       const { raw: rawPin, hash: pinHash } = generatePortalPin();
 
-      const updated = await prisma.applicant.update({
+      const updated = await prisma.enrollmentApplication.update({
         where: { id: applicantId },
         data: {
           status: "ENROLLED",
@@ -181,8 +183,8 @@ export function createEarlyRegistrationLifecycleController(
       await auditLog({
         userId: req.user!.userId,
         actionType: "APPLICATION_ENROLLED",
-        description: `Finalized official enrollment for ${applicant.firstName} ${applicant.lastName} (#${applicantId}) - All mandatory docs verified`,
-        subjectType: "Applicant",
+        description: `Finalized official enrollment for ${applicant.learner.firstName} ${applicant.learner.lastName} (#${applicantId}) - All mandatory docs verified`,
+        subjectType: "EnrollmentApplication",
         recordId: applicantId,
         req,
       });
@@ -209,7 +211,7 @@ export function createEarlyRegistrationLifecycleController(
         `Cannot mark as temporarily enrolled. Current status: "${applicant.status}".`,
       );
 
-      const updated = await prisma.applicant.update({
+      const updated = await prisma.enrollmentApplication.update({
         where: { id: applicantId },
         data: {
           status: "TEMPORARILY_ENROLLED",
@@ -220,8 +222,8 @@ export function createEarlyRegistrationLifecycleController(
       await auditLog({
         userId: req.user!.userId,
         actionType: "APPLICATION_TEMPORARILY_ENROLLED",
-        description: `Marked ${applicant.firstName} ${applicant.lastName} (#${applicantId}) as TEMPORARILY ENROLLED (awaiting docs)`,
-        subjectType: "Applicant",
+        description: `Marked ${applicant.learner.firstName} ${applicant.learner.lastName} (#${applicantId}) as TEMPORARILY ENROLLED (awaiting docs)`,
+        subjectType: "EnrollmentApplication",
         recordId: applicantId,
         req,
       });
@@ -265,14 +267,18 @@ export function createEarlyRegistrationLifecycleController(
       }
 
       // Get current state for auditing
-      const currentChecklist = await prisma.applicantChecklist.findUnique({
-        where: { applicantId },
+      const currentChecklist = await prisma.enrollmentChecklist.findUnique({
+        where: { applicationId: applicantId },
       });
 
-      const updated = await prisma.applicantChecklist.upsert({
-        where: { applicantId },
+      const updated = await prisma.enrollmentChecklist.upsert({
+        where: { applicationId: applicantId },
         update: { ...filteredData, updatedById: req.user!.userId },
-        create: { ...filteredData, applicantId, updatedById: req.user!.userId },
+        create: {
+          ...filteredData,
+          applicationId: applicantId,
+          updatedById: req.user!.userId,
+        },
       });
 
       // Record individual audit entries for each changed requirement
@@ -299,7 +305,7 @@ export function createEarlyRegistrationLifecycleController(
             userId: req.user!.userId,
             actionType: newValue ? "DOCUMENT_ADDED" : "DOCUMENT_REMOVED",
             description: `${newValue ? "Added" : "Removed"} requirement: ${label} for applicant #${applicantId}`,
-            subjectType: "Applicant",
+            subjectType: "EnrollmentApplication",
             recordId: applicantId,
             req,
           });
@@ -310,7 +316,7 @@ export function createEarlyRegistrationLifecycleController(
         userId: req.user!.userId,
         actionType: "CHECKLIST_UPDATED",
         description: `Updated requirement checklist for applicant #${applicantId}`,
-        subjectType: "Applicant",
+        subjectType: "EnrollmentApplication",
         recordId: applicantId,
         req,
       });
@@ -341,7 +347,7 @@ export function createEarlyRegistrationLifecycleController(
         `Cannot request revision for status "${applicant.status}"`,
       );
 
-      const updated = await prisma.applicant.update({
+      const updated = await prisma.enrollmentApplication.update({
         where: { id: applicantId },
         data: { status: "FOR_REVISION" },
       });
@@ -350,7 +356,7 @@ export function createEarlyRegistrationLifecycleController(
         userId: req.user!.userId,
         actionType: "REVISION_REQUESTED",
         description: `Requested revision for #${applicantId}. Message: ${message || "N/A"}`,
-        subjectType: "Applicant",
+        subjectType: "EnrollmentApplication",
         recordId: applicantId,
         req,
       });
@@ -373,7 +379,7 @@ export function createEarlyRegistrationLifecycleController(
         `Cannot withdraw application with status "${applicant.status}"`,
       );
 
-      const updated = await prisma.applicant.update({
+      const updated = await prisma.enrollmentApplication.update({
         where: { id: applicantId },
         data: { status: "WITHDRAWN" },
       });
@@ -382,7 +388,7 @@ export function createEarlyRegistrationLifecycleController(
         userId: req.user?.userId || null,
         actionType: "APPLICATION_WITHDRAWN",
         description: `Application #${applicantId} withdrawn`,
-        subjectType: "Applicant",
+        subjectType: "EnrollmentApplication",
         recordId: applicantId,
         req,
       });
@@ -414,7 +420,7 @@ export function createEarlyRegistrationLifecycleController(
         );
       }
 
-      const updated = await prisma.applicant.update({
+      const updated = await prisma.enrollmentApplication.update({
         where: { id: applicantId },
         data: { status: "REJECTED", rejectionReason: rejectionReason || null },
       });
@@ -422,15 +428,15 @@ export function createEarlyRegistrationLifecycleController(
       await auditLog({
         userId: req.user!.userId,
         actionType: "APPLICATION_REJECTED",
-        description: `Rejected application #${applicantId} for ${applicant.firstName} ${applicant.lastName}. Reason: ${rejectionReason || "N/A"}`,
-        subjectType: "Applicant",
+        description: `Rejected application #${applicantId} for ${applicant.learner.firstName} ${applicant.learner.lastName}. Reason: ${rejectionReason || "N/A"}`,
+        subjectType: "EnrollmentApplication",
         recordId: applicantId,
         req,
       });
 
       await queueEmail(
         applicantId,
-        applicant.emailAddress,
+        applicant.earlyRegistration?.email ?? null,
         `Application Update - ${applicant.trackingNumber}`,
         "APPLICATION_REJECTED",
       );

@@ -28,7 +28,12 @@ const MAX_STEP_KEY = "enrollpro_earlyreg_max_step";
 const EDITING_KEY = "enrollpro_earlyreg_editing";
 
 interface EarlyRegFormProps {
-  onSuccess?: (data: { id: number; learnerName: string }) => void;
+  onSuccess?: (data: {
+    id: number;
+    trackingNumber: string;
+    learnerName: string;
+    applicantType: string;
+  }) => void;
 }
 
 const collectErrorMessages = (errorValue: unknown): string[] => {
@@ -281,6 +286,7 @@ export default function EarlyRegistrationForm({
 
       onSuccess?.({
         id: response.data.id,
+        trackingNumber: response.data.trackingNumber,
         learnerName: response.data.learnerName,
       });
 

@@ -1,5 +1,5 @@
 import { useFormContext } from 'react-hook-form';
-import type { EarlyRegistrationFormData } from '../types';
+import type { EnrollmentFormData } from '../types';
 import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/shared/ui/radio-group';
@@ -20,7 +20,7 @@ export default function Step4PreviousSchool() {
 		watch,
 		setValue,
 		formState: { errors },
-	} = useFormContext<EarlyRegistrationFormData>();
+	} = useFormContext<EnrollmentFormData>();
 
 	// Generate last 10 school years, excluding the current/upcoming one
 	const currentYear = getManilaNow().getFullYear();

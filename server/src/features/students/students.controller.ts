@@ -6,13 +6,11 @@ function parsePositiveInt(value: unknown, fallback: number): number {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function toLegacyStatus(status: string | null, statusV2: string | null): string {
-  if (statusV2 === "LINKED" || status === "LINKED") return "ENROLLED";
-  if (statusV2) return statusV2;
-  return status || "SUBMITTED";
-}
-
-function buildFullName(lastName: string, firstName: string, middleName?: string | null) {
+function buildFullName(
+  lastName: string,
+  firstName: string,
+  middleName?: string | null,
+) {
   return `${lastName}, ${firstName}${middleName ? ` ${middleName}` : ""}`;
 }
 
@@ -21,41 +19,47 @@ export async function getStudents(req: Request, res: Response): Promise<void> {
   const limit = parsePositiveInt(req.query.limit, 15);
   const skip = (page - 1) * limit;
 
-  const schoolYearId = Number.parseInt(String(req.query.schoolYearId ?? ""), 10);
+  const schoolYearId = Number.parseInt(
+    String(req.query.schoolYearId ?? ""),
+    10,
+  );
   if (!Number.isInteger(schoolYearId) || schoolYearId <= 0) {
     res.status(400).json({ message: "schoolYearId is required" });
     return;
   }
 
   const search = String(req.query.search ?? "").trim();
-  const gradeLevelId = Number.parseInt(String(req.query.gradeLevelId ?? ""), 10);
-  const statusFilter = String(req.query.status ?? "").trim().toUpperCase();
+  const gradeLevelId = Number.parseInt(
+    String(req.query.gradeLevelId ?? ""),
+    10,
+  );
+  const statusFilter = String(req.query.status ?? "")
+    .trim()
+    .toUpperCase();
 
   const where: Record<string, unknown> = { schoolYearId };
 
   if (Number.isInteger(gradeLevelId) && gradeLevelId > 0) {
-    where.gradeLevelIdV2 = gradeLevelId;
+    where.gradeLevelId = gradeLevelId;
   }
 
   if (statusFilter && statusFilter !== "ALL") {
-    if (statusFilter === "ENROLLED") {
-      where.OR = [{ status: "LINKED" }, { statusV2: "LINKED" }];
-    } else {
-      where.OR = [{ status: statusFilter }, { statusV2: statusFilter }];
-    }
+    where.status = statusFilter;
   }
 
   if (search) {
     const searchFilter = {
       OR: [
-        { registrant: { lrn: { contains: search, mode: "insensitive" as const } } },
         {
-          registrant: {
+          learner: { lrn: { contains: search, mode: "insensitive" as const } },
+        },
+        {
+          learner: {
             firstName: { contains: search, mode: "insensitive" as const },
           },
         },
         {
-          registrant: {
+          learner: {
             lastName: { contains: search, mode: "insensitive" as const },
           },
         },
@@ -68,12 +72,12 @@ export async function getStudents(req: Request, res: Response): Promise<void> {
   }
 
   const [total, rows] = await Promise.all([
-    prisma.earlyRegistration.count({ where }),
-    prisma.earlyRegistration.findMany({
+    prisma.earlyRegistrationApplication.count({ where }),
+    prisma.earlyRegistrationApplication.findMany({
       where,
       include: {
-        registrant: true,
-        gradeLevelV2: true,
+        learner: true,
+        gradeLevel: true,
       },
       orderBy: { submittedAt: "desc" },
       skip,
@@ -83,28 +87,26 @@ export async function getStudents(req: Request, res: Response): Promise<void> {
 
   const students = rows.map((row) => ({
     id: row.id,
-    lrn: row.registrant.lrn || "",
+    lrn: row.learner.lrn || "",
     fullName: buildFullName(
-      row.registrant.lastName,
-      row.registrant.firstName,
-      row.registrant.middleName,
+      row.learner.lastName,
+      row.learner.firstName,
+      row.learner.middleName,
     ),
-    firstName: row.registrant.firstName,
-    lastName: row.registrant.lastName,
-    middleName: row.registrant.middleName,
-    suffix: row.registrant.extensionName,
-    sex: row.registrant.sex,
-    birthDate: row.registrant.birthdate,
-    address: `${row.registrant.barangay}, ${row.registrant.cityMunicipality}, ${row.registrant.province}`,
+    firstName: row.learner.firstName,
+    lastName: row.learner.lastName,
+    middleName: row.learner.middleName,
+    suffix: row.learner.extensionName,
+    sex: row.learner.sex,
+    birthDate: row.learner.birthdate,
+    address: "N/A",
     parentGuardianName: "N/A",
     parentGuardianContact: row.contactNumber,
     emailAddress: row.email || "",
-    trackingNumber: `ER-${row.schoolYearId}-${String(row.id).padStart(6, "0")}`,
-    status: toLegacyStatus(row.status, row.statusV2),
-    gradeLevel:
-      row.gradeLevelV2?.name ||
-      `Grade ${String(row.gradeLevel).replace(/^GRADE[_\s-]*/i, "")}`,
-    gradeLevelId: row.gradeLevelIdV2 || 0,
+    trackingNumber: row.trackingNumber,
+    status: row.status,
+    gradeLevel: row.gradeLevel?.name || "",
+    gradeLevelId: row.gradeLevelId,
     section: null,
     sectionId: null,
     createdAt: row.createdAt,
@@ -122,18 +124,22 @@ export async function getStudents(req: Request, res: Response): Promise<void> {
   });
 }
 
-export async function getStudentById(req: Request, res: Response): Promise<void> {
+export async function getStudentById(
+  req: Request,
+  res: Response,
+): Promise<void> {
   const id = parsePositiveInt(req.params.id, 0);
   if (!id) {
     res.status(400).json({ message: "Invalid student id" });
     return;
   }
 
-  const row = await prisma.earlyRegistration.findUnique({
+  const row = await prisma.earlyRegistrationApplication.findUnique({
     where: { id },
     include: {
-      registrant: { include: { guardians: true } },
-      gradeLevelV2: true,
+      learner: true,
+      guardians: true,
+      gradeLevel: true,
       schoolYear: true,
     },
   });
@@ -143,7 +149,7 @@ export async function getStudentById(req: Request, res: Response): Promise<void>
     return;
   }
 
-  const guardians = row.registrant.guardians;
+  const guardians = row.guardians;
   const mother = guardians.find((g) => g.relationship === "MOTHER");
   const father = guardians.find((g) => g.relationship === "FATHER");
   const guardian = guardians.find((g) => g.relationship === "GUARDIAN");
@@ -152,38 +158,33 @@ export async function getStudentById(req: Request, res: Response): Promise<void>
     student: {
       id: row.id,
       studentPhoto: null,
-      lrn: row.registrant.lrn,
-      lastName: row.registrant.lastName,
-      firstName: row.registrant.firstName,
-      middleName: row.registrant.middleName,
-      suffix: row.registrant.extensionName,
-      birthDate: row.registrant.birthdate,
-      sex: row.registrant.sex,
-      placeOfBirth: null,
-      religion: row.registrant.religion,
-      motherTongue: null,
-      currentAddress: {
-        houseNo: row.registrant.houseNoStreet,
-        street: row.registrant.sitio,
-        barangay: row.registrant.barangay,
-        cityMunicipality: row.registrant.cityMunicipality,
-        province: row.registrant.province,
-      },
+      lrn: row.learner.lrn,
+      lastName: row.learner.lastName,
+      firstName: row.learner.firstName,
+      middleName: row.learner.middleName,
+      suffix: row.learner.extensionName,
+      birthDate: row.learner.birthdate,
+      sex: row.learner.sex,
+      placeOfBirth: row.learner.placeOfBirth,
+      religion: row.learner.religion,
+      motherTongue: row.learner.motherTongue,
+      currentAddress: null,
       permanentAddress: null,
       motherName: mother || null,
       fatherName: father || null,
       guardianInfo: guardian || null,
       emailAddress: row.email,
-      trackingNumber: `ER-${row.schoolYearId}-${String(row.id).padStart(6, "0")}`,
-      status: toLegacyStatus(row.status, row.statusV2),
+      trackingNumber: row.trackingNumber,
+      status: row.status,
       rejectionReason: null,
       gradeLevel: {
-        id: row.gradeLevelV2?.id || 0,
-        name:
-          row.gradeLevelV2?.name ||
-          `Grade ${String(row.gradeLevel).replace(/^GRADE[_\s-]*/i, "")}`,
+        id: row.gradeLevel?.id || 0,
+        name: row.gradeLevel?.name || "",
       },
-      schoolYear: { id: row.schoolYear.id, yearLabel: row.schoolYear.yearLabel },
+      schoolYear: {
+        id: row.schoolYear.id,
+        yearLabel: row.schoolYear.yearLabel,
+      },
       enrollment: null,
       healthRecords: [],
       assessments: [],
@@ -200,7 +201,10 @@ function notAvailable(res: Response, action: string): void {
   });
 }
 
-export async function updateStudent(_req: Request, res: Response): Promise<void> {
+export async function updateStudent(
+  _req: Request,
+  res: Response,
+): Promise<void> {
   notAvailable(res, "Student profile update");
 }
 

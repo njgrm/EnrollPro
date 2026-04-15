@@ -210,7 +210,7 @@ export default function AddressGuardianStep() {
                     setValue("mother.middleName", "");
                   }
                 }}
-                className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary"
               />
               <Label
                 htmlFor="hasNoMother"
@@ -334,7 +334,7 @@ export default function AddressGuardianStep() {
                     setValue("father.middleName", "");
                   }
                 }}
-                className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                className="w-4 h-4 rounded border-primary text-primary focus:ring-primary accent-primary"
               />
               <Label
                 htmlFor="hasNoFather"

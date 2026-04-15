@@ -66,6 +66,8 @@ export const applicationSubmitSchema = z.object({
     .nullable(),
   psaBirthCertNumber: z.string().optional().nullable(),
 
+  earlyRegistrationId: z.number().int().positive().optional(),
+
   gradeLevel: GradeLevelEnum,
   isScpApplication: z.boolean().default(false),
   scpType: ScpTypeEnum.optional().nullable(),

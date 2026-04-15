@@ -20,7 +20,7 @@ export async function listGradeLevels(
     orderBy: { displayOrder: "asc" },
     include: {
       sections: {
-        include: { _count: { select: { enrollments: true } } },
+        include: { _count: { select: { enrollmentRecords: true } } },
       },
     },
   });
@@ -95,7 +95,9 @@ export async function deleteGradeLevel(
 
   const gl = await prisma.gradeLevel.findUnique({
     where: { id },
-    include: { _count: { select: { sections: true, applicants: true } } },
+    include: {
+      _count: { select: { sections: true, enrollmentApplications: true } },
+    },
   });
 
   if (!gl) {
@@ -103,7 +105,7 @@ export async function deleteGradeLevel(
     return;
   }
 
-  if (gl._count.applicants > 0) {
+  if (gl._count.enrollmentApplications > 0) {
     res.status(400).json({
       message: "Cannot delete a grade level with existing applicants",
     });
