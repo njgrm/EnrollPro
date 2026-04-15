@@ -307,6 +307,10 @@ export default function EarlyRegistrationForm({
 
   const isLastStep = stepper.state.isLast;
 
+  const submitFromReview = () => {
+    void handleSubmit(onSubmit)();
+  };
+
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-0">
       <StepProgressBar
@@ -360,6 +364,7 @@ export default function EarlyRegistrationForm({
                       <LegalConsentStep
                         isSubmitting={isSubmitting}
                         onEdit={goToStep}
+                        onConfirmSubmit={submitFromReview}
                       />
                     ),
                   })}

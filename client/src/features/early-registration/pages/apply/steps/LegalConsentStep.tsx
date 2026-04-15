@@ -1,11 +1,12 @@
+import { useState } from "react";
 import { useFormContext, Controller } from "react-hook-form";
 import type { EarlyRegFormData } from "../types";
 import { Label } from "@/shared/ui/label";
 import { Switch } from "@/shared/ui/switch";
 import { Button } from "@/shared/ui/button";
+import { ConfirmationModal } from "@/shared/ui/confirmation-modal";
 import {
   ShieldCheck,
-  Loader2,
   User,
   Home,
   Users,
@@ -19,6 +20,7 @@ import { formatScpType } from "@/shared/lib/utils";
 interface LegalConsentStepProps {
   isSubmitting: boolean;
   onEdit: (stepId: number) => void;
+  onConfirmSubmit: () => void;
 }
 
 const SummaryCard = ({
@@ -85,12 +87,14 @@ const DataItem = ({
 export default function LegalConsentStep({
   isSubmitting,
   onEdit,
+  onConfirmSubmit,
 }: LegalConsentStepProps) {
   const {
     control,
     watch,
     formState: { errors },
   } = useFormContext<EarlyRegFormData>();
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
 
   const data = watch();
 
@@ -307,17 +311,11 @@ export default function LegalConsentStep({
 
         <div className="flex flex-col items-center gap-4">
           <Button
-            type="submit"
+            type="button"
             className="w-full h-14 text-lg font-bold transition-all bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
-            disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Submitting Registration...
-              </>
-            ) : (
-              "Review Complete, Submit Registration"
-            )}
+            disabled={isSubmitting}
+            onClick={() => setIsConfirmDialogOpen(true)}>
+            Submit Registration
           </Button>
           <p className="text-xs text-muted-foreground flex items-center gap-1.5 font-medium">
             <Info className="w-3.5 h-3.5" />
@@ -325,6 +323,21 @@ export default function LegalConsentStep({
           </p>
         </div>
       </div>
+
+      <ConfirmationModal
+        open={isConfirmDialogOpen}
+        onOpenChange={(open) => {
+          if (!isSubmitting) {
+            setIsConfirmDialogOpen(open);
+          }
+        }}
+        title="Confirm Registration Submission"
+        description="You are about to submit this registration form. Please confirm that all details are complete and correct."
+        onConfirm={onConfirmSubmit}
+        confirmText="Yes, Submit Registration"
+        loading={isSubmitting}
+        variant="primary"
+      />
     </div>
   );
 }
