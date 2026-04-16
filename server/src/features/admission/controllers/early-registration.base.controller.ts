@@ -59,14 +59,12 @@ export function createEarlyRegistrationBaseController(
       const applicantId = parseInt(String(req.params.id));
       const { data: applicant } = await findApplicantOrThrow(applicantId);
 
-      let documentRequirements:
-        | Array<{
-            docId: string;
-            policy: "REQUIRED" | "OPTIONAL" | "HIDDEN";
-            phase?: "EARLY_REGISTRATION" | "ENROLLMENT" | null;
-            notes?: string | null;
-          }>
-        | null = null;
+      let documentRequirements: Array<{
+        docId: string;
+        policy: "REQUIRED" | "OPTIONAL" | "HIDDEN";
+        phase?: "EARLY_REGISTRATION" | "ENROLLMENT" | null;
+        notes?: string | null;
+      }> | null = null;
 
       if (applicant.applicantType !== "REGULAR") {
         const scpConfig = await prisma.scpProgramConfig.findUnique({

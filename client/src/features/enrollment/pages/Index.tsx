@@ -146,8 +146,8 @@ export default function Enrollment() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isExportingLis, setIsExportingLis] = useState(false);
-  const [workflowView, setWorkflowView] = useState<EnrollmentSubMenu>(
-    () => resolveWorkflowFromQuery(workflowParam),
+  const [workflowView, setWorkflowView] = useState<EnrollmentSubMenu>(() =>
+    resolveWorkflowFromQuery(workflowParam),
   );
 
   // Rule A & B: Delayed loading
@@ -381,7 +381,6 @@ export default function Enrollment() {
     },
     [sectionSelectionByApplicationId, fetchData],
   );
-
 
   const handleExportLis = async () => {
     if (workflowView !== "OFFICIAL_ROSTER") {
@@ -754,7 +753,11 @@ export default function Enrollment() {
                               {isPendingVerification ? (
                                 "Verify Physical Documents"
                               ) : isSectionAssignment ? (
-                                isSavingSection ? "Assigning..." : "Assign & Enroll"
+                                isSavingSection ? (
+                                  "Assigning..."
+                                ) : (
+                                  "Assign & Enroll"
+                                )
                               ) : (
                                 <>
                                   <Eye className="h-3 w-3 mr-1" /> View

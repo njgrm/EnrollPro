@@ -117,7 +117,9 @@ export default function Step1Personal() {
       setLastLookedUpLrn(normalizedLrn);
       setIsLookingUp(true);
       try {
-        const response = await api.get(`/applications/lookup-lrn/${normalizedLrn}`);
+        const response = await api.get(
+          `/applications/lookup-lrn/${normalizedLrn}`,
+        );
         const data = response.data;
 
         // Avoid applying stale response when user has already changed the input.
@@ -149,13 +151,22 @@ export default function Step1Personal() {
           setValue("disabilityTypes", data.disabilityTypes || []);
 
           if (data.currentAddress) {
-            setValue("currentAddress.houseNo", data.currentAddress.houseNo || "");
-            setValue("currentAddress.barangay", data.currentAddress.barangay || "");
+            setValue(
+              "currentAddress.houseNo",
+              data.currentAddress.houseNo || "",
+            );
+            setValue(
+              "currentAddress.barangay",
+              data.currentAddress.barangay || "",
+            );
             setValue(
               "currentAddress.cityMunicipality",
               data.currentAddress.cityMunicipality || "",
             );
-            setValue("currentAddress.province", data.currentAddress.province || "");
+            setValue(
+              "currentAddress.province",
+              data.currentAddress.province || "",
+            );
           }
 
           if (data.father) {
@@ -176,7 +187,10 @@ export default function Step1Personal() {
             setValue("guardian.firstName", data.guardian.firstName);
             setValue("guardian.lastName", data.guardian.lastName);
             setValue("guardian.middleName", data.guardian.middleName || "");
-            setValue("guardian.contactNumber", data.guardian.contactNumber || "");
+            setValue(
+              "guardian.contactNumber",
+              data.guardian.contactNumber || "",
+            );
           }
 
           setValue("email", data.email || "");
@@ -311,7 +325,9 @@ export default function Step1Personal() {
             <h3
               className={cn(
                 "text-sm font-bold uppercase tracking-wider",
-                hasFilledEarlyRegistrationForm ? "text-primary" : "text-foreground",
+                hasFilledEarlyRegistrationForm
+                  ? "text-primary"
+                  : "text-foreground",
               )}>
               {hasFilledEarlyRegistrationForm
                 ? "Quick Fill via LRN"

@@ -102,80 +102,80 @@ export function EarlyRegistrationCards({
                   setSelectedId(app.id);
                 }
               }}>
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="font-bold text-sm uppercase leading-tight break-words">
-                  {app.lastName}, {app.firstName}
-                </p>
-                <p className="text-xs font-bold text-muted-foreground truncate">
-                  {app.trackingNumber}
-                </p>
-              </div>
-              {isLockedHandoff ? (
-                <Badge
-                  variant="outline"
-                  className="h-auto shrink-0 whitespace-normal border-slate-500 bg-slate-100 px-2 py-0.5 text-[10px] font-bold leading-tight text-slate-700">
-                  <Lock className="mr-1 h-3 w-3" />
-                  Locked: Sent to Enrollment
-                </Badge>
-              ) : (
-                <StatusBadge
-                  status={app.status}
-                  className="text-[10px] px-2 py-0.5 shrink-0"
-                />
-              )}
-            </div>
-
-            <div className="mt-2 flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-xs font-bold">{app.gradeLevel.name}</p>
-                <p className="text-[11px] text-muted-foreground truncate">
-                  {formatScpType(app.applicantType)}
-                </p>
-                {app.isPendingLrnCreation && (
-                  <p className="text-[11px] font-bold text-amber-700">
-                    Pending LRN Creation
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-bold text-sm uppercase leading-tight break-words">
+                    {app.lastName}, {app.firstName}
                   </p>
+                  <p className="text-xs font-bold text-muted-foreground truncate">
+                    {app.trackingNumber}
+                  </p>
+                </div>
+                {isLockedHandoff ? (
+                  <Badge
+                    variant="outline"
+                    className="h-auto shrink-0 whitespace-normal border-slate-500 bg-slate-100 px-2 py-0.5 text-[10px] font-bold leading-tight text-slate-700">
+                    <Lock className="mr-1 h-3 w-3" />
+                    Locked: Sent to Enrollment
+                  </Badge>
+                ) : (
+                  <StatusBadge
+                    status={app.status}
+                    className="text-[10px] px-2 py-0.5 shrink-0"
+                  />
                 )}
               </div>
-              <p className="text-[10px] font-bold shrink-0 text-right">
-                {getNextAction(app.status)}
+
+              <div className="mt-2 flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold">{app.gradeLevel.name}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {formatScpType(app.applicantType)}
+                  </p>
+                  {app.isPendingLrnCreation && (
+                    <p className="text-[11px] font-bold text-amber-700">
+                      Pending LRN Creation
+                    </p>
+                  )}
+                </div>
+                <p className="text-[10px] font-bold shrink-0 text-right">
+                  {getNextAction(app.status)}
+                </p>
+              </div>
+
+              <p className="mt-2 text-[11px] text-muted-foreground font-bold">
+                Submitted{" "}
+                {app.createdAt
+                  ? format(new Date(app.createdAt), "MMMM dd, yyyy")
+                  : "N/A"}
               </p>
+
+              {isLockedHandoff ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 h-9 w-full border-primary/40 text-xs font-bold text-primary hover:bg-primary/10"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleNavigateToEnrollment(app);
+                  }}>
+                  View in Enrollment
+                  <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                </Button>
+              ) : (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="mt-3 h-9 w-full text-xs font-bold bg-primary/10 hover:bg-primary border-2 border-primary/20 hover:text-primary-foreground"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedId(app.id);
+                  }}>
+                  <Eye className="h-3.5 w-3.5 mr-1.5" />
+                  View Applicant
+                </Button>
+              )}
             </div>
-
-            <p className="mt-2 text-[11px] text-muted-foreground font-bold">
-              Submitted{" "}
-              {app.createdAt
-                ? format(new Date(app.createdAt), "MMMM dd, yyyy")
-                : "N/A"}
-            </p>
-
-            {isLockedHandoff ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3 h-9 w-full border-primary/40 text-xs font-bold text-primary hover:bg-primary/10"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleNavigateToEnrollment(app);
-                }}>
-                View in Enrollment
-                <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-              </Button>
-            ) : (
-              <Button
-                variant="secondary"
-                size="sm"
-                className="mt-3 h-9 w-full text-xs font-bold bg-primary/10 hover:bg-primary border-2 border-primary/20 hover:text-primary-foreground"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedId(app.id);
-                }}>
-                <Eye className="h-3.5 w-3.5 mr-1.5" />
-                View Applicant
-              </Button>
-            )}
-          </div>
           );
         })
       )}

@@ -413,7 +413,8 @@ export function createEarlyRegistrationLifecycleController(
         learnerType: fullApplicant.learnerType,
         gradeLevel: fullApplicant.gradeLevel,
         learner: {
-          isLearnerWithDisability: fullApplicant.learner.isLearnerWithDisability,
+          isLearnerWithDisability:
+            fullApplicant.learner.isLearnerWithDisability,
         },
         checklist: fullApplicant.checklist
           ? {

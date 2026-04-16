@@ -101,7 +101,9 @@ const REQUIREMENT_TYPE_TO_CHECKLIST_KEY: Record<string, ChecklistFieldKey> = {
   CERTIFICATE_OF_RECOGNITION: "isCertOfRecognitionPresented",
 };
 
-function buildFallbackRequirements(learnerType: LearnerType): RequirementItem[] {
+function buildFallbackRequirements(
+  learnerType: LearnerType,
+): RequirementItem[] {
   return [
     {
       key: "isPsaBirthCertPresented",
@@ -203,7 +205,9 @@ export function RequirementChecklist({
       setIsLoadingRequirements(true);
 
       try {
-        const response = await api.get(`${endpointBase}/${applicantId}/requirements`);
+        const response = await api.get(
+          `${endpointBase}/${applicantId}/requirements`,
+        );
         const apiRequirements: ApiRequirement[] = Array.isArray(
           response.data?.requirements,
         )
@@ -214,9 +218,7 @@ export function RequirementChecklist({
 
         if (!isCancelled) {
           setRequirements(
-            mapped.length > 0
-              ? mapped
-              : buildFallbackRequirements(learnerType),
+            mapped.length > 0 ? mapped : buildFallbackRequirements(learnerType),
           );
         }
       } catch {
@@ -289,7 +291,9 @@ export function RequirementChecklist({
   };
 
   const mandatoryRequirements = requirements.filter((r) => r.isMandatory);
-  const mandatoryMet = mandatoryRequirements.every((r) => localChecklist[r.key]);
+  const mandatoryMet = mandatoryRequirements.every(
+    (r) => localChecklist[r.key],
+  );
 
   useEffect(() => {
     onMandatoryStatusChange?.(mandatoryMet);
@@ -346,7 +350,9 @@ export function RequirementChecklist({
                 <Checkbox
                   id={req.key}
                   checked={!!localChecklist[req.key]}
-                  onCheckedChange={(checked) => handleToggle(req.key, !!checked)}
+                  onCheckedChange={(checked) =>
+                    handleToggle(req.key, !!checked)
+                  }
                   disabled={isUpdating}
                   className="shrink-0"
                 />

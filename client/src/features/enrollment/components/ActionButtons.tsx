@@ -116,8 +116,8 @@ export function ActionButtons({
             </Button>
             {!isMandatoryDocumentsMet && (
               <p className="text-xs text-center text-amber-700 font-bold">
-                Complete all mandatory physical document checks before marking as
-                verified.
+                Complete all mandatory physical document checks before marking
+                as verified.
               </p>
             )}
           </>

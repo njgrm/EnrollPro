@@ -171,28 +171,28 @@ export function EarlyRegistrationTable({
                     }
                   }}>
                   <TableCell>
-                  <div className="flex flex-col text-left">
-                    <span className="font-bold text-sm uppercase">
-                      {app.lastName}, {app.firstName}
+                    <div className="flex flex-col text-left">
+                      <span className="font-bold text-sm uppercase">
+                        {app.lastName}, {app.firstName}
+                      </span>
+                      <span className="text-xs font-bold">
+                        {app.trackingNumber}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell text-sm font-bold">
+                    {app.isPendingLrnCreation ? "PENDING" : app.lrn || "N/A"}
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-bold text-sm">
+                      {app.gradeLevel.name}
                     </span>
-                    <span className="text-xs font-bold">
-                      {app.trackingNumber}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell className="hidden md:table-cell text-sm font-bold">
-                  {app.isPendingLrnCreation ? "PENDING" : app.lrn || "N/A"}
-                </TableCell>
-                <TableCell>
-                  <span className="font-bold text-sm">
-                    {app.gradeLevel.name}
-                  </span>
-                </TableCell>
-                <TableCell className="hidden lg:table-cell">
-                  <p className="font-bold text-xs leading-tight text-center">
-                    {formatScpType(app.applicantType)}
-                  </p>
-                </TableCell>
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    <p className="font-bold text-xs leading-tight text-center">
+                      {formatScpType(app.applicantType)}
+                    </p>
+                  </TableCell>
                   <TableCell>
                     <div className="flex justify-center">
                       {isLockedHandoff ? (
@@ -210,16 +210,16 @@ export function EarlyRegistrationTable({
                       )}
                     </div>
                   </TableCell>
-                <TableCell className="hidden lg:table-cell">
-                  <p className="text-xs font-bold text-center">
-                    {getNextAction(app.status)}
-                  </p>
-                </TableCell>
-                <TableCell className=" text-sm hidden xl:table-cell font-bold">
-                  {app.createdAt
-                    ? format(new Date(app.createdAt), "MMMM dd, yyyy")
-                    : "N/A"}
-                </TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    <p className="text-xs font-bold text-center">
+                      {getNextAction(app.status)}
+                    </p>
+                  </TableCell>
+                  <TableCell className=" text-sm hidden xl:table-cell font-bold">
+                    {app.createdAt
+                      ? format(new Date(app.createdAt), "MMMM dd, yyyy")
+                      : "N/A"}
+                  </TableCell>
 
                   <TableCell className="text-center">
                     {isLockedHandoff ? (
@@ -231,7 +231,8 @@ export function EarlyRegistrationTable({
                           e.stopPropagation();
                           handleNavigateToEnrollment(app);
                         }}>
-                        View in Enrollment <ArrowRight className="ml-1 h-3 w-3" />
+                        View in Enrollment{" "}
+                        <ArrowRight className="ml-1 h-3 w-3" />
                       </Button>
                     ) : (
                       <Button
