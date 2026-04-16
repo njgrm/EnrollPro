@@ -27,7 +27,12 @@ import {
   ClipboardList,
 } from "lucide-react";
 import api from "@/shared/api/axiosInstance";
-import { cn, formatManilaDate, getManilaNow } from "@/shared/lib/utils";
+import {
+  cn,
+  formatDisplayTime12Hour,
+  formatManilaDate,
+  getManilaNow,
+} from "@/shared/lib/utils";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "motion/react";
 import { useSettingsStore } from "@/store/settings.slice";
@@ -126,10 +131,10 @@ const statusConfig: Record<
     desc: "We’d love to chat! Your interview is now scheduled—check the details below to prepare.",
   },
   PRE_REGISTERED: {
-    label: "Approved",
+    label: "Ready for Enrollment",
     icon: CheckCircle2,
     color: "text-emerald-600 bg-emerald-50 border-emerald-200",
-    desc: "Huge congrats! Your application is approved. You’re officially admitted and can enroll once the registration period opens.",
+    desc: "You are now ready for enrollment. Coordinate with the registrar to complete your official enrollment.",
   },
   TEMPORARILY_ENROLLED: {
     label: "Temporarily Enrolled",
@@ -444,15 +449,7 @@ export default function TrackApplication({
                           {format(new Date(examDate), "MMMM dd, yyyy")}
                         </p>
                         <p className="text-[0.625rem] font-bold text-purple-700/70 uppercase">
-                          {examTime
-                            ? new Date(
-                                `2000-01-01T${examTime}`,
-                              ).toLocaleTimeString("en-US", {
-                                hour: "numeric",
-                                minute: "2-digit",
-                                hour12: true,
-                              })
-                            : format(new Date(examDate), "hh:mm a")}
+                          {formatDisplayTime12Hour(examTime) || "TBA"}
                         </p>
                       </div>
                       <div className="p-5 bg-purple-50 border border-purple-200 rounded-2xl space-y-1">
@@ -591,7 +588,8 @@ export default function TrackApplication({
                       style={{ backgroundColor: "#061E29", color: "#ffffff" }}
                       className="flex items-center justify-center px-6 py-3 rounded-xl text-xs font-black tracking-widest uppercase text-center">
                       <p className="-mt-3">
-                        Official BASIC EDUCATION EARLY REGISTRATION FORM Confirmation Slip
+                        Official BASIC EDUCATION EARLY REGISTRATION FORM
+                        Confirmation Slip
                       </p>
                     </div>
                   </div>

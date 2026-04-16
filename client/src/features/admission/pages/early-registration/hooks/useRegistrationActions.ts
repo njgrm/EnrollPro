@@ -29,15 +29,17 @@ export function useRegistrationActions(onSuccess: () => void) {
     }
   };
 
-  const handleApprove = async (selectedApp: Application | ApplicantDetail | null) => {
+  const handleApprove = async (
+    selectedApp: Application | ApplicantDetail | null,
+  ) => {
     if (!selectedApp || !selectedSectionId) return;
     try {
       await api.patch(`/early-registrations/${selectedApp.id}/approve`, {
         sectionId: parseInt(selectedSectionId),
       });
       sileo.success({
-        title: "Pre-registered",
-        description: "Student moved to Enrollment phase.",
+        title: "Ready for Enrollment",
+        description: "Learner moved to Ready for Enrollment status.",
       });
       setActionType(null);
       onSuccess();
@@ -46,7 +48,9 @@ export function useRegistrationActions(onSuccess: () => void) {
     }
   };
 
-  const handleMarkEligible = async (selectedApp: Application | ApplicantDetail | null) => {
+  const handleMarkEligible = async (
+    selectedApp: Application | ApplicantDetail | null,
+  ) => {
     if (!selectedApp) return;
     try {
       await api.patch(`/early-registrations/${selectedApp.id}/mark-eligible`);
@@ -61,7 +65,9 @@ export function useRegistrationActions(onSuccess: () => void) {
     }
   };
 
-  const handleReject = async (selectedApp: Application | ApplicantDetail | null) => {
+  const handleReject = async (
+    selectedApp: Application | ApplicantDetail | null,
+  ) => {
     if (!selectedApp) return;
     try {
       await api.patch(`/early-registrations/${selectedApp.id}/reject`, {
@@ -83,28 +89,15 @@ export function useRegistrationActions(onSuccess: () => void) {
     stepOrder: number,
     kind: string,
     score: number,
-    cutoffScore: number | null,
+    _cutoffScore: number | null,
   ) => {
     if (!selectedId) return;
     try {
-      const res = await api.patch(
-        `/early-registrations/${selectedId}/record-step-result`,
-        {
-          stepOrder,
-          kind,
-          score,
-          notes: "Recorded from BASIC EDUCATION EARLY REGISTRATION FORM portal",
-        },
-      );
-
-      // Only auto-pass/fail if all required steps are done (status moved to ASSESSMENT_TAKEN)
-      if (res.data?.status === "ASSESSMENT_TAKEN" && cutoffScore != null) {
-        if (score >= cutoffScore) {
-          await api.patch(`/early-registrations/${selectedId}/pass`);
-        } else {
-          await api.patch(`/early-registrations/${selectedId}/fail`);
-        }
-      }
+      await api.patch(`/early-registrations/${selectedId}/record-step-result`, {
+        stepOrder,
+        kind,
+        score,
+      });
 
       sileo.success({
         title: "Result Recorded",

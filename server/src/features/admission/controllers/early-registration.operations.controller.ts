@@ -1,6 +1,9 @@
 import type { Request, Response, NextFunction } from "express";
 import { AppError } from "../../../lib/AppError.js";
-import type { ApplicationStatus, Prisma } from "../../../generated/prisma/index.js";
+import type {
+  ApplicationStatus,
+  Prisma,
+} from "../../../generated/prisma/index.js";
 import type { AdmissionControllerDeps } from "../services/admission-controller.deps.js";
 import { createAdmissionControllerDeps } from "../services/admission-controller.deps.js";
 import {
@@ -22,7 +25,8 @@ export function createEarlyRegistrationOperationsController(
   async function pass(req: Request, res: Response, next: NextFunction) {
     try {
       const applicantId = parseInt(String(req.params.id));
-      const { data: applicant, type: appType } = await findApplicantOrThrow(applicantId);
+      const { data: applicant, type: appType } =
+        await findApplicantOrThrow(applicantId);
 
       assertTransition(
         applicant,
@@ -36,7 +40,10 @@ export function createEarlyRegistrationOperationsController(
         userId: req.user!.userId,
         actionType: "APPLICATION_PASSED",
         description: `Marked ${applicant.learner.firstName} ${applicant.learner.lastName} (#${applicantId}) as PASSED - ready for section assignment`,
-        subjectType: appType === "ENROLLMENT" ? "EnrollmentApplication" : "EarlyRegistrationApplication",
+        subjectType:
+          appType === "ENROLLMENT"
+            ? "EnrollmentApplication"
+            : "EarlyRegistrationApplication",
         recordId: applicantId,
         req,
       });
@@ -57,9 +64,10 @@ export function createEarlyRegistrationOperationsController(
   // â"€â"€ Mark as not qualified â"€â"€
   async function fail(req: Request, res: Response, next: NextFunction) {
     try {
-      const { examNotes } = req.body;
+      const { examNotes } = (req.body ?? {}) as { examNotes?: string };
       const applicantId = parseInt(String(req.params.id));
-      const { data: applicant, type: appType } = await findApplicantOrThrow(applicantId);
+      const { data: applicant, type: appType } =
+        await findApplicantOrThrow(applicantId);
 
       assertTransition(
         applicant,
@@ -70,7 +78,9 @@ export function createEarlyRegistrationOperationsController(
       // Store failure notes on the latest assessment and update status
       const updated = await prisma.$transaction(async (tx) => {
         if (examNotes) {
-          const earlyRegId = applicant.earlyRegistrationId || (appType === "EARLY_REGISTRATION" ? applicant.id : null);
+          const earlyRegId =
+            applicant.earlyRegistrationId ||
+            (appType === "EARLY_REGISTRATION" ? applicant.id : null);
           if (earlyRegId) {
             const latestAssessment =
               await tx.earlyRegistrationAssessment.findFirst({
@@ -86,14 +96,34 @@ export function createEarlyRegistrationOperationsController(
           }
         }
 
-        return updateApplicationStatus(applicantId, "NOT_QUALIFIED");
+        const failedUpdate = await updateApplicationStatus(
+          applicantId,
+          "NOT_QUALIFIED",
+          { applicantType: "REGULAR" },
+          tx,
+        );
+
+        if (appType === "ENROLLMENT" && applicant.earlyRegistrationId) {
+          await tx.earlyRegistrationApplication.update({
+            where: { id: applicant.earlyRegistrationId },
+            data: {
+              status: "NOT_QUALIFIED",
+              applicantType: "REGULAR",
+            },
+          });
+        }
+
+        return failedUpdate;
       });
 
       await auditLog({
         userId: req.user!.userId,
         actionType: "APPLICATION_FAILED",
-        description: `Marked ${applicant.learner.firstName} ${applicant.learner.lastName} (#${applicantId}) as NOT_QUALIFIED. Notes: ${examNotes || "N/A"}`,
-        subjectType: appType === "ENROLLMENT" ? "EnrollmentApplication" : "EarlyRegistrationApplication",
+        description: `Marked ${applicant.learner.firstName} ${applicant.learner.lastName} (#${applicantId}) as NOT_QUALIFIED and auto-classified to REGULAR. Notes: ${examNotes || "N/A"}`,
+        subjectType:
+          appType === "ENROLLMENT"
+            ? "EnrollmentApplication"
+            : "EarlyRegistrationApplication",
         recordId: applicantId,
         req,
       });
@@ -119,7 +149,13 @@ export function createEarlyRegistrationOperationsController(
 
       const timeline = await prisma.auditLog.findMany({
         where: {
-          subjectType: { in: ["Applicant", "EnrollmentApplication", "EarlyRegistrationApplication"] },
+          subjectType: {
+            in: [
+              "Applicant",
+              "EnrollmentApplication",
+              "EarlyRegistrationApplication",
+            ],
+          },
           recordId: applicantId,
         },
         include: {
@@ -141,7 +177,8 @@ export function createEarlyRegistrationOperationsController(
     try {
       const { sectionId } = req.body;
       const applicantId = parseInt(String(req.params.id));
-      const { data: applicant, type: appType } = await findApplicantOrThrow(applicantId);
+      const { data: applicant, type: appType } =
+        await findApplicantOrThrow(applicantId);
 
       // Only allow offering regular section to NOT_QUALIFIED SCP applicants
       if (applicant.status !== "NOT_QUALIFIED") {
@@ -180,47 +217,47 @@ export function createEarlyRegistrationOperationsController(
         // Update applicant to REGULAR type and create enrollment
         // This promotes an EarlyReg to an EnrollmentApp if it wasn't one already
         let enrollmentAppId = applicantId;
-        
+
         if (appType === "EARLY_REGISTRATION") {
-           const newApp = await tx.enrollmentApplication.create({
-             data: {
-               learnerId: applicant.learnerId,
-               earlyRegistrationId: applicant.id,
-               schoolYearId: applicant.schoolYearId,
-               gradeLevelId: applicant.gradeLevelId,
-               applicantType: "REGULAR",
-               learnerType: applicant.learnerType,
-               status: "PRE_REGISTERED",
-               admissionChannel: applicant.channel,
-               isPrivacyConsentGiven: applicant.isPrivacyConsentGiven,
-               encodedById: req.user!.userId,
-             }
-           });
-           enrollmentAppId = newApp.id;
+          const newApp = await tx.enrollmentApplication.create({
+            data: {
+              learnerId: applicant.learnerId,
+              earlyRegistrationId: applicant.id,
+              schoolYearId: applicant.schoolYearId,
+              gradeLevelId: applicant.gradeLevelId,
+              applicantType: "REGULAR",
+              learnerType: applicant.learnerType,
+              status: "PRE_REGISTERED",
+              admissionChannel: applicant.channel,
+              isPrivacyConsentGiven: applicant.isPrivacyConsentGiven,
+              encodedById: req.user!.userId,
+            },
+          });
+          enrollmentAppId = newApp.id;
 
-           await tx.earlyRegistrationApplication.update({
-             where: { id: applicant.id },
-             data: { status: "PRE_REGISTERED" }
-           });
+          await tx.earlyRegistrationApplication.update({
+            where: { id: applicant.id },
+            data: { status: "PRE_REGISTERED" },
+          });
 
-           // Link existing checklist to the new enrollment application
-           const existingChecklist = await tx.applicationChecklist.findUnique({
-             where: { earlyRegistrationId: applicant.id },
-           });
+          // Link existing checklist to the new enrollment application
+          const existingChecklist = await tx.applicationChecklist.findUnique({
+            where: { earlyRegistrationId: applicant.id },
+          });
 
-           if (existingChecklist) {
-             await tx.applicationChecklist.update({
-               where: { id: existingChecklist.id },
-               data: { enrollmentId: newApp.id },
-             });
-           } else {
-             await tx.applicationChecklist.create({
-               data: {
-                 enrollmentId: newApp.id,
-                 earlyRegistrationId: applicant.id,
-               },
-             });
-           }
+          if (existingChecklist) {
+            await tx.applicationChecklist.update({
+              where: { id: existingChecklist.id },
+              data: { enrollmentId: newApp.id },
+            });
+          } else {
+            await tx.applicationChecklist.create({
+              data: {
+                enrollmentId: newApp.id,
+                earlyRegistrationId: applicant.id,
+              },
+            });
+          }
         } else {
           await tx.enrollmentApplication.update({
             where: { id: applicantId },
@@ -247,7 +284,10 @@ export function createEarlyRegistrationOperationsController(
         userId: req.user!.userId,
         actionType: "OFFER_REGULAR_SECTION",
         description: `Converted ${applicant.learner.firstName} ${applicant.learner.lastName} (#${applicantId}) from ${originalType} to REGULAR and assigned to section ${sectionId}`,
-        subjectType: appType === "ENROLLMENT" ? "EnrollmentApplication" : "EarlyRegistrationApplication",
+        subjectType:
+          appType === "ENROLLMENT"
+            ? "EnrollmentApplication"
+            : "EarlyRegistrationApplication",
         recordId: applicantId,
         req,
       });
@@ -277,9 +317,7 @@ export function createEarlyRegistrationOperationsController(
       }
 
       // Build filters (can be shared as both use Learner relation)
-      const buildWhere = (
-        type: "ENROLLMENT" | "EARLY_REGISTRATION",
-      ): any => {
+      const buildWhere = (type: "ENROLLMENT" | "EARLY_REGISTRATION"): any => {
         const where: any = {};
 
         if (search) {
@@ -443,9 +481,8 @@ export function createEarlyRegistrationOperationsController(
   async function update(req: Request, res: Response, next: NextFunction) {
     try {
       const applicantId = parseInt(String(req.params.id));
-      const { data: applicant, type: appType } = await findApplicantOrThrow(
-        applicantId,
-      );
+      const { data: applicant, type: appType } =
+        await findApplicantOrThrow(applicantId);
 
       // Whitelist editable fields to prevent status/tracking/schoolYear tampering
       const {
@@ -561,14 +598,48 @@ export function createEarlyRegistrationOperationsController(
     try {
       const { stepOrder, kind, scheduledDate, scheduledTime, venue } = req.body;
       const applicantId = parseInt(String(req.params.id));
-      const { data: applicant, type: appType } = await findApplicantOrThrow(
-        applicantId,
-      );
+      const { data: applicant, type: appType } =
+        await findApplicantOrThrow(applicantId);
 
       const earlyRegId =
         applicant.earlyRegistrationId ||
         (appType === "EARLY_REGISTRATION" ? applicant.id : null);
       if (!earlyRegId) throw new AppError(400, "No early registration linked");
+
+      const scpConfig = await prisma.scpProgramConfig.findUnique({
+        where: {
+          uq_scp_program_configs_type: {
+            schoolYearId: applicant.schoolYearId,
+            scpType: applicant.applicantType as any,
+          },
+        },
+        include: { steps: { orderBy: { stepOrder: "asc" } } },
+      });
+
+      const requiredNonInterviewSteps = (scpConfig?.steps ?? []).filter(
+        (step) => step.isRequired && step.kind !== "INTERVIEW",
+      );
+
+      if (requiredNonInterviewSteps.length > 0) {
+        const existingAssessments =
+          await prisma.earlyRegistrationAssessment.findMany({
+            where: { applicationId: earlyRegId },
+          });
+
+        const hasFailedRequiredStep = requiredNonInterviewSteps.some((step) =>
+          existingAssessments.some(
+            (assessment) =>
+              assessment.type === step.kind && assessment.result === "FAILED",
+          ),
+        );
+
+        if (hasFailedRequiredStep) {
+          throw new AppError(
+            422,
+            "Cannot schedule additional assessments or interviews after a failed cut-off result. Mark the learner as FAILED.",
+          );
+        }
+      }
 
       // Create a new assessment record for the reschedule
       const updated = await prisma.$transaction(async (tx) => {

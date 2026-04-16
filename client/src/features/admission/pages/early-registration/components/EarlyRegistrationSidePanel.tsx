@@ -194,9 +194,9 @@ export function EarlyRegistrationSidePanel({
                     `/early-registrations/${selectedId}/mark-interview-passed`,
                   );
                   sileo.success({
-                    title: "Interview Passed",
+                    title: "Ready for Enrollment",
                     description:
-                      "Applicant marked as eligible for enrollment (Pre-registered).",
+                      "Learner moved to Ready for Enrollment status.",
                   });
                   fetchData();
                 } catch (e) {

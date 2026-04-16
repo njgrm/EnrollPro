@@ -41,6 +41,7 @@ export const VALID_TRANSITIONS: Record<string, ApplicationStatus[]> = {
   ASSESSMENT_TAKEN: [
     "PASSED",
     "NOT_QUALIFIED",
+    "ASSESSMENT_TAKEN",
     "ASSESSMENT_SCHEDULED",
     "WITHDRAWN",
   ],
@@ -240,11 +241,14 @@ export function createEarlyRegistrationSharedService(
     const permanentAddr = addresses.find((a) => a.addressType === "PERMANENT");
 
     const primaryContact =
-      application.primaryContact ?? application.earlyRegistration?.primaryContact ?? null;
+      application.primaryContact ??
+      application.earlyRegistration?.primaryContact ??
+      null;
 
     const motherEmail = mother?.email ?? application.motherName?.email ?? null;
     const fatherEmail = father?.email ?? application.fatherName?.email ?? null;
-    const guardianEmail = guardian?.email ?? application.guardianInfo?.email ?? null;
+    const guardianEmail =
+      guardian?.email ?? application.guardianInfo?.email ?? null;
 
     const primaryContactEmail =
       primaryContact === "MOTHER"
@@ -260,14 +264,19 @@ export function createEarlyRegistrationSharedService(
       firstName: learner.firstName || application.firstName,
       lastName: learner.lastName || application.lastName,
       middleName: learner.middleName || application.middleName,
-      suffix: learner.extensionName || application.extensionName || application.suffix,
+      suffix:
+        learner.extensionName ||
+        application.extensionName ||
+        application.suffix,
       lrn: learner.lrn || application.lrn,
-      birthDate: learner.birthdate || application.birthdate || application.birthDate,
+      birthDate:
+        learner.birthdate || application.birthdate || application.birthDate,
       sex: learner.sex || application.sex,
       placeOfBirth: learner.placeOfBirth || application.placeOfBirth,
       religion: learner.religion || application.religion,
       motherTongue: learner.motherTongue || application.motherTongue,
-      isIpCommunity: learner.isIpCommunity ?? application.isIpCommunity ?? false,
+      isIpCommunity:
+        learner.isIpCommunity ?? application.isIpCommunity ?? false,
       ipGroupName: learner.ipGroupName || application.ipGroupName,
       is4PsBeneficiary:
         learner.is4PsBeneficiary ?? application.is4PsBeneficiary ?? false,
@@ -276,7 +285,8 @@ export function createEarlyRegistrationSharedService(
         learner.isLearnerWithDisability ??
         application.isLearnerWithDisability ??
         false,
-      disabilityTypes: learner.disabilityTypes || application.disabilityTypes || [],
+      disabilityTypes:
+        learner.disabilityTypes || application.disabilityTypes || [],
 
       // Standardize address format for frontend
       currentAddress: currentAddr
@@ -345,9 +355,12 @@ export function createEarlyRegistrationSharedService(
 
       lastSchoolName: prevSchool?.schoolName || application.lastSchoolName,
       lastSchoolId: prevSchool?.schoolDepedId || application.lastSchoolId,
-      lastGradeCompleted: prevSchool?.gradeCompleted || application.lastGradeCompleted,
-      schoolYearLastAttended: prevSchool?.schoolYearAttended || application.schoolYearLastAttended,
-      lastSchoolAddress: prevSchool?.schoolAddress || application.lastSchoolAddress,
+      lastGradeCompleted:
+        prevSchool?.gradeCompleted || application.lastGradeCompleted,
+      schoolYearLastAttended:
+        prevSchool?.schoolYearAttended || application.schoolYearLastAttended,
+      lastSchoolAddress:
+        prevSchool?.schoolAddress || application.lastSchoolAddress,
       lastSchoolType: prevSchool?.schoolType || application.lastSchoolType,
 
       isScpApplication: application.applicantType !== "REGULAR",

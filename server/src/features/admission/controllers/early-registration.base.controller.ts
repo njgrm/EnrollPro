@@ -390,8 +390,7 @@ export function createEarlyRegistrationBaseController(
     const tempTracking = `${options.trackingPrefix}-${year}-TEMP-${Date.now()}`;
 
     // Build nested address data
-    const addressData: Prisma.ApplicationAddressCreateManyInput[] =
-      [];
+    const addressData: Prisma.ApplicationAddressCreateManyInput[] = [];
     if (body.currentAddress) {
       addressData.push({ addressType: "CURRENT", ...body.currentAddress });
     }
@@ -400,8 +399,7 @@ export function createEarlyRegistrationBaseController(
     }
 
     // Build nested family member data
-    const familyData: Prisma.ApplicationFamilyMemberCreateManyInput[] =
-      [];
+    const familyData: Prisma.ApplicationFamilyMemberCreateManyInput[] = [];
     if (body.mother)
       familyData.push({ relationship: "MOTHER", ...body.mother });
     if (body.father)
@@ -774,7 +772,9 @@ export function createEarlyRegistrationBaseController(
       // Map family members to father/mother/guardian fields
       const father = reg.familyMembers.find((g) => g.relationship === "FATHER");
       const mother = reg.familyMembers.find((g) => g.relationship === "MOTHER");
-      const guardian = reg.familyMembers.find((g) => g.relationship === "GUARDIAN");
+      const guardian = reg.familyMembers.find(
+        (g) => g.relationship === "GUARDIAN",
+      );
 
       res.json({
         earlyRegistrationId: reg.id,

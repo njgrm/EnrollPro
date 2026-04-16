@@ -20,7 +20,7 @@ import type {
   ApplicantDetail,
   AssessmentStep,
 } from "@/features/enrollment/hooks/useApplicationDetail";
-import { formatScpType } from "@/shared/lib/utils";
+import { formatDisplayTime12Hour, formatScpType } from "@/shared/lib/utils";
 import { ASSESSMENT_KIND_LABELS } from "@enrollpro/shared";
 import type { AssessmentKind } from "@enrollpro/shared";
 
@@ -220,7 +220,7 @@ export function ScheduleExamDialog({
               <Input
                 readOnly
                 className="font-bold text-xs sm:text-sm"
-                value={scheduledTime || "—"}
+                value={formatDisplayTime12Hour(scheduledTime) || "—"}
               />
             </div>
           </div>
@@ -239,7 +239,7 @@ export function ScheduleExamDialog({
               <Input
                 readOnly
                 className="font-bold text-xs sm:text-sm"
-                value={notes || "—"}
+                value={notes || "-"}
               />
             </div>
           </div>

@@ -296,8 +296,14 @@ export function ApplicationDetailPanel({
         onReject={onReject}
         onScheduleExam={onScheduleExam}
         onRecordResult={onRecordResult}
-        onPass={onPass}
-        onFail={onFail}
+        onPass={async () => {
+          await onPass();
+          await refetch();
+        }}
+        onFail={async () => {
+          await onFail();
+          await refetch();
+        }}
         onOfferRegular={onOfferRegular}
         onTemporarilyEnroll={onTemporarilyEnroll}
         onScheduleInterview={onScheduleInterview}

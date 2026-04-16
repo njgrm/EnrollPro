@@ -231,7 +231,7 @@ export default function Enrollment() {
                       <SelectItem
                         value="PRE_REGISTERED"
                         className="text-sm font-bold">
-                        Pre-registered
+                        Ready for Enrollment
                       </SelectItem>
                       <SelectItem
                         value="ENROLLED"
@@ -581,9 +581,9 @@ export default function Enrollment() {
                       `/applications/${selectedId}/mark-interview-passed`,
                     );
                     sileo.success({
-                      title: "Interview Passed",
+                      title: "Ready for Enrollment",
                       description:
-                        "Applicant marked as eligible for enrollment (Pre-registered).",
+                        "Learner moved to Ready for Enrollment status.",
                     });
                     fetchData();
                   } catch (e) {

@@ -415,22 +415,11 @@ export default function PipelineBatchView({
     const score = Number(raw);
     setSavingId(appId);
     try {
-      const res = await api.patch(
-        `/early-registrations/${appId}/record-step-result`,
-        {
-          stepOrder: 1,
-          score,
-          notes: "Recorded from Registration Pipelines",
-        },
-      );
-
-      if (res.data?.status === "ASSESSMENT_TAKEN" && cutoffScore != null) {
-        if (score >= cutoffScore) {
-          await api.patch(`/early-registrations/${appId}/pass`);
-        } else {
-          await api.patch(`/early-registrations/${appId}/fail`);
-        }
-      }
+      await api.patch(`/early-registrations/${appId}/record-step-result`, {
+        stepOrder: 1,
+        score,
+        notes: "Recorded from Registration Pipelines",
+      });
 
       sileo.success({
         title: "Result Recorded",

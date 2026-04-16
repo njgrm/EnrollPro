@@ -4,7 +4,14 @@ import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group";
 import { DatePicker } from "@/shared/ui/date-picker";
-import { AlertCircle, Camera, X, Loader2, CheckCircle2, Search } from "lucide-react";
+import {
+  AlertCircle,
+  Camera,
+  X,
+  Loader2,
+  CheckCircle2,
+  Search,
+} from "lucide-react";
 import { differenceInYears } from "date-fns";
 import { cn } from "@/shared/lib/utils";
 import {
@@ -66,12 +73,24 @@ export default function Step1Personal() {
             setValue("ipGroupName", data.ipGroupName || "");
             setValue("isLearnerWithDisability", data.isLearnerWithDisability);
             setValue("disabilityTypes", data.disabilityTypes || []);
-            
+
             if (data.currentAddress) {
-              setValue("currentAddress.houseNo", data.currentAddress.houseNo || "");
-              setValue("currentAddress.barangay", data.currentAddress.barangay || "");
-              setValue("currentAddress.cityMunicipality", data.currentAddress.cityMunicipality || "");
-              setValue("currentAddress.province", data.currentAddress.province || "");
+              setValue(
+                "currentAddress.houseNo",
+                data.currentAddress.houseNo || "",
+              );
+              setValue(
+                "currentAddress.barangay",
+                data.currentAddress.barangay || "",
+              );
+              setValue(
+                "currentAddress.cityMunicipality",
+                data.currentAddress.cityMunicipality || "",
+              );
+              setValue(
+                "currentAddress.province",
+                data.currentAddress.province || "",
+              );
             }
 
             if (data.father) {
@@ -92,12 +111,15 @@ export default function Step1Personal() {
               setValue("guardian.firstName", data.guardian.firstName);
               setValue("guardian.lastName", data.guardian.lastName);
               setValue("guardian.middleName", data.guardian.middleName || "");
-              setValue("guardian.contactNumber", data.guardian.contactNumber || "");
+              setValue(
+                "guardian.contactNumber",
+                data.guardian.contactNumber || "",
+              );
             }
 
             setValue("email", data.email || "");
             setValue("learnerType", data.learnerType);
-            
+
             if (data.applicantType && data.applicantType !== "REGULAR") {
               setValue("isScpApplication", true);
               setValue("scpType", data.applicantType);
@@ -176,7 +198,8 @@ export default function Step1Personal() {
               Quick Fill via LRN
             </h3>
             <p className="text-xs text-muted-foreground font-bold">
-              Type your 12-digit LRN to automatically fetch your Early Registration information.
+              Type your 12-digit LRN to automatically fetch your Early
+              Registration information.
             </p>
           </div>
         </div>
@@ -190,16 +213,25 @@ export default function Step1Personal() {
             maxLength={12}
             className={cn(
               "h-14 text-lg tracking-[0.25em] font-black text-center border-2",
-              errors.lrn ? "border-destructive" : "border-primary/30 focus:border-primary",
-              lookupSuccess && "border-green-500 bg-green-50/30"
+              errors.lrn
+                ? "border-destructive"
+                : "border-primary/30 focus:border-primary",
+              lookupSuccess && "border-green-500 bg-green-50/30",
             )}
             onInput={(e) => {
-              e.currentTarget.value = e.currentTarget.value.replace(/[^0-9]/g, "");
+              e.currentTarget.value = e.currentTarget.value.replace(
+                /[^0-9]/g,
+                "",
+              );
             }}
           />
           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-            {isLookingUp && <Loader2 className="w-5 h-5 animate-spin text-primary" />}
-            {lookupSuccess && <CheckCircle2 className="w-5 h-5 text-green-600" />}
+            {isLookingUp && (
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+            )}
+            {lookupSuccess && (
+              <CheckCircle2 className="w-5 h-5 text-green-600" />
+            )}
           </div>
         </div>
         {errors.lrn && (
@@ -223,8 +255,7 @@ export default function Step1Personal() {
                 studentPhoto
                   ? "border-primary/50 bg-background"
                   : "border-muted-foreground/30 bg-muted/50 hover:border-primary/50 hover:bg-muted/80",
-              )}
-            >
+              )}>
               {studentPhoto ? (
                 <div className="relative w-full h-full">
                   <img
@@ -235,8 +266,7 @@ export default function Step1Personal() {
                   <button
                     onClick={clearPhoto}
                     type="button"
-                    className="absolute top-1 right-1 p-1 bg-primary text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-20"
-                  >
+                    className="absolute top-1 right-1 p-1 bg-primary text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-20">
                     <X className="w-3 h-3" />
                   </button>
                 </div>
@@ -324,8 +354,7 @@ export default function Step1Personal() {
             </Label>
             <Select
               onValueChange={(val) => setValue("extensionName", val)}
-              value={watch("extensionName") || "N/A"}
-            >
+              value={watch("extensionName") || "N/A"}>
               <SelectTrigger className="h-11 font-bold">
                 <SelectValue placeholder="Select Suffix" />
               </SelectTrigger>
@@ -385,8 +414,7 @@ export default function Step1Personal() {
           <RadioGroup
             value={watch("sex")}
             onValueChange={(val) => setValue("sex", val as "Male" | "Female")}
-            className="flex gap-6 pt-1"
-          >
+            className="flex gap-6 pt-1">
             <div className="flex items-center space-x-2.5">
               <RadioGroupItem
                 value="Male"
@@ -395,8 +423,7 @@ export default function Step1Personal() {
               />
               <Label
                 htmlFor="sex-male"
-                className="font-medium cursor-pointer text-sm"
-              >
+                className="font-medium cursor-pointer text-sm">
                 Male
               </Label>
             </div>
@@ -408,8 +435,7 @@ export default function Step1Personal() {
               />
               <Label
                 htmlFor="sex-female"
-                className="font-medium cursor-pointer text-sm"
-              >
+                className="font-medium cursor-pointer text-sm">
                 Female
               </Label>
             </div>
@@ -458,8 +484,7 @@ export default function Step1Personal() {
           <div className="space-y-2">
             <Label
               htmlFor="psaBirthCertNumber"
-              className="text-sm font-semibold"
-            >
+              className="text-sm font-semibold">
               PSA Birth Certificate Number
             </Label>
             <Input

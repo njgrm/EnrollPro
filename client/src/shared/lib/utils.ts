@@ -66,12 +66,57 @@ export function formatScpType(scpType: string | null | undefined): string {
 }
 
 /**
+ * Formats a stored time string into 12-hour time with AM/PM for UI display.
+ * Supports "HH:mm", "HH:mm:ss", and "h:mm AM/PM" variants.
+ */
+export function formatDisplayTime12Hour(
+  time: string | null | undefined,
+): string {
+  if (!time) return "";
+
+  const trimmed = time.trim();
+
+  const twelveHourMatch = trimmed.match(
+    /^([0-9]{1,2}):([0-9]{2})\s*([AaPp][Mm])$/,
+  );
+  if (twelveHourMatch) {
+    const rawHour = Number(twelveHourMatch[1]);
+    const minute = twelveHourMatch[2];
+    const period = twelveHourMatch[3].toUpperCase();
+
+    if (Number.isNaN(rawHour) || rawHour < 1 || rawHour > 12) return trimmed;
+    return `${rawHour}:${minute} ${period}`;
+  }
+
+  const twentyFourHourMatch = trimmed.match(
+    /^([0-9]{1,2}):([0-9]{2})(?::[0-9]{2})?$/,
+  );
+  if (!twentyFourHourMatch) return trimmed;
+
+  let hour = Number(twentyFourHourMatch[1]);
+  const minute = twentyFourHourMatch[2];
+
+  if (Number.isNaN(hour) || hour < 0 || hour > 23) return trimmed;
+
+  const period = hour >= 12 ? "PM" : "AM";
+  hour = hour % 12 || 12;
+
+  return `${hour}:${minute} ${period}`;
+}
+
+/**
  * Recursively converts all string values in an object to uppercase and trims them.
  * Useful for ensuring uniform data entry in the database.
  * Skips specific keys that should remain case-sensitive (e.g., base64 strings, emails).
  */
 export function toUpperCaseRecursive<T>(obj: T): T {
-  const skipKeys = ["studentPhoto", "contactNumber", "password", "email", "emailAddress"];
+  const skipKeys = [
+    "studentPhoto",
+    "contactNumber",
+    "password",
+    "email",
+    "emailAddress",
+  ];
 
   if (Array.isArray(obj)) {
     return obj.map((v) => toUpperCaseRecursive(v)) as unknown as T;

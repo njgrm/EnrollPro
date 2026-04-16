@@ -231,7 +231,7 @@ export default function DocumentaryRequirements() {
                   System Status
                 </TableCell>
                 <TableCell className="text-sm">
-                  <Badge variant="outline">PRE-REGISTERED</Badge>
+                  <Badge variant="outline">READY FOR ENROLLMENT</Badge>
                 </TableCell>
                 <TableCell className="text-sm">
                   <Badge>OFFICIALLY ENROLLED</Badge>
@@ -299,7 +299,7 @@ export default function DocumentaryRequirements() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground italic">
-                        Not Required (Auto-pre-registered)
+                        Not Required (Automatically ready for enrollment)
                       </TableCell>
                       <TableCell className="text-xs font-medium">
                         Confirmation Slip (Annex C) only

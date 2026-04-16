@@ -17,9 +17,8 @@ export function createEarlyRegistrationAssessmentController(
   async function markEligible(req: Request, res: Response, next: NextFunction) {
     try {
       const applicantId = parseInt(String(req.params.id));
-      const { data: applicant, type: appType } = await findApplicantOrThrow(
-        applicantId,
-      );
+      const { data: applicant, type: appType } =
+        await findApplicantOrThrow(applicantId);
 
       assertTransition(
         applicant,
@@ -57,9 +56,8 @@ export function createEarlyRegistrationAssessmentController(
       const { stepOrder, kind, scheduledDate, scheduledTime, venue, notes } =
         req.body;
       const applicantId = parseInt(String(req.params.id));
-      const { data: applicant, type: appType } = await findApplicantOrThrow(
-        applicantId,
-      );
+      const { data: applicant, type: appType } =
+        await findApplicantOrThrow(applicantId);
 
       const targetStatus =
         kind === "INTERVIEW" ? "INTERVIEW_SCHEDULED" : "ASSESSMENT_SCHEDULED";
@@ -96,16 +94,36 @@ export function createEarlyRegistrationAssessmentController(
         );
       }
 
+      const existingAssessments = scpConfig
+        ? await prisma.earlyRegistrationAssessment.findMany({
+            where: { applicationId: earlyRegId },
+          })
+        : [];
+
+      const requiredNonInterviewSteps = (scpConfig?.steps ?? []).filter(
+        (step) => step.isRequired && step.kind !== "INTERVIEW",
+      );
+
+      const hasFailedRequiredStep = requiredNonInterviewSteps.some((step) =>
+        existingAssessments.some(
+          (assessment) =>
+            assessment.type === step.kind && assessment.result === "FAILED",
+        ),
+      );
+
+      if (hasFailedRequiredStep) {
+        throw new AppError(
+          422,
+          "Cannot schedule additional assessments or interviews after a failed cut-off result. Mark the learner as FAILED.",
+        );
+      }
+
       // Prerequisite gating: all previous required steps must have result = 'PASSED'
       if (scpConfig && stepOrder > 1) {
         const previousRequiredSteps = scpConfig.steps.filter(
           (s) => s.stepOrder < stepOrder && s.isRequired,
         );
         if (previousRequiredSteps.length > 0) {
-          const existingAssessments =
-            await prisma.earlyRegistrationAssessment.findMany({
-              where: { applicationId: earlyRegId },
-            });
           const unmet = previousRequiredSteps.filter(
             (prev) =>
               !existingAssessments.some(
@@ -178,9 +196,8 @@ export function createEarlyRegistrationAssessmentController(
     try {
       const { stepOrder, kind, score, result, notes } = req.body;
       const applicantId = parseInt(String(req.params.id));
-      const { data: applicant, type: appType } = await findApplicantOrThrow(
-        applicantId,
-      );
+      const { data: applicant, type: appType } =
+        await findApplicantOrThrow(applicantId);
 
       assertTransition(
         applicant,
@@ -254,6 +271,11 @@ export function createEarlyRegistrationAssessmentController(
         const requiredNonInterview = requiredSteps.filter(
           (step) => step.kind !== "INTERVIEW",
         );
+        const hasFailedRequired = requiredNonInterview.some((step) =>
+          allAssessments.some(
+            (a) => a.type === step.kind && a.result === "FAILED",
+          ),
+        );
         const allRequiredDone = requiredNonInterview.every((step) =>
           allAssessments.some(
             (a) =>
@@ -262,11 +284,12 @@ export function createEarlyRegistrationAssessmentController(
           ),
         );
 
-        // If all required non-interview steps have results → ASSESSMENT_TAKEN
-        // Interview has its own separate flow (INTERVIEW_SCHEDULED → PRE_REGISTERED)
-        const newStatus = allRequiredDone
-          ? "ASSESSMENT_TAKEN"
-          : "ASSESSMENT_SCHEDULED";
+        // Decision gate: once any required step fails cutoff or all required steps are done,
+        // move to ASSESSMENT_TAKEN and wait for explicit registrar decision.
+        const newStatus =
+          hasFailedRequired || allRequiredDone
+            ? "ASSESSMENT_TAKEN"
+            : "ASSESSMENT_SCHEDULED";
 
         return updateApplicationStatus(applicantId, newStatus);
       });
@@ -302,9 +325,8 @@ export function createEarlyRegistrationAssessmentController(
       const { interviewDate, interviewTime, interviewVenue, interviewNotes } =
         req.body;
       const applicantId = parseInt(String(req.params.id));
-      const { data: applicant, type: appType } = await findApplicantOrThrow(
-        applicantId,
-      );
+      const { data: applicant, type: appType } =
+        await findApplicantOrThrow(applicantId);
 
       assertTransition(
         applicant,
@@ -337,6 +359,29 @@ export function createEarlyRegistrationAssessmentController(
           400,
           "No early registration linked to this application.",
         );
+      }
+
+      const requiredNonInterviewSteps = (scpConfig?.steps ?? []).filter(
+        (step) => step.isRequired && step.kind !== "INTERVIEW",
+      );
+      if (requiredNonInterviewSteps.length > 0) {
+        const existingAssessments =
+          await prisma.earlyRegistrationAssessment.findMany({
+            where: { applicationId: earlyRegId },
+          });
+        const hasFailedRequiredStep = requiredNonInterviewSteps.some((step) =>
+          existingAssessments.some(
+            (assessment) =>
+              assessment.type === step.kind && assessment.result === "FAILED",
+          ),
+        );
+
+        if (hasFailedRequiredStep) {
+          throw new AppError(
+            422,
+            "Cannot schedule interview after a failed cut-off result. Mark the learner as FAILED.",
+          );
+        }
       }
 
       const updated = await prisma.$transaction(async (tx) => {
@@ -389,9 +434,8 @@ export function createEarlyRegistrationAssessmentController(
       const { interviewScore, interviewResult, interviewNotes } = req.body;
       const applicantId = parseInt(String(req.params.id));
 
-      const { data: applicant, type: appType } = await findApplicantOrThrow(
-        applicantId,
-      );
+      const { data: applicant, type: appType } =
+        await findApplicantOrThrow(applicantId);
 
       assertTransition(
         applicant,
@@ -496,9 +540,8 @@ export function createEarlyRegistrationAssessmentController(
   ) {
     try {
       const applicantId = parseInt(String(req.params.id));
-      const { data: applicant, type: appType } = await findApplicantOrThrow(
-        applicantId,
-      );
+      const { data: applicant, type: appType } =
+        await findApplicantOrThrow(applicantId);
 
       assertTransition(
         applicant,

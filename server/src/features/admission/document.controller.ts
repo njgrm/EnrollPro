@@ -6,7 +6,9 @@ import path from "path";
 import { createEarlyRegistrationSharedService } from "./services/early-registration-shared.service.js";
 import { createAdmissionControllerDeps } from "./services/admission-controller.deps.js";
 
-const { findApplicantOrThrow } = createEarlyRegistrationSharedService(createAdmissionControllerDeps());
+const { findApplicantOrThrow } = createEarlyRegistrationSharedService(
+  createAdmissionControllerDeps(),
+);
 
 export async function upload(req: Request, res: Response) {
   try {
@@ -25,7 +27,8 @@ export async function upload(req: Request, res: Response) {
       return res.status(400).json({ message: "No file uploaded" });
     }
 
-    const { data: applicant, type: appType } = await findApplicantOrThrow(applicantId);
+    const { data: applicant, type: appType } =
+      await findApplicantOrThrow(applicantId);
     const subjectType =
       appType === "ENROLLMENT"
         ? "EnrollmentApplication"
@@ -46,7 +49,8 @@ export async function upload(req: Request, res: Response) {
 
     // Detect if it's Early Registration or Enrollment
     const enrollmentId = appType === "ENROLLMENT" ? applicantId : null;
-    const earlyRegistrationId = appType === "ENROLLMENT" ? applicant.earlyRegistrationId : applicantId;
+    const earlyRegistrationId =
+      appType === "ENROLLMENT" ? applicant.earlyRegistrationId : applicantId;
 
     // Automatically update checklist
     const checklistMapping: Record<string, string> = {
@@ -65,8 +69,12 @@ export async function upload(req: Request, res: Response) {
 
     const checklistField = checklistMapping[documentType];
     if (!checklistField) {
-      try { fs.unlinkSync(req.file.path); } catch (e) {}
-      return res.status(400).json({ message: "Invalid document type for checklist" });
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (e) {}
+      return res
+        .status(400)
+        .json({ message: "Invalid document type for checklist" });
     }
 
     await prisma.$transaction(async (tx) => {
@@ -83,12 +91,16 @@ export async function upload(req: Request, res: Response) {
       if (existingChecklist) {
         await tx.applicationChecklist.update({
           where: { id: existingChecklist.id },
-          data: { 
-            [checklistField]: true, 
+          data: {
+            [checklistField]: true,
             updatedById: req.user!.userId,
             // Ensure both IDs are linked if available
-            ...(enrollmentId && !existingChecklist.enrollmentId ? { enrollmentId } : {}),
-            ...(earlyRegistrationId && !existingChecklist.earlyRegistrationId ? { earlyRegistrationId } : {}),
+            ...(enrollmentId && !existingChecklist.enrollmentId
+              ? { enrollmentId }
+              : {}),
+            ...(earlyRegistrationId && !existingChecklist.earlyRegistrationId
+              ? { earlyRegistrationId }
+              : {}),
           },
         });
       } else {
@@ -107,7 +119,10 @@ export async function upload(req: Request, res: Response) {
     try {
       fs.unlinkSync(req.file.path);
     } catch (unlinkError) {
-      console.warn("[DocumentUpload] Failed to delete file after processing:", unlinkError);
+      console.warn(
+        "[DocumentUpload] Failed to delete file after processing:",
+        unlinkError,
+      );
     }
 
     await auditLog({
@@ -139,9 +154,13 @@ export async function remove(req: Request, res: Response) {
       return res.status(400).json({ message: "documentType is required" });
     }
 
-    const { data: applicant, type: appType } = await findApplicantOrThrow(applicantId);
+    const { data: applicant, type: appType } =
+      await findApplicantOrThrow(applicantId);
 
-    const subjectType = appType === "ENROLLMENT" ? "EnrollmentApplication" : "EarlyRegistrationApplication";
+    const subjectType =
+      appType === "ENROLLMENT"
+        ? "EnrollmentApplication"
+        : "EarlyRegistrationApplication";
 
     const checklistMapping: Record<string, string> = {
       PSA_BIRTH_CERTIFICATE: "isPsaBirthCertPresented",
@@ -164,7 +183,9 @@ export async function remove(req: Request, res: Response) {
           OR: [
             { enrollmentId: applicantId },
             { earlyRegistrationId: applicantId },
-            ...(appType === "ENROLLMENT" && applicant.earlyRegistrationId ? [{ earlyRegistrationId: applicant.earlyRegistrationId }] : []),
+            ...(appType === "ENROLLMENT" && applicant.earlyRegistrationId
+              ? [{ earlyRegistrationId: applicant.earlyRegistrationId }]
+              : []),
           ],
         },
         data: { [checklistField]: false, updatedById: req.user!.userId },

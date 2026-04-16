@@ -160,7 +160,9 @@ export function EarlyRegistrationTable({
                   </Badge>
                 </TableCell>
                 <TableCell className=" text-sm hidden xl:table-cell font-bold">
-                  {app.createdAt ? format(new Date(app.createdAt), "MMMM dd, yyyy") : "N/A"}
+                  {app.createdAt
+                    ? format(new Date(app.createdAt), "MMMM dd, yyyy")
+                    : "N/A"}
                 </TableCell>
 
                 <TableCell className="text-center">

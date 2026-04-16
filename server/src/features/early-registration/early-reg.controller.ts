@@ -1003,7 +1003,13 @@ export async function verify(req: Request, res: Response, next: NextFunction) {
 // ═══════════════════════════════════════════════════════════
 
 const EARLY_REG_TRANSITIONS: Record<string, ApplicationStatus[]> = {
-  SUBMITTED: ["VERIFIED", "UNDER_REVIEW", "REJECTED", "WITHDRAWN"],
+  SUBMITTED: [
+    "VERIFIED",
+    "UNDER_REVIEW",
+    "ASSESSMENT_SCHEDULED",
+    "REJECTED",
+    "WITHDRAWN",
+  ],
   VERIFIED: [
     "UNDER_REVIEW",
     "ELIGIBLE",
@@ -1029,6 +1035,7 @@ const EARLY_REG_TRANSITIONS: Record<string, ApplicationStatus[]> = {
   ASSESSMENT_TAKEN: [
     "PASSED",
     "NOT_QUALIFIED",
+    "ASSESSMENT_TAKEN",
     "ASSESSMENT_SCHEDULED",
     "WITHDRAWN",
   ],
@@ -1217,18 +1224,38 @@ export async function scheduleAssessment(
 
     const stepConfig = scpConfig?.steps.find((s) => s.stepOrder === stepOrder);
 
+    const existingAssessments = scpConfig
+      ? await prisma.earlyRegistrationAssessment.findMany({
+          where: { applicationId: id },
+        })
+      : [];
+
+    const requiredNonInterviewSteps = (scpConfig?.steps ?? []).filter(
+      (step) => step.isRequired && step.kind !== "INTERVIEW",
+    );
+    const hasFailedRequiredStep = requiredNonInterviewSteps.some((step) =>
+      existingAssessments.some(
+        (assessment) =>
+          assessment.type === step.kind && assessment.result === "FAILED",
+      ),
+    );
+
+    if (hasFailedRequiredStep) {
+      throw new AppError(
+        422,
+        "Cannot schedule additional assessments or interviews after a failed cut-off result. Mark the learner as FAILED.",
+      );
+    }
+
     // Prerequisite gating
     if (scpConfig && stepOrder > 1) {
       const previousRequired = scpConfig.steps.filter(
         (s) => s.stepOrder < stepOrder && s.isRequired,
       );
       if (previousRequired.length > 0) {
-        const existing = await prisma.earlyRegistrationAssessment.findMany({
-          where: { applicationId: id },
-        });
         const unmet = previousRequired.filter(
           (prev) =>
-            !existing.some(
+            !existingAssessments.some(
               (a) => a.type === prev.kind && a.result === "PASSED",
             ),
         );
@@ -1374,6 +1401,11 @@ export async function recordStepResult(
       const requiredNonInterview = requiredSteps.filter(
         (step) => step.kind !== "INTERVIEW",
       );
+      const hasFailedRequired = requiredNonInterview.some((step) =>
+        allAssessments.some(
+          (a) => a.type === step.kind && a.result === "FAILED",
+        ),
+      );
       const allDone = requiredNonInterview.every((step) =>
         allAssessments.some(
           (a) =>
@@ -1382,9 +1414,10 @@ export async function recordStepResult(
         ),
       );
 
-      const newStatus: ApplicationStatus = allDone
-        ? "ASSESSMENT_TAKEN"
-        : reg.status;
+      const newStatus: ApplicationStatus =
+        hasFailedRequired || allDone
+          ? "ASSESSMENT_TAKEN"
+          : "ASSESSMENT_SCHEDULED";
 
       return tx.earlyRegistrationApplication.update({
         where: { id },
@@ -1443,7 +1476,7 @@ export async function pass(req: Request, res: Response, next: NextFunction) {
 export async function fail(req: Request, res: Response, next: NextFunction) {
   try {
     const id = parseInt(String(req.params.id));
-    const { examNotes } = req.body;
+    const { examNotes } = (req.body ?? {}) as { examNotes?: string };
     const reg = await findEarlyRegOrThrow(id);
 
     assertEarlyRegTransition(
@@ -1469,7 +1502,10 @@ export async function fail(req: Request, res: Response, next: NextFunction) {
       }
       return tx.earlyRegistrationApplication.update({
         where: { id },
-        data: { status: "NOT_QUALIFIED" },
+        data: {
+          status: "NOT_QUALIFIED",
+          applicantType: "REGULAR",
+        },
       });
     });
 
@@ -1745,19 +1781,19 @@ export async function markInterviewPassed(
 
     assertEarlyRegTransition(
       reg.status,
-      ApplicationStatus.PASSED,
+      ApplicationStatus.PRE_REGISTERED,
       `Cannot mark interview passed. Current status: "${reg.status}".`,
     );
 
     const updated = await prisma.earlyRegistrationApplication.update({
       where: { id },
-      data: { status: "PASSED" },
+      data: { status: "PRE_REGISTERED" },
     });
 
     await auditLog({
       userId: req.user!.userId,
       actionType: "STATUS_CHANGE",
-      description: `Early registration #${id} interview passed`,
+      description: `Early registration #${id} marked ready for enrollment (PRE_REGISTERED) after interview pass`,
       subjectType: "EarlyRegistrationApplication",
       recordId: id,
       req,

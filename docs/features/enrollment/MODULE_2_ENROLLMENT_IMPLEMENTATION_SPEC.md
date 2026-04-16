@@ -53,6 +53,8 @@ Frontend source:
 4. Section capacity checks are enforced during approval/offer-regular paths.
 5. Enrollment finalization can return one-time learner portal PIN in response.
 6. Mutations write audit logs.
+7. Recording an SCP assessment score does not auto-transition to PASSED or NOT_QUALIFIED; registrar decision remains explicit.
+8. SCP assessment scores can be corrected while applicant status is ASSESSMENT_SCHEDULED or ASSESSMENT_TAKEN.
 
 ## 5. Edge cases
 
@@ -72,6 +74,11 @@ Current high-use enrollment actions:
 - PATCH /api/applications/:id/checklist
 - GET /api/applications/:id/requirements
 - GET /api/applications/:id/sections
+- PATCH /api/applications/:id/schedule-assessment
+- PATCH /api/applications/:id/record-step-result
+- PATCH /api/applications/:id/pass
+- PATCH /api/applications/:id/fail
+- PATCH /api/applications/:id/offer-regular
 
 ## 7. Best UX/UI approach for Module 2
 
@@ -99,3 +106,64 @@ Design direction: registrar command center with low-friction detail actions.
 2. Move requirement validation and finalization logic into EnrollmentService.
 3. Standardize enrollment response payloads and error codes.
 4. Replace alert-based portal PIN display with secure, copy-safe confirmation dialog and audited acknowledgment action.
+
+## 9. Registrar journey map (implementation-aligned)
+
+### 9.1 SCP assessment to decision path
+
+1. Registrar verifies applicant and schedules the next required SCP step.
+2. Applicant enters ASSESSMENT_SCHEDULED while required steps are in progress.
+3. Registrar records score via record-step-result.
+4. If required non-interview steps are complete, status moves to ASSESSMENT_TAKEN.
+5. Registrar may edit and re-save completed step scores while status is ASSESSMENT_SCHEDULED or ASSESSMENT_TAKEN.
+6. Registrar performs manual override decision:
+   PASSED path: trigger pass action and continue to interview/pre-registration path as configured.
+   NOT_QUALIFIED path: trigger fail action and move to fallback queue.
+
+### 9.2 SCP non-qualifier fallback to general enrollment
+
+1. Applicant is in NOT_QUALIFIED with non-REGULAR applicantType.
+2. Registrar reviews capacity and section availability.
+3. Registrar triggers offer-regular.
+4. System converts applicantType to REGULAR and sets status to PRE_REGISTERED.
+5. Applicant proceeds through standard general enrollment flow:
+   PRE_REGISTERED -> TEMPORARILY_ENROLLED (if documentary gap) or ENROLLED.
+
+## 10. Backend data tags for filtering (no schema change)
+
+Use derived tags in queries and UI grouping. These are computed from existing fields only.
+
+### 10.1 Core fields
+
+- applicantType
+- status
+- earlyRegistrationId (on enrollment_applications, optional but useful to trace fallback origin)
+
+### 10.2 Derived filter tags
+
+1. SCP_PIPELINE_ACTIVE
+   Definition: applicantType != REGULAR and status in (SUBMITTED, VERIFIED, UNDER_REVIEW, ELIGIBLE, ASSESSMENT_SCHEDULED, ASSESSMENT_TAKEN, PASSED, INTERVIEW_SCHEDULED, NOT_QUALIFIED)
+   Use: show candidates still in SCP screening or decision queues.
+
+2. SCP_READY_FOR_FALLBACK
+   Definition: applicantType != REGULAR and status = NOT_QUALIFIED
+   Use: registrar queue for Offer Regular decisions.
+
+3. GENERAL_ENROLLMENT_POOL
+   Definition: applicantType = REGULAR and status in (PRE_REGISTERED, TEMPORARILY_ENROLLED, ENROLLED)
+   Use: standard enrollment board, including converted SCP non-qualifiers.
+
+4. FALLBACK_CONVERTED_TO_REGULAR
+   Definition: applicantType = REGULAR and earlyRegistrationId is not null and status in (PRE_REGISTERED, TEMPORARILY_ENROLLED, ENROLLED)
+   Use: reporting slice for students moved from SCP track into regular enrollment.
+
+### 10.3 Query patterns
+
+- Exclude fallback-converted learners from SCP operational boards:
+  applicantType != REGULAR
+
+- Keep fallback-converted learners visible in general enrollment:
+  applicantType = REGULAR and status in (PRE_REGISTERED, TEMPORARILY_ENROLLED, ENROLLED)
+
+- Isolate registrar action queue for fallback conversion:
+  applicantType != REGULAR and status = NOT_QUALIFIED
