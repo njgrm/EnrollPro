@@ -17,22 +17,13 @@ import { EarlyRegistrationTable } from "./components/EarlyRegistrationTable";
 import { EarlyRegistrationCards } from "./components/EarlyRegistrationCards";
 import { EarlyRegistrationSidePanel } from "./components/EarlyRegistrationSidePanel";
 import { EarlyRegistrationActionDialogs } from "./components/EarlyRegistrationActionDialogs";
+import { REGISTRATION_STAGE_QUICK_FILTERS } from "@/features/admission/constants/registrationWorkflow";
 
 import type { Application } from "./hooks/useEarlyRegistrations";
 import type {
   ApplicantDetail,
   AssessmentStep,
 } from "@/features/enrollment/hooks/useApplicationDetail";
-
-const STAGE_QUICK_FILTERS = [
-  { value: "ALL", label: "All Active" },
-  { value: "SUBMITTED", label: "Submitted" },
-  { value: "VERIFIED", label: "Verified" },
-  { value: "UNDER_REVIEW", label: "Under Review" },
-  { value: "ELIGIBLE", label: "Eligible" },
-  { value: "ASSESSMENT_SCHEDULED", label: "Exam Scheduled" },
-  { value: "INTERVIEW_SCHEDULED", label: "Interview Scheduled" },
-];
 
 const NEXT_ACTION_BY_STATUS: Record<string, string> = {
   SUBMITTED: "Verify Submission",
@@ -42,10 +33,11 @@ const NEXT_ACTION_BY_STATUS: Record<string, string> = {
   ELIGIBLE: "Schedule Assessment",
   ASSESSMENT_SCHEDULED: "Record Results",
   ASSESSMENT_TAKEN: "Pass or Fail",
-  INTERVIEW_SCHEDULED: "Finalize Interview",
-  PASSED: "Pre-register",
+  PASSED: "Schedule Interview",
+  INTERVIEW_SCHEDULED: "Ready for Enrollment",
   PRE_REGISTERED: "Finalize Enrollment",
   TEMPORARILY_ENROLLED: "Complete Enrollment",
+  ENROLLED: "No Action",
   NOT_QUALIFIED: "Resolve Decision",
   REJECTED: "Review Appeal",
   WITHDRAWN: "No Action",
@@ -100,7 +92,9 @@ export default function EarlyRegistration() {
   // Derived State
   const showSkeleton = useDelayedLoading(loading);
 
-  const stageCounts = STAGE_QUICK_FILTERS.reduce<Record<string, number>>(
+  const stageCounts = REGISTRATION_STAGE_QUICK_FILTERS.reduce<
+    Record<string, number>
+  >(
     (acc, stage) => {
       acc[stage.value] =
         stage.value === "ALL"
@@ -122,7 +116,7 @@ export default function EarlyRegistration() {
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
               Early Registration Monitoring Dashboard
             </h1>
-            <p className="text-sm sm:text-base font-bold text-muted-foreground">
+            <p className="text-sm sm:text-base font-bold text-foreground">
               Applicant screening and assessment workflow
             </p>
           </div>

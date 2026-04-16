@@ -1785,9 +1785,36 @@ export async function markInterviewPassed(
       `Cannot mark interview passed. Current status: "${reg.status}".`,
     );
 
-    const updated = await prisma.earlyRegistrationApplication.update({
-      where: { id },
-      data: { status: "PRE_REGISTERED" },
+    const updated = await prisma.$transaction(async (tx) => {
+      const latestInterviewAssessment =
+        await tx.earlyRegistrationAssessment.findFirst({
+          where: { applicationId: id, type: "INTERVIEW" },
+          orderBy: { createdAt: "desc" },
+        });
+
+      if (latestInterviewAssessment) {
+        await tx.earlyRegistrationAssessment.update({
+          where: { id: latestInterviewAssessment.id },
+          data: {
+            result: "PASSED",
+            conductedAt: new Date(),
+          },
+        });
+      } else {
+        await tx.earlyRegistrationAssessment.create({
+          data: {
+            applicationId: id,
+            type: "INTERVIEW",
+            result: "PASSED",
+            conductedAt: new Date(),
+          },
+        });
+      }
+
+      return tx.earlyRegistrationApplication.update({
+        where: { id },
+        data: { status: "PRE_REGISTERED" },
+      });
     });
 
     await auditLog({

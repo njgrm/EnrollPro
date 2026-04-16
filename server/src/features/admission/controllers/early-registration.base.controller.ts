@@ -212,13 +212,36 @@ export function createEarlyRegistrationBaseController(
         });
 
         if (!earlyReg) throw new AppError(404, "Application not found");
+
+        const canStartReview =
+          req.user?.role === "REGISTRAR" || req.user?.role === "SYSTEM_ADMIN";
+
+        if (earlyReg.status === "SUBMITTED" && canStartReview) {
+          await prisma.earlyRegistrationApplication.update({
+            where: { id: earlyReg.id },
+            data: { status: "UNDER_REVIEW" },
+          });
+          earlyReg.status = "UNDER_REVIEW";
+
+          await auditLog({
+            userId: req.user!.userId,
+            actionType: "APPLICATION_REVIEWED",
+            description: `Started reviewing early registration application for ${earlyReg.learner.firstName} ${earlyReg.learner.lastName}`,
+            subjectType: "EarlyRegistrationApplication",
+            recordId: earlyReg.id,
+            req,
+          });
+        }
+
         return res.json(await flattenAssessmentData(earlyReg));
       }
 
-      // Automatically transition to UNDER_REVIEW when opened by registrar
+      // Automatically transition to UNDER_REVIEW when opened by registrar/admin
+      const canStartReview =
+        req.user?.role === "REGISTRAR" || req.user?.role === "SYSTEM_ADMIN";
       if (
         application.status === "SUBMITTED" &&
-        req.user?.role === "REGISTRAR"
+        canStartReview
       ) {
         await prisma.enrollmentApplication.update({
           where: { id: application.id },
@@ -227,7 +250,7 @@ export function createEarlyRegistrationBaseController(
         application.status = "UNDER_REVIEW";
 
         await auditLog({
-          userId: req.user.userId,
+          userId: req.user!.userId,
           actionType: "APPLICATION_REVIEWED",
           description: `Started reviewing enrollment application for ${application.learner.firstName} ${application.learner.lastName}`,
           subjectType: "EnrollmentApplication",

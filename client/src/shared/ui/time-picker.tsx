@@ -10,7 +10,7 @@ import {
 } from '@/shared/ui/select';
 
 interface TimePickerProps {
-	value?: string | null; // format "HH:mm" (24h)
+	value?: string | null; // supports "HH:mm" (24h) and "hh:mm AM/PM"
 	onChange: (value: string) => void;
 	className?: string;
 }
@@ -23,33 +23,58 @@ export function TimePicker({ value, onChange, className }: TimePickerProps) {
 
 	// Sync internal state with external value
 	React.useEffect(() => {
-		if (value && value.includes(':')) {
-			const [h24, m] = value.split(':');
-			const hInt = parseInt(h24);
-			const p = hInt >= 12 ? 'PM' : 'AM';
-
-			// Convert to 12h
-			let h12 = hInt % 12;
-			if (h12 === 0) h12 = 12;
-
-			setHour(h12.toString().padStart(2, '0'));
-			setMinute(m.padStart(2, '0'));
-			setPeriod(p);
-		} else {
+		const trimmed = value?.trim();
+		if (!trimmed) {
 			setHour('');
 			setMinute('');
 			setPeriod('AM');
+			return;
 		}
+
+		const twelveHourMatch = trimmed.match(
+			/^([0]?[1-9]|1[0-2]):([0-5][0-9])\s*([AaPp][Mm])$/,
+		);
+		if (twelveHourMatch) {
+			setHour(twelveHourMatch[1].padStart(2, '0'));
+			setMinute(twelveHourMatch[2]);
+			setPeriod(twelveHourMatch[3].toUpperCase() as 'AM' | 'PM');
+			return;
+		}
+
+		const twentyFourHourMatch = trimmed.match(
+			/^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/,
+		);
+		if (twentyFourHourMatch) {
+			const hInt = parseInt(twentyFourHourMatch[1], 10);
+			const p = hInt >= 12 ? 'PM' : 'AM';
+			let h12 = hInt % 12;
+			if (h12 === 0) h12 = 12;
+			setHour(h12.toString().padStart(2, '0'));
+			setMinute(twentyFourHourMatch[2]);
+			setPeriod(p);
+			return;
+		}
+
+		setHour('');
+		setMinute('');
+		setPeriod('AM');
 	}, [value]);
 
 	const updateValue = (h: string, m: string, p: 'AM' | 'PM') => {
-		let hInt = parseInt(h);
-		if (p === 'PM' && hInt < 12) hInt += 12;
-		if (p === 'AM' && hInt === 12) hInt = 0;
+		const hInt = parseInt(h, 10);
+		const mInt = parseInt(m, 10);
+		if (
+			Number.isNaN(hInt) ||
+			Number.isNaN(mInt) ||
+			hInt < 1 ||
+			hInt > 12 ||
+			mInt < 0 ||
+			mInt > 59
+		) {
+			return;
+		}
 
-		const h24 = hInt.toString().padStart(2, '0');
-		const mStr = m.padStart(2, '0');
-		onChange(`${h24}:${mStr}`);
+		onChange(`${hInt.toString().padStart(2, '0')}:${mInt.toString().padStart(2, '0')} ${p}`);
 	};
 
 	const handleHourChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,7 +127,7 @@ export function TimePicker({ value, onChange, className }: TimePickerProps) {
 					className='w-6 border-none bg-transparent p-0 text-center text-sm font-bold focus:outline-none'
 					value={hour}
 					onChange={handleHourChange}
-					onBlur={() => setHour(hour.padStart(2, '0'))}
+					onBlur={() => hour && setHour(hour.padStart(2, '0'))}
 					placeholder='HH'
 				/>
 				<span className=' mx-0.5'>:</span>
@@ -110,7 +135,7 @@ export function TimePicker({ value, onChange, className }: TimePickerProps) {
 					className='w-6 border-none bg-transparent p-0 text-center text-sm font-bold focus:outline-none'
 					value={minute}
 					onChange={handleMinuteChange}
-					onBlur={() => setMinute(minute.padStart(2, '0'))}
+					onBlur={() => minute && setMinute(minute.padStart(2, '0'))}
 					placeholder='MM'
 				/>
 			</div>

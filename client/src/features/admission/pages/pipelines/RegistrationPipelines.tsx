@@ -9,12 +9,7 @@ import api from "@/shared/api/axiosInstance";
 import { SCP_ACRONYMS, SCP_LABELS } from "@/shared/lib/utils";
 import PipelineBatchView from "@/features/admission/components/PipelineBatchView";
 import { useSettingsStore } from "@/store/settings.slice";
-
-const EXCLUDED_ACTIVE_STATUSES = [
-  "ENROLLED",
-  "PRE_REGISTERED",
-  "TEMPORARILY_ENROLLED",
-];
+import { ACTIVE_REGISTRATION_EXCLUDED_STATUSES } from "@/features/admission/constants/registrationWorkflow";
 
 export default function RegistrationPipelines() {
   const { configs, loading, error } = useScpConfigs();
@@ -48,7 +43,7 @@ export default function RegistrationPipelines() {
   );
 
   const fetchCount = useCallback(
-    async (applicantType: string, status: string) => {
+    async (applicantType: string, status: string = "ALL") => {
       if (!ayId) return 0;
       const params = new URLSearchParams();
       if (status !== "ALL") params.append("status", status);
@@ -63,21 +58,28 @@ export default function RegistrationPipelines() {
     [ayId],
   );
 
+  const fetchActiveCount = useCallback(
+    async (applicantType: string) => {
+      const [allCount, ...excludedCounts] = await Promise.all([
+        fetchCount(applicantType),
+        ...ACTIVE_REGISTRATION_EXCLUDED_STATUSES.map((status) =>
+          fetchCount(applicantType, status),
+        ),
+      ]);
+
+      return Math.max(
+        0,
+        allCount - excludedCounts.reduce((sum, count) => sum + count, 0),
+      );
+    },
+    [fetchCount],
+  );
+
   const refreshTabCounts = useCallback(async () => {
     try {
       const countEntries = await Promise.all(
         tabs.map(async (tab) => {
-          const [allCount, ...excludedCounts] = await Promise.all([
-            fetchCount(tab.key, "ALL"),
-            ...EXCLUDED_ACTIVE_STATUSES.map((status) =>
-              fetchCount(tab.key, status),
-            ),
-          ]);
-
-          const activeCount = Math.max(
-            0,
-            allCount - excludedCounts.reduce((sum, n) => sum + n, 0),
-          );
+          const activeCount = await fetchActiveCount(tab.key);
 
           return [tab.key, activeCount] as const;
         }),
@@ -103,7 +105,7 @@ export default function RegistrationPipelines() {
     } catch {
       setTabCounts((prev) => (Object.keys(prev).length > 0 ? {} : prev));
     }
-  }, [fetchCount, tabs]);
+  }, [fetchActiveCount, tabs]);
 
   const handleTabChange = (value: string) => {
     setSearchParams({ tab: value }, { replace: true });

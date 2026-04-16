@@ -1,9 +1,8 @@
 import { Eye } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/shared/ui/button";
-import { Badge } from "@/shared/ui/badge";
 import { Skeleton } from "@/shared/ui/skeleton";
-import { StatusBadge } from "@/features/enrollment/components/StatusBadge";
+import { STATUS_CONFIG } from "@/features/enrollment/constants";
 import { formatScpType } from "@/shared/lib/utils";
 import type { Application } from "../hooks/useEarlyRegistrations";
 
@@ -60,31 +59,28 @@ export function EarlyRegistrationCards({
                   {app.trackingNumber}
                 </p>
               </div>
-              <StatusBadge
-                status={app.status}
-                className="text-xs font-bold shrink-0"
-              />
+              <p className="text-xs font-bold shrink-0 text-right">
+                {STATUS_CONFIG[app.status]?.label ?? app.status}
+              </p>
             </div>
 
             <div className="mt-2 flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-xs font-bold">
-                  {app.gradeLevel.name}
-                </p>
+                <p className="text-xs font-bold">{app.gradeLevel.name}</p>
                 <p className="text-[11px] text-muted-foreground truncate">
                   {formatScpType(app.applicantType)}
                 </p>
               </div>
-              <Badge
-                variant="secondary"
-                className="text-[10px] font-bold shrink-0">
+              <p className="text-[10px] font-bold shrink-0 text-right">
                 {getNextAction(app.status)}
-              </Badge>
+              </p>
             </div>
 
             <p className="mt-2 text-[11px] text-muted-foreground font-bold">
               Submitted{" "}
-              {app.createdAt ? format(new Date(app.createdAt), "MMMM dd, yyyy") : "N/A"}
+              {app.createdAt
+                ? format(new Date(app.createdAt), "MMMM dd, yyyy")
+                : "N/A"}
             </p>
 
             <Button

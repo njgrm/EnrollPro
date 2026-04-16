@@ -121,6 +121,25 @@ export default function EarlyRegistrationDetail() {
     }
   };
 
+  const handleEnroll = async () => {
+    if (
+      !confirm(
+        "Finalize this learner's official enrollment? This action will mark the learner as ENROLLED.",
+      )
+    )
+      return;
+    try {
+      await api.patch(`/early-registrations/${id}/enroll`);
+      sileo.success({
+        title: "Enrolled",
+        description: "Learner is now officially enrolled.",
+      });
+      refetch();
+    } catch (error) {
+      toastApiError(error as never);
+    }
+  };
+
   const handleApprove = async () => {
     sileo.info({
       title: "Section Assignment",
@@ -423,6 +442,7 @@ export default function EarlyRegistrationDetail() {
               onFail={handleFail}
               onOfferRegular={handleOfferRegular}
               onTemporarilyEnroll={handleTemporarilyEnroll}
+              onEnroll={handleEnroll}
               onScheduleInterview={handleScheduleInterview}
               onScheduleStep={handleScheduleStep}
             />

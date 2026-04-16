@@ -189,7 +189,13 @@ export function createEarlyRegistrationSharedService(
     }
 
     const steps = pipelineSteps.map((step) => {
-      const match = assessments.find((a) => a.type === step.kind);
+      const matchesForKind = assessments.filter((a) => a.type === step.kind);
+      const match =
+        matchesForKind.length > 1
+          ? matchesForKind.reduce((latest, current) =>
+              current.id > latest.id ? current : latest,
+            )
+          : (matchesForKind[0] ?? null);
 
       let stepStatus: "PENDING" | "SCHEDULED" | "COMPLETED" = "PENDING";
       if (match?.conductedAt || match?.result != null || match?.score != null) {

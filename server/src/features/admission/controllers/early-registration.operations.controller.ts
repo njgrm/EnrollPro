@@ -39,7 +39,7 @@ export function createEarlyRegistrationOperationsController(
       await auditLog({
         userId: req.user!.userId,
         actionType: "APPLICATION_PASSED",
-        description: `Marked ${applicant.learner.firstName} ${applicant.learner.lastName} (#${applicantId}) as PASSED - ready for section assignment`,
+        description: `Marked ${applicant.learner.firstName} ${applicant.learner.lastName} (#${applicantId}) as PASSED - ready for interview scheduling`,
         subjectType:
           appType === "ENROLLMENT"
             ? "EnrollmentApplication"
@@ -580,6 +580,39 @@ export function createEarlyRegistrationOperationsController(
   async function showDetailed(req: Request, res: Response, next: NextFunction) {
     try {
       const applicantId = parseInt(String(req.params.id));
+
+      const { data: applicant, type: appType } =
+        await findApplicantOrThrow(applicantId);
+
+      const canStartReview =
+        req.user?.role === "REGISTRAR" || req.user?.role === "SYSTEM_ADMIN";
+
+      if (applicant.status === "SUBMITTED" && canStartReview) {
+        if (appType === "ENROLLMENT") {
+          await prisma.enrollmentApplication.update({
+            where: { id: applicant.id },
+            data: { status: "UNDER_REVIEW" },
+          });
+        } else {
+          await prisma.earlyRegistrationApplication.update({
+            where: { id: applicant.id },
+            data: { status: "UNDER_REVIEW" },
+          });
+        }
+
+        await auditLog({
+          userId: req.user!.userId,
+          actionType: "APPLICATION_REVIEWED",
+          description: `Started reviewing ${appType === "ENROLLMENT" ? "enrollment" : "early registration"} application for ${applicant.learner.firstName} ${applicant.learner.lastName}`,
+          subjectType:
+            appType === "ENROLLMENT"
+              ? "EnrollmentApplication"
+              : "EarlyRegistrationApplication",
+          recordId: applicant.id,
+          req,
+        });
+      }
+
       const application = await getDetailedApplicationOrThrow(applicantId, {
         includeAuditLogs: true,
       });

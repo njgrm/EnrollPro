@@ -39,6 +39,13 @@ import { useDelayedLoading } from "@/shared/hooks/useDelayedLoading";
 import { format } from "date-fns";
 import BatchResultsModal from "./BatchResultsModal";
 import type { BatchResults } from "./BatchResultsModal";
+import {
+  ACTIVE_REGISTRATION_EXCLUDED_STATUSES,
+  REGISTRATION_BATCH_TARGET_OPTIONS,
+  REGISTRATION_RECOMMENDED_TARGET_BY_STATUS,
+  REGISTRATION_STAGE_QUICK_FILTERS,
+  REGISTRATION_VALID_TRANSITIONS,
+} from "@/features/admission/constants/registrationWorkflow";
 
 interface Application {
   id: number;
@@ -65,81 +72,15 @@ interface EarlyRegistrationApiRow extends Application {
   } | null;
 }
 
-const TARGET_STATUS_OPTIONS = [
-  { value: "UNDER_REVIEW", label: "Under Review" },
-  { value: "ELIGIBLE", label: "Eligible" },
-  { value: "ASSESSMENT_SCHEDULED", label: "Exam Scheduled" },
-  { value: "PASSED", label: "Passed" },
-  { value: "NOT_QUALIFIED", label: "Not Qualified" },
-  { value: "REJECTED", label: "Rejected" },
-  { value: "WITHDRAWN", label: "Withdrawn" },
-];
+const SAFE_BATCH_TARGETS = new Set<string>(
+  REGISTRATION_BATCH_TARGET_OPTIONS.map((opt) => opt.value),
+);
 
-const STAGE_QUICK_FILTERS = [
-  { value: "ALL", label: "All Active" },
-  { value: "SUBMITTED", label: "Submitted" },
-  { value: "VERIFIED", label: "Verified" },
-  { value: "UNDER_REVIEW", label: "Under Review" },
-  { value: "ELIGIBLE", label: "Eligible" },
-  { value: "ASSESSMENT_SCHEDULED", label: "Exam Scheduled" },
-  { value: "INTERVIEW_SCHEDULED", label: "Interview Scheduled" },
-];
-
-const VALID_TRANSITIONS: Record<string, string[]> = {
-  SUBMITTED: [
-    "VERIFIED",
-    "UNDER_REVIEW",
-    "ASSESSMENT_SCHEDULED",
-    "REJECTED",
-    "WITHDRAWN",
-  ],
-  VERIFIED: [
-    "UNDER_REVIEW",
-    "ELIGIBLE",
-    "ASSESSMENT_SCHEDULED",
-    "REJECTED",
-    "WITHDRAWN",
-  ],
-  UNDER_REVIEW: [
-    "FOR_REVISION",
-    "ELIGIBLE",
-    "ASSESSMENT_SCHEDULED",
-    "PRE_REGISTERED",
-    "TEMPORARILY_ENROLLED",
-    "REJECTED",
-    "WITHDRAWN",
-  ],
-  FOR_REVISION: ["UNDER_REVIEW", "WITHDRAWN"],
-  ELIGIBLE: ["ASSESSMENT_SCHEDULED", "PRE_REGISTERED", "WITHDRAWN"],
-  ASSESSMENT_SCHEDULED: [
-    "ASSESSMENT_TAKEN",
-    "ASSESSMENT_SCHEDULED",
-    "INTERVIEW_SCHEDULED",
-    "WITHDRAWN",
-  ],
-  ASSESSMENT_TAKEN: [
-    "PASSED",
-    "NOT_QUALIFIED",
-    "ASSESSMENT_SCHEDULED",
-    "WITHDRAWN",
-  ],
-  PASSED: [
-    "PRE_REGISTERED",
-    "INTERVIEW_SCHEDULED",
-    "ASSESSMENT_SCHEDULED",
-    "WITHDRAWN",
-  ],
-  INTERVIEW_SCHEDULED: ["PRE_REGISTERED", "WITHDRAWN"],
-  PRE_REGISTERED: ["ENROLLED", "TEMPORARILY_ENROLLED", "WITHDRAWN"],
-  TEMPORARILY_ENROLLED: ["ENROLLED", "WITHDRAWN"],
-  NOT_QUALIFIED: ["UNDER_REVIEW", "WITHDRAWN", "REJECTED"],
-  ENROLLED: ["WITHDRAWN"],
-  REJECTED: ["UNDER_REVIEW", "WITHDRAWN"],
-  WITHDRAWN: [],
-};
-
-const SAFE_BATCH_TARGETS = new Set(
-  TARGET_STATUS_OPTIONS.map((opt) => opt.value),
+const TARGET_STATUS_LABELS = Object.fromEntries(
+  REGISTRATION_BATCH_TARGET_OPTIONS.map((option) => [
+    option.value,
+    option.label,
+  ]),
 );
 
 interface Props {
@@ -199,7 +140,33 @@ export default function PipelineBatchView({
       params.append("page", String(page));
       params.append("limit", String(limit));
 
-      const res = await api.get(`/early-registrations?${params.toString()}`);
+      const allStatusPromise = api.get(
+        `/early-registrations?${params.toString()}`,
+      );
+
+      const excludedCountPromises =
+        status === "ALL"
+          ? ACTIVE_REGISTRATION_EXCLUDED_STATUSES.map((excludedStatus) => {
+              const excludedParams = new URLSearchParams();
+              if (search) excludedParams.append("search", search);
+              excludedParams.append("schoolYearId", String(ayId));
+              if (applicantType !== "ALL") {
+                excludedParams.append("applicantType", applicantType);
+              }
+              excludedParams.append("status", excludedStatus);
+              excludedParams.append("page", "1");
+              excludedParams.append("limit", "1");
+
+              return api.get(
+                `/early-registrations?${excludedParams.toString()}`,
+              );
+            })
+          : [];
+
+      const [res, ...excludedResponses] = await Promise.all([
+        allStatusPromise,
+        ...excludedCountPromises,
+      ]);
 
       let filteredApps = (res.data.data as EarlyRegistrationApiRow[]).map(
         (app) => ({
@@ -214,15 +181,30 @@ export default function PipelineBatchView({
       if (status === "ALL") {
         filteredApps = filteredApps.filter(
           (app: Application) =>
-            !["ENROLLED", "PRE_REGISTERED", "TEMPORARILY_ENROLLED"].includes(
-              app.status,
+            !ACTIVE_REGISTRATION_EXCLUDED_STATUSES.includes(
+              app.status as (typeof ACTIVE_REGISTRATION_EXCLUDED_STATUSES)[number],
             ),
         );
       }
 
+      const excludedTotals =
+        status === "ALL"
+          ? excludedResponses.reduce(
+              (sum, response) =>
+                sum + Number(response?.data?.pagination?.total ?? 0),
+              0,
+            )
+          : 0;
+
       setApplications(filteredApps);
-      const removedCount = res.data.data.length - filteredApps.length;
-      setTotal(Math.max(0, res.data.pagination.total - removedCount));
+      setTotal(
+        status === "ALL"
+          ? Math.max(
+              0,
+              Number(res.data?.pagination?.total ?? 0) - excludedTotals,
+            )
+          : Number(res.data?.pagination?.total ?? 0),
+      );
     } catch (err) {
       toastApiError(err as never);
     } finally {
@@ -249,17 +231,31 @@ export default function PipelineBatchView({
     [selectedApplications],
   );
 
-  const availableTargetStatuses = useMemo(() => {
+  const availableTargetStatuses = useMemo<string[]>(() => {
     if (selectedStatuses.length === 0) {
-      return TARGET_STATUS_OPTIONS.map((opt) => opt.value);
+      return REGISTRATION_BATCH_TARGET_OPTIONS.map((opt) => opt.value);
     }
 
-    return TARGET_STATUS_OPTIONS.map((opt) => opt.value).filter((target) =>
-      selectedStatuses.every((currentStatus) =>
-        (VALID_TRANSITIONS[currentStatus] ?? []).includes(target),
-      ),
+    return REGISTRATION_BATCH_TARGET_OPTIONS.map((opt) => opt.value).filter(
+      (target) =>
+        selectedStatuses.every((currentStatus) =>
+          (REGISTRATION_VALID_TRANSITIONS[currentStatus] ?? []).includes(
+            target,
+          ),
+        ),
     );
   }, [selectedStatuses]);
+
+  const recommendedTargetStatus = useMemo<string | null>(() => {
+    if (selectedStatuses.length !== 1) return null;
+
+    const nextStatus =
+      REGISTRATION_RECOMMENDED_TARGET_BY_STATUS[selectedStatuses[0]];
+    if (!nextStatus) return null;
+    if (!availableTargetStatuses.includes(nextStatus)) return null;
+
+    return nextStatus;
+  }, [selectedStatuses, availableTargetStatuses]);
 
   const preflightSummary = useMemo(() => {
     if (!targetStatus || selectedApplications.length === 0) {
@@ -270,7 +266,7 @@ export default function PipelineBatchView({
     const ineligible: Array<{ app: Application; reason: string }> = [];
 
     for (const app of selectedApplications) {
-      const allowedTargets = VALID_TRANSITIONS[app.status] ?? [];
+      const allowedTargets = REGISTRATION_VALID_TRANSITIONS[app.status] ?? [];
       if (!SAFE_BATCH_TARGETS.has(targetStatus)) {
         ineligible.push({
           app,
@@ -314,6 +310,12 @@ export default function PipelineBatchView({
       setTargetStatus("");
     }
   }, [targetStatus, selectedIds, availableTargetStatuses]);
+
+  useEffect(() => {
+    if (selectedIds.size > 0 && !targetStatus && recommendedTargetStatus) {
+      setTargetStatus(recommendedTargetStatus);
+    }
+  }, [selectedIds, targetStatus, recommendedTargetStatus]);
 
   const toggleSelect = (id: number) => {
     setSelectedIds((prev) => {
@@ -455,16 +457,15 @@ export default function PipelineBatchView({
   const allSelected =
     applications.length > 0 && selectedIds.size === applications.length;
 
-  const stageCounts = STAGE_QUICK_FILTERS.reduce<Record<string, number>>(
-    (acc, stage) => {
-      acc[stage.value] =
-        stage.value === "ALL"
-          ? applications.length
-          : applications.filter((app) => app.status === stage.value).length;
-      return acc;
-    },
-    {},
-  );
+  const stageCounts = REGISTRATION_STAGE_QUICK_FILTERS.reduce<
+    Record<string, number>
+  >((acc, stage) => {
+    acc[stage.value] =
+      stage.value === "ALL"
+        ? applications.length
+        : applications.filter((app) => app.status === stage.value).length;
+    return acc;
+  }, {});
 
   return (
     <>
@@ -472,7 +473,7 @@ export default function PipelineBatchView({
         <CardHeader className="px-3 sm:px-6 pb-3">
           <div className="space-y-3 mb-3">
             <div className="flex flex-wrap items-center gap-2">
-              {STAGE_QUICK_FILTERS.map((stage) => (
+              {REGISTRATION_STAGE_QUICK_FILTERS.map((stage) => (
                 <Button
                   key={stage.value}
                   type="button"
@@ -566,7 +567,7 @@ export default function PipelineBatchView({
                     <SelectValue placeholder="Target status..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {TARGET_STATUS_OPTIONS.map((opt) => {
+                    {REGISTRATION_BATCH_TARGET_OPTIONS.map((opt) => {
                       const isAvailableForSelection =
                         selectedIds.size === 0 ||
                         availableTargetStatuses.includes(opt.value);
@@ -585,6 +586,18 @@ export default function PipelineBatchView({
                     })}
                   </SelectContent>
                 </Select>
+
+                {recommendedTargetStatus &&
+                  targetStatus !== recommendedTargetStatus && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-9 text-xs font-bold"
+                      onClick={() => setTargetStatus(recommendedTargetStatus)}>
+                      Suggested: {TARGET_STATUS_LABELS[recommendedTargetStatus]}
+                    </Button>
+                  )}
 
                 <Button
                   size="sm"
@@ -612,6 +625,12 @@ export default function PipelineBatchView({
               <p className="mt-2 text-xs font-bold text-destructive">
                 No shared safe target is available for this selection. Group
                 applicants by status first.
+              </p>
+            )}
+            {selectedIds.size > 0 && recommendedTargetStatus && (
+              <p className="mt-2 text-xs font-bold text-muted-foreground">
+                Suggested next step:{" "}
+                {TARGET_STATUS_LABELS[recommendedTargetStatus]}
               </p>
             )}
             {selectedIds.size > 0 && targetStatus && preflightSummary && (

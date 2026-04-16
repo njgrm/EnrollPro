@@ -35,6 +35,7 @@ interface Props {
   onFail: () => void;
   onOfferRegular: () => void;
   onTemporarilyEnroll: () => void;
+  onEnroll?: () => Promise<void> | void;
   onScheduleInterview?: () => void;
   onScheduleStep?: (step: AssessmentStep) => void;
   onRecordStepResult?: (step: AssessmentStep) => void;
@@ -59,6 +60,7 @@ export function ApplicationDetailPanel({
   onFail,
   onOfferRegular,
   onTemporarilyEnroll,
+  onEnroll,
   onScheduleInterview,
   onScheduleStep,
   onRecordStepResult,
@@ -78,6 +80,10 @@ export function ApplicationDetailPanel({
   const [photoError, setPhotoError] = useState(false);
   const [isPhotoEnlarged, setIsPhotoEnlarged] = useState(false);
   const [interviewPassChecked, setInterviewPassChecked] = useState(false);
+
+  useEffect(() => {
+    setInterviewPassChecked(false);
+  }, [id]);
 
   const getImageUrl = (photo: string | null) => {
     if (!photo) return null;
@@ -248,7 +254,8 @@ export function ApplicationDetailPanel({
             onMarkInterviewPassed
               ? async () => {
                   await onMarkInterviewPassed();
-                  refetch();
+                  await refetch();
+                  setInterviewPassChecked(false);
                 }
               : undefined
           }
@@ -306,6 +313,14 @@ export function ApplicationDetailPanel({
         }}
         onOfferRegular={onOfferRegular}
         onTemporarilyEnroll={onTemporarilyEnroll}
+        onEnroll={
+          onEnroll
+            ? async () => {
+                await onEnroll();
+                await refetch();
+              }
+            : undefined
+        }
         onScheduleInterview={onScheduleInterview}
         onScheduleStep={onScheduleStep}
         onRecordStepResult={onRecordStepResult}

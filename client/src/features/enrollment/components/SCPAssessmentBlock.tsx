@@ -237,15 +237,37 @@ function InlineScoreCard({
 }
 
 function InterviewResultCard({
-  onMarkPassed,
   passed,
   onPassedChange,
+  onMarkInterviewPassed,
 }: {
-  onMarkPassed: () => Promise<void>;
   passed: boolean;
   onPassedChange: (checked: boolean) => void;
+  onMarkInterviewPassed?: () => Promise<void>;
 }) {
-  const [saving, setSaving] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleToggle = async (checked: boolean) => {
+    if (!checked) {
+      onPassedChange(false);
+      return;
+    }
+
+    if (!onMarkInterviewPassed) {
+      onPassedChange(true);
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await onMarkInterviewPassed();
+      onPassedChange(true);
+    } catch {
+      onPassedChange(false);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="border border-violet-400/60 bg-violet-50/50 rounded-md p-3 space-y-3 mb-4">
@@ -257,28 +279,18 @@ function InterviewResultCard({
         <input
           type="checkbox"
           checked={passed}
-          onChange={(e) => onPassedChange(e.target.checked)}
+          disabled={submitting}
+          onChange={(e) => {
+            void handleToggle(e.target.checked);
+          }}
           className="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
         />
         <span className="text-sm font-bold">
-          Did the learner pass the interview?
+          {submitting
+            ? "Saving interview result..."
+            : "Did the learner pass the interview?"}
         </span>
       </label>
-      {passed && (
-        <Button
-          className="w-full bg-emerald-600 text-white hover:bg-emerald-700 font-bold text-sm"
-          disabled={saving}
-          onClick={async () => {
-            setSaving(true);
-            try {
-              await onMarkPassed();
-            } finally {
-              setSaving(false);
-            }
-          }}>
-          {saving ? "Updating..." : "Ready for Enrollment"}
-        </Button>
-      )}
     </div>
   );
 }
@@ -438,9 +450,9 @@ export function SCPAssessmentBlock({
       {/* Interview Result Card — shown when interview is scheduled */}
       {applicant.status === "INTERVIEW_SCHEDULED" && onMarkInterviewPassed && (
         <InterviewResultCard
-          onMarkPassed={onMarkInterviewPassed}
           passed={interviewPassChecked ?? false}
           onPassedChange={onInterviewPassChange ?? (() => {})}
+          onMarkInterviewPassed={onMarkInterviewPassed}
         />
       )}
     </>

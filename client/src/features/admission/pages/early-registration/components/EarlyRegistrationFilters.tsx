@@ -14,16 +14,7 @@ import {
 } from "@/shared/ui/select";
 import { SCP_LABELS } from "@/shared/lib/utils";
 import { useScpConfigs } from "@/features/admission/hooks/useScpConfigs";
-
-const STAGE_QUICK_FILTERS = [
-  { value: "ALL", label: "All Active" },
-  { value: "SUBMITTED", label: "Submitted" },
-  { value: "VERIFIED", label: "Verified" },
-  { value: "UNDER_REVIEW", label: "Under Review" },
-  { value: "ELIGIBLE", label: "Eligible" },
-  { value: "ASSESSMENT_SCHEDULED", label: "Exam Scheduled" },
-  { value: "INTERVIEW_SCHEDULED", label: "Interview Scheduled" },
-];
+import { REGISTRATION_STAGE_QUICK_FILTERS } from "@/features/admission/constants/registrationWorkflow";
 
 interface FiltersProps {
   status: string;
@@ -72,7 +63,7 @@ export function EarlyRegistrationFilters({
     <CardHeader className="px-3 sm:px-6 pb-3">
       <div className="space-y-3">
         <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
-          {STAGE_QUICK_FILTERS.map((stage) => (
+          {REGISTRATION_STAGE_QUICK_FILTERS.map((stage) => (
             <Button
               key={stage.value}
               type="button"

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import api from "@/shared/api/axiosInstance";
 import { toastApiError } from "@/shared/hooks/useApiToast";
+import { ACTIVE_REGISTRATION_EXCLUDED_STATUSES } from "@/features/admission/constants/registrationWorkflow";
 
 export interface Application {
   id: number;
@@ -15,6 +16,28 @@ export interface Application {
   gradeLevelId: number;
   gradeLevel: { name: string };
   createdAt: string;
+}
+
+interface EarlyRegistrationApiRow {
+  id: number;
+  lrn?: string;
+  lastName?: string;
+  firstName?: string;
+  middleName?: string | null;
+  suffix?: string | null;
+  trackingNumber: string;
+  status: string;
+  applicantType: string;
+  gradeLevelId: number;
+  gradeLevel: { name: string };
+  createdAt: string;
+  learner?: {
+    firstName?: string;
+    lastName?: string;
+    middleName?: string | null;
+    extensionName?: string | null;
+    lrn?: string;
+  };
 }
 
 export function useEarlyRegistrations(ayId: number | null) {
@@ -47,32 +70,62 @@ export function useEarlyRegistrations(ayId: number | null) {
       params.append("page", String(page));
       params.append("limit", "50");
 
-      const res = await api.get(`/early-registrations?${params.toString()}`);
+      const allStatusPromise = api.get(`/early-registrations?${params.toString()}`);
 
-      let filteredApps = res.data.data.map((app: any) => ({
-        ...app,
-        firstName: app.learner?.firstName || app.firstName,
-        lastName: app.learner?.lastName || app.lastName,
-        middleName: app.learner?.middleName || app.middleName,
-        suffix: app.learner?.extensionName || app.suffix,
-        lrn: app.learner?.lrn || app.lrn,
-      }));
+      const excludedCountPromises =
+        status === "ALL"
+          ? ACTIVE_REGISTRATION_EXCLUDED_STATUSES.map((excludedStatus) => {
+              const excludedParams = new URLSearchParams();
+              excludedParams.append("schoolYearId", String(ayId));
+              if (search) excludedParams.append("search", search);
+              if (type !== "ALL") excludedParams.append("applicantType", type);
+              excludedParams.append("status", excludedStatus);
+              excludedParams.append("page", "1");
+              excludedParams.append("limit", "1");
+
+              return api.get(`/early-registrations?${excludedParams.toString()}`);
+            })
+          : [];
+
+      const [res, ...excludedResponses] = await Promise.all([
+        allStatusPromise,
+        ...excludedCountPromises,
+      ]);
+
+      let filteredApps = (res.data.data as EarlyRegistrationApiRow[]).map(
+        (app): Application => ({
+          ...app,
+          firstName: app.learner?.firstName || app.firstName || "",
+          lastName: app.learner?.lastName || app.lastName || "",
+          middleName: app.learner?.middleName || app.middleName || null,
+          suffix: app.learner?.extensionName || app.suffix || null,
+          lrn: app.learner?.lrn || app.lrn || "",
+        }),
+      );
 
       if (status === "ALL") {
         filteredApps = filteredApps.filter(
           (app: Application) =>
-            !["ENROLLED", "PRE_REGISTERED", "TEMPORARILY_ENROLLED"].includes(
-              app.status,
+            !ACTIVE_REGISTRATION_EXCLUDED_STATUSES.includes(
+              app.status as (typeof ACTIVE_REGISTRATION_EXCLUDED_STATUSES)[number],
             ),
         );
       }
 
+      const excludedTotals =
+        status === "ALL"
+          ? excludedResponses.reduce(
+              (sum, response) =>
+                sum + Number(response?.data?.pagination?.total ?? 0),
+              0,
+            )
+          : 0;
+
       setApplications(filteredApps);
       setTotal(
         status === "ALL"
-          ? res.data.pagination.total -
-              (res.data.data.length - filteredApps.length)
-          : res.data.pagination.total,
+          ? Math.max(0, Number(res.data?.pagination?.total ?? 0) - excludedTotals)
+          : Number(res.data?.pagination?.total ?? 0),
       );
     } catch (err) {
       toastApiError(err as never);

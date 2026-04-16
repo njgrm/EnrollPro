@@ -171,6 +171,24 @@ export function EarlyRegistrationSidePanel({
                   toastApiError(e as never);
                 }
               }}
+              onEnroll={async () => {
+                if (
+                  !confirm(
+                    "Finalize this learner's official enrollment? This action will mark the learner as ENROLLED.",
+                  )
+                )
+                  return;
+                try {
+                  await api.patch(`/early-registrations/${selectedId}/enroll`);
+                  sileo.success({
+                    title: "Enrolled",
+                    description: "Learner is now officially enrolled.",
+                  });
+                  fetchData();
+                } catch (e) {
+                  toastApiError(e as never);
+                }
+              }}
               onScheduleInterview={async () => {
                 try {
                   const fullRes = await api.get(

@@ -16,7 +16,9 @@ interface Props {
   onFail: () => void;
   onOfferRegular: () => void;
   onTemporarilyEnroll: () => void;
+  onEnroll?: () => void | Promise<void>;
   onScheduleInterview?: () => void;
+  onMarkInterviewPassed?: () => void | Promise<void>;
   /** New: schedule a specific pipeline step */
   onScheduleStep?: (step: AssessmentStep) => void;
   /** New: record result for a specific pipeline step */
@@ -205,16 +207,33 @@ export function ActionButtons({
         </>
       )}
 
-      {isSCP && status === "INTERVIEW_SCHEDULED" && !interviewPassChecked && (
+      {isSCP && status === "INTERVIEW_SCHEDULED" && (
         <>
-          <Button
-            variant="outline"
-            className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground font-bold"
-            onClick={handlers.onReject}>
-            Reject Application
-          </Button>
+          {interviewPassChecked && handlers.onMarkInterviewPassed ? (
+            <Button
+              className="w-full bg-emerald-600 text-white hover:bg-emerald-700 font-bold"
+              onClick={handlers.onMarkInterviewPassed}>
+              Ready for Enrollment
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground font-bold"
+              onClick={handlers.onReject}>
+              Reject Application
+            </Button>
+          )}
         </>
       )}
+
+      {(status === "PRE_REGISTERED" || status === "TEMPORARILY_ENROLLED") &&
+        handlers.onEnroll && (
+          <Button
+            className="w-full bg-emerald-600 text-white hover:bg-emerald-700 font-bold"
+            onClick={handlers.onEnroll}>
+            Finalize Enrollment
+          </Button>
+        )}
 
       {isSCP && status === "NOT_QUALIFIED" && (
         <>
@@ -232,9 +251,9 @@ export function ActionButtons({
         </>
       )}
 
-      {(status === "PRE_REGISTERED" ||
-        status === "ENROLLED" ||
-        status === "REJECTED") && (
+      {(status === "ENROLLED" ||
+        status === "REJECTED" ||
+        status === "WITHDRAWN") && (
         <p className="text-sm text-muted-foreground text-center py-2">
           No further actions available for this application.
         </p>

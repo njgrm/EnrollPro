@@ -9,9 +9,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/ui/table";
-import { Badge } from "@/shared/ui/badge";
 import { Skeleton } from "@/shared/ui/skeleton";
-import { StatusBadge } from "@/features/enrollment/components/StatusBadge";
+import { STATUS_CONFIG } from "@/features/enrollment/constants";
 import { formatScpType } from "@/shared/lib/utils";
 import type { Application } from "../hooks/useEarlyRegistrations";
 
@@ -140,24 +139,19 @@ export function EarlyRegistrationTable({
                   </span>
                 </TableCell>
                 <TableCell className="hidden lg:table-cell">
-                  <Badge
-                    variant="secondary"
-                    className="font-bold px-2 py-0.5 h-auto text-xs leading-tight text-center bg-white">
+                  <p className="font-bold text-xs leading-tight text-center">
                     {formatScpType(app.applicantType)}
-                  </Badge>
+                  </p>
                 </TableCell>
                 <TableCell>
-                  <StatusBadge
-                    status={app.status}
-                    className="text-xs font-bold"
-                  />
+                  <p className="text-xs font-bold text-center">
+                    {STATUS_CONFIG[app.status]?.label ?? app.status}
+                  </p>
                 </TableCell>
                 <TableCell className="hidden lg:table-cell">
-                  <Badge
-                    variant="secondary"
-                    className="text-xs font-bold bg-white">
+                  <p className="text-xs font-bold text-center">
                     {getNextAction(app.status)}
-                  </Badge>
+                  </p>
                 </TableCell>
                 <TableCell className=" text-sm hidden xl:table-cell font-bold">
                   {app.createdAt
