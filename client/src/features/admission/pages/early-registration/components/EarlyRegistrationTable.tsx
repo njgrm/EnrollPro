@@ -198,7 +198,7 @@ export function EarlyRegistrationTable({
                       {isLockedHandoff ? (
                         <Badge
                           variant="outline"
-                          className="h-auto min-w-24 whitespace-normal text-center leading-tight border-slate-500 bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-700">
+                          className="h-auto min-w-24 whitespace-normal text-center leading-tight justify-center border-slate-500 bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-700">
                           <Lock className="mr-1 h-3 w-3" />
                           Locked: Sent to Enrollment
                         </Badge>

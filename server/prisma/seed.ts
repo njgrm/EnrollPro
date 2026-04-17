@@ -37,12 +37,17 @@ async function main() {
       },
     });
     console.log(`✅ Created Active School Year: ${activeYear.yearLabel}`);
+  }
 
-    // Update settings to point to this active year
+  // Keep singleton settings aligned to the currently active school year.
+  if (settings.activeSchoolYearId !== activeYear.id) {
     await prisma.schoolSetting.update({
       where: { id: settings.id },
       data: { activeSchoolYearId: activeYear.id },
     });
+    console.log(
+      `✅ SchoolSettings activeSchoolYearId set to ${activeYear.yearLabel}`,
+    );
   }
 
   // 3. Ensure Grade Levels Grade 7-Grade 10 exist for the active school year

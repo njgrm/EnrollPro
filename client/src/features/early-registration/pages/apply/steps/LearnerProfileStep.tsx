@@ -440,7 +440,7 @@ export default function LearnerProfileStep() {
           )}
         </div>
         
-        <div className="md:col-span-2 lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
+        <div className="md:col-span-2 lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
           <div className="space-y-1.5">
             <Label htmlFor="placeOfBirth" className="text-sm font-semibold">
               Place of Birth <span className="text-destructive">*</span>

@@ -40,8 +40,8 @@ export default function F2FEarlyRegistration() {
           <h1 className="text-2xl font-bold tracking-tight">
             WALK-IN BASIC EDUCATION EARLY REGISTRATION FORM
           </h1>
-          <p className="text-sm text-muted-foreground font-semibold">
-            Use the same public early-registration flow for face-to-face
+          <p className="text-sm text-foreground font-bold">
+            Use the same public early registration flow for face-to-face
             encoding.
           </p>
         </div>

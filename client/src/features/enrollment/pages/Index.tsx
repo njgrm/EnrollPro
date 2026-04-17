@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router";
-import { Search, Eye, Download } from "lucide-react";
+import { Search, Eye, Download, RefreshCw } from "lucide-react";
 import { sileo } from "sileo";
 import api from "@/shared/api/axiosInstance";
 import { useSettingsStore } from "@/store/settings.slice";
@@ -472,20 +472,35 @@ export default function Enrollment() {
               {ENROLLMENT_SUB_MENU_DESCRIPTIONS[workflowView]}
             </p>
           </div>
-          <Button
-            variant="outline"
-            className="h-10 px-3 w-full md:w-auto text-sm font-bold"
-            onClick={handleExportLis}
-            disabled={
-              isExportingLis || !ayId || workflowView !== "OFFICIAL_ROSTER"
-            }>
-            <Download className="h-4 w-4 mr-2" />
-            {isExportingLis
-              ? "Exporting LIS..."
-              : workflowView === "OFFICIAL_ROSTER"
-                ? "Export LIS Master CSV"
-                : "Export LIS (Official Roster Only)"}
-          </Button>
+          <div className="flex w-full md:w-auto gap-2">
+            <Button
+              variant="outline"
+              className="h-10 px-3 flex-1 md:flex-none text-sm font-bold"
+              onClick={() => {
+                void fetchData();
+              }}
+              disabled={loading || !ayId}>
+              <RefreshCw
+                className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+              />
+              Refresh
+            </Button>
+
+            <Button
+              variant="outline"
+              className="h-10 px-3 flex-1 md:flex-none text-sm font-bold"
+              onClick={handleExportLis}
+              disabled={
+                isExportingLis || !ayId || workflowView !== "OFFICIAL_ROSTER"
+              }>
+              <Download className="h-4 w-4 mr-2" />
+              {isExportingLis
+                ? "Exporting LIS..."
+                : workflowView === "OFFICIAL_ROSTER"
+                  ? "Export LIS Master CSV"
+                  : "Export LIS (Official Roster Only)"}
+            </Button>
+          </div>
         </div>
 
         <EnrollmentWorkflowTabs

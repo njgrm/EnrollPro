@@ -7,6 +7,7 @@ import {
   ArrowUp,
   ArrowDown,
   CalendarDays,
+  RefreshCw,
 } from "lucide-react";
 import api from "@/shared/api/axiosInstance";
 import { useSettingsStore } from "@/store/settings.slice";
@@ -453,6 +454,19 @@ export default function Students() {
               </div>
             </div>
             <div className="flex w-full md:w-auto items-center gap-2">
+              <Button
+                variant="outline"
+                className="h-10 px-3 text-sm font-bold w-full md:w-auto"
+                onClick={() => {
+                  void fetchStudents();
+                }}
+                disabled={loading || !ayId}>
+                <RefreshCw
+                  className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+                />
+                Refresh
+              </Button>
+
               <Button
                 variant="outline"
                 className="h-10 px-3 text-sm font-bold w-full md:w-auto"

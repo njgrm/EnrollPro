@@ -143,7 +143,7 @@ export default function LegalConsentStep({
           onEdit={onEdit}>
           {data.studentPhoto && (
             <div className="sm:col-span-2 flex justify-center pb-2">
-              <div className="w-24 h-24 rounded-lg border-2 border-dashed border-primary/50 bg-background overflow-hidden">
+              <div className="w-56 h-56 rounded-lg border-2 border-dashed border-primary/50 bg-background overflow-hidden">
                 <img
                   src={data.studentPhoto}
                   alt="Student"
@@ -344,7 +344,7 @@ export default function LegalConsentStep({
           }
         }}
         title="Confirm Registration Submission"
-        description="You are about to submit this registration form. Please confirm that all details are complete and correct."
+        description="You are about to submit this early registration form. Please confirm that all details are complete and correct."
         onConfirm={onConfirmSubmit}
         confirmText="Yes, Submit Registration"
         loading={isSubmitting}

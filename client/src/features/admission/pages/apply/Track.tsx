@@ -59,6 +59,7 @@ interface ApplicationStatus {
   lastName: string;
   status: string;
   applicantType: string;
+  learningProgram?: string;
   createdAt: string;
   gradeLevel: { name: string };
   enrollment?: { section: { name: string }; enrolledAt: string };
@@ -168,7 +169,8 @@ const statusConfig: Record<
   },
 };
 
-const SCP_LABELS: Record<string, string> = {
+const LEARNING_PROGRAM_LABELS: Record<string, string> = {
+  REGULAR: "Regular Program",
   SCIENCE_TECHNOLOGY_AND_ENGINEERING: "Science, Technology & Engineering",
   SPECIAL_PROGRAM_IN_THE_ARTS: "Special Program in the Arts",
   SPECIAL_PROGRAM_IN_SPORTS: "Special Program in Sports",
@@ -280,9 +282,15 @@ export default function TrackApplication({
     : null;
   const Icon = config?.icon;
 
-  const isScpApplication = status
-    ? status.applicantType !== "REGULAR" || !!status.scpDetail
-    : false;
+  const learningProgramType =
+    status?.learningProgram ??
+    status?.scpDetail?.scpType ??
+    status?.applicantType ??
+    "REGULAR";
+  const learningProgramLabel =
+    LEARNING_PROGRAM_LABELS[learningProgramType] ||
+    learningProgramType.replace(/_/g, " ");
+
   const scpType = status?.scpDetail?.scpType ?? status?.applicantType;
   const latestAssessment = status?.assessments?.[0] ?? null;
   const examDate = latestAssessment?.scheduledDate ?? null;
@@ -401,16 +409,10 @@ export default function TrackApplication({
                   </p>
                 </div>
 
-                <div
-                  className={cn(
-                    "grid gap-4 text-center",
-                    isScpApplication
-                      ? "grid-cols-1 md:grid-cols-3"
-                      : "grid-cols-1 md:grid-cols-2",
-                  )}>
+                <div className="grid gap-4 text-center grid-cols-1 md:grid-cols-3">
                   <div className="p-5 bg-primary/5 border border-primary/10 rounded-2xl space-y-1">
                     <p className="text-[0.625rem] font-black uppercase text-muted-foreground tracking-widest flex items-center justify-center gap-1.5">
-                      <User className="w-3 h-3" /> Applicant Name
+                      <User className="w-3 h-3" /> Learner's Name
                     </p>
                     <p className="font-black text-primary uppercase">
                       {status.lastName}, {status.firstName}{" "}
@@ -426,18 +428,14 @@ export default function TrackApplication({
                     </p>
                   </div>
 
-                  {isScpApplication && (
-                    <div className="p-5 bg-primary/5 border border-primary/10 rounded-2xl space-y-1">
-                      <p className="text-[0.625rem] font-black uppercase text-primary/60 tracking-widest flex items-center justify-center gap-1.5">
-                        <BookOpen className="w-3 h-3" /> SCP Program
-                      </p>
-                      <p className="font-black text-primary uppercase">
-                        {scpType
-                          ? SCP_LABELS[scpType] || scpType
-                          : "Special Program"}
-                      </p>
-                    </div>
-                  )}
+                  <div className="p-5 bg-primary/5 border border-primary/10 rounded-2xl space-y-1">
+                    <p className="text-[0.625rem] font-black uppercase text-primary/60 tracking-widest flex items-center justify-center gap-1.5">
+                      <BookOpen className="w-3 h-3" /> Learning Program
+                    </p>
+                    <p className="font-black text-primary uppercase">
+                      {learningProgramLabel}
+                    </p>
+                  </div>
 
                   {status.status === "ASSESSMENT_SCHEDULED" && examDate && (
                     <>
@@ -473,11 +471,7 @@ export default function TrackApplication({
 
                   {status.status === "FOR_REVISION" &&
                     status.rejectionReason && (
-                      <div
-                        className={cn(
-                          "p-5 bg-primary/5 border border-primary/20 rounded-2xl space-y-1",
-                          isScpApplication ? "md:col-span-3" : "md:col-span-2",
-                        )}>
+                      <div className="p-5 bg-primary/5 border border-primary/20 rounded-2xl space-y-1 md:col-span-3">
                         <p className="text-[0.625rem] font-black uppercase text-primary tracking-widest flex items-center justify-center gap-1.5">
                           <AlertCircle className="w-3 h-3" /> Revision Details
                         </p>
@@ -487,11 +481,7 @@ export default function TrackApplication({
                       </div>
                     )}
 
-                  <div
-                    className={cn(
-                      "p-5 bg-white border border-border rounded-2xl space-y-1 text-center",
-                      isScpApplication ? "md:col-span-3" : "md:col-span-2",
-                    )}>
+                  <div className="p-5 bg-white border border-border rounded-2xl space-y-1 text-center md:col-span-3">
                     <p className="text-[0.625rem] font-black uppercase text-muted-foreground tracking-widest">
                       Date Submitted
                     </p>

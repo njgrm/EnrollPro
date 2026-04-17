@@ -75,7 +75,7 @@ export default function StepProgressBar({
           <div className="flex items-center">
             {steps.map((step, index) => {
               const isActive = step.id === currentStep;
-              const isCompleted = step.id < maxCompleted;
+              const isCompleted = !isActive && step.id < maxCompleted;
               const isLast = index === steps.length - 1;
               const StepIcon = getStepIcon(step.title, index);
 
@@ -140,7 +140,7 @@ export default function StepProgressBar({
           <div className="flex items-start">
             {steps.map((step, index) => {
               const isActive = step.id === currentStep;
-              const isCompleted = step.id < maxCompleted;
+              const isCompleted = !isActive && step.id < maxCompleted;
               const isLast = index === steps.length - 1;
               const StepIcon = getStepIcon(step.title, index);
               const statusLabel = isCompleted

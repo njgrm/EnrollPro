@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { useSettingsStore } from "@/store/settings.slice";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
@@ -107,6 +108,19 @@ export default function EarlyRegistration() {
               Applicant screening and assessment workflow
             </p>
           </div>
+
+          <Button
+            variant="outline"
+            className="h-10 px-3 w-full md:w-auto text-sm font-bold"
+            onClick={() => {
+              void fetchData();
+            }}
+            disabled={loading}>
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+            />
+            Refresh
+          </Button>
         </div>
 
         <Card className="border-none shadow-sm bg-[hsl(var(--card))]">

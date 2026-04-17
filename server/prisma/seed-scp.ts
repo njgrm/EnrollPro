@@ -1,402 +1,427 @@
-import 'dotenv/config';
+import "dotenv/config";
+import { PrismaClient, ApplicantType } from "../src/generated/prisma/index.js";
+import { PrismaPg } from "@prisma/adapter-pg";
+import * as pg from "pg";
 import {
-	PrismaClient,
-	ApplicantType,
-	AssessmentKind,
-} from '../src/generated/prisma/index.js';
-import { PrismaPg } from '@prisma/adapter-pg';
-import * as pg from 'pg';
+  SCP_DEFAULT_PIPELINES,
+  getSteSteps,
+  type ScpType,
+} from "@enrollpro/shared";
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-// ── Default DepEd SCP Assessment Pipelines ──
-const SCP_PIPELINES: Record<
-	string,
-	Array<{
-		stepOrder: number;
-		kind: AssessmentKind;
-		label: string;
-		description: string;
-		isRequired: boolean;
-	}>
-> = {
-	SCIENCE_TECHNOLOGY_AND_ENGINEERING: [
-		{
-			stepOrder: 1,
-			kind: 'PRELIMINARY_EXAMINATION',
-			label: 'Preliminary Examination (ESM)',
-			description:
-				'Written screening test: English, Science, Mathematics — determines eligibility for final exam',
-			isRequired: true,
-		},
-		{
-			stepOrder: 2,
-			kind: 'FINAL_EXAMINATION',
-			label: 'Final Examination',
-			description:
-				'Comprehensive written exam: 21st-century skills, critical thinking, and advanced problem-solving',
-			isRequired: true,
-		},
-		{
-			stepOrder: 3,
-			kind: 'INTERVIEW',
-			label: 'Interview',
-			description:
-				'Interest, mental alertness, readiness for rigorous curriculum',
-			isRequired: true,
-		},
-	],
-	SPECIAL_PROGRAM_IN_THE_ARTS: [
-		{
-			stepOrder: 1,
-			kind: 'GENERAL_ADMISSION_TEST',
-			label: 'General Admission Test',
-			description: 'Written exam covering general knowledge and aptitude',
-			isRequired: true,
-		},
-		{
-			stepOrder: 2,
-			kind: 'TALENT_AUDITION',
-			label: 'Talent Audition / Performance',
-			description: 'Live performance or portfolio per chosen art field',
-			isRequired: true,
-		},
-		{
-			stepOrder: 3,
-			kind: 'INTERVIEW',
-			label: 'Interview',
-			description: 'Assess passion for the arts',
-			isRequired: true,
-		},
-	],
-	SPECIAL_PROGRAM_IN_SPORTS: [
-		{
-			stepOrder: 1,
-			kind: 'PHYSICAL_FITNESS_TEST',
-			label: 'Physical Fitness Test (PFT)',
-			description: 'Agility, strength, and endurance tests',
-			isRequired: true,
-		},
-		{
-			stepOrder: 2,
-			kind: 'SPORTS_SKILLS_TRYOUT',
-			label: 'Sports Skills Demonstration (Tryout)',
-			description: 'Sport-specific proficiency tryout',
-			isRequired: true,
-		},
-		{
-			stepOrder: 3,
-			kind: 'INTERVIEW',
-			label: 'Interview',
-			description: 'Discipline, sportsmanship, and parental support',
-			isRequired: true,
-		},
-	],
-	SPECIAL_PROGRAM_IN_JOURNALISM: [
-		{
-			stepOrder: 1,
-			kind: 'QUALIFYING_EXAMINATION',
-			label: 'Qualifying Test',
-			description:
-				'English and Filipino proficiency, grammar, basic news writing',
-			isRequired: true,
-		},
-		{
-			stepOrder: 2,
-			kind: 'SKILLS_ASSESSMENT',
-			label: 'Skills Assessment (Writing Trials)',
-			description:
-				'On-the-spot writing: news lead, editorial, or feature story',
-			isRequired: true,
-		},
-		{
-			stepOrder: 3,
-			kind: 'INTERVIEW',
-			label: 'Interview',
-			description: 'Communication skills and ethical awareness',
-			isRequired: true,
-		},
-	],
-	SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE: [
-		{
-			stepOrder: 1,
-			kind: 'STANDARDIZED_ADMISSION_TOOL',
-			label: 'Standardized Admission Tool',
-			description: 'Linguistic aptitude and readiness test',
-			isRequired: true,
-		},
-		{
-			stepOrder: 2,
-			kind: 'INTERVIEW',
-			label: 'Interview (with Parent/Guardian)',
-			description: 'Validate documents and gauge commitment',
-			isRequired: true,
-		},
-	],
-	SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION: [
-		{
-			stepOrder: 1,
-			kind: 'APTITUDE_TEST',
-			label: 'Aptitude Test',
-			description:
-				'Inclination towards IT, Agriculture, Home Economics, or Industrial Arts',
-			isRequired: true,
-		},
-		{
-			stepOrder: 2,
-			kind: 'INTEREST_INVENTORY',
-			label: 'Interest Inventory / Interview',
-			description: 'Align student interests with specific shop offerings',
-			isRequired: true,
-		},
-	],
+const SCP_TYPES: ApplicantType[] = [
+  "SCIENCE_TECHNOLOGY_AND_ENGINEERING",
+  "SPECIAL_PROGRAM_IN_THE_ARTS",
+  "SPECIAL_PROGRAM_IN_SPORTS",
+  "SPECIAL_PROGRAM_IN_JOURNALISM",
+  "SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE",
+  "SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION",
+];
+
+const PROGRAM_PREFIX: Record<ApplicantType, string> = {
+  REGULAR: "REG",
+  SCIENCE_TECHNOLOGY_AND_ENGINEERING: "STE",
+  SPECIAL_PROGRAM_IN_THE_ARTS: "SPA",
+  SPECIAL_PROGRAM_IN_SPORTS: "SPS",
+  SPECIAL_PROGRAM_IN_JOURNALISM: "SPJ",
+  SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE: "SPFL",
+  SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION: "SPTVE",
 };
 
+type ScpOptionSeed = {
+  optionType: "ART_FIELD" | "LANGUAGE" | "SPORT";
+  value: string;
+};
+
+const DEFAULT_SCP_OPTIONS: Partial<Record<ApplicantType, ScpOptionSeed[]>> = {
+  SPECIAL_PROGRAM_IN_THE_ARTS: [
+    { optionType: "ART_FIELD", value: "MUSIC" },
+    { optionType: "ART_FIELD", value: "DANCE" },
+    { optionType: "ART_FIELD", value: "VISUAL_ARTS" },
+  ],
+  SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE: [
+    { optionType: "LANGUAGE", value: "MANDARIN" },
+    { optionType: "LANGUAGE", value: "JAPANESE" },
+  ],
+  SPECIAL_PROGRAM_IN_SPORTS: [
+    { optionType: "SPORT", value: "BASKETBALL" },
+    { optionType: "SPORT", value: "VOLLEYBALL" },
+    { optionType: "SPORT", value: "ATHLETICS" },
+  ],
+};
+
+const PH_FIRST_NAMES = [
+  "Juan",
+  "Maria",
+  "Jose",
+  "Angelica",
+  "Miguel",
+  "Princess",
+  "Carlo",
+  "Jasmine",
+  "Rafael",
+  "Nicole",
+  "Paolo",
+  "Gabriela",
+];
+
+const PH_MIDDLE_NAMES = [
+  "Santos",
+  "Reyes",
+  "Garcia",
+  "Cruz",
+  "Mendoza",
+  "Aquino",
+  "Flores",
+  "Navarro",
+  "Torres",
+  "Bautista",
+  "Castro",
+  "Valdez",
+];
+
+const PH_LAST_NAMES = [
+  "Dela Cruz",
+  "Reyes",
+  "Santos",
+  "Garcia",
+  "Mendoza",
+  "Fernandez",
+  "Navarro",
+  "Ramos",
+  "Bautista",
+  "Gonzales",
+  "Torres",
+  "Villanueva",
+];
+
+function getPipelineForScpType(scpType: ApplicantType, isTwoPhase: boolean) {
+  if (scpType === "SCIENCE_TECHNOLOGY_AND_ENGINEERING") {
+    return getSteSteps(isTwoPhase);
+  }
+  return SCP_DEFAULT_PIPELINES[scpType as ScpType] ?? [];
+}
+
+function buildTrackingNumber(
+  scpType: ApplicantType,
+  year: number,
+  sequence: number,
+) {
+  return `${PROGRAM_PREFIX[scpType]}-${year}-${String(sequence).padStart(5, "0")}`;
+}
+
+function buildContactNumber(sequence: number) {
+  const lastNineDigits = String(100000000 + sequence).slice(-9);
+  return `09${lastNineDigits}`;
+}
+
+function buildEmail(firstName: string, lastName: string, sequence: number) {
+  const safeFirst = firstName.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const safeLast = lastName.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  return `${safeFirst}.${safeLast}${sequence}@example.com`;
+}
+
+async function seedScpConfigurations(schoolYearId: number) {
+  for (const scpType of SCP_TYPES) {
+    const config = await prisma.scpProgramConfig.upsert({
+      where: {
+        uq_scp_program_configs_type: {
+          schoolYearId,
+          scpType,
+        },
+      },
+      update: {
+        isOffered: true,
+      },
+      create: {
+        schoolYearId,
+        scpType,
+        isOffered: true,
+        isTwoPhase: false,
+      },
+    });
+
+    const pipeline = getPipelineForScpType(scpType, config.isTwoPhase);
+
+    await prisma.scpProgramStep.deleteMany({
+      where: { scpProgramConfigId: config.id },
+    });
+
+    if (pipeline.length > 0) {
+      await prisma.scpProgramStep.createMany({
+        data: pipeline.map((step) => ({
+          scpProgramConfigId: config.id,
+          stepOrder: step.stepOrder,
+          kind: step.kind,
+          label: step.label,
+          description: step.description,
+          isRequired: step.isRequired,
+        })),
+      });
+    }
+
+    await prisma.scpProgramOption.deleteMany({
+      where: { scpProgramConfigId: config.id },
+    });
+
+    const optionData = (DEFAULT_SCP_OPTIONS[scpType] ?? []).map((option) => ({
+      scpProgramConfigId: config.id,
+      optionType: option.optionType,
+      value: option.value,
+    }));
+
+    if (optionData.length > 0) {
+      await prisma.scpProgramOption.createMany({ data: optionData });
+    }
+
+    console.log(
+      `Configured ${scpType}: ${pipeline.length} step(s), ${optionData.length} option(s).`,
+    );
+  }
+}
+
+async function seedScpApplications(
+  schoolYearId: number,
+  gradeLevelId: number,
+  encodedById: number,
+) {
+  const year = new Date().getFullYear();
+  let globalCounter = 1;
+
+  for (const scpType of SCP_TYPES) {
+    const config = await prisma.scpProgramConfig.findUnique({
+      where: {
+        uq_scp_program_configs_type: {
+          schoolYearId,
+          scpType,
+        },
+      },
+      select: { isTwoPhase: true },
+    });
+
+    const pipeline = getPipelineForScpType(
+      scpType,
+      config?.isTwoPhase ?? false,
+    );
+
+    for (let i = 1; i <= 3; i++) {
+      const seedNumber = globalCounter;
+      const firstName =
+        PH_FIRST_NAMES[(seedNumber - 1) % PH_FIRST_NAMES.length];
+      const middleName =
+        PH_MIDDLE_NAMES[(seedNumber - 1) % PH_MIDDLE_NAMES.length];
+      const lastName = PH_LAST_NAMES[(seedNumber - 1) % PH_LAST_NAMES.length];
+      const lrn = `190000${String(seedNumber).padStart(6, "0")}`;
+      const sex = seedNumber % 2 === 0 ? "FEMALE" : "MALE";
+
+      const birthMonth = (seedNumber % 12) + 1;
+      const birthDay = ((seedNumber * 3) % 28) + 1;
+      const birthdate = new Date(
+        `2014-${String(birthMonth).padStart(2, "0")}-${String(birthDay).padStart(2, "0")}`,
+      );
+
+      const learner = await prisma.learner.upsert({
+        where: { lrn },
+        update: {
+          firstName,
+          middleName,
+          lastName,
+          birthdate,
+          sex,
+          disabilityTypes: [],
+        },
+        create: {
+          lrn,
+          firstName,
+          middleName,
+          lastName,
+          birthdate,
+          sex,
+          disabilityTypes: [],
+        },
+      });
+
+      const trackingNumber = buildTrackingNumber(scpType, year, seedNumber);
+      const contactNumber = buildContactNumber(seedNumber);
+      const email = buildEmail(firstName, lastName, seedNumber);
+
+      const application = await prisma.earlyRegistrationApplication.upsert({
+        where: { trackingNumber },
+        update: {
+          learnerId: learner.id,
+          schoolYearId,
+          gradeLevelId,
+          applicantType: scpType,
+          learnerType: "NEW_ENROLLEE",
+          status: "SUBMITTED",
+          channel: "F2F",
+          contactNumber,
+          email,
+          guardianRelationship: "PARENT",
+          hasNoMother: false,
+          hasNoFather: false,
+          isPrivacyConsentGiven: true,
+          encodedById,
+        },
+        create: {
+          learnerId: learner.id,
+          schoolYearId,
+          gradeLevelId,
+          trackingNumber,
+          applicantType: scpType,
+          learnerType: "NEW_ENROLLEE",
+          status: "SUBMITTED",
+          channel: "F2F",
+          contactNumber,
+          email,
+          guardianRelationship: "PARENT",
+          hasNoMother: false,
+          hasNoFather: false,
+          isPrivacyConsentGiven: true,
+          encodedById,
+        },
+      });
+
+      await prisma.applicationChecklist.upsert({
+        where: { earlyRegistrationId: application.id },
+        update: {},
+        create: { earlyRegistrationId: application.id },
+      });
+
+      await prisma.applicationFamilyMember.deleteMany({
+        where: { earlyRegistrationId: application.id },
+      });
+
+      await prisma.applicationFamilyMember.createMany({
+        data: [
+          {
+            earlyRegistrationId: application.id,
+            relationship: "MOTHER",
+            firstName: "Maria",
+            lastName,
+            middleName: null,
+            contactNumber,
+            email,
+            occupation: "Teacher",
+          },
+          {
+            earlyRegistrationId: application.id,
+            relationship: "FATHER",
+            firstName: "Jose",
+            lastName,
+            middleName: null,
+            contactNumber,
+            email: null,
+            occupation: "Engineer",
+          },
+        ],
+      });
+
+      await prisma.applicationAddress.deleteMany({
+        where: { earlyRegistrationId: application.id },
+      });
+
+      await prisma.applicationAddress.createMany({
+        data: [
+          {
+            earlyRegistrationId: application.id,
+            addressType: "CURRENT",
+            houseNoStreet: `${100 + seedNumber}`,
+            street: "Rizal Street",
+            barangay: "Poblacion",
+            cityMunicipality: "Tandag City",
+            province: "Surigao del Sur",
+            country: "PHILIPPINES",
+            zipCode: "8300",
+          },
+          {
+            earlyRegistrationId: application.id,
+            addressType: "PERMANENT",
+            houseNoStreet: `${100 + seedNumber}`,
+            street: "Rizal Street",
+            barangay: "Poblacion",
+            cityMunicipality: "Tandag City",
+            province: "Surigao del Sur",
+            country: "PHILIPPINES",
+            zipCode: "8300",
+          },
+        ],
+      });
+
+      await prisma.earlyRegistrationAssessment.deleteMany({
+        where: { applicationId: application.id },
+      });
+
+      if (pipeline.length > 0) {
+        await prisma.earlyRegistrationAssessment.createMany({
+          data: pipeline.map((step) => ({
+            applicationId: application.id,
+            type: step.kind,
+            scheduledDate: null,
+            scheduledTime: null,
+            venue: null,
+            notes: `Seeded from default ${scpType} pipeline`,
+          })),
+        });
+      }
+
+      console.log(`Seeded SCP application ${trackingNumber} (${scpType}).`);
+      globalCounter++;
+    }
+  }
+}
+
 async function seed() {
-	try {
-		// 1. Get active school year
-		const schoolYear = await prisma.schoolYear.findFirst({
-			where: { status: 'ACTIVE' },
-		});
+  try {
+    const schoolYear = await prisma.schoolYear.findFirst({
+      where: { status: "ACTIVE" },
+    });
 
-		if (!schoolYear) {
-			throw new Error(
-				'No active school year found. Please ensure the school year is seeded and set to ACTIVE before running this script.',
-			);
-		}
+    if (!schoolYear) {
+      throw new Error(
+        "No active school year found. Run db:seed first and ensure one school year is ACTIVE.",
+      );
+    }
 
-		console.log(`Using School Year: ${schoolYear.yearLabel}`);
+    const grade7 = await prisma.gradeLevel.findFirst({
+      where: {
+        schoolYearId: schoolYear.id,
+        OR: [{ name: "Grade 7" }, { displayOrder: 7 }],
+      },
+      orderBy: { id: "asc" },
+    });
 
-		// 2. Find Grade 7 Level
-		const grade7 = await prisma.gradeLevel.findFirst({
-			where: { schoolYearId: schoolYear.id, name: 'Grade 7' },
-		});
+    if (!grade7) {
+      throw new Error(
+        'Grade level "Grade 7" (displayOrder 7) not found for the active school year.',
+      );
+    }
 
-		if (!grade7) {
-			throw new Error(
-				'Grade Level "Grade 7" not found for the active school year.',
-			);
-		}
+    const admin = await prisma.user.findFirst({
+      where: { role: "SYSTEM_ADMIN" },
+      select: { id: true },
+      orderBy: { id: "asc" },
+    });
 
-		// 3. Get an admin user for encoding
-		const admin = await prisma.user.findFirst({
-			where: { role: 'SYSTEM_ADMIN' },
-		});
+    if (!admin) {
+      throw new Error("No SYSTEM_ADMIN user found. Run db:seed first.");
+    }
 
-		if (!admin) {
-			throw new Error('No SYSTEM_ADMIN user found to encode applications.');
-		}
+    console.log(`Using School Year: ${schoolYear.yearLabel}`);
+    await seedScpConfigurations(schoolYear.id);
+    await seedScpApplications(schoolYear.id, grade7.id, admin.id);
 
-		// 4. Seed SCP Configs with pipeline steps
-		const scpTypes = [
-			ApplicantType.SCIENCE_TECHNOLOGY_AND_ENGINEERING,
-			ApplicantType.SPECIAL_PROGRAM_IN_THE_ARTS,
-			ApplicantType.SPECIAL_PROGRAM_IN_SPORTS,
-			ApplicantType.SPECIAL_PROGRAM_IN_JOURNALISM,
-			ApplicantType.SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE,
-			ApplicantType.SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION,
-		];
-
-		const philippineFirstNames = [
-			'Juan',
-			'Maria',
-			'Jose',
-			'Angelica',
-			'Miguel',
-			'Princess',
-			'Carlo',
-			'Jasmine',
-			'Rafael',
-			'Nicole',
-			'Paolo',
-			'Gabriela',
-		];
-
-		const philippineMiddleNames = [
-			'Santos',
-			'Reyes',
-			'Garcia',
-			'Cruz',
-			'Mendoza',
-			'Aquino',
-			'Flores',
-			'Navarro',
-			'Torres',
-			'Bautista',
-			'Castro',
-			'Valdez',
-		];
-
-		const philippineLastNames = [
-			'Dela Cruz',
-			'Reyes',
-			'Santos',
-			'Garcia',
-			'Mendoza',
-			'Fernandez',
-			'Navarro',
-			'Ramos',
-			'Bautista',
-			'Gonzales',
-			'Torres',
-			'Villanueva',
-		];
-
-		let globalCounter = 1;
-
-		for (const scpType of scpTypes) {
-			const existingConfig = await prisma.scpProgramConfig.findUnique({
-				where: {
-					uq_scp_program_configs_type: {
-						schoolYearId: schoolYear.id,
-						scpType,
-					},
-				},
-			});
-
-			let configId: number;
-
-			if (!existingConfig) {
-				const config = await prisma.scpProgramConfig.create({
-					data: {
-						schoolYearId: schoolYear.id,
-						scpType,
-						isOffered: true,
-					},
-				});
-				configId = config.id;
-
-				const pipeline = SCP_PIPELINES[scpType] ?? [];
-				if (pipeline.length > 0) {
-					await prisma.scpProgramStep.createMany({
-						data: pipeline.map((step) => ({
-							scpProgramConfigId: config.id,
-							stepOrder: step.stepOrder,
-							kind: step.kind,
-							label: step.label,
-							description: step.description,
-							isRequired: step.isRequired,
-						})),
-					});
-				}
-
-				console.log(
-					`✅ Created SCP Config for ${scpType} with ${pipeline.length} pipeline steps`,
-				);
-			} else {
-				configId = existingConfig.id;
-				console.log(`ℹ️  SCP Config for ${scpType} already exists, skipping`);
-			}
-
-			// 5. Seed 3 Students per SCP
-			for (let i = 1; i <= 3; i++) {
-				const seedNumber = globalCounter;
-				let prefix = 'REG';
-				if (scpType === 'SCIENCE_TECHNOLOGY_AND_ENGINEERING') {
-					prefix = 'STE';
-				} else if (scpType === 'SPECIAL_PROGRAM_IN_THE_ARTS') {
-					prefix = 'SPA';
-				} else if (scpType === 'SPECIAL_PROGRAM_IN_SPORTS') {
-					prefix = 'SPS';
-				} else if (scpType === 'SPECIAL_PROGRAM_IN_JOURNALISM') {
-					prefix = 'SPJ';
-				} else if (scpType === 'SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE') {
-					prefix = 'SPFL';
-				} else if (scpType === 'SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION') {
-					prefix = 'SPTVE';
-				}
-
-				const trackingNumber = `${prefix}-2026-${seedNumber.toString().padStart(5, '0')}`;
-				globalCounter++;
-
-				const firstName =
-					philippineFirstNames[(seedNumber - 1) % philippineFirstNames.length];
-				const middleName =
-					philippineMiddleNames[
-						(seedNumber - 1) % philippineMiddleNames.length
-					];
-				const lastName =
-					philippineLastNames[(seedNumber - 1) % philippineLastNames.length];
-				const lrn = `190000${seedNumber.toString().padStart(6, '0')}`;
-				const sex = seedNumber % 2 === 0 ? 'FEMALE' : 'MALE';
-
-				// Birthdate approx 12-13 years before 2026
-				const birthMonth = (seedNumber % 12) + 1;
-				const birthDay = ((seedNumber * 3) % 28) + 1;
-				const birthDate = new Date(
-					`2014-${birthMonth.toString().padStart(2, '0')}-${birthDay
-						.toString()
-						.padStart(2, '0')}`,
-				);
-
-				const existingApplicant = await prisma.applicant.findUnique({
-					where: { trackingNumber },
-				});
-
-				if (!existingApplicant) {
-					await prisma.applicant.create({
-						data: {
-							trackingNumber,
-							lrn,
-							firstName,
-							middleName,
-							lastName,
-							sex,
-							birthDate,
-							applicantType: scpType,
-							gradeLevelId: grade7.id,
-							schoolYearId: schoolYear.id,
-							status: 'SUBMITTED',
-							admissionChannel: 'F2F',
-							encodedById: admin.id,
-							programDetail: {
-								create: {
-									scpType,
-									artField:
-										scpType === 'SPECIAL_PROGRAM_IN_THE_ARTS' ? 'DANCE' : null,
-									foreignLanguage:
-										scpType === 'SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE'
-											? 'MANDARIN'
-											: null,
-									sportsList:
-										scpType === 'SPECIAL_PROGRAM_IN_SPORTS'
-											? ['BASKETBALL']
-											: [],
-								},
-							},
-						},
-					});
-					console.log(
-						`   ✅ Seeded student ${i} for ${scpType}: ${trackingNumber}`,
-					);
-				} else {
-					// Ensure existing seeded students are SUBMITTED and have LRN/full PH name
-					await prisma.applicant.update({
-						where: { id: existingApplicant.id },
-						data: {
-							status: 'SUBMITTED',
-							lrn,
-							firstName,
-							middleName,
-							lastName,
-						},
-					});
-					console.log(
-						`   ℹ️  Student ${trackingNumber} already exists, updated status/profile`,
-					);
-				}
-			}
-		}
-
-		console.log('Seeding completed!');
-	} catch (error) {
-		console.error('ERROR during seeding:', error);
-	} finally {
-		await prisma.$disconnect();
-		await pool.end();
-	}
+    console.log("SCP seeding completed.");
+  } catch (error) {
+    console.error("ERROR during SCP seeding:", error);
+    process.exitCode = 1;
+  } finally {
+    await prisma.$disconnect();
+    await pool.end();
+  }
 }
 
 seed();

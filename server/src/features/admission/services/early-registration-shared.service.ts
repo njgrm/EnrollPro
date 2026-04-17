@@ -266,6 +266,12 @@ export function createEarlyRegistrationSharedService(
             ? guardianEmail
             : null;
 
+    const learningProgram =
+      application.enrollmentRecord?.section?.programType ??
+      scpDetail?.scpType ??
+      application.applicantType ??
+      "REGULAR";
+
     return {
       ...application,
       firstName: learner.firstName || application.firstName,
@@ -374,6 +380,8 @@ export function createEarlyRegistrationSharedService(
       lastSchoolAddress:
         prevSchool?.schoolAddress || application.lastSchoolAddress,
       lastSchoolType: prevSchool?.schoolType || application.lastSchoolType,
+
+      learningProgram,
 
       isScpApplication: application.applicantType !== "REGULAR",
       scpType:

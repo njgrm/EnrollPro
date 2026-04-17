@@ -1,5 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Search, Loader2, CheckSquare, Square, Save } from "lucide-react";
+import {
+  Search,
+  Loader2,
+  CheckSquare,
+  Square,
+  Save,
+  RefreshCw,
+} from "lucide-react";
 import { sileo } from "sileo";
 import api from "@/shared/api/axiosInstance";
 import { useSettingsStore } from "@/store/settings.slice";
@@ -513,16 +520,31 @@ export default function PipelineBatchView({
                 />
               </div>
             </div>
-            <Button
-              variant="outline"
-              className="h-10 px-3 w-full md:w-auto text-sm font-bold"
-              onClick={() => {
-                setSearch("");
-                setStatus("ALL");
-                setPage(1);
-              }}>
-              Reset
-            </Button>
+            <div className="flex w-full md:w-auto gap-2">
+              <Button
+                variant="outline"
+                className="h-10 px-3 flex-1 md:flex-none text-sm font-bold"
+                onClick={() => {
+                  void fetchData();
+                }}
+                disabled={loading || isBatchProcessing}>
+                <RefreshCw
+                  className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+                />
+                Refresh
+              </Button>
+
+              <Button
+                variant="outline"
+                className="h-10 px-3 flex-1 md:flex-none text-sm font-bold"
+                onClick={() => {
+                  setSearch("");
+                  setStatus("ALL");
+                  setPage(1);
+                }}>
+                Reset
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="px-3 sm:px-6">
