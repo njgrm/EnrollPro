@@ -84,7 +84,18 @@ cd ../client
 
 ### 4.1 Environment Configuration
 
-The client uses Vite. If there are specific environment variables (like `VITE_API_URL`), ensure they are set in a `.env` file in the `client` directory. By default, it communicates with `http://localhost:5000`.
+The client uses Vite. Create a local env file in the `client` directory:
+
+```bash
+cp .env.example .env.local
+```
+
+Set `VITE_API_URL` as needed:
+
+- Local backend: `VITE_API_URL="http://localhost:5000/api"`
+- Teammate over Tailscale hostname: `VITE_API_URL="http://your-teammate.ts.net:5000/api"`
+
+If `VITE_API_URL` is not set, the client falls back to `/api` and uses the Vite proxy target.
 
 ## 5. Running the Application
 

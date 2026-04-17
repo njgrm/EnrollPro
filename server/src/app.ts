@@ -25,6 +25,17 @@ const __dirname = path.dirname(__filename);
 
 const app: express.Express = express();
 
+const defaultClientOrigins = ["http://localhost:5173", "http://localhost:5174"];
+const configuredClientOrigins = [
+  process.env.CLIENT_URL,
+  ...(process.env.CLIENT_URLS ? process.env.CLIENT_URLS.split(",") : []),
+]
+  .map((origin) => origin?.trim())
+  .filter((origin): origin is string => Boolean(origin));
+const allowedClientOrigins = Array.from(
+  new Set([...defaultClientOrigins, ...configuredClientOrigins]),
+);
+
 // Ensure uploads directory exists
 const uploadsDir = path.resolve(__dirname, "..", "uploads");
 if (!fs.existsSync(uploadsDir)) {
@@ -40,13 +51,7 @@ app.use(
 );
 app.use(
   cors({
-    origin: [
-      process.env.CLIENT_URL || "http://localhost:5173",
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "http://localhost:5173",
-      "http://localhost:5174",
-    ],
+    origin: allowedClientOrigins,
     credentials: true,
   }),
 );

@@ -148,6 +148,16 @@ export function DocumentManagement({
   const [selectedType, setSelectedType] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
+  const apiOrigin = (import.meta.env.VITE_API_URL || "/api").replace(
+    /\/api\/?$/,
+    "",
+  );
+
+  const getDocumentDownloadUrl = (fileName: string | null) => {
+    if (!fileName) return "#";
+    return `${apiOrigin}/uploads/${fileName}`;
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setSelectedFile(e.target.files[0]);
@@ -438,7 +448,9 @@ export function DocumentManagement({
                               className="h-7 w-7 text-blue-600"
                               asChild>
                               <a
-                                href={`${import.meta.env.VITE_API_BASE_URL || "/api"}/../../uploads/${row.document.fileName}`}
+                                href={getDocumentDownloadUrl(
+                                  row.document.fileName,
+                                )}
                                 target="_blank"
                                 rel="noreferrer">
                                 <Download className="h-4 w-4" />
