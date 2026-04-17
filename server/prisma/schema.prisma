@@ -40,6 +40,7 @@ model User {
   
   // Unified Application Relations
   updatedChecklists  ApplicationChecklist[] @relation("ChecklistUpdatedBy")
+  updatedTeacherDesignations TeacherDesignation[] @relation("TeacherDesignationUpdatedBy")
 
   // Relations to Enrollment
   encodedEnrollmentApps EnrollmentApplication[] @relation("EnrollmentAppEncodedBy")
@@ -61,12 +62,15 @@ model Teacher {
   email          String?   @map("email")
   contactNumber  String?   @map("contact_number")
   specialization String?
+  photoPath      String?   @map("photo_path")
   isActive       Boolean          @default(true) @map("is_active")
   createdAt      DateTime         @default(now()) @db.Timestamptz @map("created_at")
   updatedAt      DateTime         @updatedAt @db.Timestamptz @map("updated_at")
   
   sections       Section[]
   subjects       TeacherSubject[]
+  teacherDesignations TeacherDesignation[]
+  atlasSyncEvents AtlasSyncEvent[]
 
   @@map("teachers")
 }
@@ -107,6 +111,8 @@ model SchoolYear {
   schoolSettings     SchoolSetting[]
   scpProgramConfigs  ScpProgramConfig[]
   healthRecords      HealthRecord[]
+  teacherDesignations TeacherDesignation[]
+  atlasSyncEvents      AtlasSyncEvent[]
   
   earlyRegistrationApplications EarlyRegistrationApplication[]
   enrollmentApplications        EnrollmentApplication[]
@@ -147,6 +153,7 @@ model Section {
   advisingTeacher   Teacher?     @relation(fields: [advisingTeacherId], references: [id])
   gradeLevel        GradeLevel   @relation(fields: [gradeLevelId], references: [id], onDelete: Cascade)
   enrollmentRecords EnrollmentRecord[]
+  teacherDesignations TeacherDesignation[] @relation("TeacherDesignationAdvisorySection")
 
   @@index([gradeLevelId], name: "idx_sections_grade_level_id")
   @@index([gradeLevelId, programType], name: "idx_sections_grade_level_program_type")
@@ -581,6 +588,69 @@ model TeacherSubject {
   @@map("teacher_subjects")
 }
 
+/// School-year scoped ATLAS designation metadata for faculty load computation
+model TeacherDesignation {
+  id                               Int       @id @default(autoincrement())
+  teacherId                        Int       @map("teacher_id")
+  schoolYearId                     Int       @map("school_year_id")
+  advisorySectionId                Int?      @map("advisory_section_id")
+  isClassAdviser                   Boolean   @default(false) @map("is_class_adviser")
+  advisoryEquivalentHoursPerWeek   Float     @default(0) @map("advisory_equivalent_hours_per_week")
+  isTic                            Boolean   @default(false) @map("is_tic")
+  isTeachingExempt                 Boolean   @default(false) @map("is_teaching_exempt")
+  customTargetTeachingHoursPerWeek Float?    @map("custom_target_teaching_hours_per_week")
+  designationNotes                 String?   @map("designation_notes")
+  effectiveFrom                    DateTime? @db.Date @map("effective_from")
+  effectiveTo                      DateTime? @db.Date @map("effective_to")
+  updateReason                     String?   @map("update_reason")
+  updatedById                      Int?      @map("updated_by_id")
+  createdAt                        DateTime  @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt                        DateTime  @updatedAt @db.Timestamptz @map("updated_at")
+
+  teacher                          Teacher   @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  schoolYear                       SchoolYear @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  advisorySection                  Section?  @relation("TeacherDesignationAdvisorySection", fields: [advisorySectionId], references: [id], onDelete: SetNull)
+  updatedBy                        User?     @relation("TeacherDesignationUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@unique([teacherId, schoolYearId], name: "uq_teacher_designations_teacher_sy")
+  @@index([schoolYearId], name: "idx_teacher_designations_school_year_id")
+  @@index([advisorySectionId], name: "idx_teacher_designations_advisory_section_id")
+  @@index([updatedById], name: "idx_teacher_designations_updated_by_id")
+  @@map("teacher_designations")
+}
+
+/// Outbound EnrollPro -> ATLAS synchronization events for observability and retries
+model AtlasSyncEvent {
+  id            Int             @id @default(autoincrement())
+  eventId       String          @unique(map: "uq_atlas_sync_events_event_id") @map("event_id")
+  eventType     String          @map("event_type")
+  teacherId     Int?            @map("teacher_id")
+  schoolYearId  Int?            @map("school_year_id")
+  payload       Json
+  requestUrl    String          @map("request_url")
+  status        AtlasSyncStatus @default(PENDING)
+  httpStatus    Int?            @map("http_status")
+  responseBody  Json?           @map("response_body")
+  errorMessage  String?         @map("error_message")
+  attemptCount  Int             @default(0) @map("attempt_count")
+  maxAttempts   Int             @default(5) @map("max_attempts")
+  durationMs    Int?            @map("duration_ms")
+  lastAttemptAt DateTime?       @db.Timestamptz @map("last_attempt_at")
+  nextRetryAt   DateTime?       @db.Timestamptz @map("next_retry_at")
+  acknowledgedAt DateTime?      @db.Timestamptz @map("acknowledged_at")
+  createdAt     DateTime        @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt     DateTime        @updatedAt @db.Timestamptz @map("updated_at")
+
+  teacher       Teacher?        @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  schoolYear    SchoolYear?     @relation(fields: [schoolYearId], references: [id], onDelete: SetNull)
+
+  @@index([status, nextRetryAt], name: "idx_atlas_sync_events_status_retry")
+  @@index([teacherId, createdAt], name: "idx_atlas_sync_events_teacher_created_at")
+  @@index([schoolYearId, createdAt], name: "idx_atlas_sync_events_sy_created_at")
+  @@index([createdAt], name: "idx_atlas_sync_events_created_at")
+  @@map("atlas_sync_events")
+}
+
 // ═══════════════════════════════════════════════════════════
 // ENUMS
 // ═══════════════════════════════════════════════════════════
@@ -727,6 +797,14 @@ enum AddressType {
   PERMANENT
 
   @@map("address_type")
+}
+
+enum AtlasSyncStatus {
+  PENDING
+  SYNCED
+  FAILED
+
+  @@map("atlas_sync_status")
 }
 
 enum FamilyRelationship {

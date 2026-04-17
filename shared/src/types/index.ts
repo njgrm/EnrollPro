@@ -28,6 +28,7 @@ import type {
 import type {
   teacherSchema,
   updateTeacherSchema,
+  teacherDesignationSchema,
 } from "../schemas/teacher.schema.js";
 import type {
   updateIdentitySchema,
@@ -96,6 +97,7 @@ export type UpdateScpProgramConfigsInput = z.infer<
 // ─── Teacher Types ─────────────────────────────────────
 export type TeacherInput = z.infer<typeof teacherSchema>;
 export type UpdateTeacherInput = z.infer<typeof updateTeacherSchema>;
+export type TeacherDesignationInput = z.infer<typeof teacherDesignationSchema>;
 
 // ─── Settings Types ────────────────────────────────────
 export type UpdateIdentityInput = z.infer<typeof updateIdentitySchema>;

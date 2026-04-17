@@ -25,6 +25,7 @@ import NotFound from "@/shared/components/NotFound";
 import AdminUsers from "@/features/admin/pages/Users";
 import EmailLogs from "@/features/admin/pages/EmailLogs";
 import SystemHealth from "@/features/admin/pages/SystemHealth";
+import AtlasIntegration from "@/features/admin/pages/AtlasIntegration";
 import Teachers from "@/features/teachers/pages/Index";
 
 // F2F BASIC EDUCATION EARLY REGISTRATION FORM Page
@@ -217,6 +218,14 @@ export const router = createBrowserRouter([
             element: (
               <AppLayout>
                 <EmailLogs />
+              </AppLayout>
+            ),
+          },
+          {
+            path: "/admin/atlas",
+            element: (
+              <AppLayout>
+                <AtlasIntegration />
               </AppLayout>
             ),
           },

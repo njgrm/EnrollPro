@@ -21,6 +21,7 @@ import {
   Activity,
   Mail,
   AlertTriangle,
+  CloudUpload,
 } from "lucide-react";
 
 import {
@@ -459,6 +460,12 @@ function AppSidebar() {
                       to="/admin/email-logs"
                       icon={Mail}
                       label="Email Logs"
+                      pathname={pathname}
+                    />
+                    <NavItem
+                      to="/admin/atlas"
+                      icon={CloudUpload}
+                      label="ATLAS Sync"
                       pathname={pathname}
                     />
                     <NavItem
