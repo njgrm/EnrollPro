@@ -42,12 +42,7 @@ Subsystems are authorized to fetch:
 
 ## 3. Default Integration Endpoints for Teammates
 
-These protected endpoints are intended as direct ingestion feeds for subsystem teams.
-
-All endpoints below require integration key headers:
-
-- X-Integration-Key: <key>
-- Authorization: Bearer <key>
+These public endpoints are intended as direct ingestion feeds for subsystem teams.
 
 | Consumer System | Endpoint                                   | Purpose                                           |
 | --------------- | ------------------------------------------ | ------------------------------------------------- |
@@ -112,3 +107,13 @@ pnpm --filter server run db:seed-sample-integration
 4. Validate demo page:
 
 - http://localhost:5173/sample-integration
+
+## 9. Subsystem API Guide Files (Simple English)
+
+Use these files for teammate setup and API fetch flow.
+
+- Shared quick start (API first rule): docs/features/integration/SUBSYSTEM_API_QUICK_START.md
+- ATLAS guide: docs/features/integration/ATLAS_API_GUIDE.md
+- AIMS guide: docs/features/integration/AIMS_API_GUIDE.md
+- SMART guide: docs/features/integration/SMART_API_GUIDE.md
+- Full endpoint spec: docs/features/integration/INTEGRATION_API_V1.md

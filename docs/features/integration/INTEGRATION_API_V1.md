@@ -5,25 +5,24 @@
 This document defines the external read-only integration surface for partner systems such as ATLAS, AIMS, and SMART.
 
 - Base path: /api/integration/v1
-- Access model: service key authentication
+- Access model: public read-only endpoints
 - Data model note: learner primary key is internal Int, external integrations should use learner.externalId (UUID)
 - Scope model: schoolYearId query scoping for roster, faculty, and section routes
 
-## Authentication
+## Companion Guides (Simple English)
 
-Protected integration routes require one of the configured integration keys from server environment:
+Use these guides for subsystem-specific setup and fetch flow.
 
-- INTEGRATION_API_KEY
-- INTEGRATION_API_KEYS (comma-separated)
+- Shared startup and health checks: [SUBSYSTEM_API_QUICK_START.md](./SUBSYSTEM_API_QUICK_START.md)
+- ATLAS fetch guide: [ATLAS_API_GUIDE.md](./ATLAS_API_GUIDE.md)
+- AIMS fetch guide: [AIMS_API_GUIDE.md](./AIMS_API_GUIDE.md)
+- SMART fetch guide: [SMART_API_GUIDE.md](./SMART_API_GUIDE.md)
 
-Send the key in either header format:
+## Access Mode
 
-- X-Integration-Key: <key>
-- Authorization: Bearer <key>
+All integration routes under `/api/integration/v1` are public and read-only.
 
-If authentication is not configured, protected routes return HTTP 503.
-
-Public sample routes under `/sample/*` are keyless and intended for non-production demo/testing only.
+Sample routes under `/sample/*` remain intended for non-production demo/testing only.
 
 ## Response Envelopes
 
@@ -47,11 +46,11 @@ Validation errors (controller-level) use:
 }
 ```
 
-Authentication errors (middleware-level) use:
+Service errors use:
 
 ```json
 {
-  "code": "INTEGRATION_KEY_REQUIRED",
+  "code": "SERVICE_UNAVAILABLE",
   "message": "..."
 }
 ```
@@ -63,7 +62,7 @@ Authentication errors (middleware-level) use:
 - Method: GET
 - Path: /health
 - Purpose: liveness plus database connectivity status
-- Auth: required
+- Auth: public
 
 Sample success:
 
@@ -97,7 +96,7 @@ Sample degraded:
 - Primary path: /learners
 - Alias path: /students
 - Purpose: enrolled learner roster for a school year
-- Auth: required
+- Auth: public
 
 Query params:
 
@@ -162,7 +161,7 @@ Sample response:
 - Primary path: /faculty
 - Alias path: /teachers
 - Purpose: school-year-scoped faculty list including designation metadata
-- Auth: required
+- Auth: public
 
 Query params:
 
@@ -228,7 +227,7 @@ Sample response:
 - Method: GET
 - Path: /sections
 - Purpose: class sections in the selected school year
-- Auth: required
+- Auth: public
 
 Query params:
 
@@ -278,7 +277,7 @@ Sample response:
 - Method: GET
 - Path: /sections/:sectionId/learners
 - Purpose: enrolled learners within a section
-- Auth: required
+- Auth: public
 
 Path params:
 
@@ -352,7 +351,7 @@ Sample response:
 - Method: GET
 - Path: /staff
 - Purpose: list active EnrollPro staff accounts scoped to SYSTEM_ADMIN and REGISTRAR roles
-- Auth: required
+- Auth: public
 
 Query params:
 
@@ -389,7 +388,7 @@ Sample response:
 }
 ```
 
-### 7) Default Subsystem Feeds (Protected)
+### 7) Default Subsystem Feeds (Public)
 
 These endpoints are pre-scoped to active school year when `schoolYearId` is omitted.
 They are designed as direct read-only ingestion feeds for teammate systems.
@@ -399,21 +398,21 @@ They are designed as direct read-only ingestion feeds for teammate systems.
 - Method: GET
 - Path: /default/atlas/faculty
 - Purpose: ready faculty and designation feed for scheduling engines
-- Auth: required
+- Auth: public
 
 #### 7.2 SMART Default Student Feed
 
 - Method: GET
 - Path: /default/smart/students
 - Purpose: ready enrolled learner feed with LRN, grade, and section
-- Auth: required
+- Auth: public
 
 #### 7.3 AIMS Default Context Feed
 
 - Method: GET
 - Path: /default/aims/context
 - Purpose: ready learner-context feed for intervention/remediation pipelines
-- Auth: required
+- Auth: public
 
 All default feed responses include:
 
@@ -439,10 +438,8 @@ By default, these routes are enabled outside production. In production, enable e
 
 - 200: successful query
 - 400: invalid request parameters
-- 401: missing integration key
-- 403: invalid integration key
 - 404: scoped resource not found (for example, section outside school year)
-- 503: integration auth not configured, sample feeds disabled, or health degraded due DB outage
+- 503: sample feeds disabled or health degraded due DB outage
 
 ## Operational Notes
 
@@ -451,4 +448,3 @@ By default, these routes are enabled outside production. In production, enable e
   - /learners and /students
   - /faculty and /teachers
 - Default feeds are ingestion-only surfaces. Partner systems (ATLAS/SMART/AIMS) keep mutations in their own APIs.
-- Rotate integration keys regularly and immediately on leakage suspicion.

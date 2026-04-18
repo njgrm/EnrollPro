@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { authenticateIntegration } from "../../middleware/authenticateIntegration.js";
 import {
   integrationHealth,
   listIntegrationFaculty,
@@ -21,12 +20,10 @@ import {
 
 const router: Router = Router();
 
-// Public sample feeds for non-production teammate testing.
+// Integration feeds are public for teammate testing and ingestion.
 router.get("/sample/teachers", listSampleTeachers);
 router.get("/sample/staff", listSampleStaff);
 router.get("/sample/students", listSampleStudents);
-
-router.use(authenticateIntegration);
 
 router.get("/health", integrationHealth);
 router.get("/learners", listIntegrationLearners);

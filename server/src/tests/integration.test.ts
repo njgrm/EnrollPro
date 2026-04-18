@@ -237,9 +237,6 @@ async function createFixture(seed: string): Promise<IntegrationFixture> {
 
 async function runTests(): Promise<void> {
   const seed = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const validIntegrationKey = `integration-test-key-${seed}`;
-  const previousIntegrationKey = process.env.INTEGRATION_API_KEY;
-  const previousIntegrationKeys = process.env.INTEGRATION_API_KEYS;
   const previousPublicSampleFlag =
     process.env.INTEGRATION_PUBLIC_SAMPLE_ENABLED;
 
@@ -247,8 +244,6 @@ async function runTests(): Promise<void> {
   let server: Server | null = null;
 
   try {
-    process.env.INTEGRATION_API_KEYS = validIntegrationKey;
-    delete process.env.INTEGRATION_API_KEY;
     process.env.INTEGRATION_PUBLIC_SAMPLE_ENABLED = "true";
 
     fixture = await createFixture(seed);
@@ -263,25 +258,8 @@ async function runTests(): Promise<void> {
       "Test server did not bind to a TCP port",
     );
     const baseUrl = `http://127.0.0.1:${(address as AddressInfo).port}`;
-    const authHeaders = { "X-Integration-Key": validIntegrationKey };
 
-    const missingKey = await requestJson(baseUrl, "/api/integration/v1/health");
-    assert.equal(missingKey.status, 401);
-    assert.equal(missingKey.body?.code, "INTEGRATION_KEY_REQUIRED");
-
-    const invalidKey = await requestJson(
-      baseUrl,
-      "/api/integration/v1/health",
-      {
-        headers: { "X-Integration-Key": "invalid-key" },
-      },
-    );
-    assert.equal(invalidKey.status, 403);
-    assert.equal(invalidKey.body?.code, "INTEGRATION_KEY_INVALID");
-
-    const health = await requestJson(baseUrl, "/api/integration/v1/health", {
-      headers: authHeaders,
-    });
+    const health = await requestJson(baseUrl, "/api/integration/v1/health");
     assert.equal(health.status, 200);
     assert.equal(typeof health.body?.data?.status, "string");
     assert.equal(typeof health.body?.data?.db, "string");
@@ -289,9 +267,6 @@ async function runTests(): Promise<void> {
     const learnersMissingScope = await requestJson(
       baseUrl,
       "/api/integration/v1/learners",
-      {
-        headers: authHeaders,
-      },
     );
     assert.equal(learnersMissingScope.status, 400);
     assert.equal(learnersMissingScope.body?.error?.code, "VALIDATION_ERROR");
@@ -299,7 +274,6 @@ async function runTests(): Promise<void> {
     const learners = await requestJson(
       baseUrl,
       `/api/integration/v1/learners?schoolYearId=${fixtureData.schoolYearId}&search=${encodeURIComponent(fixtureData.learnerLastName)}`,
-      { headers: authHeaders },
     );
     assert.equal(learners.status, 200);
     assert.equal(learners.body?.meta?.schoolYearId, fixtureData.schoolYearId);
@@ -319,7 +293,6 @@ async function runTests(): Promise<void> {
     const studentsAlias = await requestJson(
       baseUrl,
       `/api/integration/v1/students?schoolYearId=${fixtureData.schoolYearId}&search=${encodeURIComponent(fixtureData.learnerLastName)}`,
-      { headers: authHeaders },
     );
     assert.equal(studentsAlias.status, 200);
     assert.equal(
@@ -330,7 +303,6 @@ async function runTests(): Promise<void> {
     const sections = await requestJson(
       baseUrl,
       `/api/integration/v1/sections?schoolYearId=${fixtureData.schoolYearId}`,
-      { headers: authHeaders },
     );
     assert.equal(sections.status, 200);
     assert.ok(Array.isArray(sections.body?.data));
@@ -347,7 +319,6 @@ async function runTests(): Promise<void> {
     const sectionLearners = await requestJson(
       baseUrl,
       `/api/integration/v1/sections/${fixtureData.sectionId}/learners?schoolYearId=${fixtureData.schoolYearId}`,
-      { headers: authHeaders },
     );
     assert.equal(sectionLearners.status, 200);
     assert.equal(
@@ -369,7 +340,6 @@ async function runTests(): Promise<void> {
     const faculty = await requestJson(
       baseUrl,
       `/api/integration/v1/faculty?schoolYearId=${fixtureData.schoolYearId}`,
-      { headers: authHeaders },
     );
     assert.equal(faculty.status, 200);
     assert.ok(Array.isArray(faculty.body?.data));
@@ -385,21 +355,17 @@ async function runTests(): Promise<void> {
     const teachersAlias = await requestJson(
       baseUrl,
       `/api/integration/v1/teachers?schoolYearId=${fixtureData.schoolYearId}`,
-      { headers: authHeaders },
     );
     assert.equal(teachersAlias.status, 200);
     assert.ok(Array.isArray(teachersAlias.body?.data));
 
-    const staff = await requestJson(baseUrl, "/api/integration/v1/staff", {
-      headers: authHeaders,
-    });
+    const staff = await requestJson(baseUrl, "/api/integration/v1/staff");
     assert.equal(staff.status, 200);
     assert.ok(Array.isArray(staff.body?.data));
 
     const defaultAtlas = await requestJson(
       baseUrl,
       `/api/integration/v1/default/atlas/faculty?schoolYearId=${fixtureData.schoolYearId}`,
-      { headers: authHeaders },
     );
     assert.equal(defaultAtlas.status, 200);
     assert.equal(defaultAtlas.body?.meta?.sourceSystem, "ATLAS");
@@ -408,7 +374,6 @@ async function runTests(): Promise<void> {
     const defaultSmart = await requestJson(
       baseUrl,
       `/api/integration/v1/default/smart/students?schoolYearId=${fixtureData.schoolYearId}`,
-      { headers: authHeaders },
     );
     assert.equal(defaultSmart.status, 200);
     assert.equal(defaultSmart.body?.meta?.sourceSystem, "SMART");
@@ -426,7 +391,6 @@ async function runTests(): Promise<void> {
     const defaultAims = await requestJson(
       baseUrl,
       `/api/integration/v1/default/aims/context?schoolYearId=${fixtureData.schoolYearId}`,
-      { headers: authHeaders },
     );
     assert.equal(defaultAims.status, 200);
     assert.equal(defaultAims.body?.meta?.sourceSystem, "AIMS");
@@ -466,8 +430,6 @@ async function runTests(): Promise<void> {
       await deleteFixture(fixture);
     }
 
-    process.env.INTEGRATION_API_KEY = previousIntegrationKey;
-    process.env.INTEGRATION_API_KEYS = previousIntegrationKeys;
     process.env.INTEGRATION_PUBLIC_SAMPLE_ENABLED = previousPublicSampleFlag;
 
     await prisma.$disconnect();

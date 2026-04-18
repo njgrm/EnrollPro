@@ -30,7 +30,6 @@ OVERVIEW (READ THIS FIRST)
 REPO CONTEXT (SOURCE OF TRUTH)
 - Frontend API env key: VITE_API_URL
 - Backend DB env key: DATABASE_URL
-- Integration auth env key: INTEGRATION_API_KEYS
 - API base path: /api
 - Health endpoint: /api/health
 - Integration API base path: /api/integration/v1
@@ -82,7 +81,6 @@ Minimum host values:
 PORT=5000
 CLIENT_URL="http://localhost:5173"
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/enrollpro"
-INTEGRATION_API_KEYS="<set-a-strong-shared-key-or-comma-separated-keys>"
 
 Optional for expanded origins:
 CLIENT_URLS=""
@@ -172,8 +170,7 @@ From client machine (PowerShell):
 Test-NetConnection buru-degree.ts.net -Port 5000
 Test-NetConnection buru-degree.ts.net -Port 5432
 Invoke-RestMethod http://buru-degree.ts.net:5000/api/health
-$headers = @{ "X-Integration-Key" = "<INTEGRATION_KEY>" }
-Invoke-RestMethod http://buru-degree.ts.net:5000/api/integration/v1/health -Headers $headers
+Invoke-RestMethod http://buru-degree.ts.net:5000/api/integration/v1/health
 
 Expected API response:
 {"ok":true}
@@ -207,6 +204,4 @@ PART G: SECURITY RULES (MANDATORY)
 - This setup is for trusted team development only.
 - Never expose API or PostgreSQL to the public internet.
 - Do not post DB credentials in public channels.
-- Do not post integration API keys in public channels.
-- Rotate INTEGRATION_API_KEYS when host ownership changes or key leakage is suspected.
 - Remove temporary firewall rules if hosting is no longer required.

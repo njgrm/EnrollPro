@@ -25,14 +25,14 @@ The sample seed creates:
 
 ## Endpoint groups
 
-Protected partner feeds (integration key required):
+Default partner feeds (public):
 
 - /api/integration/v1/default/atlas/faculty
 - /api/integration/v1/default/smart/students
 - /api/integration/v1/default/aims/context
 - /api/integration/v1/staff
 
-Public sample feeds (no key, for non-production testing):
+Public sample feeds (no key):
 
 - /api/integration/v1/sample/teachers
 - /api/integration/v1/sample/staff
