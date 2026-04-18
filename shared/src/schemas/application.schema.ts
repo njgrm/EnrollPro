@@ -1,11 +1,16 @@
 import { z } from "zod";
 import {
+  ApplicantTypeEnum,
+  ApplicationStatusEnum,
   SexEnum,
   GradeLevelEnum,
   ScpTypeEnum,
   LastSchoolTypeEnum,
   LearnerTypeEnum,
   AssessmentKindEnum,
+  TrackingCurrentStepEnum,
+  TrackingProgramTypeEnum,
+  TrackingStatusEnum,
 } from "../constants/index.js";
 
 // ─── Shared sub-schemas ────────────────────────────────
@@ -61,7 +66,7 @@ export const applicationSubmitSchema = z
       .regex(/^\d{12}$/, "LRN must be exactly 12 numeric digits")
       .optional()
       .nullable(),
-    psaBirthCertNumber: z.string().optional().nullable(),
+    psaBirthCertNumber: z.string().trim().toUpperCase().optional().nullable(),
 
     earlyRegistrationId: z.number().int().positive().optional(),
 
@@ -177,6 +182,60 @@ export const applicationSubmitSchema = z
       });
     }
   });
+
+export const assessmentTrackerStepSchema = z.object({
+  stepOrder: z.number().int().min(1),
+  kind: z.string(),
+  label: z.string(),
+  status: z.enum(["PENDING", "SCHEDULED", "COMPLETED"]),
+  scheduledDate: z.string().nullable(),
+  scheduledTime: z.string().nullable(),
+  venue: z.string().nullable(),
+  result: z.string().nullable(),
+  score: z.number().nullable(),
+  notes: z.string().nullable(),
+  conductedAt: z.string().nullable(),
+});
+
+export const trackingAssessmentDataSchema = z
+  .object({
+    phaseStatus: z.enum(["NOT_STARTED", "IN_PROGRESS", "COMPLETED"]),
+    latestSchedule: z
+      .object({
+        stepOrder: z.number().int().min(1),
+        label: z.string(),
+        kind: z.string(),
+        scheduledDate: z.string().nullable(),
+        scheduledTime: z.string().nullable(),
+        venue: z.string().nullable(),
+      })
+      .nullable(),
+    steps: z.array(assessmentTrackerStepSchema),
+  })
+  .nullable();
+
+export const applicationTrackingStateSchema = z.object({
+  programType: TrackingProgramTypeEnum,
+  status: TrackingStatusEnum,
+  rawStatus: ApplicationStatusEnum,
+  currentStep: TrackingCurrentStepEnum,
+  assessmentData: trackingAssessmentDataSchema,
+});
+
+export const applicationSubmitResponseSchema = z
+  .object({
+    trackingNumber: z.string().min(1),
+    applicantType: ApplicantTypeEnum,
+  })
+  .merge(applicationTrackingStateSchema);
+
+export const applicationTrackResponseSchema = z
+  .object({
+    trackingNumber: z.string().min(1),
+    applicantType: ApplicantTypeEnum,
+  })
+  .merge(applicationTrackingStateSchema)
+  .passthrough();
 
 // ─── Application Action Schemas ────────────────────────
 export const approveSchema = z.object({

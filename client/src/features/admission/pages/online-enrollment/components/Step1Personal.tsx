@@ -1,10 +1,9 @@
 import { useFormContext } from "react-hook-form";
 import { isAxiosError } from "axios";
-import type { EnrollmentFormData } from "../../online-enrollment/types";
+import type { EnrollmentFormData } from "../types";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Checkbox } from "@/shared/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group";
 import { DatePicker } from "@/shared/ui/date-picker";
 import {
   AlertCircle,
@@ -13,6 +12,8 @@ import {
   Loader2,
   CheckCircle2,
   Search,
+  Mars,
+  Venus,
 } from "lucide-react";
 import { differenceInYears } from "date-fns";
 import { cn } from "@/shared/lib/utils";
@@ -592,35 +593,47 @@ export default function Step1Personal() {
           <Label className="text-sm font-semibold">
             Sex <span className="text-destructive">*</span>
           </Label>
-          <RadioGroup
-            value={watch("sex")}
-            onValueChange={(val) => setValue("sex", val as "Male" | "Female")}
-            className="flex gap-6 pt-1">
-            <div className="flex items-center space-x-2.5">
-              <RadioGroupItem
-                value="Male"
-                id="sex-male"
-                className="w-5 h-5 border-[#061E29] text-[#061E29]"
-              />
-              <Label
-                htmlFor="sex-male"
-                className="font-medium cursor-pointer text-sm">
-                Male
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2.5">
-              <RadioGroupItem
-                value="Female"
-                id="sex-female"
-                className="w-5 h-5 border-[#061E29] text-[#061E29]"
-              />
-              <Label
-                htmlFor="sex-female"
-                className="font-medium cursor-pointer text-sm">
-                Female
-              </Label>
-            </div>
-          </RadioGroup>
+          <div className="flex gap-4 pt-1">
+            {(
+              [
+                { value: "Male", label: "MALE", icon: Mars },
+                { value: "Female", label: "FEMALE", icon: Venus },
+              ] as const
+            ).map((sexOption) => (
+              <button
+                key={sexOption.value}
+                type="button"
+                onClick={() =>
+                  setValue("sex", sexOption.value, {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  })
+                }
+                className={cn(
+                  "flex items-center gap-2 rounded-lg border-2 px-4 py-2 transition-colors text-sm uppercase",
+                  watch("sex") === sexOption.value
+                    ? "border-primary bg-primary/5 font-bold"
+                    : errors.sex
+                      ? "border-destructive hover:bg-destructive/10"
+                      : "border-border hover:bg-muted/50",
+                )}>
+                <sexOption.icon
+                  className={cn(
+                    "w-4 h-4",
+                    watch("sex") === sexOption.value
+                      ? "text-primary"
+                      : "text-muted-foreground",
+                  )}
+                />
+                <span className="font-bold">{sexOption.label}</span>
+              </button>
+            ))}
+          </div>
+          {errors.sex && (
+            <p className="text-xs text-destructive font-medium flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" /> {errors.sex.message}
+            </p>
+          )}
         </div>
       </div>
 

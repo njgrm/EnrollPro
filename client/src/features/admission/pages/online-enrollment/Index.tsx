@@ -3,24 +3,31 @@ import GuestLayout from "@/shared/layouts/GuestLayout";
 import AdmissionHeader from "../../components/AdmissionHeader";
 import PrivacyNotice from "./PrivacyNotice";
 import EarlyRegistrationForm from "./EarlyRegistrationForm";
-import EarlyRegistrationSuccess from "./components/EarlyRegistrationSuccess";
+import EnrollmentSuccess from "./components/EnrollmentSuccess";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/shared/lib/utils";
 import { useSettingsStore } from "@/store/settings.slice";
+import type { ApplicationSubmitResponse } from "@enrollpro/shared";
 
 const CONSENT_KEY = "enrollpro_apply_consent";
 const API_BASE = import.meta.env.VITE_API_URL?.replace("/api", "") || "";
+
+type EnrollmentSubmitSuccessPayload = Pick<
+  ApplicationSubmitResponse,
+  | "trackingNumber"
+  | "applicantType"
+  | "programType"
+  | "status"
+  | "currentStep"
+  | "assessmentData"
+>;
 
 export default function Apply() {
   const [hasConsented, setHasConsented] = useState(() => {
     return sessionStorage.getItem(CONSENT_KEY) === "true";
   });
-  const [submittedTrackingNumber, setSubmittedTrackingNumber] = useState<
-    string | null
-  >(null);
-  const [submittedApplicantType, setSubmittedApplicantType] = useState<
-    string | null
-  >(null);
+  const [submittedSuccessData, setSubmittedSuccessData] =
+    useState<EnrollmentSubmitSuccessPayload | null>(null);
 
   const { schoolName, logoUrl, enrollmentPhase } = useSettingsStore();
   const isClosed = enrollmentPhase === "CLOSED";
@@ -33,13 +40,11 @@ export default function Apply() {
   const handleReset = () => {
     sessionStorage.removeItem(CONSENT_KEY);
     setHasConsented(false);
-    setSubmittedTrackingNumber(null);
-    setSubmittedApplicantType(null);
+    setSubmittedSuccessData(null);
   };
 
   const handleBackHome = () => {
-    setSubmittedTrackingNumber(null);
-    setSubmittedApplicantType(null);
+    setSubmittedSuccessData(null);
     handleReset();
   };
 
@@ -184,16 +189,20 @@ export default function Apply() {
             ) : (
               <div className="flex flex-col h-auto">
                 <AnimatePresence mode="wait">
-                  {submittedTrackingNumber ? (
+                  {submittedSuccessData ? (
                     <motion.div
                       key="success"
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ duration: 0.4 }}>
-                      <EarlyRegistrationSuccess
-                        trackingNumber={submittedTrackingNumber}
-                        applicantType={submittedApplicantType}
+                      <EnrollmentSuccess
+                        trackingNumber={submittedSuccessData.trackingNumber}
+                        applicantType={submittedSuccessData.applicantType}
+                        programType={submittedSuccessData.programType}
+                        status={submittedSuccessData.status}
+                        currentStep={submittedSuccessData.currentStep}
+                        assessmentData={submittedSuccessData.assessmentData}
                         onBackHome={handleBackHome}
                       />
                     </motion.div>
@@ -214,10 +223,7 @@ export default function Apply() {
                       exit={{ opacity: 0, scale: 1.02 }}
                       transition={{ duration: 0.4, ease: "easeOut" }}>
                       <EarlyRegistrationForm
-                        onSuccess={(tracking: string, type?: string) => {
-                          setSubmittedTrackingNumber(tracking);
-                          setSubmittedApplicantType(type || null);
-                        }}
+                        onSuccess={(data) => setSubmittedSuccessData(data)}
                       />
                     </motion.div>
                   )}

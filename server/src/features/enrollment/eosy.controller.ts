@@ -3,25 +3,26 @@ import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../lib/AppError.js";
 import { auditLog } from "../audit-logs/audit-logs.service.js";
 
-export async function getEosySections(req: Request, res: Response, next: NextFunction) {
+export async function getEosySections(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   try {
     const { schoolYearId } = req.query;
     const sections = await prisma.section.findMany({
       where: {
         gradeLevel: {
-          schoolYearId: parseInt(String(schoolYearId))
-        }
+          schoolYearId: parseInt(String(schoolYearId)),
+        },
       },
       include: {
         gradeLevel: true,
         _count: {
-          select: { enrollmentRecords: true }
-        }
+          select: { enrollmentRecords: true },
+        },
       },
-      orderBy: [
-        { gradeLevel: { name: 'asc' } },
-        { name: 'asc' }
-      ]
+      orderBy: [{ gradeLevel: { name: "asc" } }, { name: "asc" }],
     });
     res.json({ sections });
   } catch (error) {
@@ -29,25 +30,30 @@ export async function getEosySections(req: Request, res: Response, next: NextFun
   }
 }
 
-export async function getSectionRecords(req: Request, res: Response, next: NextFunction) {
+export async function getSectionRecords(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   try {
     const { id } = req.params;
+    const sectionId = parseInt(String(id), 10);
     const records = await prisma.enrollmentRecord.findMany({
-      where: { sectionId: parseInt(id) },
+      where: { sectionId },
       include: {
         enrollmentApplication: {
           include: {
-            learner: true
-          }
-        }
+            learner: true,
+          },
+        },
       },
       orderBy: {
         enrollmentApplication: {
           learner: {
-            lastName: 'asc'
-          }
-        }
-      }
+            lastName: "asc",
+          },
+        },
+      },
     });
     res.json({ records });
   } catch (error) {
@@ -55,28 +61,41 @@ export async function getSectionRecords(req: Request, res: Response, next: NextF
   }
 }
 
-export async function updateEosyRecord(req: Request, res: Response, next: NextFunction) {
+export async function updateEosyRecord(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   try {
     const { id } = req.params;
+    const recordId = parseInt(String(id), 10);
     const { eosyStatus, dropOutReason, transferOutDate } = req.body;
 
     const record = await prisma.enrollmentRecord.findUnique({
-      where: { id: parseInt(id) },
-      include: { section: true }
+      where: { id: recordId },
+      include: { section: true },
     });
 
     if (!record) throw new AppError(404, "Enrollment record not found.");
     if (record.section.isEosyFinalized) {
-      throw new AppError(422, "Cannot update status. Section is already finalized.");
+      throw new AppError(
+        422,
+        "Cannot update status. Section is already finalized.",
+      );
     }
 
     const updated = await prisma.enrollmentRecord.update({
-      where: { id: parseInt(id) },
+      where: { id: recordId },
       data: {
         eosyStatus: eosyStatus as any,
         dropOutReason: eosyStatus === "DROPPED_OUT" ? dropOutReason : null,
-        transferOutDate: eosyStatus === "TRANSFERRED_OUT" ? (transferOutDate ? new Date(transferOutDate) : null) : null
-      }
+        transferOutDate:
+          eosyStatus === "TRANSFERRED_OUT"
+            ? transferOutDate
+              ? new Date(transferOutDate)
+              : null
+            : null,
+      },
     });
 
     res.json(updated);
@@ -85,14 +104,18 @@ export async function updateEosyRecord(req: Request, res: Response, next: NextFu
   }
 }
 
-export async function finalizeSection(req: Request, res: Response, next: NextFunction) {
+export async function finalizeSection(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   try {
     const { id } = req.params;
-    const sectionId = parseInt(id);
+    const sectionId = parseInt(String(id), 10);
 
     const updated = await prisma.section.update({
       where: { id: sectionId },
-      data: { isEosyFinalized: true }
+      data: { isEosyFinalized: true },
     });
 
     await auditLog({
@@ -110,14 +133,18 @@ export async function finalizeSection(req: Request, res: Response, next: NextFun
   }
 }
 
-export async function reopenSection(req: Request, res: Response, next: NextFunction) {
+export async function reopenSection(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   try {
     const { id } = req.params;
-    const sectionId = parseInt(id);
+    const sectionId = parseInt(String(id), 10);
 
     const updated = await prisma.section.update({
       where: { id: sectionId },
-      data: { isEosyFinalized: false }
+      data: { isEosyFinalized: false },
     });
 
     res.json(updated);
@@ -126,7 +153,11 @@ export async function reopenSection(req: Request, res: Response, next: NextFunct
   }
 }
 
-export async function finalizeSchoolYear(req: Request, res: Response, next: NextFunction) {
+export async function finalizeSchoolYear(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   try {
     const { schoolYearId } = req.body;
     const syId = parseInt(String(schoolYearId));
@@ -135,17 +166,20 @@ export async function finalizeSchoolYear(req: Request, res: Response, next: Next
     const unfinalizedSections = await prisma.section.count({
       where: {
         gradeLevel: { schoolYearId: syId },
-        isEosyFinalized: false
-      }
+        isEosyFinalized: false,
+      },
     });
 
     if (unfinalizedSections > 0) {
-      throw new AppError(422, `Cannot finalize school EOSY. There are still ${unfinalizedSections} unfinalized sections.`);
+      throw new AppError(
+        422,
+        `Cannot finalize school EOSY. There are still ${unfinalizedSections} unfinalized sections.`,
+      );
     }
 
     const updated = await prisma.schoolYear.update({
       where: { id: syId },
-      data: { isEosyFinalized: true }
+      data: { isEosyFinalized: true },
     });
 
     await auditLog({

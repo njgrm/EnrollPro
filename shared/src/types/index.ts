@@ -7,6 +7,11 @@ import type {
 } from "../schemas/auth.schema.js";
 import type {
   applicationSubmitSchema,
+  applicationTrackingStateSchema,
+  applicationSubmitResponseSchema,
+  applicationTrackResponseSchema,
+  assessmentTrackerStepSchema,
+  trackingAssessmentDataSchema,
   approveSchema,
   rejectSchema,
   scheduleExamSchema,
@@ -77,6 +82,21 @@ export type RejectInput = z.infer<typeof rejectSchema>;
 export type ScheduleExamInput = z.infer<typeof scheduleExamSchema>;
 export type RecordResultInput = z.infer<typeof recordResultSchema>;
 export type RescheduleExamInput = z.infer<typeof rescheduleExamSchema>;
+export type TrackingAssessmentStep = z.infer<
+  typeof assessmentTrackerStepSchema
+>;
+export type TrackingAssessmentData = z.infer<
+  typeof trackingAssessmentDataSchema
+>;
+export type ApplicationTrackingState = z.infer<
+  typeof applicationTrackingStateSchema
+>;
+export type ApplicationSubmitResponse = z.infer<
+  typeof applicationSubmitResponseSchema
+>;
+export type ApplicationTrackResponse = z.infer<
+  typeof applicationTrackResponseSchema
+>;
 export type UpdateChecklistInput = z.infer<typeof updateChecklistSchema>;
 export type RequestRevisionInput = z.infer<typeof requestRevisionSchema>;
 export type ScheduleInterviewInput = z.infer<typeof scheduleInterviewSchema>;

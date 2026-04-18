@@ -16,7 +16,10 @@ import {
   PrimaryContactType,
   Prisma,
 } from "../../generated/prisma/index.js";
-import { createEarlyRegistrationSharedService } from "../admission/services/early-registration-shared.service.js";
+import {
+  createEarlyRegistrationSharedService,
+  createInitialTrackingPayload,
+} from "../admission/services/early-registration-shared.service.js";
 import { createAdmissionControllerDeps } from "../admission/services/admission-controller.deps.js";
 
 const sharedService = createEarlyRegistrationSharedService(
@@ -869,7 +872,7 @@ async function createRegistration(
     const learnerPayload = {
       lrn,
       isPendingLrnCreation,
-      psaBirthCertNumber: body.psaBirthCertNumber || null,
+      psaBirthCertNumber: body.psaBirthCertNumber?.trim().toUpperCase() || null,
       firstName: body.firstName,
       lastName: body.lastName,
       middleName: body.middleName || null,
@@ -1005,6 +1008,7 @@ async function createRegistration(
       learnerId: result.learner.id,
       gradeLevel: body.gradeLevel,
       applicantType,
+      ...createInitialTrackingPayload(applicantType),
       learnerName: `${body.lastName}, ${body.firstName}`,
       age,
       message: "Your early registration has been submitted successfully.",

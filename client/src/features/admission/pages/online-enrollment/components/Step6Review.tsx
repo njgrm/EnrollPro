@@ -1,21 +1,22 @@
-import React from "react";
-import { useFormContext, Controller } from "react-hook-form";
-import type { EnrollmentFormData } from "../types";
-import { Button } from "@/shared/ui/button";
-import { Checkbox } from "@/shared/ui/checkbox";
-import { Label } from "@/shared/ui/label";
-import { Input } from "@/shared/ui/input";
+import { useState, type ComponentType, type ReactNode } from "react";
+import { Controller, useFormContext } from "react-hook-form";
 import { format } from "date-fns";
 import {
+  ClipboardList,
   Edit2,
+  Info,
+  School,
   ShieldCheck,
   User,
   Users,
-  School,
-  ClipboardList,
-  Check,
-  Loader2,
 } from "lucide-react";
+
+import type { EnrollmentFormData } from "../types";
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
+import { Label } from "@/shared/ui/label";
+import { Switch } from "@/shared/ui/switch";
+import { ConfirmationModal } from "@/shared/ui/confirmation-modal";
 import { cn, formatScpType } from "@/shared/lib/utils";
 import { useSettingsStore } from "@/store/settings.slice";
 
@@ -33,10 +34,10 @@ const SummaryCard = ({
   children,
 }: {
   title: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string }>;
   stepId: number;
   onEdit: (id: number) => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }) => (
   <div className="border border-border/60 rounded-2xl overflow-hidden bg-white shadow-sm">
     <div className="px-5 py-3 bg-muted/30 border-b border-border/40 flex items-center justify-between">
@@ -81,7 +82,7 @@ const DataItem = ({
           : typeof value === "string"
             ? value.toUpperCase()
             : value
-        : "----"}
+        : "NOT PROVIDED"}
     </p>
   </div>
 );
@@ -100,7 +101,10 @@ export default function Step6Review({
 
   const { schoolName } = useSettingsStore();
   const data = watch();
-  const yearLabel = data.schoolYear;
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+
+  const fullName =
+    `${data.lastName || ""}, ${data.firstName || ""}${data.middleName && data.middleName !== "N/A" ? ` ${data.middleName}` : ""}${data.extensionName && data.extensionName !== "N/A" ? ` ${data.extensionName}` : ""}`.trim();
 
   return (
     <div className="space-y-8">
@@ -121,38 +125,55 @@ export default function Step6Review({
               </div>
             </div>
           )}
-          <DataItem
-            label="Full Name"
-            value={`${data.lastName}, ${data.firstName}${data.middleName && data.middleName !== "N/A" ? ` ${data.middleName}` : ""}${data.extensionName && data.extensionName !== "N/A" ? ` ${data.extensionName}` : ""}`}
-          />
+          <DataItem label="Full Name" value={fullName} />
           <DataItem
             label="Birthdate"
             value={data.birthdate ? format(data.birthdate, "MMMM d, yyyy") : ""}
           />
           <DataItem
-            label="Sex & Age"
-            value={`${data.sex} (${data.age} years old)`}
+            label="Sex and Age"
+            value={`${data.sex || ""}${data.age ? ` (${data.age} years old)` : ""}`}
           />
-          <DataItem label="LRN" value={data.lrn} />
+          <DataItem
+            label="LRN"
+            value={data.hasNoLrn ? "NO LRN DECLARED" : data.lrn}
+          />
         </SummaryCard>
 
         <SummaryCard
-          title="Family & Contact"
+          title="Address and Contact"
           icon={Users}
           stepId={2}
           onEdit={onEdit}>
           <DataItem
+            label="Current Address"
+            value={`${data.currentAddress?.barangay || ""}, ${data.currentAddress?.cityMunicipality || ""}, ${data.currentAddress?.province || ""}`}
+          />
+          <DataItem
+            label="Primary Contact"
+            value={data.primaryContact?.replace("_", " ")}
+          />
+          <DataItem label="Primary Contact Number" value={data.contactNumber} />
+          <DataItem label="Primary Email" value={data.email} noUppercase />
+          <DataItem
             label="Mother"
-            value={`${data.mother?.firstName} ${data.mother?.lastName}`}
+            value={`${data.mother?.firstName || ""} ${data.mother?.lastName || ""}`}
           />
           <DataItem
             label="Father"
-            value={`${data.father?.firstName} ${data.father?.lastName}`}
+            value={`${data.father?.firstName || ""} ${data.father?.lastName || ""}`}
           />
-          <DataItem label="Primary Email" value={data.email} noUppercase />
           <DataItem
-            label="Address"
-            value={`${data.currentAddress?.barangay}, ${data.currentAddress?.cityMunicipality}`}
+            label="Guardian"
+            value={
+              data.guardian?.firstName || data.guardian?.lastName
+                ? `${data.guardian?.firstName || ""} ${data.guardian?.lastName || ""}`
+                : ""
+            }
+          />
+          <DataItem
+            label="Guardian Relationship"
+            value={data.guardianRelationship || data.guardian?.relationship}
           />
         </SummaryCard>
 
@@ -163,24 +184,30 @@ export default function Step6Review({
           onEdit={onEdit}>
           <DataItem
             label="IP Community"
-            value={data.isIpCommunity ? `Yes (${data.ipGroupName})` : "No"}
+            value={
+              data.isIpCommunity
+                ? `YES (${data.ipGroupName || "UNSPECIFIED"})`
+                : "NO"
+            }
           />
           <DataItem
             label="4Ps Beneficiary"
             value={
-              data.is4PsBeneficiary ? `Yes (${data.householdId4Ps})` : "No"
+              data.is4PsBeneficiary
+                ? `YES (${data.householdId4Ps || "UNSPECIFIED"})`
+                : "NO"
             }
           />
           <DataItem
             label="Balik-Aral"
-            value={data.isBalikAral ? "Yes" : "No"}
+            value={data.isBalikAral ? "YES" : "NO"}
           />
           <DataItem
             label="Disability"
             value={
               data.isLearnerWithDisability
                 ? data.disabilityTypes?.join(", ")
-                : "None"
+                : "NONE"
             }
           />
         </SummaryCard>
@@ -191,8 +218,14 @@ export default function Step6Review({
           stepId={4}
           onEdit={onEdit}>
           <DataItem label="Last School" value={data.lastSchoolName} />
-          <DataItem label="Last Grade" value={data.lastGradeCompleted} />
-          <DataItem label="School Year" value={data.schoolYearLastAttended} />
+          <DataItem
+            label="Last Grade Completed"
+            value={data.lastGradeCompleted}
+          />
+          <DataItem
+            label="School Year Last Attended"
+            value={data.schoolYearLastAttended}
+          />
           <DataItem label="School Type" value={data.lastSchoolType} />
         </SummaryCard>
 
@@ -201,20 +234,36 @@ export default function Step6Review({
           icon={ClipboardList}
           stepId={5}
           onEdit={onEdit}>
-          <DataItem label="Grade Level" value={`Grade ${data.gradeLevel}`} />
           <DataItem
-            label="Program"
+            label="Grade Level"
+            value={`Grade ${data.gradeLevel || ""}`}
+          />
+          <DataItem
+            label="Learner Category"
+            value={data.learnerType?.replaceAll("_", " ")}
+          />
+          <DataItem
+            label="Learning Program"
             value={
               data.isScpApplication
-                ? `SCP (${formatScpType(data.scpType)})`
+                ? "Special Curricular Program (SCP)"
                 : "Regular Section"
             }
+            noUppercase
           />
-          <DataItem label="Learner Type" value={data.learnerType} />
+          <DataItem
+            label="Selected Program"
+            value={
+              data.isScpApplication && data.scpType
+                ? formatScpType(data.scpType)
+                : "Regular"
+            }
+            noUppercase
+          />
         </SummaryCard>
       </div>
 
-      <div className="pt-10 border-t border-border/60 space-y-8">
+      <div className="pt-8 border-t border-border/60 space-y-6">
         <div className="p-6 bg-primary/5 border border-primary/10 rounded-2xl space-y-6">
           <div className="flex items-center gap-2 mb-2">
             <ShieldCheck className="w-5 h-5 text-primary" />
@@ -225,69 +274,55 @@ export default function Step6Review({
 
           <div className="flex items-start space-x-3">
             <Controller
-              name="isCertifiedTrue"
               control={control}
+              name="isCertifiedTrue"
               render={({ field }) => (
-                <Checkbox
-                  id="cert-check"
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                  className={cn(
-                    "w-6 h-6 mt-0.5 border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
-                    errors.isCertifiedTrue && "border-destructive",
+                <div className="flex flex-col gap-2 w-full">
+                  <div className="flex items-start gap-3">
+                    <Switch
+                      id="certify-check"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      className="mt-1"
+                    />
+                    <Label
+                      htmlFor="certify-check"
+                      className="text-sm font-medium leading-relaxed cursor-pointer select-none space-y-3 block">
+                      <p>
+                        I certify that all information in this enrollment form
+                        is true, correct, and complete to the best of my
+                        knowledge. I understand that false information may
+                        affect the learner&apos;s enrollment processing.
+                      </p>
+
+                      <p className="font-semibold text-destructive/90 border-l-2 border-primary/30 pl-3 py-1">
+                        I fully understand that due to registrant volume and
+                        school capacity, {schoolName || "the school"} may not
+                        guarantee enrollment for SY {data.schoolYear || ""}.
+                      </p>
+                    </Label>
+                  </div>
+                  {errors.isCertifiedTrue?.message && (
+                    <p className="text-[0.6875rem] text-destructive font-bold pl-14">
+                      {errors.isCertifiedTrue.message}
+                    </p>
                   )}
-                />
+                </div>
               )}
             />
-            <Label
-              htmlFor="cert-check"
-              className="text-sm font-medium leading-relaxed cursor-pointer select-none space-y-2 block">
-              <p>
-                I certify that all information I have provided on this form is
-                true, correct, and complete to the best of my knowledge and
-                belief. I understand that any false information may be ground
-                for disqualification.
-              </p>
-
-              <p className="italic text-muted-foreground border-l-2 border-primary/30 pl-3 py-1">
-                Nagapamatuod ako nga ang tanan nga impormasyon nga akon ginhatag
-                sa sini nga porma matuod, husto, kag kompleto sa akon
-                nahibaluan. Nahangpan ko nga ang bisan ano nga sala nga
-                impormasyon mahimo mangin kabangdanan sang akon
-                diskwalipikasyon.
-              </p>
-
-              <hr className="my-3 border-muted/30" />
-
-              <p className="font-semibold text-destructive/90">
-                I hereby confirm my BASIC EDUCATION ENROLLMENT FORM and I fully
-                understand that due to the volume of registrants and absorptive
-                capacity, the {schoolName} may not guarantee my enrollment for
-                SY {yearLabel}.
-              </p>
-
-              <p className="font-bold uppercase tracking-tight text-destructive">
-                (ANG INI NGA PAGPALISTA WALA NAGA-GARANTIYA NGA KAMO ENROLLED
-                NA)
-              </p>
-            </Label>
           </div>
-          {errors.isCertifiedTrue && (
-            <p className="text-xs text-destructive font-bold pl-9">
-              {errors.isCertifiedTrue.message}
-            </p>
-          )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
             <div className="space-y-2">
               <Label
-                htmlFor="sig"
+                htmlFor="parentGuardianSignature"
                 className="text-[0.625rem] font-bold uppercase text-primary/60">
-                Full Name of Parent / Guardian *
+                Full Name of Parent / Guardian{" "}
+                <span className="text-destructive">*</span>
               </Label>
               <Input
                 autoComplete="off"
-                id="sig"
+                id="parentGuardianSignature"
                 {...register("parentGuardianSignature")}
                 placeholder="Type your full name"
                 className={cn(
@@ -301,6 +336,7 @@ export default function Step6Review({
                 </p>
               )}
             </div>
+
             <div className="space-y-2">
               <Label className="text-[0.625rem] font-bold uppercase text-primary/60">
                 Date Accomplished
@@ -315,29 +351,35 @@ export default function Step6Review({
           </div>
         </div>
 
-        <div className="text-center">
-          <p className="text-xs sm:text-sm text-muted-foreground italic">
-            Privacy consent was recorded on{" "}
-            {format(new Date(), "MMMM dd, yyyy")}.
-          </p>
-        </div>
-
-        <div className="pt-4 flex justify-center">
+        <div className="flex flex-col items-center gap-4">
           <Button
             type="button"
-            size="lg"
-            onClick={onSubmitClick}
+            className="w-full h-14 text-lg font-bold transition-all bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
             disabled={isSubmitting}
-            className="h-12 px-10 font-bold sm:w-auto w-full hover:opacity-90 bg-primary text-primary-foreground transition-all">
-            {isSubmitting ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Check className="mr-2 h-5 w-5 stroke-3" />
-            )}
-            {isSubmitting ? "Submitting..." : "Submit Application"}
+            onClick={() => setIsConfirmDialogOpen(true)}>
+            Submit Application
           </Button>
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5 font-medium italic">
+            <Info className="w-3.5 h-3.5" />
+            Privacy consent was recorded before this submission.
+          </p>
         </div>
       </div>
+
+      <ConfirmationModal
+        open={isConfirmDialogOpen}
+        onOpenChange={(open) => {
+          if (!isSubmitting) {
+            setIsConfirmDialogOpen(open);
+          }
+        }}
+        title="Confirm Enrollment Submission"
+        description="You are about to submit this online enrollment form. Please confirm all details are complete and accurate."
+        onConfirm={() => onSubmitClick?.()}
+        confirmText="Yes, Submit Application"
+        loading={isSubmitting}
+        variant="primary"
+      />
     </div>
   );
 }

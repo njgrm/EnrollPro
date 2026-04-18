@@ -167,7 +167,7 @@ export function createEarlyRegistrationLifecycleController(
       // ── Auto-Migration: Phase 1 -> Phase 2 ──
       if (appType === "EARLY_REGISTRATION") {
         const migratedApp = await deps.prisma.$transaction(async (tx) => {
-          return await deps.migrateEarlyRegToEnrollment(
+          return await migrateEarlyRegToEnrollment(
             applicantId,
             req.user!.userId,
             tx,
@@ -280,7 +280,7 @@ export function createEarlyRegistrationLifecycleController(
       // If we are verifying an early registration record, we must first promote it to enrollment.
       if (appType === "EARLY_REGISTRATION") {
         const migratedApp = await deps.prisma.$transaction(async (tx) => {
-          const newApp = await deps.migrateEarlyRegToEnrollment(
+          const newApp = await migrateEarlyRegToEnrollment(
             applicantId,
             req.user!.userId,
             tx,
@@ -547,7 +547,10 @@ export function createEarlyRegistrationLifecycleController(
       const { data: applicant } = await findApplicantOrThrow(applicantId);
 
       if (applicant.status !== "ENROLLED") {
-        throw new AppError(422, "Only enrolled applications can be unenrolled.");
+        throw new AppError(
+          422,
+          "Only enrolled applications can be unenrolled.",
+        );
       }
 
       const updated = await deps.prisma.$transaction(async (tx: any) => {
@@ -559,11 +562,11 @@ export function createEarlyRegistrationLifecycleController(
         // 2. Revert status to VERIFIED
         return await tx.enrollmentApplication.update({
           where: { id: applicantId },
-          data: { 
+          data: {
             status: "VERIFIED",
             isProfileLocked: false,
             profileLockedAt: null,
-            profileLockedById: null
+            profileLockedById: null,
           },
           include: { learner: true },
         });
@@ -585,14 +588,27 @@ export function createEarlyRegistrationLifecycleController(
     }
   }
 
-  async function specialEnrollment(req: Request, res: Response, next: NextFunction) {
+  async function specialEnrollment(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
     try {
       const data = req.body;
-      const { lrn, firstName, lastName, learnerType, applicantType = "REGULAR", gradeLevelId } = data;
+      const {
+        lrn,
+        firstName,
+        lastName,
+        learnerType,
+        applicantType = "REGULAR",
+        gradeLevelId,
+      } = data;
 
       // 1. Create or Find Learner
       let learner = await prisma.learner.findFirst({
-        where: lrn ? { lrn } : { firstName, lastName, birthdate: new Date(data.birthdate) }
+        where: lrn
+          ? { lrn }
+          : { firstName, lastName, birthdate: new Date(data.birthdate) },
       });
 
       if (!learner) {
@@ -606,7 +622,7 @@ export function createEarlyRegistrationLifecycleController(
             birthdate: new Date(data.birthdate),
             sex: data.sex,
             isPendingLrnCreation: !lrn,
-          }
+          },
         });
       }
 
@@ -631,17 +647,17 @@ export function createEarlyRegistrationLifecycleController(
           encodedById: req.user!.userId,
           isPrivacyConsentGiven: true,
         },
-        include: { learner: true }
+        include: { learner: true },
       });
 
       // 4. Create Tracking Number
       const year = new Date().getFullYear();
       const trackingNumber = `F2F-ENR-${year}-${String(application.id).padStart(5, "0")}`;
-      
+
       const updated = await prisma.enrollmentApplication.update({
         where: { id: application.id },
         data: { trackingNumber },
-        include: { learner: true, gradeLevel: true }
+        include: { learner: true, gradeLevel: true },
       });
 
       // 5. Create initial checklist
@@ -649,7 +665,7 @@ export function createEarlyRegistrationLifecycleController(
         data: {
           enrollmentId: updated.id,
           academicStatus: data.academicStatus || "PROMOTED",
-        }
+        },
       });
 
       await auditLog({
@@ -683,7 +699,7 @@ export function createEarlyRegistrationLifecycleController(
       // ── Auto-Migration: Phase 1 -> Phase 2 ──
       if (appType === "EARLY_REGISTRATION") {
         const migratedApp = await deps.prisma.$transaction(async (tx) => {
-          return await deps.migrateEarlyRegToEnrollment(
+          return await migrateEarlyRegToEnrollment(
             applicantId,
             req.user!.userId,
             tx,
@@ -1117,9 +1133,9 @@ export function createEarlyRegistrationLifecycleController(
     } catch (error) {
       next(error);
     }
-    }
+  }
 
-    async function markEligible(req: Request, res: Response, next: NextFunction) {
+  async function markEligible(req: Request, res: Response, next: NextFunction) {
     try {
       const applicantId = parseInt(String(req.params.id));
       const result = await updateApplicationStatus(applicantId, "ELIGIBLE");
@@ -1137,9 +1153,9 @@ export function createEarlyRegistrationLifecycleController(
     } catch (error) {
       next(error);
     }
-    }
+  }
 
-    async function offerRegular(req: Request, res: Response, next: NextFunction) {
+  async function offerRegular(req: Request, res: Response, next: NextFunction) {
     try {
       const applicantId = parseInt(String(req.params.id));
       const { data: applicant } = await findApplicantOrThrow(applicantId);
@@ -1166,7 +1182,7 @@ export function createEarlyRegistrationLifecycleController(
     } catch (error) {
       next(error);
     }
-    }
+  }
 
   async function batchAssignSection(
     req: Request,
@@ -1219,9 +1235,8 @@ export function createEarlyRegistrationLifecycleController(
         }
 
         const batchResults = [];
-        const { generatePortalPin } = await import(
-          "../../learner/portal-pin.service.js"
-        );
+        const { generatePortalPin } =
+          await import("../../learner/portal-pin.service.js");
 
         for (const id of applicationIds) {
           const applicantId = parseInt(String(id));

@@ -7,26 +7,47 @@ import {
   CardDescription,
 } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
-import { CheckCircle2, FileText, Download, Home, Loader2, Search } from "lucide-react";
+import {
+  CheckCircle2,
+  FileText,
+  Download,
+  Loader2,
+  ArrowLeft,
+  Search,
+} from "lucide-react";
 import { useSettingsStore } from "@/store/settings.slice";
 import { cn, formatManilaDate, getManilaNow } from "@/shared/lib/utils";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { useNavigate } from "react-router";
+import TrackingNextSteps from "@/features/admission/components/TrackingNextSteps";
+import type { ApplicationSubmitResponse } from "@enrollpro/shared";
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace("/api", "") || "";
 
-interface EarlyRegistrationSuccessProps {
-  trackingNumber: string;
-  applicantType?: string | null;
-  onBackHome?: () => void;
-}
+type EarlyRegSuccessViewProps = Pick<
+  ApplicationSubmitResponse,
+  | "trackingNumber"
+  | "applicantType"
+  | "programType"
+  | "status"
+  | "currentStep"
+  | "assessmentData"
+> & {
+  learnerName: string;
+  onRegisterAnother?: () => void;
+};
 
-export default function EarlyRegistrationSuccess({
+export default function EarlyRegSuccessView({
   trackingNumber,
+  learnerName,
   applicantType,
-  onBackHome,
-}: EarlyRegistrationSuccessProps) {
+  programType,
+  status,
+  currentStep,
+  assessmentData,
+  onRegisterAnother,
+}: EarlyRegSuccessViewProps) {
   const { schoolName, logoUrl } = useSettingsStore();
   const [copied, setCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -38,50 +59,6 @@ export default function EarlyRegistrationSuccess({
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-
-  const getSteps = () => {
-    const baseSteps = [
-      {
-        title: "Check your email",
-        desc: "A confirmation has been sent to your primary contact email.",
-      },
-      {
-        title: "Wait for verification",
-        desc: "Our Registrar will review your documents within 3-5 working days.",
-      },
-    ];
-
-    let docStep = {
-      title: "Document Submission",
-      desc: "Prepare original copies of PSA Birth Certificate and SF9 (Report Card).",
-    };
-
-    if (applicantType === "SCIENCE_TECHNOLOGY_AND_ENGINEERING") {
-      docStep = {
-        title: "STE Requirements",
-        desc: "Submit photocopy of SF9 (Q1&Q2 Avg ≥ 85%), Medical Certificate, and Good Moral to the Science Office.",
-      };
-    } else if (applicantType === "SPECIAL_PROGRAM_IN_SPORTS") {
-      docStep = {
-        title: "SPS Requirements",
-        desc: "Submit photocopy of SF9 (Q1&Q2 Avg ≥ 85%), strict Medical Certificate, and Certificates of Recognition to the MAPEH office.",
-      };
-    } else if (applicantType === "SPECIAL_PROGRAM_IN_THE_ARTS") {
-      docStep = {
-        title: "SPA Requirements",
-        desc: "Submit SF9 (showing no failing grades) and prepare for Audition/Portfolio Presentation.",
-      };
-    }
-
-    const monitorStep = {
-      title: "Monitor Portal",
-      desc: "Use your tracking number to check the status of your application.",
-    };
-
-    return [...baseSteps, docStep, monitorStep];
-  };
-
-  const steps = getSteps();
 
   const downloadPDF = async () => {
     if (!pdfRef.current) return;
@@ -116,13 +93,15 @@ export default function EarlyRegistrationSuccess({
       });
 
       pdf.addImage(imgData, "JPEG", 0, 0, imgWidth, imgHeight);
-      pdf.save(`Early_Registration_Confirmation_${trackingNumber}.pdf`);
+      pdf.save(`Early_Registration_Slip_${trackingNumber}.pdf`);
 
       element.style.visibility = "hidden";
       element.style.position = "absolute";
     } catch (error) {
       console.error("PDF Generation failed:", error);
-      alert("Failed to generate PDF. Please try printing the page instead.");
+      alert(
+        "Unable to generate the PDF right now. Please try again, or print this page instead.",
+      );
     } finally {
       setIsGenerating(false);
     }
@@ -174,13 +153,13 @@ export default function EarlyRegistrationSuccess({
               <p
                 style={{ color: "#4b5563" }}
                 className="text-base font-bold uppercase tracking-[0.2em] mb-2">
-                BASIC EDUCATION ENROLLMENT FORM Portal
+                Basic Education Early Registration
               </p>
               <div
                 style={{ backgroundColor: "#061E29", color: "#ffffff" }}
                 className="flex items-center justify-center px-6 py-3 rounded-xl text-xs font-black tracking-widest uppercase text-center">
                 <p className="-mt-3">
-                  Official BASIC EDUCATION ENROLLMENT FORM Confirmation Slip
+                  Official Early Registration Confirmation Slip
                 </p>
               </div>
             </div>
@@ -195,7 +174,11 @@ export default function EarlyRegistrationSuccess({
               Application Received!
             </h2>
             <p style={{ color: "#4b5563" }} className="text-xl font-medium">
-              Your application has been successfully submitted to{" "}
+              Your early registration for{" "}
+              <span style={{ color: "#061E29" }} className="font-bold">
+                {learnerName}
+              </span>{" "}
+              has been successfully submitted to{" "}
               <span style={{ color: "#061E29" }} className="font-bold">
                 {schoolName}
               </span>
@@ -211,7 +194,6 @@ export default function EarlyRegistrationSuccess({
               className="text-xs uppercase tracking-[0.3em] font-black">
               Application Tracking Number
             </p>
-
             <p
               style={{ color: "#061E29" }}
               className="text-7xl  font-black tracking-tighter">
@@ -257,26 +239,13 @@ export default function EarlyRegistrationSuccess({
               className="text-2xl font-black flex items-center gap-3 uppercase tracking-tight -mt-3">
               Important Next Steps
             </h3>
-            <div className="grid grid-cols-1 gap-6 text-sm">
-              {steps.map((step, i) => (
-                <div key={i} className="flex gap-4 items-start">
-                  <div
-                    style={{ backgroundColor: "#061E29" }}
-                    className="w-2 h-2 rounded-full mt-3 shrink-0"
-                  />
-                  <div>
-                    <p
-                      style={{ color: "#061E29" }}
-                      className="font-black uppercase tracking-wide">
-                      {step.title}
-                    </p>
-                    <p style={{ color: "#4b5563" }} className="font-medium">
-                      {step.desc}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <TrackingNextSteps
+              applicantType={applicantType}
+              programType={programType}
+              status={status}
+              currentStep={currentStep}
+              assessmentData={assessmentData}
+            />
           </div>
 
           <div
@@ -290,8 +259,8 @@ export default function EarlyRegistrationSuccess({
               </p>
               <div
                 style={{ backgroundColor: "#061E29", color: "#ffffff" }}
-                className="px-4 py-2  text-xs font-bold">
-                VALID_AUTHENTIC_SUBMISSION_{trackingNumber.replace(/-/g, "_")}
+                className="px-4 py-2  text-xs font-bold uppercase">
+                VALID_EARLY_REG_{trackingNumber.replace(/-/g, "_")}
               </div>
             </div>
             <div className="text-right space-y-1">
@@ -304,7 +273,7 @@ export default function EarlyRegistrationSuccess({
                 style={{ color: "#9ca3af" }}
                 className="text-[0.625rem] font-bold">
                 This document is electronically generated. No physical signature
-                required.
+                is required.
               </p>
             </div>
           </div>
@@ -318,11 +287,15 @@ export default function EarlyRegistrationSuccess({
             <CheckCircle2 className="w-16 h-16 text-primary" />
           </div>
           <CardTitle className="text-2xl font-bold text-primary">
-            Application Submitted Successfully!
+            Registration Submitted Successfully!
           </CardTitle>
           <CardDescription className="text-lg">
-            Thank you for applying to
-            {schoolName ? <span className="font-bold"> {schoolName}</span> : ""}
+            Thank you for submitting early registration for
+            {learnerName ? (
+              <span className="font-bold"> {learnerName}</span>
+            ) : (
+              ""
+            )}
             .
           </CardDescription>
         </CardHeader>
@@ -357,27 +330,26 @@ export default function EarlyRegistrationSuccess({
               <FileText className="w-5 h-5" />
               Next Steps
             </h3>
-            <ul className="space-y-3 text-sm list-decimal pl-5">
-              {steps.map((step, i) => (
-                <li key={i}>
-                  <strong>{step.title}:</strong> {step.desc}
-                </li>
-              ))}
-            </ul>
+            <TrackingNextSteps
+              applicantType={applicantType}
+              programType={programType}
+              status={status}
+              currentStep={currentStep}
+              assessmentData={assessmentData}
+            />
           </div>
 
           <div className="flex flex-col sm:flex-row justify-between gap-4 pt-10 border-t border-border/60">
             <Button
               variant="outline"
               className="h-12 px-8 font-bold flex-1 gap-2"
-              onClick={onBackHome}>
-              <Home className="w-4 h-4" />
-              Back to Home
+              onClick={onRegisterAnother}>
+              <ArrowLeft className="w-4 h-4" />
+              Register Another Learner
             </Button>
             <Button
               className="h-12 px-8 font-bold flex-1 gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={() => navigate("/monitor")}
-              >
+              onClick={() => navigate("/monitor")}>
               <Search className="w-4 h-4" />
               Monitor Status
             </Button>
@@ -390,9 +362,7 @@ export default function EarlyRegistrationSuccess({
               ) : (
                 <Download className="w-4 h-4" />
               )}
-              {isGenerating
-                ? "Generating..."
-                : "Download Slip"}
+              {isGenerating ? "Generating..." : "Download Slip"}
             </Button>
           </div>
         </CardContent>
@@ -400,4 +370,3 @@ export default function EarlyRegistrationSuccess({
     </div>
   );
 }
-

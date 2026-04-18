@@ -38,6 +38,9 @@ import { motion, AnimatePresence } from "motion/react";
 import { useSettingsStore } from "@/store/settings.slice";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import TrackingNextSteps from "@/features/admission/components/TrackingNextSteps";
+import { normalizeTrackingStatus } from "@/features/admission/components/trackingState";
+import type { ApplicationTrackResponse } from "@enrollpro/shared";
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace("/api", "") || "";
 const trackSchema = z.object({
@@ -52,13 +55,11 @@ const trackSchema = z.object({
 
 type TrackFormData = z.infer<typeof trackSchema>;
 
-interface ApplicationStatus {
-  trackingNumber: string;
+interface ApplicationStatus extends ApplicationTrackResponse {
   firstName: string;
   middleName?: string;
   lastName: string;
-  status: string;
-  applicantType: string;
+  trackingStatus?: string;
   learningProgram?: string;
   createdAt: string;
   gradeLevel: { name: string };
@@ -89,6 +90,12 @@ const statusConfig: Record<
     color: "text-slate-600 bg-slate-50 border-slate-200",
     desc: "We’ve received your application! It's currently in the queue for its initial review.",
   },
+  IN_REVIEW: {
+    label: "In Review",
+    icon: Search,
+    color: "text-blue-600 bg-blue-50 border-blue-200",
+    desc: "The Registrar is currently looking over your documents. We'll keep you posted!",
+  },
   UNDER_REVIEW: {
     label: "Under Review",
     icon: Search,
@@ -106,6 +113,12 @@ const statusConfig: Record<
     icon: CheckCircle2,
     color: "text-cyan-600 bg-cyan-50 border-cyan-200",
     desc: "Great news! You’ve passed the basic screening and are all set for the next step.",
+  },
+  ASSESSMENT_IN_PROGRESS: {
+    label: "Assessment In Progress",
+    icon: Calendar,
+    color: "text-amber-600 bg-amber-50 border-amber-200",
+    desc: "Assessment activities are ongoing. Please monitor your schedule details below.",
   },
   EXAM_SCHEDULED: {
     label: "Assessment Scheduled",
@@ -131,6 +144,12 @@ const statusConfig: Record<
     color: "text-violet-600 bg-violet-50 border-violet-200",
     desc: "We’d love to chat! Your interview is now scheduled—check the details below to prepare.",
   },
+  QUALIFIED_FOR_ENROLLMENT: {
+    label: "Qualified for Enrollment",
+    icon: CheckCircle2,
+    color: "text-emerald-600 bg-emerald-50 border-emerald-200",
+    desc: "Your application is qualified. Proceed with registrar enrollment completion requirements.",
+  },
   READY_FOR_ENROLLMENT: {
     label: "Ready for Enrollment",
     icon: CheckCircle2,
@@ -150,6 +169,12 @@ const statusConfig: Record<
     desc: "Welcome to the family! You are now officially enrolled for this school year.",
   },
   FAILED_ASSESSMENT: {
+    label: "Not Qualified",
+    icon: AlertCircle,
+    color: "text-amber-600 bg-amber-50 border-amber-200",
+    desc: "While you didn't meet the criteria for this specific program, the Registrar may be able to offer you a spot in a regular section.",
+  },
+  NOT_QUALIFIED: {
     label: "Not Qualified",
     icon: AlertCircle,
     color: "text-amber-600 bg-amber-50 border-amber-200",
@@ -260,7 +285,7 @@ export default function TrackApplication({
     try {
       // Small delay for professional feel
       await new Promise((resolve) => setTimeout(resolve, 500));
-      const response = await api.get(
+      const response = await api.get<ApplicationStatus>(
         `/applications/track/${data.trackingNumber}`,
       );
       setStatus(response.data);
@@ -277,8 +302,13 @@ export default function TrackApplication({
     }
   };
 
-  const config = status
-    ? statusConfig[status.status] || statusConfig.SUBMITTED
+  const normalizedStatus = status
+    ? normalizeTrackingStatus(
+        status.status || status.trackingStatus || status.rawStatus,
+      )
+    : null;
+  const config = normalizedStatus
+    ? statusConfig[normalizedStatus] || statusConfig.SUBMITTED
     : null;
   const Icon = config?.icon;
 
@@ -291,12 +321,23 @@ export default function TrackApplication({
     LEARNING_PROGRAM_LABELS[learningProgramType] ||
     learningProgramType.replace(/_/g, " ");
 
-  const scpType = status?.scpDetail?.scpType ?? status?.applicantType;
   const latestAssessment = status?.assessments?.[0] ?? null;
-  const examDate = latestAssessment?.scheduledDate ?? null;
-  const examTime = latestAssessment?.scheduledTime ?? null;
-  const examVenue = latestAssessment?.venue ?? null;
+  const latestScheduledAssessment = status?.assessmentData?.latestSchedule;
+  const examDate =
+    latestScheduledAssessment?.scheduledDate ??
+    latestAssessment?.scheduledDate ??
+    null;
+  const examTime =
+    latestScheduledAssessment?.scheduledTime ??
+    latestAssessment?.scheduledTime ??
+    null;
+  const examVenue =
+    latestScheduledAssessment?.venue ?? latestAssessment?.venue ?? null;
   const examNotes = latestAssessment?.notes ?? null;
+  const isAssessmentInProgress =
+    normalizedStatus === "ASSESSMENT_IN_PROGRESS" ||
+    status?.rawStatus === "EXAM_SCHEDULED" ||
+    status?.rawStatus === "INTERVIEW_SCHEDULED";
 
   return (
     <div
@@ -437,7 +478,7 @@ export default function TrackApplication({
                     </p>
                   </div>
 
-                  {status.status === "EXAM_SCHEDULED" && examDate && (
+                  {isAssessmentInProgress && examDate && (
                     <>
                       <div className="p-5 bg-purple-50 border border-purple-200 rounded-2xl space-y-1">
                         <p className="text-[0.625rem] font-black uppercase text-purple-600 tracking-widest flex items-center justify-center gap-1.5">
@@ -469,7 +510,7 @@ export default function TrackApplication({
                     </>
                   )}
 
-                  {status.status === "FOR_REVISION" &&
+                  {status.rawStatus === "FOR_REVISION" &&
                     status.rejectionReason && (
                       <div className="p-5 bg-primary/5 border border-primary/20 rounded-2xl space-y-1 md:col-span-3">
                         <p className="text-[0.625rem] font-black uppercase text-primary tracking-widest flex items-center justify-center gap-1.5">
@@ -489,6 +530,19 @@ export default function TrackApplication({
                       {format(new Date(status.createdAt), "MMMM dd, yyyy")}
                     </p>
                   </div>
+                </div>
+
+                <div className="p-6 bg-white border border-border rounded-2xl space-y-4">
+                  <h4 className="text-sm font-black uppercase tracking-wider text-muted-foreground">
+                    Dynamic Next Steps
+                  </h4>
+                  <TrackingNextSteps
+                    applicantType={status.applicantType}
+                    programType={status.programType}
+                    status={normalizedStatus ?? status.status}
+                    currentStep={status.currentStep}
+                    assessmentData={status.assessmentData}
+                  />
                 </div>
 
                 <div className="flex flex-col items-center justify-center ">
@@ -661,68 +715,13 @@ export default function TrackApplication({
                     className="text-2xl font-black flex items-center gap-3 uppercase tracking-tight -mt-3">
                     Important Next Steps
                   </h3>
-                  <div className="grid grid-cols-1 gap-6 text-sm">
-                    {(() => {
-                      const baseSteps = [
-                        {
-                          title: "Check your email",
-                          desc: "A confirmation has been sent to your primary contact email.",
-                        },
-                        {
-                          title: "Wait for verification",
-                          desc: "Our Registrar will review your documents within 3-5 working days.",
-                        },
-                      ];
-
-                      let docStep = {
-                        title: "Document Submission",
-                        desc: "Prepare original copies of PSA Birth Certificate and SF9 (Report Card).",
-                      };
-
-                      if (scpType === "SCIENCE_TECHNOLOGY_AND_ENGINEERING") {
-                        docStep = {
-                          title: "STE Requirements",
-                          desc: "Submit photocopy of SF9 (Q1&Q2 Avg ≥ 85%), Medical Certificate, and Good Moral to the Science Office.",
-                        };
-                      } else if (scpType === "SPECIAL_PROGRAM_IN_SPORTS") {
-                        docStep = {
-                          title: "SPS Requirements",
-                          desc: "Submit photocopy of SF9 (Q1&Q2 Avg ≥ 85%), strict Medical Certificate, and Certificates of Recognition to the MAPEH office.",
-                        };
-                      } else if (scpType === "SPECIAL_PROGRAM_IN_THE_ARTS") {
-                        docStep = {
-                          title: "SPA Requirements",
-                          desc: "Submit SF9 (showing no failing grades) and prepare for Audition/Portfolio Presentation.",
-                        };
-                      }
-
-                      const monitorStep = {
-                        title: "Monitor Portal",
-                        desc: "Use your tracking number to check the status of your application.",
-                      };
-
-                      return [...baseSteps, docStep, monitorStep];
-                    })().map((step, i) => (
-                      <div key={i} className="flex gap-4 items-start">
-                        <div
-                          style={{ backgroundColor: "#061E29" }}
-                          className="w-2 h-2 rounded-full mt-3 shrink-0"
-                        />
-                        <div>
-                          <p
-                            style={{ color: "#061E29" }}
-                            className="font-black uppercase tracking-wide">
-                            {step.title}
-                          </p>
-                          <p
-                            style={{ color: "#4b5563" }}
-                            className="font-medium">
-                            {step.desc}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <TrackingNextSteps
+                    applicantType={status.applicantType}
+                    programType={status.programType}
+                    status={normalizedStatus ?? status.status}
+                    currentStep={status.currentStep}
+                    assessmentData={status.assessmentData}
+                  />
                 </div>
 
                 <div

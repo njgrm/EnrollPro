@@ -10,7 +10,11 @@ import {
 } from "../../../generated/prisma/index.js";
 import type { AdmissionControllerDeps } from "../services/admission-controller.deps.js";
 import { createAdmissionControllerDeps } from "../services/admission-controller.deps.js";
-import { createEarlyRegistrationSharedService } from "../services/early-registration-shared.service.js";
+import {
+  createEarlyRegistrationSharedService,
+  createInitialTrackingPayload,
+  normalizeTrackingStatus,
+} from "../services/early-registration-shared.service.js";
 import { getSCPRankings } from "../services/scp-ranking.service.js";
 
 export function createEarlyRegistrationBaseController(
@@ -452,7 +456,12 @@ export function createEarlyRegistrationBaseController(
   async function submitApplication(
     req: Request,
     options: SubmitOptions,
-  ): Promise<string> {
+  ): Promise<
+    {
+      trackingNumber: string;
+      applicantType: ApplicantType;
+    } & ReturnType<typeof createInitialTrackingPayload>
+  > {
     // 1. Find active School Year
     const settings = await prisma.schoolSetting.findFirst({
       include: { activeSchoolYear: true },
@@ -584,13 +593,21 @@ export function createEarlyRegistrationBaseController(
         };
         const failures: string[] = [];
 
+        // Online enrollment no longer requires grade payload fields to be present.
+        // If grades are provided, they are still validated against configured thresholds.
+        const submittedGeneralAverage =
+          typeof body.generalAverage === "number" &&
+          Number.isFinite(body.generalAverage)
+            ? body.generalAverage
+            : null;
+
         if (
           reqs.minGeneralAverage != null &&
-          (body.generalAverage == null ||
-            body.generalAverage < reqs.minGeneralAverage)
+          submittedGeneralAverage != null &&
+          submittedGeneralAverage < reqs.minGeneralAverage
         ) {
           failures.push(
-            `General Average must be at least ${reqs.minGeneralAverage} (submitted: ${body.generalAverage ?? "none"})`,
+            `General Average must be at least ${reqs.minGeneralAverage} (submitted: ${submittedGeneralAverage})`,
           );
         }
 
@@ -602,9 +619,14 @@ export function createEarlyRegistrationBaseController(
           for (const sr of reqs.subjectRequirements) {
             const key = sr.subject.toUpperCase();
             const submitted = gradeMap[key];
-            if (submitted == null || submitted < sr.minGrade) {
+
+            if (submitted == null) {
+              continue;
+            }
+
+            if (submitted < sr.minGrade) {
               failures.push(
-                `${sr.subject} grade must be at least ${sr.minGrade} (submitted: ${submitted ?? "none"})`,
+                `${sr.subject} grade must be at least ${sr.minGrade} (submitted: ${submitted})`,
               );
             }
           }
@@ -654,7 +676,7 @@ export function createEarlyRegistrationBaseController(
     const learnerPayload = {
       lrn,
       isPendingLrnCreation: hasNoLrnDeclared && !lrn,
-      psaBirthCertNumber: body.psaBirthCertNumber || null,
+      psaBirthCertNumber: body.psaBirthCertNumber?.trim().toUpperCase() || null,
       firstName: body.firstName,
       lastName: body.lastName,
       middleName: body.middleName || null,
@@ -857,7 +879,11 @@ export function createEarlyRegistrationBaseController(
       });
     }
 
-    return trackingNumber;
+    return {
+      trackingNumber,
+      applicantType: application.applicantType,
+      ...createInitialTrackingPayload(application.applicantType),
+    };
   }
 
   /** Wrap Prisma P2002 unique-constraint errors into AppError(409). */
@@ -886,12 +912,12 @@ export function createEarlyRegistrationBaseController(
   // ── Submit new application (public) ──
   async function store(req: Request, res: Response, next: NextFunction) {
     try {
-      const trackingNumber = await submitApplication(req, {
+      const submission = await submitApplication(req, {
         channel: "ONLINE",
         trackingPrefix: "ENR",
         encodedById: null,
       });
-      res.status(201).json({ trackingNumber });
+      res.status(201).json(submission);
     } catch (error) {
       try {
         rethrowPrismaUnique(error);
@@ -904,12 +930,12 @@ export function createEarlyRegistrationBaseController(
   // ── Submit F2F walk-in application (authenticated - REGISTRAR/SYSTEM_ADMIN) ──
   async function storeF2F(req: Request, res: Response, next: NextFunction) {
     try {
-      const trackingNumber = await submitApplication(req, {
+      const submission = await submitApplication(req, {
         channel: "F2F",
         trackingPrefix: "F2F-ENR",
         encodedById: req.user!.userId,
       });
-      res.status(201).json({ trackingNumber });
+      res.status(201).json(submission);
     } catch (error) {
       try {
         rethrowPrismaUnique(error);
@@ -970,7 +996,20 @@ export function createEarlyRegistrationBaseController(
         application = earlyReg as any;
       }
 
-      res.json(await flattenAssessmentData(application!));
+      const flattened = (await flattenAssessmentData(application!)) as Record<
+        string,
+        any
+      >;
+      const rawStatus = String(flattened.status ?? "SUBMITTED").toUpperCase();
+      const status = normalizeTrackingStatus(
+        flattened.trackingStatus ?? rawStatus,
+      );
+
+      res.json({
+        ...flattened,
+        status,
+        rawStatus,
+      });
     } catch (error) {
       next(error);
     }

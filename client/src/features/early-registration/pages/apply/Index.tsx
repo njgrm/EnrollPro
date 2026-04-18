@@ -1,25 +1,37 @@
 import { useState } from "react";
 import GuestLayout from "@/shared/layouts/GuestLayout";
 import AdmissionHeader from "@/features/admission/components/AdmissionHeader";
-import PrivacyNotice from "@/features/admission/pages/apply/PrivacyNotice";
+import PrivacyNotice from "@/features/admission/pages/online-enrollment/PrivacyNotice";
 import EarlyRegistrationForm from "./EarlyRegistrationForm";
 import EarlyRegSuccessView from "./components/EarlyRegSuccessView";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/shared/lib/utils";
 import { useSettingsStore } from "@/store/settings.slice";
+import type { ApplicationSubmitResponse } from "@enrollpro/shared";
 
 const CONSENT_KEY = "enrollpro_earlyreg_consent";
 const API_BASE = import.meta.env.VITE_API_URL?.replace("/api", "") || "";
+
+type EarlyRegSuccessData = Pick<
+  ApplicationSubmitResponse,
+  | "trackingNumber"
+  | "applicantType"
+  | "programType"
+  | "status"
+  | "currentStep"
+  | "assessmentData"
+> & {
+  id: number;
+  learnerName: string;
+};
 
 export default function EarlyRegistrationApply() {
   const [hasConsented, setHasConsented] = useState(
     () => sessionStorage.getItem(CONSENT_KEY) === "true",
   );
-  const [successData, setSuccessData] = useState<{
-    id: number;
-    trackingNumber: string;
-    learnerName: string;
-  } | null>(null);
+  const [successData, setSuccessData] = useState<EarlyRegSuccessData | null>(
+    null,
+  );
 
   const { schoolName, logoUrl, enrollmentPhase } = useSettingsStore();
   const isClosed =
@@ -180,6 +192,11 @@ export default function EarlyRegistrationApply() {
                     <EarlyRegSuccessView
                       trackingNumber={successData.trackingNumber}
                       learnerName={successData.learnerName}
+                      applicantType={successData.applicantType}
+                      programType={successData.programType}
+                      status={successData.status}
+                      currentStep={successData.currentStep}
+                      assessmentData={successData.assessmentData}
                       onRegisterAnother={handleReset}
                     />
                   </motion.div>

@@ -16,9 +16,9 @@ import { Card, CardContent } from "@/shared/ui/card";
 import { motion, AnimatePresence } from "motion/react";
 import { ArrowLeft, ArrowRight, AlertCircle } from "lucide-react";
 import api from "@/shared/api/axiosInstance";
-import { ConfirmationModal } from "@/shared/ui/confirmation-modal";
 import { toUpperCaseRecursive } from "@/shared/lib/utils";
 import { sileo } from "sileo";
+import type { ApplicationSubmitResponse } from "@enrollpro/shared";
 
 const DRAFT_KEY = "enrollpro_enrollment_draft";
 const STEP_KEY = "enrollpro_enrollment_step";
@@ -38,13 +38,200 @@ const DEFAULT_VALUES = {
   isPermanentSameAsCurrent: true,
   isScpApplication: false,
   learnerType: "NEW_ENROLLEE",
+  hasNoMother: false,
+  hasNoFather: false,
   isCertifiedTrue: false,
 } as const;
+
+type StepId = (typeof steps)[number]["id"];
+
+type ValidationIssue = {
+  fieldPath: string;
+  fieldLabel: string;
+  message: string;
+  stepId: StepId;
+  stepTitle: string;
+  stepNumber: number;
+};
+
+const PREVIOUS_SCHOOL_FIELDS = new Set([
+  "lastSchoolName",
+  "lastSchoolId",
+  "lastGradeCompleted",
+  "schoolYearLastAttended",
+  "lastSchoolAddress",
+  "lastSchoolType",
+]);
+
+const PREFERENCES_FIELDS = new Set([
+  "gradeLevel",
+  "isScpApplication",
+  "scpType",
+  "artField",
+  "sportsList",
+  "foreignLanguage",
+  "learnerType",
+  "learningModalities",
+]);
+
+const BACKGROUND_FIELDS = new Set([
+  "isIpCommunity",
+  "ipGroupName",
+  "is4PsBeneficiary",
+  "householdId4Ps",
+  "isBalikAral",
+  "lastYearEnrolled",
+  "lastGradeLevel",
+  "isLearnerWithDisability",
+  "specialNeedsCategory",
+  "disabilityTypes",
+  "hasPwdId",
+  "snedPlacement",
+]);
+
+const REVIEW_FIELDS = new Set([
+  "isCertifiedTrue",
+  "parentGuardianSignature",
+  "dateAccomplished",
+  "isPrivacyConsentGiven",
+]);
+
+const FAMILY_SCALAR_FIELDS = new Set([
+  "isPermanentSameAsCurrent",
+  "hasNoMother",
+  "hasNoFather",
+  "primaryContact",
+  "contactNumber",
+  "guardianRelationship",
+  "email",
+]);
+
+const FIELD_LABEL_OVERRIDES: Record<string, string> = {
+  lrn: "Learner Reference Number (LRN)",
+  hasNoLrn: "No LRN Declaration",
+  psaBirthCertNumber: "PSA Birth Certificate Number",
+  ipGroupName: "IP Group Name",
+  householdId4Ps: "4Ps Household ID",
+  primaryContact: "Primary Contact",
+  contactNumber: "Contact Number",
+  email: "Email Address",
+  guardianRelationship: "Guardian Relationship",
+  lastSchoolName: "Name of Last School Attended",
+  lastSchoolId: "DepEd School ID",
+  lastGradeCompleted: "Last Grade Level Completed",
+  schoolYearLastAttended: "School Year Last Attended",
+  lastSchoolType: "Type of Last School",
+  lastSchoolAddress: "School Address / Division",
+  scpType: "SCP Track",
+  sportsList: "Preferred Sports",
+  artField: "Art Field",
+  isCertifiedTrue: "Certification",
+  parentGuardianSignature: "Parent/Guardian Signature",
+};
+
+function getStepIdForField(fieldPath: string): StepId {
+  const root = fieldPath.split(".")[0] ?? "";
+
+  if (
+    root === "currentAddress" ||
+    root === "permanentAddress" ||
+    root === "mother" ||
+    root === "father" ||
+    root === "guardian" ||
+    FAMILY_SCALAR_FIELDS.has(root)
+  ) {
+    return "family";
+  }
+
+  if (PREVIOUS_SCHOOL_FIELDS.has(root)) {
+    return "previousSchool";
+  }
+
+  if (PREFERENCES_FIELDS.has(root)) {
+    return "preferences";
+  }
+
+  if (BACKGROUND_FIELDS.has(root)) {
+    return "background";
+  }
+
+  if (REVIEW_FIELDS.has(root)) {
+    return "review";
+  }
+
+  return "personal";
+}
+
+function getFieldLabel(fieldPath: string): string {
+  const override = FIELD_LABEL_OVERRIDES[fieldPath];
+  if (override) {
+    return override;
+  }
+
+  return fieldPath
+    .split(".")
+    .filter(Boolean)
+    .map((segment) =>
+      segment
+        .replace(/([A-Z])/g, " $1")
+        .replace(/_/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .replace(/\b\w/g, (char) => char.toUpperCase()),
+    )
+    .join(" - ");
+}
+
+function extractErrorMessages(
+  errorValue: unknown,
+  currentPath = "",
+): Array<{ fieldPath: string; message: string }> {
+  if (!errorValue || typeof errorValue !== "object") {
+    return [];
+  }
+
+  const errorObject = errorValue as Record<string, unknown>;
+  const maybeMessage = errorObject.message;
+  const messages: Array<{ fieldPath: string; message: string }> = [];
+
+  if (typeof maybeMessage === "string" && maybeMessage.trim()) {
+    messages.push({
+      fieldPath: currentPath,
+      message: maybeMessage.trim(),
+    });
+  }
+
+  for (const [key, value] of Object.entries(errorObject)) {
+    if (
+      key === "message" ||
+      key === "type" ||
+      key === "ref" ||
+      key === "types"
+    ) {
+      continue;
+    }
+
+    const nestedPath = currentPath ? `${currentPath}.${key}` : key;
+    messages.push(...extractErrorMessages(value, nestedPath));
+  }
+
+  return messages;
+}
+
+type EnrollmentSubmitSuccessPayload = Pick<
+  ApplicationSubmitResponse,
+  | "trackingNumber"
+  | "applicantType"
+  | "programType"
+  | "status"
+  | "currentStep"
+  | "assessmentData"
+>;
 
 export default function EnrollmentForm({
   onSuccess,
 }: {
-  onSuccess?: (trackingNumber: string, applicantType?: string) => void;
+  onSuccess?: (data: EnrollmentSubmitSuccessPayload) => void;
 }) {
   const [initialDraft] = useState(() => {
     const draft = sessionStorage.getItem(DRAFT_KEY);
@@ -76,7 +263,6 @@ export default function EnrollmentForm({
   const [submitError, setSubmitError] = useState("");
   const [maxStepReached, setMaxStepReached] = useState(1);
   const [isEditing, setIsEditing] = useState(false);
-  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
 
   const methods = useForm<EnrollmentFormData, unknown, EnrollmentFormData>({
     resolver: zodResolver(
@@ -90,9 +276,31 @@ export default function EnrollmentForm({
   });
 
   const { handleSubmit, trigger, reset, watch } = methods;
+  const currentStepId = stepper.state.current.data.id;
 
-  const currentIndex =
-    steps.findIndex((s) => s.id === stepper.state.current.data.id) + 1;
+  const currentIndex = steps.findIndex((s) => s.id === currentStepId) + 1;
+
+  const validationIssues: ValidationIssue[] = Array.from(
+    new Map(
+      Object.entries(methods.formState.errors)
+        .flatMap(([fieldPath, errorValue]) =>
+          extractErrorMessages(errorValue, fieldPath),
+        )
+        .map((issue) => [`${issue.fieldPath}|${issue.message}`, issue]),
+    ).values(),
+  ).map((issue) => {
+    const stepId = getStepIdForField(issue.fieldPath);
+    const stepIndex = steps.findIndex((step) => step.id === stepId);
+
+    return {
+      fieldPath: issue.fieldPath,
+      fieldLabel: getFieldLabel(issue.fieldPath),
+      message: issue.message,
+      stepId,
+      stepTitle: stepIndex >= 0 ? steps[stepIndex].title : "Review & Submit",
+      stepNumber: stepIndex >= 0 ? stepIndex + 1 : steps.length,
+    };
+  });
 
   const scrollToTopInstant = () => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -108,11 +316,11 @@ export default function EnrollmentForm({
 
   // Clear editing mode when reaching review step
   useEffect(() => {
-    if (stepper.state.current.data.id === "review") {
+    if (currentStepId === "review") {
       setIsEditing(false);
       sessionStorage.removeItem(EDITING_KEY);
     }
-  }, [stepper.state.current.data.id]);
+  }, [currentStepId]);
 
   // Initial load of step meta
   useEffect(() => {
@@ -140,15 +348,15 @@ export default function EnrollmentForm({
 
   // Save current step whenever it changes
   useEffect(() => {
-    if (stepper.state.current.data.id) {
-      sessionStorage.setItem(STEP_KEY, stepper.state.current.data.id);
+    if (currentStepId) {
+      sessionStorage.setItem(STEP_KEY, currentStepId);
     }
-  }, [stepper.state.current.data.id]);
+  }, [currentStepId]);
 
   // Keep each step mounted at the top
   useEffect(() => {
     scrollToTopInstant();
-  }, [stepper.state.current.data.id]);
+  }, [currentStepId]);
 
   const nextStep = async () => {
     let fieldsToValidate: FieldPath<EnrollmentFormData>[] = [];
@@ -171,6 +379,8 @@ export default function EnrollmentForm({
         "mother.firstName",
         "father.lastName",
         "father.firstName",
+        "primaryContact",
+        "contactNumber",
         "email",
       ] as FieldPath<EnrollmentFormData>[];
     } else if (stepper.state.current.data.id === "previousSchool") {
@@ -209,25 +419,88 @@ export default function EnrollmentForm({
     scrollToTopInstant();
   };
 
+  const goToValidationIssue = (issue: ValidationIssue) => {
+    const isStepChanging = currentStepId !== issue.stepId;
+
+    if (isStepChanging) {
+      stepper.navigation.goTo(issue.stepId);
+    }
+
+    if (!issue.fieldPath) {
+      scrollToTopInstant();
+      return;
+    }
+
+    window.setTimeout(
+      () => {
+        const target = document.getElementsByName(issue.fieldPath).item(0);
+
+        if (target instanceof HTMLElement) {
+          target.scrollIntoView({ behavior: "smooth", block: "center" });
+          target.focus({ preventScroll: true });
+        } else {
+          scrollToTopInstant();
+        }
+      },
+      isStepChanging ? 260 : 0,
+    );
+  };
+
   const handleAttemptSubmit = async () => {
     const isValid = await trigger();
     if (isValid) {
-      setShowSubmitConfirm(true);
+      void handleSubmit(onSubmit)();
     } else {
       scrollToTopInstant();
     }
   };
 
   const onSubmit = async (data: EnrollmentFormData) => {
-    setShowSubmitConfirm(false);
     setIsSubmitting(true);
     setSubmitError("");
 
     try {
       const uppercaseData = toUpperCaseRecursive(data);
 
+      const {
+        contactNumber,
+        primaryContact,
+        guardianRelationship,
+        ...payloadBase
+      } = uppercaseData as EnrollmentFormData & {
+        contactNumber: string;
+        primaryContact: "MOTHER" | "FATHER" | "GUARDIAN";
+        guardianRelationship?: string;
+      };
+
+      const mother = { ...payloadBase.mother };
+      const father = { ...payloadBase.father };
+      const guardian = { ...payloadBase.guardian };
+
+      if (primaryContact === "MOTHER") {
+        mother.contactNumber = contactNumber;
+        mother.email = payloadBase.email;
+      }
+
+      if (primaryContact === "FATHER") {
+        father.contactNumber = contactNumber;
+        father.email = payloadBase.email;
+      }
+
+      if (primaryContact === "GUARDIAN") {
+        guardian.contactNumber = contactNumber;
+        guardian.email = payloadBase.email;
+      }
+
+      if (guardianRelationship?.trim()) {
+        guardian.relationship = guardianRelationship;
+      }
+
       const payload = {
-        ...uppercaseData,
+        ...payloadBase,
+        mother,
+        father,
+        guardian,
         birthdate:
           data.birthdate instanceof Date
             ? data.birthdate.toISOString()
@@ -237,7 +510,10 @@ export default function EnrollmentForm({
           : uppercaseData.permanentAddress,
       };
 
-      const response = await api.post("/applications", payload);
+      const response = await api.post<ApplicationSubmitResponse>(
+        "/applications",
+        payload,
+      );
 
       sileo.success({
         title: "Enrollment Form Submitted!",
@@ -245,10 +521,16 @@ export default function EnrollmentForm({
       });
 
       if (onSuccess) {
-        onSuccess(
-          response.data.trackingNumber,
-          data.isScpApplication ? data.scpType : undefined,
-        );
+        const responseData = response.data;
+
+        onSuccess({
+          trackingNumber: responseData.trackingNumber,
+          applicantType: responseData.applicantType,
+          programType: responseData.programType,
+          status: responseData.status,
+          currentStep: responseData.currentStep,
+          assessmentData: responseData.assessmentData,
+        });
       }
 
       // Reset form and stepper state
@@ -339,7 +621,7 @@ export default function EnrollmentForm({
                 </motion.div>
               </AnimatePresence>
 
-              {Object.keys(methods.formState.errors).length > 0 && (
+              {validationIssues.length > 0 && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -351,19 +633,20 @@ export default function EnrollmentForm({
                     proceed:
                   </div>
                   <ul className="list-disc pl-6 text-xs font-bold text-destructive/80 space-y-1">
-                    {Array.from(
-                      new Set(
-                        Object.values(methods.formState.errors).flatMap(
-                          (err: any) =>
-                            err?.message
-                              ? [err.message]
-                              : Object.values(err || {})
-                                  .map((e: any) => e?.message)
-                                  .filter(Boolean),
-                        ),
-                      ),
-                    ).map((msg, i) => (
-                      <li key={i}>{msg as string}</li>
+                    {validationIssues.map((issue, index) => (
+                      <li key={`${issue.fieldPath}-${index}`}>
+                        <a
+                          href={`#${issue.fieldPath || issue.stepId}`}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            goToValidationIssue(issue);
+                          }}
+                          className="underline underline-offset-2 hover:text-destructive focus:outline-none focus:ring-2 focus:ring-destructive/40 rounded-sm"
+                          aria-label={`Go to Step ${issue.stepNumber}: ${issue.stepTitle}, field ${issue.fieldLabel}`}>
+                          Step {issue.stepNumber}: {issue.stepTitle} -{" "}
+                          {issue.fieldLabel}: {issue.message}
+                        </a>
+                      </li>
                     ))}
                   </ul>
                 </motion.div>
@@ -396,18 +679,6 @@ export default function EnrollmentForm({
           </FormProvider>
         </CardContent>
       </Card>
-
-      <ConfirmationModal
-        open={showSubmitConfirm}
-        onOpenChange={setShowSubmitConfirm}
-        title="Finalize Enrollment Application"
-        description="Please confirm that all information provided is accurate and complete. Once submitted, you will no longer be able to modify your application during the initial review phase."
-        confirmText="Confirm Submission"
-        onConfirm={() => handleSubmit(onSubmit)()}
-        loading={isSubmitting}
-        confirmClassName="bg-primary text-primary-foreground hover:bg-primary/90"
-        variant="success"
-      />
     </div>
   );
 }

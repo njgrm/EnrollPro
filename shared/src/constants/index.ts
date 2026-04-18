@@ -23,6 +23,27 @@ export const ApplicationStatusEnum = z.enum([
   "WITHDRAWN",
 ]);
 
+export const TrackingProgramTypeEnum = z.enum(["REGULAR", "SCP"]);
+
+export const TrackingStatusEnum = z.enum([
+  "SUBMITTED",
+  "IN_REVIEW",
+  "ASSESSMENT_IN_PROGRESS",
+  "QUALIFIED_FOR_ENROLLMENT",
+  "ENROLLED",
+  "NOT_QUALIFIED",
+  "REJECTED",
+  "WITHDRAWN",
+]);
+
+export const TrackingCurrentStepEnum = z.enum([
+  "APPLICATION_SUBMITTED",
+  "REGISTRAR_REVIEW",
+  "ASSESSMENT_PHASE",
+  "ENROLLMENT_QUALIFICATION",
+  "ENROLLED",
+]);
+
 export const SchoolYearStatusEnum = z.enum([
   "DRAFT",
   "UPCOMING",
@@ -103,7 +124,7 @@ export const LastSchoolTypeEnum = z.enum([
   "INTERNATIONAL",
   "ALS",
 ]);
-export const GradeLevelEnum = z.enum(["7"]);
+export const GradeLevelEnum = z.enum(["7", "8", "9", "10"]);
 
 // ─── DO 017 s.2025 Early Registration Enums ─────────────
 export const EarlyRegGradeLevelEnum = z.enum(["7", "8", "9", "10"]);
@@ -143,6 +164,9 @@ export type EarlyRegGradeLevel = z.infer<typeof EarlyRegGradeLevelEnum>;
 export type EarlyRegistrationStatus = z.infer<
   typeof EarlyRegistrationStatusEnum
 >;
+export type TrackingProgramType = z.infer<typeof TrackingProgramTypeEnum>;
+export type TrackingStatus = z.infer<typeof TrackingStatusEnum>;
+export type TrackingCurrentStep = z.infer<typeof TrackingCurrentStepEnum>;
 
 // ─── Assessment Kind Labels ─────────────────────────────
 export const ASSESSMENT_KIND_LABELS: Record<AssessmentKind, string> = {

@@ -31,8 +31,8 @@ import Teachers from "@/features/teachers/pages/Index";
 // F2F Basic Education Early Registration Form Page
 import F2FEarlyRegistration from "@/features/admission/pages/f2f/Index";
 
-import Apply from "@/features/admission/pages/apply/Index";
-import Monitor from "@/features/admission/pages/apply/Monitor";
+import Apply from "@/features/admission/pages/online-enrollment/Index";
+import Monitor from "@/features/admission/pages/online-enrollment/Monitor";
 
 // DO 017 s.2025 — Standalone Early Registration Module (Grades 7–10)
 import EarlyRegistrationApply from "@/features/early-registration/pages/apply/Index";
