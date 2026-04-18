@@ -3,6 +3,7 @@ import { authenticate } from "../../middleware/authenticate.js";
 import { authorize } from "../../middleware/authorize.js";
 import { validate } from "../../middleware/validate.js";
 import {
+  batchAssignRegularSectionSchema,
   batchFinalizeInterviewSchema,
   batchSaveScoresSchema,
   batchScheduleStepSchema,
@@ -135,6 +136,14 @@ router.patch(
   authorize("REGISTRAR", "SYSTEM_ADMIN"),
   validate(batchVerifyDocumentsSchema),
   ctrl.batchVerifyDocuments,
+);
+
+router.patch(
+  "/batch/assign-regular-section",
+  authenticate,
+  authorize("REGISTRAR", "SYSTEM_ADMIN"),
+  validate(batchAssignRegularSectionSchema),
+  ctrl.batchAssignRegularSection,
 );
 
 router.patch(

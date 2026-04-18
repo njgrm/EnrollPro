@@ -7,6 +7,7 @@ import { getRequiredDocuments } from "../enrollment/enrollment-requirement.servi
 import fs from "fs";
 import { saveBase64Image } from "../../lib/fileUploader.js";
 import {
+  AcademicStatus,
   ApplicantType,
   LearnerType,
   FamilyRelationship,
@@ -115,6 +116,9 @@ const CHECKLIST_BOOLEAN_KEYS = [
 
 type ChecklistBooleanKey = (typeof CHECKLIST_BOOLEAN_KEYS)[number];
 type ChecklistPatch = Partial<Record<ChecklistBooleanKey, boolean>>;
+type AcademicStatusValue = "PROMOTED" | "RETAINED";
+
+const DEFAULT_ACADEMIC_STATUS: AcademicStatusValue = "PROMOTED";
 
 const CHECKLIST_FIELD_LABELS: Record<ChecklistBooleanKey, string> = {
   isPsaBirthCertPresented: "PSA Birth Certificate",
@@ -187,6 +191,7 @@ interface ScpConfigLite {
     label: string;
     isRequired: boolean;
     cutoffScore: number | null;
+    scheduledDate: Date | null;
     scheduledTime: string | null;
     venue: string | null;
     notes: string | null;
@@ -223,6 +228,21 @@ function extractChecklistState(
   return state;
 }
 
+function extractChecklistAcademicStatus(source: unknown): AcademicStatusValue {
+  if (!source || typeof source !== "object") {
+    return DEFAULT_ACADEMIC_STATUS;
+  }
+
+  const raw = String(
+    (source as Record<string, unknown>).academicStatus ??
+      DEFAULT_ACADEMIC_STATUS,
+  )
+    .trim()
+    .toUpperCase();
+
+  return raw === "RETAINED" ? "RETAINED" : DEFAULT_ACADEMIC_STATUS;
+}
+
 function extractChecklistPatch(source: unknown): ChecklistPatch {
   if (!source || typeof source !== "object") return {};
   const row = source as Record<string, unknown>;
@@ -236,9 +256,24 @@ function extractChecklistPatch(source: unknown): ChecklistPatch {
   return patch;
 }
 
+function normalizeAcademicStatus(value: unknown): AcademicStatusValue {
+  const normalized = String(value ?? "")
+    .trim()
+    .toUpperCase();
+
+  return normalized === "RETAINED" ? "RETAINED" : DEFAULT_ACADEMIC_STATUS;
+}
+
 function resolveBatchVerifyTarget(
   status: ApplicationStatus,
+  applicantType: ApplicantType,
 ): ApplicationStatus | null {
+  if (applicantType === "REGULAR") {
+    if (status === "UNDER_REVIEW") return "VERIFIED";
+    if (status === "SUBMITTED") return "VERIFIED";
+    return null;
+  }
+
   if (status === "SUBMITTED") return "VERIFIED";
   if (status === "VERIFIED" || status === "UNDER_REVIEW") return "ELIGIBLE";
   return null;
@@ -479,6 +514,7 @@ async function getScpConfigCached(
           label: step.label,
           isRequired: step.isRequired,
           cutoffScore: step.cutoffScore,
+          scheduledDate: step.scheduledDate,
           scheduledTime: step.scheduledTime,
           venue: step.venue,
           notes: step.notes,
@@ -1471,11 +1507,14 @@ const EARLY_REG_TRANSITIONS: Record<string, ApplicationStatus[]> = {
   VERIFIED: [
     "UNDER_REVIEW",
     "ELIGIBLE",
+    "ENROLLED",
+    "TEMPORARILY_ENROLLED",
     "ASSESSMENT_SCHEDULED",
     "REJECTED",
     "WITHDRAWN",
   ],
   UNDER_REVIEW: [
+    "VERIFIED",
     "FOR_REVISION",
     "ELIGIBLE",
     "ASSESSMENT_SCHEDULED",
@@ -1485,6 +1524,8 @@ const EARLY_REG_TRANSITIONS: Record<string, ApplicationStatus[]> = {
   FOR_REVISION: ["UNDER_REVIEW", "WITHDRAWN"],
   ELIGIBLE: ["ASSESSMENT_SCHEDULED", "PASSED", "WITHDRAWN"],
   ASSESSMENT_SCHEDULED: [
+    "PASSED",
+    "NOT_QUALIFIED",
     "ASSESSMENT_TAKEN",
     "ASSESSMENT_SCHEDULED",
     "INTERVIEW_SCHEDULED",
@@ -2101,6 +2142,9 @@ export async function batchVerifyDocumentsPreview(
           select: {
             firstName: true,
             lastName: true,
+            lrn: true,
+            sex: true,
+            isPendingLrnCreation: true,
             isLearnerWithDisability: true,
           },
         },
@@ -2123,6 +2167,10 @@ export async function batchVerifyDocumentsPreview(
       name: string;
       trackingNumber: string;
       status: ApplicationStatus;
+      lrn: string;
+      sex: string;
+      isPendingLrnCreation: boolean;
+      academicStatus: AcademicStatusValue;
       checklist: Record<ChecklistBooleanKey, boolean>;
       requiredChecklistKeys: ChecklistBooleanKey[];
     }> = [];
@@ -2166,6 +2214,10 @@ export async function batchVerifyDocumentsPreview(
         ),
         trackingNumber: registration.trackingNumber,
         status: registration.status,
+        lrn: registration.learner.lrn ?? "",
+        sex: registration.learner.sex,
+        isPendingLrnCreation: registration.learner.isPendingLrnCreation,
+        academicStatus: extractChecklistAcademicStatus(registration.checklist),
         checklist: extractChecklistState(registration.checklist),
         requiredChecklistKeys: effectiveColumns
           .filter((column) => column.isMandatory)
@@ -2215,13 +2267,20 @@ export async function batchVerifyDocuments(
 ) {
   try {
     const { applicants, expectedStatuses } = req.body as {
-      applicants: Array<{ id: number; checklist?: unknown }>;
+      applicants: Array<{
+        id: number;
+        checklist?: unknown;
+        academicStatus?: AcademicStatusValue;
+      }>;
       expectedStatuses?: Record<string, string>;
     };
 
     const expectedStatusMap = parseExpectedStatusMap(expectedStatuses);
 
-    const dedupedRows = new Map<number, { id: number; checklist?: unknown }>();
+    const dedupedRows = new Map<
+      number,
+      { id: number; checklist?: unknown; academicStatus?: AcademicStatusValue }
+    >();
     for (const row of applicants) {
       dedupedRows.set(row.id, row);
     }
@@ -2281,15 +2340,84 @@ export async function batchVerifyDocuments(
         registration.learner.lastName,
       );
 
-      const targetStatus = resolveBatchVerifyTarget(registration.status);
+      const targetStatus = resolveBatchVerifyTarget(
+        registration.status,
+        registration.applicantType,
+      );
       if (!targetStatus) {
         failed.push({
           id: registration.id,
           name,
           trackingNumber: registration.trackingNumber,
           reason:
-            'Batch verify is only supported for "SUBMITTED", "VERIFIED", or "UNDER_REVIEW" status.',
+            "Batch verify is not supported for this status and program combination.",
         });
+        continue;
+      }
+
+      const academicStatus = normalizeAcademicStatus(
+        row.academicStatus ??
+          extractChecklistAcademicStatus(registration.checklist),
+      );
+
+      if (academicStatus === "RETAINED") {
+        try {
+          assertEarlyRegTransition(
+            registration.status,
+            "REJECTED",
+            `Cannot flag retained learner while status is "${registration.status}".`,
+          );
+
+          const checklistPatch = extractChecklistPatch(row.checklist);
+
+          await prisma.$transaction(async (tx) => {
+            await tx.applicationChecklist.upsert({
+              where: { earlyRegistrationId: registration.id },
+              create: {
+                earlyRegistrationId: registration.id,
+                updatedById: req.user!.userId,
+                academicStatus: "RETAINED",
+                ...extractChecklistState(registration.checklist),
+                ...checklistPatch,
+              },
+              update: {
+                updatedById: req.user!.userId,
+                academicStatus: "RETAINED",
+                ...checklistPatch,
+              },
+            });
+
+            await tx.earlyRegistrationApplication.update({
+              where: { id: registration.id },
+              data: {
+                status: "REJECTED",
+              },
+            });
+          });
+
+          succeeded.push({
+            id: registration.id,
+            name,
+            trackingNumber: registration.trackingNumber,
+          });
+
+          await auditLog({
+            userId: req.user!.userId,
+            actionType: "EARLY_REG_RETAINED_FLAGGED",
+            description: `Early registration #${registration.id} flagged as RETAINED from SF9 review and moved to REJECTED for advising follow-up.`,
+            subjectType: "EarlyRegistrationApplication",
+            recordId: registration.id,
+            req,
+          }).catch(() => {});
+        } catch (error) {
+          failed.push({
+            id: registration.id,
+            name,
+            trackingNumber: registration.trackingNumber,
+            reason: toBatchReason(error, "Failed to flag retained learner."),
+          });
+        }
+
         continue;
       }
 
@@ -2315,8 +2443,13 @@ export async function batchVerifyDocuments(
         ...checklistPatch,
       };
 
-      if (targetStatus === "ELIGIBLE") {
-        const config = await getScpConfigCached(
+      const requiresMandatoryDocs =
+        targetStatus === "ELIGIBLE" ||
+        (registration.applicantType === "REGULAR" &&
+          targetStatus === "VERIFIED");
+
+      if (requiresMandatoryDocs) {
+        await getScpConfigCached(
           configCache,
           registration.schoolYearId,
           registration.applicantType,
@@ -2363,10 +2496,12 @@ export async function batchVerifyDocuments(
             create: {
               earlyRegistrationId: registration.id,
               updatedById: req.user!.userId,
+              academicStatus,
               ...mergedChecklist,
             },
             update: {
               updatedById: req.user!.userId,
+              academicStatus,
               ...checklistPatch,
             },
           });
@@ -2411,6 +2546,388 @@ export async function batchVerifyDocuments(
   }
 }
 
+/** PATCH /batch/assign-regular-section — Assign verified regular applicants to a section and finalize enrollment status. */
+export async function batchAssignRegularSection(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const { ids, sectionId, expectedStatuses } = req.body as {
+      ids: number[];
+      sectionId: number;
+      expectedStatuses?: Record<string, string>;
+    };
+
+    const requestedIds = Array.from(new Set(ids));
+    if (requestedIds.length === 0) {
+      throw new AppError(400, "No application IDs provided.");
+    }
+
+    const expectedStatusMap = parseExpectedStatusMap(expectedStatuses);
+
+    const outcome = await prisma.$transaction(async (tx) => {
+      const [section] = await tx.$queryRaw<
+        {
+          id: number;
+          maxCapacity: number;
+          gradeLevelId: number;
+          programType: ApplicantType;
+        }[]
+      >`
+        SELECT
+          id,
+          "max_capacity" as "maxCapacity",
+          "grade_level_id" as "gradeLevelId",
+          "program_type" as "programType"
+        FROM "sections"
+        WHERE id = ${sectionId}
+        FOR UPDATE
+      `;
+
+      if (!section) {
+        throw new AppError(404, "Section not found.");
+      }
+
+      if (section.programType !== "REGULAR") {
+        throw new AppError(
+          422,
+          "Selected section is reserved for SCP and cannot be used for Regular batch assignment.",
+        );
+      }
+
+      if (requestedIds.length > 0) {
+        await tx.$queryRaw`
+          SELECT id
+          FROM "early_registration_applications"
+          WHERE id IN (${Prisma.join(requestedIds)})
+          FOR UPDATE
+        `;
+      }
+
+      const registrations = await tx.earlyRegistrationApplication.findMany({
+        where: { id: { in: requestedIds } },
+        include: {
+          learner: {
+            select: {
+              firstName: true,
+              lastName: true,
+              lrn: true,
+              sex: true,
+              isPendingLrnCreation: true,
+              isLearnerWithDisability: true,
+            },
+          },
+          gradeLevel: { select: { name: true } },
+          checklist: true,
+          enrollmentApplications: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: {
+              id: true,
+              enrollmentRecord: {
+                select: {
+                  id: true,
+                  sectionId: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      assertNoStatusSnapshotConflicts(
+        expectedStatusMap,
+        registrations.map((registration) => ({
+          id: registration.id,
+          status: registration.status,
+          trackingNumber: registration.trackingNumber,
+        })),
+      );
+
+      const gradeLevelIds = new Set(
+        registrations.map((registration) => registration.gradeLevelId),
+      );
+      if (gradeLevelIds.size > 1) {
+        throw new AppError(
+          422,
+          "Batch section assignment requires applicants from a single grade level.",
+        );
+      }
+
+      const onlyGradeLevelId = registrations[0]?.gradeLevelId ?? null;
+      if (
+        onlyGradeLevelId !== null &&
+        section.gradeLevelId !== onlyGradeLevelId
+      ) {
+        throw new AppError(
+          422,
+          "Selected section does not match the applicants' grade level.",
+        );
+      }
+
+      const registrationById = new Map(
+        registrations.map((registration) => [registration.id, registration]),
+      );
+
+      const succeeded: Array<
+        BatchSuccessItem & { status: ApplicationStatus; sectionId: number }
+      > = [];
+      const failed: BatchFailureItem[] = [];
+      const candidates: Array<{
+        registration: (typeof registrations)[number];
+        targetStatus: ApplicationStatus;
+      }> = [];
+
+      for (const id of requestedIds) {
+        const registration = registrationById.get(id);
+        if (!registration) {
+          failed.push({
+            id,
+            name: "Unknown",
+            trackingNumber: "N/A",
+            reason: "Application not found.",
+          });
+          continue;
+        }
+
+        const name = formatBatchName(
+          registration.learner.firstName,
+          registration.learner.lastName,
+        );
+
+        if (registration.applicantType !== "REGULAR") {
+          failed.push({
+            id: registration.id,
+            name,
+            trackingNumber: registration.trackingNumber,
+            reason:
+              "Only Regular (BEC) applicants can be processed in this batch action.",
+          });
+          continue;
+        }
+
+        if (registration.status !== "VERIFIED") {
+          failed.push({
+            id: registration.id,
+            name,
+            trackingNumber: registration.trackingNumber,
+            reason:
+              'Only applicants in "VERIFIED" status can be assigned to a regular section.',
+          });
+          continue;
+        }
+
+        const latestEnrollmentApp = registration.enrollmentApplications[0];
+        if (latestEnrollmentApp?.enrollmentRecord) {
+          failed.push({
+            id: registration.id,
+            name,
+            trackingNumber: registration.trackingNumber,
+            reason:
+              "Applicant is already assigned to a section and cannot be re-assigned in this batch.",
+          });
+          continue;
+        }
+
+        const academicStatus = extractChecklistAcademicStatus(
+          registration.checklist,
+        );
+        if (academicStatus === "RETAINED") {
+          failed.push({
+            id: registration.id,
+            name,
+            trackingNumber: registration.trackingNumber,
+            reason:
+              "Retained learners cannot proceed to section assignment and must be advised separately.",
+          });
+          continue;
+        }
+
+        const requirements = getRequiredDocuments({
+          learnerType: registration.learnerType,
+          gradeLevel: registration.gradeLevel.name,
+          applicantType: registration.applicantType,
+          isLwd: Boolean(registration.learner.isLearnerWithDisability),
+          isPeptAePasser: false,
+          documentRequirements: null,
+        });
+
+        const missingMandatory = computeMissingMandatoryRequirements(
+          requirements,
+          extractChecklistState(registration.checklist),
+        );
+
+        if (missingMandatory.length > 0) {
+          failed.push({
+            id: registration.id,
+            name,
+            trackingNumber: registration.trackingNumber,
+            reason: `Missing required documents: ${missingMandatory.join(", ")}.`,
+          });
+          continue;
+        }
+
+        const requiresTemporaryEnrollment =
+          registration.learner.isPendingLrnCreation === true ||
+          !registration.learner.lrn;
+        const targetStatus: ApplicationStatus = requiresTemporaryEnrollment
+          ? "TEMPORARILY_ENROLLED"
+          : "ENROLLED";
+
+        try {
+          assertEarlyRegTransition(
+            registration.status,
+            targetStatus,
+            `Cannot transition application #${registration.id} from "${registration.status}" to "${targetStatus}".`,
+          );
+        } catch (error) {
+          failed.push({
+            id: registration.id,
+            name,
+            trackingNumber: registration.trackingNumber,
+            reason: toBatchReason(error, "Transition not allowed."),
+          });
+          continue;
+        }
+
+        candidates.push({
+          registration,
+          targetStatus,
+        });
+      }
+
+      const currentEnrollmentCount = await tx.enrollmentRecord.count({
+        where: { sectionId },
+      });
+
+      const availableSlots = Math.max(
+        0,
+        section.maxCapacity - currentEnrollmentCount,
+      );
+      const requestedSlots = candidates.length;
+
+      if (requestedSlots > availableSlots) {
+        throw new AppError(
+          422,
+          `Section is full. Available slots: ${availableSlots}. Requested assignments: ${requestedSlots}.`,
+        );
+      }
+
+      for (const { registration, targetStatus } of candidates) {
+        const name = formatBatchName(
+          registration.learner.firstName,
+          registration.learner.lastName,
+        );
+
+        const existingEnrollmentApp = registration.enrollmentApplications[0];
+
+        const enrollmentApplication = existingEnrollmentApp
+          ? await tx.enrollmentApplication.update({
+              where: { id: existingEnrollmentApp.id },
+              data: {
+                status: targetStatus,
+                isTemporarilyEnrolled: targetStatus === "TEMPORARILY_ENROLLED",
+              },
+            })
+          : await tx.enrollmentApplication.create({
+              data: {
+                learnerId: registration.learnerId,
+                earlyRegistrationId: registration.id,
+                schoolYearId: registration.schoolYearId,
+                gradeLevelId: registration.gradeLevelId,
+                applicantType: registration.applicantType,
+                learnerType: registration.learnerType,
+                status: targetStatus,
+                admissionChannel: registration.channel,
+                isPrivacyConsentGiven: registration.isPrivacyConsentGiven,
+                encodedById: req.user!.userId,
+                isTemporarilyEnrolled: targetStatus === "TEMPORARILY_ENROLLED",
+              },
+            });
+
+        const checklistState = extractChecklistState(registration.checklist);
+        const checklistAcademicStatus = extractChecklistAcademicStatus(
+          registration.checklist,
+        );
+
+        await tx.applicationChecklist.upsert({
+          where: { earlyRegistrationId: registration.id },
+          create: {
+            earlyRegistrationId: registration.id,
+            enrollmentId: enrollmentApplication.id,
+            updatedById: req.user!.userId,
+            academicStatus: checklistAcademicStatus,
+            ...checklistState,
+          },
+          update: {
+            enrollmentId: enrollmentApplication.id,
+            updatedById: req.user!.userId,
+            academicStatus: checklistAcademicStatus,
+          },
+        });
+
+        await tx.enrollmentRecord.upsert({
+          where: {
+            enrollmentApplicationId: enrollmentApplication.id,
+          },
+          create: {
+            enrollmentApplicationId: enrollmentApplication.id,
+            sectionId,
+            schoolYearId: registration.schoolYearId,
+            enrolledById: req.user!.userId,
+          },
+          update: {
+            sectionId,
+            schoolYearId: registration.schoolYearId,
+            enrolledById: req.user!.userId,
+          },
+        });
+
+        await tx.earlyRegistrationApplication.update({
+          where: { id: registration.id },
+          data: { status: targetStatus },
+        });
+
+        if (targetStatus === "ENROLLED") {
+          await tx.learner.update({
+            where: { id: registration.learnerId },
+            data: { isPendingLrnCreation: false },
+          });
+        }
+
+        succeeded.push({
+          id: registration.id,
+          name,
+          trackingNumber: registration.trackingNumber,
+          status: targetStatus,
+          sectionId,
+        });
+      }
+
+      return { succeeded, failed };
+    });
+
+    await auditLog({
+      userId: req.user!.userId,
+      actionType: "EARLY_REG_BATCH_ASSIGN_REGULAR_SECTION",
+      description: `Batch assigned regular section #${sectionId}: ${outcome.succeeded.length} succeeded, ${outcome.failed.length} failed.`,
+      subjectType: "EarlyRegistrationApplication",
+      recordId: null,
+      req,
+    }).catch(() => {});
+
+    res.json({
+      processed: requestedIds.length,
+      sectionId,
+      succeeded: outcome.succeeded,
+      failed: outcome.failed,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 /** PATCH /batch/schedule-step — Batch schedule exam or interview with required email queueing */
 export async function batchScheduleStep(
   req: Request,
@@ -2444,8 +2961,6 @@ export async function batchScheduleStep(
     if (requestedIds.length === 0) {
       throw new AppError(400, "No application IDs provided.");
     }
-
-    const normalizedDate = normalizeBatchScheduledDate(scheduledDate);
 
     const registrations = await prisma.earlyRegistrationApplication.findMany({
       where: { id: { in: requestedIds } },
@@ -2601,16 +3116,54 @@ export async function batchScheduleStep(
             ? "INTERVIEW"
             : (selectedStep?.kind ?? "QUALIFYING_EXAMINATION");
 
+        const isScpApplicant = registration.applicantType !== "REGULAR";
+
+        let resolvedScheduledDate: Date;
+        let resolvedScheduledTime: string | null;
+        let resolvedVenue: string | null;
+        let resolvedNotes: string | null;
+
+        if (isScpApplicant) {
+          if (!selectedStep) {
+            throw new AppError(
+              422,
+              `No ${mode.toLowerCase()} step was found in the SCP curriculum configuration. Update Settings -> Curriculum Tab.`,
+            );
+          }
+
+          if (
+            !selectedStep.scheduledDate ||
+            !selectedStep.scheduledTime?.trim() ||
+            !selectedStep.venue?.trim()
+          ) {
+            throw new AppError(
+              422,
+              `SCP ${mode.toLowerCase()} defaults are incomplete in scp_program_steps. Update Settings -> Curriculum Tab.`,
+            );
+          }
+
+          resolvedScheduledDate = normalizeDateToUtcNoon(
+            new Date(selectedStep.scheduledDate),
+          );
+          resolvedScheduledTime = selectedStep.scheduledTime.trim();
+          resolvedVenue = selectedStep.venue.trim();
+          resolvedNotes = selectedStep.notes?.trim() || null;
+        } else {
+          resolvedScheduledDate = normalizeBatchScheduledDate(scheduledDate);
+          resolvedScheduledTime = scheduledTime.trim() || null;
+          resolvedVenue = venue.trim() || null;
+          resolvedNotes = notes?.trim() || null;
+        }
+
         await prisma.$transaction(async (tx) => {
           await tx.earlyRegistrationAssessment.create({
             data: {
               applicationId: registration.id,
               type: assessmentKind as any,
-              scheduledDate: normalizedDate,
-              scheduledTime:
-                scheduledTime || selectedStep?.scheduledTime || null,
-              venue: venue || selectedStep?.venue || null,
-              notes: notes || selectedStep?.notes || null,
+              scheduledDate: resolvedScheduledDate,
+              scheduledTime: resolvedScheduledTime,
+              venue: resolvedVenue,
+              notes: resolvedNotes,
             },
           });
 
@@ -3105,7 +3658,13 @@ export async function batchProcess(
       try {
         await prisma.earlyRegistrationApplication.update({
           where: { id: app.id },
-          data: { status: targetStatus },
+          data: {
+            status: targetStatus,
+            ...(targetStatus === "NOT_QUALIFIED" ||
+            app.status === "NOT_QUALIFIED"
+              ? { applicantType: "REGULAR" }
+              : {}),
+          },
         });
         succeeded.push({
           id: app.id,

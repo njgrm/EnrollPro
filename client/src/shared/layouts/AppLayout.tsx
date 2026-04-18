@@ -244,7 +244,7 @@ function NavItemChild({
     isActive = false;
   }
 
-  // BASIC EDUCATION EARLY REGISTRATION FORM detail pages (/monitoring/early-registration/:id) should highlight Monitoring
+  // Basic Education Early Registration Form detail pages (/monitoring/early-registration/:id) should highlight Monitoring
   if (
     to === "/monitoring/early-registration" &&
     pathname.startsWith("/monitoring/early-registration/") &&

@@ -174,7 +174,7 @@ export default function DocumentaryRequirements() {
               <TableRow>
                 <TableHead className="w-1/4"></TableHead>
                 <TableHead className="bg-blue-50/50 text-blue-700 font-bold">
-                  Phase 1 — BASIC EDUCATION EARLY REGISTRATION FORM
+                  Phase 1 — Basic Education Early Registration Form
                 </TableHead>
                 <TableHead className="bg-emerald-50/50 text-emerald-700 font-bold">
                   Phase 2 — Actual Enrollment
@@ -267,7 +267,7 @@ export default function DocumentaryRequirements() {
                       <TableHead className="w-[100px]">Grade</TableHead>
                       <TableHead className="w-[140px]">Learner Type</TableHead>
                       <TableHead className="bg-blue-50/30">
-                        Phase 1: BASIC EDUCATION EARLY REGISTRATION FORM
+                        Phase 1: Basic Education Early Registration Form
                       </TableHead>
                       <TableHead className="bg-emerald-50/30">
                         Phase 2: Actual Enrollment
@@ -332,7 +332,7 @@ export default function DocumentaryRequirements() {
                     <TableRow>
                       <TableHead className="w-[150px]">Category</TableHead>
                       <TableHead className="bg-blue-50/30">
-                        Phase 1: BASIC EDUCATION EARLY REGISTRATION FORM
+                        Phase 1: Basic Education Early Registration Form
                       </TableHead>
                       <TableHead className="bg-emerald-50/30">
                         Phase 2: Actual Enrollment

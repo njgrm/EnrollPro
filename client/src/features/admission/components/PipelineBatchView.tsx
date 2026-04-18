@@ -50,11 +50,6 @@ import {
   TooltipTrigger,
 } from "@/shared/ui/tooltip";
 import { StatusBadge } from "@/features/enrollment/components/StatusBadge";
-import {
-  SCPAssessmentBlock,
-  type SCPAssessmentApplicant,
-} from "@/features/enrollment/components/SCPAssessmentBlock";
-import type { AssessmentStep } from "@/features/enrollment/hooks/useApplicationDetail";
 import { useDelayedLoading } from "@/shared/hooks/useDelayedLoading";
 import { format } from "date-fns";
 import BatchResultsModal from "./BatchResultsModal";
@@ -69,11 +64,13 @@ import PipelineBatchScheduleForm from "./pipeline-batch/PipelineBatchScheduleFor
 import PipelineBatchVerifyGrid from "@/features/admission/components/pipeline-batch/PipelineBatchVerifyGrid";
 import PipelineBatchAssessmentGrid from "./pipeline-batch/PipelineBatchAssessmentGrid";
 import PipelineBatchFinalizeInterviewGrid from "./pipeline-batch/PipelineBatchFinalizeInterviewGrid";
+import PipelineBatchScpAssessmentInterviewGrid from "./pipeline-batch/PipelineBatchScpAssessmentInterviewGrid";
+import PipelineBatchRegularSectionAssignment from "./pipeline-batch/PipelineBatchRegularSectionAssignment";
 import {
+  type AcademicStatusValue,
   DEFAULT_FINALIZE_INTERVIEW_ROW,
   type Application,
   type ChecklistFieldKey,
-  type EarlyRegistrationAssessment,
   type EarlyRegistrationApiRow,
   type FinalizeInterviewRowState,
   type PipelineBatchViewProps,
@@ -83,6 +80,7 @@ import {
   type ScpProgramStepTemplate,
   type VerifyGridApplicant,
   type VerifyGridColumn,
+  type RegularSectionOption,
 } from "./pipeline-batch/types";
 
 export default function PipelineBatchView({
@@ -105,6 +103,7 @@ export default function PipelineBatchView({
   const limit = 50;
 
   const showAssessment = hasAssessment && status === "ASSESSMENT_SCHEDULED";
+  const DEFAULT_SCHEDULE_TIME = "08:00 AM";
 
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -125,20 +124,36 @@ export default function PipelineBatchView({
   const [verifyGridValues, setVerifyGridValues] = useState<
     Record<number, Record<ChecklistFieldKey, boolean>>
   >({});
+  const [verifyGridAcademicStatuses, setVerifyGridAcademicStatuses] = useState<
+    Record<number, AcademicStatusValue>
+  >({});
+  const [verifyGridLrnDrafts, setVerifyGridLrnDrafts] = useState<
+    Record<number, string>
+  >({});
+  const [verifyLrnSavingId, setVerifyLrnSavingId] = useState<number | null>(
+    null,
+  );
   const [verifyRowsMarked, setVerifyRowsMarked] = useState<
     Record<number, boolean>
   >({});
 
+  const [regularSectionsLoading, setRegularSectionsLoading] = useState(false);
+  const [regularSections, setRegularSections] = useState<
+    RegularSectionOption[]
+  >([]);
+  const [selectedRegularSectionId, setSelectedRegularSectionId] =
+    useState<string>("");
+
   const [examScheduleForm, setExamScheduleForm] = useState<ScheduleFormState>({
     scheduledDate: "",
-    scheduledTime: "",
+    scheduledTime: DEFAULT_SCHEDULE_TIME,
     venue: "",
     notes: "",
   });
   const [interviewScheduleForm, setInterviewScheduleForm] =
     useState<ScheduleFormState>({
       scheduledDate: "",
-      scheduledTime: "",
+      scheduledTime: DEFAULT_SCHEDULE_TIME,
       venue: "",
       notes: "",
     });
@@ -150,6 +165,9 @@ export default function PipelineBatchView({
   const [scoreGridRows, setScoreGridRows] = useState<
     Record<number, ScoreRowState>
   >({});
+  const [scpAssessmentCutoffScore, setScpAssessmentCutoffScore] = useState<
+    number | null
+  >(cutoffScore ?? null);
 
   const [finalizeInterviewRows, setFinalizeInterviewRows] = useState<
     Record<number, FinalizeInterviewRowState>
@@ -159,8 +177,14 @@ export default function PipelineBatchView({
     useState(false);
   const [examScheduleStepTemplate, setExamScheduleStepTemplate] =
     useState<ScpProgramStepTemplate | null>(null);
+  const [
+    interviewScheduleDefaultsLoading,
+    setInterviewScheduleDefaultsLoading,
+  ] = useState(false);
+  const [interviewScheduleStepTemplate, setInterviewScheduleStepTemplate] =
+    useState<ScpProgramStepTemplate | null>(null);
 
-  const [leftPaneWidthPercent, setLeftPaneWidthPercent] = useState(40);
+  const [leftPaneWidthPercent, setLeftPaneWidthPercent] = useState(30);
   const [isResizingSplitPanes, setIsResizingSplitPanes] = useState(false);
   const splitPanesRef = useRef<HTMLDivElement | null>(null);
 
@@ -291,6 +315,26 @@ export default function PipelineBatchView({
     [selectedApplications],
   );
 
+  const selectedGradeLevelIds = useMemo(
+    () =>
+      Array.from(
+        new Set(selectedApplications.map((app) => Number(app.gradeLevelId))),
+      ).filter((id) => Number.isFinite(id) && id > 0),
+    [selectedApplications],
+  );
+
+  const hasMixedSelectedGradeLevels = selectedGradeLevelIds.length > 1;
+
+  const selectedGradeLevelId =
+    selectedGradeLevelIds.length === 1 ? selectedGradeLevelIds[0] : null;
+
+  const selectedGradeLevelName =
+    selectedGradeLevelId == null
+      ? null
+      : (selectedApplications.find(
+          (app) => Number(app.gradeLevelId) === selectedGradeLevelId,
+        )?.gradeLevel?.name ?? null);
+
   const hasMixedSelectedStatuses = selectedStatuses.length > 1;
   const hasMixedSelectedPrograms = selectedPrograms.length > 1;
   const hasSelectionConflict =
@@ -323,10 +367,26 @@ export default function PipelineBatchView({
   const activeBatchAction = useMemo(
     () =>
       normalizedSingleSelectedStatus
-        ? getRegistrationBatchActionByStatus(normalizedSingleSelectedStatus)
+        ? getRegistrationBatchActionByStatus(
+            normalizedSingleSelectedStatus,
+            applicantType,
+          )
         : null,
-    [normalizedSingleSelectedStatus],
+    [normalizedSingleSelectedStatus, applicantType],
   );
+
+  const hasRegularSectionGradeConflict =
+    activeBatchAction?.id === "ASSIGN_REGULAR_SECTION" &&
+    hasMixedSelectedGradeLevels;
+
+  const hasActionScopeConflict =
+    hasSelectionConflict || hasRegularSectionGradeConflict;
+
+  const actionScopeConflictMessage =
+    selectionConflictMessage ??
+    (hasRegularSectionGradeConflict
+      ? "Batch section assignment requires applicants from one grade level."
+      : null);
 
   const derivedTargetStatus = activeBatchAction?.targetStatus ?? "";
 
@@ -374,6 +434,41 @@ export default function PipelineBatchView({
   const scopedEligibleIdSet = useMemo(
     () => new Set(scopedEligibleIds),
     [scopedEligibleIds],
+  );
+
+  const availableRegularSections = useMemo(() => {
+    const filteredByProgram = regularSections.filter(
+      (section) => section.programType === "REGULAR",
+    );
+
+    if (selectedGradeLevelId == null) {
+      return filteredByProgram;
+    }
+
+    return filteredByProgram.filter(
+      (section) => section.gradeLevelId === selectedGradeLevelId,
+    );
+  }, [regularSections, selectedGradeLevelId]);
+
+  const selectedRegularSection = useMemo(
+    () =>
+      availableRegularSections.find(
+        (section) => String(section.id) === selectedRegularSectionId,
+      ) ?? null,
+    [availableRegularSections, selectedRegularSectionId],
+  );
+
+  const selectedRegularSectionAvailableSlots = selectedRegularSection
+    ? Math.max(
+        0,
+        selectedRegularSection.maxCapacity -
+          selectedRegularSection.enrolledCount,
+      )
+    : 0;
+
+  const isRegularSectionOverCapacity = Boolean(
+    selectedRegularSection &&
+    scopedEligibleIds.length > selectedRegularSectionAvailableSlots,
   );
 
   const normalizeScoreToTwoDecimals = useCallback((value: number) => {
@@ -449,6 +544,15 @@ export default function PipelineBatchView({
       );
       if (!applicant) return { done: 0, total: 0 };
 
+      const academicStatus =
+        verifyGridAcademicStatuses[applicantId] ?? applicant.academicStatus;
+      if (academicStatus === "RETAINED") {
+        return {
+          done: applicant.requiredChecklistKeys.length,
+          total: applicant.requiredChecklistKeys.length,
+        };
+      }
+
       const total = applicant.requiredChecklistKeys.length;
       if (total === 0) return { done: 0, total: 0 };
 
@@ -459,15 +563,18 @@ export default function PipelineBatchView({
 
       return { done, total };
     },
-    [verifyGridApplicants, verifyGridValues],
+    [verifyGridAcademicStatuses, verifyGridApplicants, verifyGridValues],
   );
 
   const isVerifyRowReady = useCallback(
     (applicantId: number) => {
+      const academicStatus = verifyGridAcademicStatuses[applicantId];
+      if (academicStatus === "RETAINED") return true;
+
       const { done, total } = getVerifyRequiredCompletion(applicantId);
       return total > 0 ? done === total : true;
     },
-    [getVerifyRequiredCompletion],
+    [getVerifyRequiredCompletion, verifyGridAcademicStatuses],
   );
 
   const setVerifyRowMarked = useCallback(
@@ -478,6 +585,95 @@ export default function PipelineBatchView({
       }));
     },
     [],
+  );
+
+  const setVerifyAcademicStatus = useCallback(
+    (applicantId: number, statusValue: AcademicStatusValue) => {
+      setVerifyGridAcademicStatuses((prev) => ({
+        ...prev,
+        [applicantId]: statusValue,
+      }));
+
+      if (statusValue === "PROMOTED") {
+        const applicant = verifyGridApplicants.find(
+          (entry) => entry.id === applicantId,
+        );
+        if (!applicant) return;
+
+        const values = verifyGridValues[applicantId] ?? applicant.checklist;
+        const rowReady = applicant.requiredChecklistKeys.every((requiredKey) =>
+          Boolean(values[requiredKey]),
+        );
+
+        if (!rowReady) {
+          setVerifyRowsMarked((prev) => {
+            if (!prev[applicantId]) return prev;
+            return {
+              ...prev,
+              [applicantId]: false,
+            };
+          });
+        }
+      }
+    },
+    [verifyGridApplicants, verifyGridValues],
+  );
+
+  const setVerifyLrnDraft = useCallback(
+    (applicantId: number, value: string) => {
+      const digitsOnly = value.replace(/\D/g, "").slice(0, 12);
+      setVerifyGridLrnDrafts((prev) => ({
+        ...prev,
+        [applicantId]: digitsOnly,
+      }));
+    },
+    [],
+  );
+
+  const saveVerifyRowLrn = useCallback(
+    async (applicantId: number) => {
+      const lrn = (verifyGridLrnDrafts[applicantId] ?? "").trim();
+      if (!/^\d{12}$/.test(lrn)) {
+        setActionFormError("LRN must be exactly 12 digits before saving.");
+        return;
+      }
+
+      setVerifyLrnSavingId(applicantId);
+
+      try {
+        await api.patch(`/early-registrations/${applicantId}/assign-lrn`, {
+          lrn,
+        });
+
+        setVerifyGridApplicants((prev) =>
+          prev.map((applicant) =>
+            applicant.id === applicantId
+              ? {
+                  ...applicant,
+                  lrn,
+                  isPendingLrnCreation: false,
+                }
+              : applicant,
+          ),
+        );
+
+        setVerifyGridLrnDrafts((prev) => ({
+          ...prev,
+          [applicantId]: lrn,
+        }));
+
+        setActionFormError(null);
+        sileo.success({
+          title: "LRN Updated",
+          description: "Learner record updated with the new LRN.",
+        });
+      } catch (err) {
+        toastApiError(err as never);
+      } finally {
+        setVerifyLrnSavingId(null);
+      }
+    },
+    [verifyGridLrnDrafts],
   );
 
   const isScoreValueInvalid = useCallback(
@@ -528,6 +724,21 @@ export default function PipelineBatchView({
           {},
         ),
       );
+      setVerifyGridAcademicStatuses(
+        applicants.reduce<Record<number, AcademicStatusValue>>(
+          (acc, applicant) => {
+            acc[applicant.id] = applicant.academicStatus ?? "PROMOTED";
+            return acc;
+          },
+          {},
+        ),
+      );
+      setVerifyGridLrnDrafts(
+        applicants.reduce<Record<number, string>>((acc, applicant) => {
+          acc[applicant.id] = applicant.lrn ?? "";
+          return acc;
+        }, {}),
+      );
       setVerifyRowsMarked(
         applicants.reduce<Record<number, boolean>>((acc, applicant) => {
           acc[applicant.id] = false;
@@ -546,11 +757,85 @@ export default function PipelineBatchView({
       setVerifyGridColumns([]);
       setVerifyGridApplicants([]);
       setVerifyGridValues({});
+      setVerifyGridAcademicStatuses({});
+      setVerifyGridLrnDrafts({});
       setVerifyRowsMarked({});
     } finally {
       setVerifyGridLoading(false);
     }
   }, [selectedIds]);
+
+  const loadRegularSections = useCallback(async () => {
+    if (!ayId) {
+      setRegularSections([]);
+      setSelectedRegularSectionId("");
+      return;
+    }
+
+    setRegularSectionsLoading(true);
+
+    try {
+      const res = await api.get(`/sections/${ayId}`);
+
+      const gradeLevels = Array.isArray(res.data?.gradeLevels)
+        ? (res.data.gradeLevels as Array<{
+            gradeLevelId: number;
+            gradeLevelName: string;
+            sections?: Array<{
+              id: number;
+              name: string;
+              maxCapacity?: number;
+              enrolledCount?: number;
+              fillPercent?: number;
+              programType?: string;
+            }>;
+          }>)
+        : [];
+
+      const flattenedSections = gradeLevels
+        .flatMap((gradeLevel) =>
+          (gradeLevel.sections ?? []).map((section) => ({
+            id: section.id,
+            name: section.name,
+            gradeLevelId: Number(gradeLevel.gradeLevelId),
+            gradeLevelName: gradeLevel.gradeLevelName,
+            programType: String(section.programType ?? "REGULAR"),
+            maxCapacity: Number(section.maxCapacity ?? 0),
+            enrolledCount: Number(section.enrolledCount ?? 0),
+            fillPercent: Number(section.fillPercent ?? 0),
+          })),
+        )
+        .filter((section) => section.programType === "REGULAR");
+
+      setRegularSections(flattenedSections);
+
+      setSelectedRegularSectionId((prev) => {
+        if (
+          prev &&
+          flattenedSections.some((section) => String(section.id) === prev)
+        ) {
+          return prev;
+        }
+
+        if (selectedGradeLevelId != null) {
+          const sameGradeSection = flattenedSections.find(
+            (section) => section.gradeLevelId === selectedGradeLevelId,
+          );
+          if (sameGradeSection) {
+            return String(sameGradeSection.id);
+          }
+        }
+
+        return flattenedSections[0] ? String(flattenedSections[0].id) : "";
+      });
+    } catch (err) {
+      toastApiError(err as never);
+      setRegularSections([]);
+      setSelectedRegularSectionId("");
+    } finally {
+      setRegularSectionsLoading(false);
+    }
+  }, [ayId, selectedGradeLevelId]);
 
   const initializeScoreGrid = useCallback(async () => {
     const defaultComponents: RankingFormulaComponent[] = [
@@ -562,12 +847,14 @@ export default function PipelineBatchView({
 
     try {
       let resolvedComponents = defaultComponents;
+      let resolvedCutoffScore = cutoffScore ?? null;
 
       if (ayId && applicantType !== "REGULAR") {
         const res = await api.get(`/curriculum/${ayId}/scp-config`);
         const configs = (res.data?.scpProgramConfigs ?? []) as Array<{
           scpType: string;
           rankingFormula?: unknown;
+          steps?: ScpProgramStepTemplate[];
         }>;
 
         const config = configs.find((entry) => entry.scpType === applicantType);
@@ -575,9 +862,28 @@ export default function PipelineBatchView({
         if (parsed.length > 0) {
           resolvedComponents = parsed;
         }
+
+        const orderedSteps = [...(config?.steps ?? [])].sort(
+          (a, b) => Number(a.stepOrder) - Number(b.stepOrder),
+        );
+        const examCandidates = orderedSteps.filter(
+          (step) => String(step.kind).toUpperCase() !== "INTERVIEW",
+        );
+        const selectedAssessmentStep =
+          examCandidates.find((step) => step.isRequired) ??
+          examCandidates[0] ??
+          null;
+
+        const rawCutoff = selectedAssessmentStep?.cutoffScore;
+        if (rawCutoff != null && Number.isFinite(Number(rawCutoff))) {
+          resolvedCutoffScore = Number(rawCutoff);
+        } else {
+          resolvedCutoffScore = null;
+        }
       }
 
       setScoreComponents(resolvedComponents);
+      setScpAssessmentCutoffScore(resolvedCutoffScore);
       setScoreGridRows(
         selectedApplications.reduce<Record<number, ScoreRowState>>(
           (acc, applicant) => {
@@ -599,6 +905,7 @@ export default function PipelineBatchView({
     } catch (err) {
       toastApiError(err as never);
       setScoreComponents(defaultComponents);
+      setScpAssessmentCutoffScore(cutoffScore ?? null);
       setScoreGridRows({});
     } finally {
       setScoreGridLoading(false);
@@ -606,61 +913,116 @@ export default function PipelineBatchView({
   }, [
     ayId,
     applicantType,
+    cutoffScore,
     parseRankingFormulaComponents,
     selectedApplications,
   ]);
 
-  const loadExamScheduleDefaults = useCallback(async () => {
-    if (!ayId || applicantType === "REGULAR") {
-      setExamScheduleStepTemplate(null);
-      return;
-    }
+  const loadScheduleDefaults = useCallback(
+    async (mode: "EXAM" | "INTERVIEW") => {
+      const setModeTemplate = (template: ScpProgramStepTemplate | null) => {
+        if (mode === "EXAM") {
+          setExamScheduleStepTemplate(template);
+          return;
+        }
+        setInterviewScheduleStepTemplate(template);
+      };
 
-    setExamScheduleDefaultsLoading(true);
-    try {
-      const res = await api.get(`/curriculum/${ayId}/scp-config`);
-      const configs = (res.data?.scpProgramConfigs ?? []) as Array<{
-        scpType: string;
-        steps?: ScpProgramStepTemplate[];
-      }>;
+      const setModeForm = (template: ScpProgramStepTemplate | null) => {
+        const normalizedDate = template?.scheduledDate
+          ? format(new Date(template.scheduledDate), "yyyy-MM-dd")
+          : "";
+        const normalizedTime =
+          template?.scheduledTime?.trim() || DEFAULT_SCHEDULE_TIME;
+        const normalizedVenue = template?.venue?.trim() || "";
+        const normalizedNotes = template?.notes?.trim() || "";
 
-      const matchingConfig = configs.find(
-        (entry) => entry.scpType === applicantType,
-      );
+        if (mode === "EXAM") {
+          setExamScheduleForm({
+            scheduledDate: normalizedDate,
+            scheduledTime: normalizedTime,
+            venue: normalizedVenue,
+            notes: normalizedNotes,
+          });
+          return;
+        }
 
-      const examCandidates = [...(matchingConfig?.steps ?? [])]
-        .filter((step) => String(step.kind).toUpperCase() !== "INTERVIEW")
-        .sort((a, b) => Number(a.stepOrder) - Number(b.stepOrder));
+        setInterviewScheduleForm({
+          scheduledDate: normalizedDate,
+          scheduledTime: normalizedTime,
+          venue: normalizedVenue,
+          notes: normalizedNotes,
+        });
+      };
 
-      const examStep =
-        examCandidates.find((step) => step.isRequired) ??
-        examCandidates[0] ??
-        null;
-
-      if (!examStep) {
-        setExamScheduleStepTemplate(null);
+      if (!ayId || applicantType === "REGULAR") {
+        setModeTemplate(null);
+        if (mode === "EXAM") {
+          setExamScheduleForm((prev) => ({
+            ...prev,
+            scheduledTime: prev.scheduledTime || DEFAULT_SCHEDULE_TIME,
+          }));
+        } else {
+          setInterviewScheduleForm((prev) => ({
+            ...prev,
+            scheduledTime: prev.scheduledTime || DEFAULT_SCHEDULE_TIME,
+          }));
+        }
         return;
       }
 
-      setExamScheduleStepTemplate(examStep);
+      if (mode === "EXAM") {
+        setExamScheduleDefaultsLoading(true);
+      } else {
+        setInterviewScheduleDefaultsLoading(true);
+      }
 
-      const normalizedDate = examStep.scheduledDate
-        ? format(new Date(examStep.scheduledDate), "yyyy-MM-dd")
-        : "";
+      try {
+        const res = await api.get(`/curriculum/${ayId}/scp-config`);
+        const configs = (res.data?.scpProgramConfigs ?? []) as Array<{
+          scpType: string;
+          steps?: ScpProgramStepTemplate[];
+        }>;
 
-      setExamScheduleForm((prev) => ({
-        scheduledDate: prev.scheduledDate || normalizedDate,
-        scheduledTime: prev.scheduledTime || examStep.scheduledTime || "",
-        venue: prev.venue || examStep.venue || "",
-        notes: prev.notes || examStep.notes || "",
-      }));
-    } catch (err) {
-      toastApiError(err as never);
-      setExamScheduleStepTemplate(null);
-    } finally {
-      setExamScheduleDefaultsLoading(false);
-    }
-  }, [ayId, applicantType]);
+        const matchingConfig = configs.find(
+          (entry) => entry.scpType === applicantType,
+        );
+
+        const orderedSteps = [...(matchingConfig?.steps ?? [])].sort(
+          (a, b) => Number(a.stepOrder) - Number(b.stepOrder),
+        );
+
+        const selectedTemplate =
+          mode === "INTERVIEW"
+            ? (orderedSteps.find(
+                (step) => String(step.kind).toUpperCase() === "INTERVIEW",
+              ) ?? null)
+            : (() => {
+                const examCandidates = orderedSteps.filter(
+                  (step) => String(step.kind).toUpperCase() !== "INTERVIEW",
+                );
+                return (
+                  examCandidates.find((step) => step.isRequired) ??
+                  examCandidates[0] ??
+                  null
+                );
+              })();
+
+        setModeTemplate(selectedTemplate);
+        setModeForm(selectedTemplate);
+      } catch (err) {
+        toastApiError(err as never);
+        setModeTemplate(null);
+      } finally {
+        if (mode === "EXAM") {
+          setExamScheduleDefaultsLoading(false);
+        } else {
+          setInterviewScheduleDefaultsLoading(false);
+        }
+      }
+    },
+    [ayId, applicantType, DEFAULT_SCHEDULE_TIME],
+  );
 
   const initializeFinalizeRows = useCallback(() => {
     setFinalizeInterviewRows(
@@ -682,8 +1044,18 @@ export default function PipelineBatchView({
       return;
     }
 
+    if (activeBatchAction.id === "ASSIGN_REGULAR_SECTION") {
+      void loadRegularSections();
+      return;
+    }
+
     if (activeBatchAction.id === "SCHEDULE_EXAM") {
-      void loadExamScheduleDefaults();
+      void loadScheduleDefaults("EXAM");
+      return;
+    }
+
+    if (activeBatchAction.id === "SCHEDULE_INTERVIEW") {
+      void loadScheduleDefaults("INTERVIEW");
       return;
     }
 
@@ -702,7 +1074,8 @@ export default function PipelineBatchView({
     isActionModalOpen,
     activeBatchAction,
     loadVerifyGridPreview,
-    loadExamScheduleDefaults,
+    loadRegularSections,
+    loadScheduleDefaults,
     initializeScoreGrid,
     initializeFinalizeRows,
   ]);
@@ -713,7 +1086,7 @@ export default function PipelineBatchView({
   );
 
   const magnetizeSplitPaneWidth = useCallback((value: number) => {
-    const snapPoints = [40, 50, 60];
+    const snapPoints = [30, 30, 50, 70];
     const threshold = 1.8;
     for (const snapPoint of snapPoints) {
       if (Math.abs(value - snapPoint) <= threshold) {
@@ -767,6 +1140,15 @@ export default function PipelineBatchView({
     key: ChecklistFieldKey,
     value: boolean,
   ) => {
+    const applicant = verifyGridApplicants.find(
+      (entry) => entry.id === applicantId,
+    );
+    const academicStatus =
+      verifyGridAcademicStatuses[applicantId] ?? applicant?.academicStatus;
+    if (academicStatus === "RETAINED") {
+      return;
+    }
+
     setVerifyGridValues((prev) => {
       const next = {
         ...prev,
@@ -804,6 +1186,12 @@ export default function PipelineBatchView({
     setVerifyGridValues((prev) => {
       const next = { ...prev };
       for (const applicant of verifyGridApplicants) {
+        const academicStatus =
+          verifyGridAcademicStatuses[applicant.id] ?? applicant.academicStatus;
+        if (academicStatus === "RETAINED") {
+          continue;
+        }
+
         next[applicant.id] = {
           ...(next[applicant.id] ?? {}),
           [key]: value,
@@ -836,6 +1224,12 @@ export default function PipelineBatchView({
     setVerifyGridValues((prev) => {
       const next = { ...prev };
       for (const applicant of verifyGridApplicants) {
+        const academicStatus =
+          verifyGridAcademicStatuses[applicant.id] ?? applicant.academicStatus;
+        if (academicStatus === "RETAINED") {
+          continue;
+        }
+
         next[applicant.id] = verifyGridColumns.reduce<
           Record<ChecklistFieldKey, boolean>
         >(
@@ -971,121 +1365,150 @@ export default function PipelineBatchView({
     }));
   };
 
-  const resolveScoreComponentKeyForStep = useCallback(
-    (kind: string): string | null => {
-      if (!kind.trim() || scoreComponents.length === 0) return null;
+  const getScpPrimaryScoreValue = useCallback(
+    (applicantId: number) => {
+      const primaryComponent = scoreComponents[0];
+      if (!primaryComponent) return "";
 
-      const normalizedKind = kind.trim().toUpperCase();
-      const directMatch = scoreComponents.find(
-        (component) => component.key === normalizedKind,
+      return (
+        scoreGridRows[applicantId]?.componentScores?.[primaryComponent.key] ??
+        ""
       );
-      if (directMatch) return directMatch.key;
-
-      if (scoreComponents.length === 1) {
-        return scoreComponents[0].key;
-      }
-
-      const examCandidates = scoreComponents.filter((component) =>
-        component.key.includes("EXAM"),
-      );
-      if (normalizedKind.includes("EXAM") && examCandidates.length === 1) {
-        return examCandidates[0].key;
-      }
-
-      if (normalizedKind === "INTERVIEW") {
-        const interviewMatch = scoreComponents.find(
-          (component) => component.key === "INTERVIEW",
-        );
-        if (interviewMatch) return interviewMatch.key;
-      }
-
-      return null;
     },
-    [scoreComponents],
+    [scoreComponents, scoreGridRows],
   );
 
-  const stageAssessmentFromScpBlock = useCallback(
-    async (
-      applicantId: number,
-      _stepOrder: number,
-      kind: string,
-      score: number,
-      stepCutoffScore: number | null,
-    ) => {
-      const componentKey = resolveScoreComponentKeyForStep(kind);
-      if (!componentKey) {
-        setActionFormError(
-          `Unable to map ${kind.replaceAll("_", " ")} to a score component. Please encode this applicant in the score grid on the right.`,
-        );
-        return;
-      }
-
+  const updateScpPrimaryScoreValue = useCallback(
+    (applicantId: number, value: string) => {
       setActionFormError(null);
+
       setScoreGridRows((prev) => {
-        const fallbackComponentScores = scoreComponents.reduce<
+        const existing =
+          prev[applicantId] ??
+          ({
+            componentScores: {},
+            remarks: "",
+            absentNoShow: false,
+          } as ScoreRowState);
+
+        const nextComponentScores = scoreComponents.reduce<
           Record<string, string>
-        >((acc, component) => {
-          acc[component.key] = "";
-          return acc;
-        }, {});
-
-        const existing = prev[applicantId] ?? {
-          componentScores: fallbackComponentScores,
-          remarks: "",
-          absentNoShow: false,
-        };
-
-        const passFailLabel =
-          stepCutoffScore == null
-            ? ""
-            : score >= stepCutoffScore
-              ? "PASSED"
-              : "FAILED";
+        >(
+          (acc, component) => {
+            acc[component.key] = value;
+            return acc;
+          },
+          { ...existing.componentScores },
+        );
 
         return {
           ...prev,
           [applicantId]: {
             ...existing,
             absentNoShow: false,
-            componentScores: {
-              ...existing.componentScores,
-              [componentKey]: normalizeScoreToTwoDecimals(score).toFixed(2),
-            },
-            remarks:
-              existing.remarks ||
-              `Staged from SCP block (${kind.replaceAll("_", " ")}${
-                passFailLabel ? `: ${passFailLabel}` : ""
-              }).`,
+            componentScores: nextComponentScores,
           },
         };
       });
     },
+    [scoreComponents],
+  );
+
+  const isScpScoreValueInvalid = useCallback((value: string) => {
+    const normalized = value.trim();
+    if (!normalized) return true;
+
+    const parsed = Number(normalized);
+    if (!Number.isFinite(parsed)) return true;
+
+    return parsed < 0 || parsed > 100;
+  }, []);
+
+  const getLatestNonInterviewAssessmentScore = useCallback(
+    (applicant: Application): number | null => {
+      const nonInterviewAssessments = (applicant.assessments ?? []).filter(
+        (assessment) =>
+          assessment.type !== "INTERVIEW" &&
+          assessment.score != null &&
+          Number.isFinite(Number(assessment.score)),
+      );
+
+      if (nonInterviewAssessments.length === 0) return null;
+
+      const toSortableValue = (value: string | null | undefined) => {
+        if (!value) return Number.NEGATIVE_INFINITY;
+        const parsed = Date.parse(value);
+        return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
+      };
+
+      const latestAssessment = [...nonInterviewAssessments].sort((a, b) => {
+        const left = toSortableValue(a.conductedAt ?? a.createdAt);
+        const right = toSortableValue(b.conductedAt ?? b.createdAt);
+        if (left !== right) return right - left;
+        return b.id - a.id;
+      })[0];
+
+      if (latestAssessment?.score == null) return null;
+      return Number(latestAssessment.score);
+    },
+    [],
+  );
+
+  const getScpScoreValueForRow = useCallback(
+    (applicantId: number, applicant: Application) => {
+      if (activeBatchAction?.id === "RECORD_ASSESSMENT") {
+        return getScpPrimaryScoreValue(applicantId);
+      }
+
+      const stagedTotal = computeWeightedTotal(scoreGridRows[applicantId]);
+      if (Number.isFinite(stagedTotal ?? NaN)) {
+        return Number(stagedTotal).toFixed(2);
+      }
+
+      const latestScore = getLatestNonInterviewAssessmentScore(applicant);
+      if (latestScore != null) {
+        return Number(latestScore).toFixed(2);
+      }
+
+      if (
+        applicant.examScore != null &&
+        Number.isFinite(Number(applicant.examScore))
+      ) {
+        return Number(applicant.examScore).toFixed(2);
+      }
+
+      return "";
+    },
     [
-      normalizeScoreToTwoDecimals,
-      resolveScoreComponentKeyForStep,
-      scoreComponents,
+      activeBatchAction?.id,
+      computeWeightedTotal,
+      getLatestNonInterviewAssessmentScore,
+      getScpPrimaryScoreValue,
+      scoreGridRows,
     ],
   );
 
-  const stageInterviewDecisionFromScpBlock = useCallback(
-    async (applicantId: number, passed: boolean) => {
-      setActionFormError(null);
-      setFinalizeInterviewRows((prev) => {
-        const existing = prev[applicantId] ?? {
-          ...DEFAULT_FINALIZE_INTERVIEW_ROW,
-        };
+  const getScpInterviewDecision = useCallback(
+    (applicantId: number): "PASS" | "REJECT" | null => {
+      return finalizeInterviewRows[applicantId]?.decision ?? null;
+    },
+    [finalizeInterviewRows],
+  );
 
-        return {
-          ...prev,
-          [applicantId]: {
-            ...existing,
-            decision: passed ? "PASS" : "REJECT",
-            rejectOutcome: passed
+  const setScpInterviewDecision = useCallback(
+    (applicantId: number, decision: "PASS" | "REJECT") => {
+      setActionFormError(null);
+      setFinalizeInterviewRows((prev) => ({
+        ...prev,
+        [applicantId]: {
+          ...(prev[applicantId] ?? { ...DEFAULT_FINALIZE_INTERVIEW_ROW }),
+          decision,
+          rejectOutcome:
+            decision === "PASS"
               ? "NOT_QUALIFIED"
-              : existing.rejectOutcome || "NOT_QUALIFIED",
-          },
-        };
-      });
+              : (prev[applicantId]?.rejectOutcome ?? "NOT_QUALIFIED"),
+        },
+      }));
     },
     [],
   );
@@ -1131,21 +1554,6 @@ export default function PipelineBatchView({
     [finalizeInterviewRows],
   );
 
-  const getScpPreviewStagedState = useCallback(
-    (applicantId: number) => {
-      if (activeBatchAction?.id === "RECORD_ASSESSMENT") {
-        return isAssessmentRowPrepared(applicantId);
-      }
-
-      if (activeBatchAction?.id === "FINALIZE_PHASE_ONE") {
-        return isFinalizeRowPrepared(applicantId);
-      }
-
-      return false;
-    },
-    [activeBatchAction?.id, isAssessmentRowPrepared, isFinalizeRowPrepared],
-  );
-
   const toggleSelect = (id: number) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -1189,7 +1597,7 @@ export default function PipelineBatchView({
     if (
       selectedIds.size === 0 ||
       !derivedTargetStatus ||
-      hasSelectionConflict ||
+      hasActionScopeConflict ||
       !activeBatchAction
     )
       return;
@@ -1217,6 +1625,7 @@ export default function PipelineBatchView({
         failed: skippedAsFailed,
       });
       setIsActionModalOpen(false);
+      void fetchData();
       return;
     }
 
@@ -1225,6 +1634,7 @@ export default function PipelineBatchView({
         actionReadinessHint ??
           "Complete all required fields before running this batch action.",
       );
+      void fetchData();
       return;
     }
 
@@ -1247,12 +1657,11 @@ export default function PipelineBatchView({
 
         const markedReadyApplicants = eligibleVerifyApplicants.filter(
           (applicant) =>
-            Boolean(verifyRowsMarked[applicant.id]) &&
-            isVerifyRowReady(applicant.id),
+            verifyRowsMarked[applicant.id] && isVerifyRowReady(applicant.id),
         );
 
         skippedClientSide = eligibleVerifyApplicants
-          .filter((applicant) => !Boolean(verifyRowsMarked[applicant.id]))
+          .filter((applicant) => !verifyRowsMarked[applicant.id])
           .map((applicant) => ({
             id: applicant.id,
             name: applicant.name,
@@ -1266,7 +1675,7 @@ export default function PipelineBatchView({
           ...eligibleVerifyApplicants
             .filter(
               (applicant) =>
-                Boolean(verifyRowsMarked[applicant.id]) &&
+                verifyRowsMarked[applicant.id] &&
                 !isVerifyRowReady(applicant.id),
             )
             .map((applicant) => ({
@@ -1281,6 +1690,9 @@ export default function PipelineBatchView({
         const applicantsPayload = markedReadyApplicants.map((applicant) => ({
           id: applicant.id,
           checklist: verifyGridValues[applicant.id] ?? applicant.checklist,
+          academicStatus:
+            verifyGridAcademicStatuses[applicant.id] ??
+            applicant.academicStatus,
         }));
 
         if (applicantsPayload.length === 0) {
@@ -1299,6 +1711,35 @@ export default function PipelineBatchView({
           {
             applicants: applicantsPayload,
             expectedStatuses: verifyExpectedStatuses,
+          },
+        );
+        responseData = res.data;
+      } else if (activeBatchAction.id === "ASSIGN_REGULAR_SECTION") {
+        if (hasMixedSelectedGradeLevels) {
+          setActionFormError(
+            "Batch section assignment requires applicants from one grade level.",
+          );
+          return;
+        }
+
+        if (!selectedRegularSectionId) {
+          setActionFormError("Select one regular section before submitting.");
+          return;
+        }
+
+        if (isRegularSectionOverCapacity) {
+          setActionFormError(
+            "Selected section does not have enough available slots for this batch.",
+          );
+          return;
+        }
+
+        const res = await api.patch(
+          "/early-registrations/batch/assign-regular-section",
+          {
+            ids: eligibleIds,
+            sectionId: Number(selectedRegularSectionId),
+            expectedStatuses,
           },
         );
         responseData = res.data;
@@ -1467,6 +1908,16 @@ export default function PipelineBatchView({
           },
         );
         responseData = res.data;
+      } else if (activeBatchAction.id === "ENDORSE_REGULAR_TRACK") {
+        const res = await api.patch("/early-registrations/batch-process", {
+          ids: eligibleIds,
+          targetStatus: activeBatchAction.targetStatus,
+        });
+
+        responseData = {
+          succeeded: res.data?.succeeded ?? [],
+          failed: res.data?.failed ?? [],
+        };
       }
 
       if (!responseData) return;
@@ -1476,9 +1927,18 @@ export default function PipelineBatchView({
         ...skippedClientSide,
         ...(responseData.failed ?? []),
       ];
+
+      const succeeded = (responseData.succeeded ?? []).map((item) => ({
+        ...item,
+        previousStatus:
+          item.previousStatus ??
+          selectedApplicationsById[item.id]?.status ??
+          "UPDATED",
+      }));
+
       setBatchResults({
         processed: selectedIds.size,
-        succeeded: responseData.succeeded ?? [],
+        succeeded,
         failed,
       });
 
@@ -1497,7 +1957,7 @@ export default function PipelineBatchView({
           }
         ).response;
 
-        if (response?.status === 409) {
+        if (response?.status === 409 || response?.status === 309) {
           setActionFormError(
             response.data?.message ??
               "Some selected applicants changed state while this dialog was open. Reload data and retry.",
@@ -1516,6 +1976,7 @@ export default function PipelineBatchView({
       }
     } finally {
       setIsBatchProcessing(false);
+      void fetchData();
     }
   };
 
@@ -1568,6 +2029,48 @@ export default function PipelineBatchView({
     return Number(raw) >= cutoffScore ? "PASSED" : "FAILED";
   };
 
+  const getNotQualifiedReason = useCallback((app: Application) => {
+    if (app.status !== "NOT_QUALIFIED") return null;
+
+    const assessments = app.assessments ?? [];
+
+    const hasFailedExam = assessments.some(
+      (assessment) =>
+        assessment.type !== "INTERVIEW" &&
+        String(assessment.result ?? "").toUpperCase() === "FAILED",
+    );
+
+    const hasFailedInterview = assessments.some(
+      (assessment) =>
+        assessment.type === "INTERVIEW" &&
+        String(assessment.result ?? "").toUpperCase() === "FAILED",
+    );
+
+    if (hasFailedExam && hasFailedInterview) {
+      return "Reason: Did not pass qualifying exam and interview.";
+    }
+
+    if (hasFailedExam) {
+      return "Reason: Did not pass qualifying exam.";
+    }
+
+    if (hasFailedInterview) {
+      return "Reason: Did not pass interview.";
+    }
+
+    const latestFailedAssessmentWithNotes = assessments.find(
+      (assessment) =>
+        String(assessment.result ?? "").toUpperCase() === "FAILED" &&
+        Boolean(assessment.notes?.trim()),
+    );
+
+    if (latestFailedAssessmentWithNotes?.notes?.trim()) {
+      return `Reason: ${latestFailedAssessmentWithNotes.notes.trim()}`;
+    }
+
+    return "Reason: Did not meet SCP assessment requirements.";
+  }, []);
+
   const allSelected =
     applications.length > 0 && selectedIds.size === applications.length;
 
@@ -1583,7 +2086,7 @@ export default function PipelineBatchView({
 
   const contextualActionLabel = useMemo(() => {
     if (selectedIds.size === 0) return "Select Applicants";
-    if (hasSelectionConflict) return "Batch Action Unavailable";
+    if (hasActionScopeConflict) return "Batch Action Unavailable";
     if (!activeBatchAction && singleSelectedStatus) {
       return `No Batch Action for ${singleSelectedStatus.replaceAll("_", " ")}`;
     }
@@ -1591,7 +2094,7 @@ export default function PipelineBatchView({
     return `${activeBatchAction.buttonLabel} (${selectedIds.size})`;
   }, [
     selectedIds.size,
-    hasSelectionConflict,
+    hasActionScopeConflict,
     activeBatchAction,
     singleSelectedStatus,
   ]);
@@ -1604,6 +2107,8 @@ export default function PipelineBatchView({
     switch (activeBatchAction.id) {
       case "VERIFY_DOCUMENTS":
         return <CheckSquare className="size-4 mr-1.5" />;
+      case "ASSIGN_REGULAR_SECTION":
+        return <CheckSquare className="size-4 mr-1.5" />;
       case "SCHEDULE_EXAM":
         return <RefreshCw className="size-4 mr-1.5" />;
       case "RECORD_ASSESSMENT":
@@ -1612,6 +2117,8 @@ export default function PipelineBatchView({
         return <RefreshCw className="size-4 mr-1.5" />;
       case "FINALIZE_PHASE_ONE":
         return <CheckSquare className="size-4 mr-1.5" />;
+      case "ENDORSE_REGULAR_TRACK":
+        return <RefreshCw className="size-4 mr-1.5" />;
       default:
         return <AlertTriangle className="size-4 mr-1.5" />;
     }
@@ -1619,7 +2126,7 @@ export default function PipelineBatchView({
 
   const isContextualActionDisabled =
     selectedIds.size === 0 ||
-    hasSelectionConflict ||
+    hasActionScopeConflict ||
     !activeBatchAction ||
     isBatchProcessing ||
     (preflightSummary?.eligible.length ?? 0) === 0;
@@ -1662,6 +2169,13 @@ export default function PipelineBatchView({
     switch (activeBatchAction.id) {
       case "VERIFY_DOCUMENTS":
         return verifyMarkedReadyApplicantIds.length > 0;
+      case "ASSIGN_REGULAR_SECTION":
+        return (
+          scopedEligibleIds.length > 0 &&
+          !hasMixedSelectedGradeLevels &&
+          Boolean(selectedRegularSectionId) &&
+          !isRegularSectionOverCapacity
+        );
       case "SCHEDULE_EXAM":
         return Boolean(
           examScheduleForm.scheduledDate &&
@@ -1684,6 +2198,8 @@ export default function PipelineBatchView({
           scopedEligibleIds.length > 0 &&
           scopedEligibleIds.every((id) => isFinalizeRowPrepared(id))
         );
+      case "ENDORSE_REGULAR_TRACK":
+        return scopedEligibleIds.length > 0;
       default:
         return true;
     }
@@ -1697,7 +2213,10 @@ export default function PipelineBatchView({
     interviewScheduleForm.venue,
     isAssessmentRowPrepared,
     isFinalizeRowPrepared,
+    isRegularSectionOverCapacity,
+    hasMixedSelectedGradeLevels,
     scopedEligibleIds,
+    selectedRegularSectionId,
     verifyMarkedReadyApplicantIds,
   ]);
 
@@ -1717,6 +2236,17 @@ export default function PipelineBatchView({
     switch (activeBatchAction.id) {
       case "VERIFY_DOCUMENTS":
         return "Mark at least one row as verified after completing required checklist items.";
+      case "ASSIGN_REGULAR_SECTION":
+        if (hasMixedSelectedGradeLevels) {
+          return "Selected applicants must belong to one grade level for section assignment.";
+        }
+        if (!selectedRegularSectionId) {
+          return "Select a regular section before submitting this batch action.";
+        }
+        if (isRegularSectionOverCapacity) {
+          return "Selected section is over capacity for this batch. Choose another section.";
+        }
+        return "Review section capacity and assignment scope before submitting.";
       case "SCHEDULE_EXAM":
         return "Scheduled date, time, and venue are required.";
       case "RECORD_ASSESSMENT":
@@ -1725,225 +2255,18 @@ export default function PipelineBatchView({
         return "Scheduled date, time, and venue are required.";
       case "FINALIZE_PHASE_ONE":
         return "Complete interview decision requirements for all eligible rows.";
+      case "ENDORSE_REGULAR_TRACK":
+        return "This action moves NOT_QUALIFIED applicants to UNDER_REVIEW as regular-track learners.";
       default:
         return "Review all required fields before submitting.";
     }
-  }, [activeBatchAction, isActionFormReady]);
-
-  const shouldShowScpAssessmentPreview =
-    applicantType !== "REGULAR" &&
-    Boolean(
-      activeBatchAction &&
-      (activeBatchAction.id === "RECORD_ASSESSMENT" ||
-        activeBatchAction.id === "SCHEDULE_INTERVIEW" ||
-        activeBatchAction.id === "FINALIZE_PHASE_ONE"),
-    );
-
-  const mapAssessmentsToSteps = useCallback(
-    (assessments: EarlyRegistrationAssessment[]): AssessmentStep[] => {
-      if (!Array.isArray(assessments) || assessments.length === 0) return [];
-
-      const toSortableValue = (value: string | null | undefined) => {
-        if (!value) return Number.POSITIVE_INFINITY;
-        const parsed = Date.parse(value);
-        return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed;
-      };
-
-      const sortedAssessments = [...assessments].sort((a, b) => {
-        const scheduledDiff =
-          toSortableValue(a.scheduledDate ?? a.createdAt) -
-          toSortableValue(b.scheduledDate ?? b.createdAt);
-        if (scheduledDiff !== 0) return scheduledDiff;
-        return a.id - b.id;
-      });
-
-      return sortedAssessments.map((assessment, index) => {
-        const hasRecordedResult =
-          assessment.result != null ||
-          assessment.score != null ||
-          assessment.conductedAt != null;
-        const hasSchedule =
-          assessment.scheduledDate != null ||
-          assessment.scheduledTime != null ||
-          assessment.venue != null;
-
-        const statusValue: AssessmentStep["status"] = hasRecordedResult
-          ? "COMPLETED"
-          : hasSchedule
-            ? "SCHEDULED"
-            : "PENDING";
-
-        return {
-          stepOrder: index + 1,
-          kind: assessment.type,
-          label: "",
-          description: null,
-          isRequired: true,
-          configDate: null,
-          configTime: null,
-          configVenue: null,
-          configNotes: null,
-          cutoffScore: cutoffScore ?? null,
-          assessmentId: assessment.id,
-          scheduledDate: assessment.scheduledDate,
-          scheduledTime: assessment.scheduledTime,
-          venue: assessment.venue,
-          score: assessment.score,
-          result: assessment.result,
-          notes: assessment.notes,
-          conductedAt: assessment.conductedAt,
-          status: statusValue,
-        };
-      });
-    },
-    [cutoffScore],
-  );
-
-  const buildScpApplicant = useCallback(
-    (app: Application): SCPAssessmentApplicant => ({
-      applicantType: app.applicantType,
-      status: app.status,
-      assessmentType: app.assessmentType,
-      examDate: app.examDate,
-      examVenue: app.examVenue,
-      examScore: app.examScore,
-      examResult: app.examResult,
-      examNotes: app.examNotes,
-      assessmentSteps: mapAssessmentsToSteps(app.assessments ?? []),
-    }),
-    [mapAssessmentsToSteps],
-  );
-
-  const scpBatchPreviewRows = useMemo(() => {
-    if (!shouldShowScpAssessmentPreview) return [];
-
-    return selectedApplications.slice(0, 8).map((app) => {
-      const previewApplicant = buildScpApplicant(app);
-
-      return {
-        id: app.id,
-        name: `${app.lastName}, ${app.firstName}`,
-        trackingNumber: app.trackingNumber,
-        status: app.status,
-        applicant: previewApplicant,
-      };
-    });
-  }, [buildScpApplicant, selectedApplications, shouldShowScpAssessmentPreview]);
-
-  const scpPreviewOverflowCount =
-    shouldShowScpAssessmentPreview &&
-    selectedApplications.length > scpBatchPreviewRows.length
-      ? selectedApplications.length - scpBatchPreviewRows.length
-      : 0;
-
-  const renderScpActionBlocksForm = () => {
-    const isScoreAction = activeBatchAction?.id === "RECORD_ASSESSMENT";
-    const isInterviewAction = activeBatchAction?.id === "FINALIZE_PHASE_ONE";
-
-    const stagedCount = selectedApplications.filter((app) =>
-      isScoreAction
-        ? isAssessmentRowPrepared(app.id)
-        : isInterviewAction
-          ? isFinalizeRowPrepared(app.id)
-          : false,
-    ).length;
-
-    return (
-      <div className="space-y-3 min-h-0 flex flex-col">
-        <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
-          <p className="text-xs font-bold text-foreground">
-            Use SCP assessment cards to stage values before final submit.
-          </p>
-          <p className="text-xs font-bold mt-1">
-            Staged rows: {stagedCount}/{selectedApplications.length}
-          </p>
-        </div>
-
-        <div className="min-h-0 overflow-y-auto space-y-3 pr-1">
-          {selectedApplications.map((app) => {
-            const staged = isScoreAction
-              ? isAssessmentRowPrepared(app.id)
-              : isInterviewAction
-                ? isFinalizeRowPrepared(app.id)
-                : false;
-
-            return (
-              <div key={app.id} className="rounded-md border p-3">
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold uppercase truncate">
-                      {app.lastName}, {app.firstName}
-                    </p>
-                    <p className="text-[11px] font-bold text-foreground truncate">
-                      #{app.trackingNumber}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {staged && (
-                      <Badge
-                        variant="secondary"
-                        className="h-5 px-2 text-[10px] font-bold border border-emerald-300 bg-emerald-50 text-emerald-700">
-                        Staged
-                      </Badge>
-                    )}
-                    <StatusBadge status={app.status} className="text-[10px]" />
-                  </div>
-                </div>
-
-                <SCPAssessmentBlock
-                  applicant={buildScpApplicant(app)}
-                  onSaveStepResult={
-                    isScoreAction
-                      ? async (stepOrder, kind, score, stepCutoffScore) => {
-                          await stageAssessmentFromScpBlock(
-                            app.id,
-                            stepOrder,
-                            kind,
-                            score,
-                            stepCutoffScore,
-                          );
-                        }
-                      : undefined
-                  }
-                  interviewPassChecked={
-                    (
-                      finalizeInterviewRows[app.id] ?? {
-                        ...DEFAULT_FINALIZE_INTERVIEW_ROW,
-                      }
-                    ).decision === "PASS"
-                  }
-                  onInterviewPassChange={
-                    isInterviewAction
-                      ? (checked) => {
-                          updateFinalizeRow(app.id, {
-                            decision: checked ? "PASS" : "REJECT",
-                            rejectOutcome: checked
-                              ? "NOT_QUALIFIED"
-                              : (finalizeInterviewRows[app.id]?.rejectOutcome ??
-                                "NOT_QUALIFIED"),
-                          });
-                          setActionFormError(null);
-                        }
-                      : undefined
-                  }
-                  onSubmitInterviewResult={
-                    isInterviewAction
-                      ? async (passed) => {
-                          await stageInterviewDecisionFromScpBlock(
-                            app.id,
-                            passed,
-                          );
-                        }
-                      : undefined
-                  }
-                />
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
+  }, [
+    activeBatchAction,
+    hasMixedSelectedGradeLevels,
+    isActionFormReady,
+    isRegularSectionOverCapacity,
+    selectedRegularSectionId,
+  ]);
 
   const renderActionForm = () => {
     if (!activeBatchAction) {
@@ -1962,6 +2285,9 @@ export default function PipelineBatchView({
             verifyGridColumns={verifyGridColumns}
             verifyGridApplicants={verifyGridApplicants}
             verifyGridValues={verifyGridValues}
+            verifyAcademicStatuses={verifyGridAcademicStatuses}
+            verifyLrnDrafts={verifyGridLrnDrafts}
+            savingLrnId={verifyLrnSavingId}
             verifyAllChecked={verifyAllChecked}
             isBatchProcessing={isBatchProcessing}
             onReload={() => {
@@ -1971,9 +2297,30 @@ export default function PipelineBatchView({
             setVerifyColumnForAll={setVerifyColumnForAll}
             setVerifyAll={setVerifyAll}
             setVerifyCell={setVerifyCell}
+            setVerifyAcademicStatus={setVerifyAcademicStatus}
+            setVerifyLrnDraft={setVerifyLrnDraft}
+            onSaveLrn={(applicantId) => {
+              void saveVerifyRowLrn(applicantId);
+            }}
             verifyRowsMarked={verifyRowsMarked}
             isVerifyRowReady={isVerifyRowReady}
             setVerifyRowMarked={setVerifyRowMarked}
+          />
+        );
+      case "ASSIGN_REGULAR_SECTION":
+        return (
+          <PipelineBatchRegularSectionAssignment
+            loading={regularSectionsLoading}
+            isBatchProcessing={isBatchProcessing}
+            sections={availableRegularSections}
+            selectedSectionId={selectedRegularSectionId}
+            selectedGradeLevelLabel={selectedGradeLevelName}
+            hasMixedGradeLevels={hasMixedSelectedGradeLevels}
+            requiredSlots={scopedEligibleIds.length}
+            onSelectSection={setSelectedRegularSectionId}
+            onReload={() => {
+              void loadRegularSections();
+            }}
           />
         );
       case "SCHEDULE_EXAM":
@@ -1985,11 +2332,12 @@ export default function PipelineBatchView({
             }
             modeLabel="Exam"
             isBatchProcessing={isBatchProcessing}
+            isReadOnly={applicantType !== "REGULAR"}
             options={{
               stepTemplate: examScheduleStepTemplate,
               defaultsLoading: examScheduleDefaultsLoading,
               onReloadDefaults: () => {
-                void loadExamScheduleDefaults();
+                void loadScheduleDefaults("EXAM");
               },
               selectedCount: selectedApplications.length,
             }}
@@ -1997,7 +2345,19 @@ export default function PipelineBatchView({
         );
       case "RECORD_ASSESSMENT":
         if (applicantType !== "REGULAR") {
-          return renderScpActionBlocksForm();
+          return (
+            <PipelineBatchScpAssessmentInterviewGrid
+              selectedApplications={selectedApplications}
+              isBatchProcessing={isBatchProcessing}
+              mode="RECORD_ASSESSMENT"
+              assessmentCutoffScore={scpAssessmentCutoffScore}
+              getScoreValue={getScpScoreValueForRow}
+              onScoreChange={updateScpPrimaryScoreValue}
+              isScoreInvalid={isScpScoreValueInvalid}
+              getInterviewDecision={getScpInterviewDecision}
+              onInterviewDecisionChange={setScpInterviewDecision}
+            />
+          );
         }
         return (
           <PipelineBatchAssessmentGrid
@@ -2022,11 +2382,32 @@ export default function PipelineBatchView({
             }
             modeLabel="Interview"
             isBatchProcessing={isBatchProcessing}
+            isReadOnly={applicantType !== "REGULAR"}
+            options={{
+              stepTemplate: interviewScheduleStepTemplate,
+              defaultsLoading: interviewScheduleDefaultsLoading,
+              onReloadDefaults: () => {
+                void loadScheduleDefaults("INTERVIEW");
+              },
+              selectedCount: selectedApplications.length,
+            }}
           />
         );
       case "FINALIZE_PHASE_ONE":
         if (applicantType !== "REGULAR") {
-          return renderScpActionBlocksForm();
+          return (
+            <PipelineBatchScpAssessmentInterviewGrid
+              selectedApplications={selectedApplications}
+              isBatchProcessing={isBatchProcessing}
+              mode="FINALIZE_PHASE_ONE"
+              assessmentCutoffScore={scpAssessmentCutoffScore}
+              getScoreValue={getScpScoreValueForRow}
+              onScoreChange={updateScpPrimaryScoreValue}
+              isScoreInvalid={isScpScoreValueInvalid}
+              getInterviewDecision={getScpInterviewDecision}
+              onInterviewDecisionChange={setScpInterviewDecision}
+            />
+          );
         }
         return (
           <PipelineBatchFinalizeInterviewGrid
@@ -2035,6 +2416,18 @@ export default function PipelineBatchView({
             isBatchProcessing={isBatchProcessing}
             updateFinalizeRow={updateFinalizeRow}
           />
+        );
+      case "ENDORSE_REGULAR_TRACK":
+        return (
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-1">
+            <p className="text-sm font-bold text-foreground">
+              Selected NOT_QUALIFIED applicants will be moved to UNDER_REVIEW.
+            </p>
+            <p className="text-xs font-bold text-foreground">
+              Learners who did not pass SCP assessments are processed as regular
+              track after this transition.
+            </p>
+          </div>
         );
       default:
         return (
@@ -2155,7 +2548,7 @@ export default function PipelineBatchView({
               </div>
 
               <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end lg:w-auto">
-                {hasSelectionConflict ? (
+                {hasActionScopeConflict ? (
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -2170,7 +2563,7 @@ export default function PipelineBatchView({
                         </span>
                       </TooltipTrigger>
                       <TooltipContent>
-                        {selectionConflictMessage}
+                        {actionScopeConflictMessage}
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -2196,13 +2589,13 @@ export default function PipelineBatchView({
               </div>
             </div>
 
-            {selectedIds.size > 0 && hasSelectionConflict && (
+            {selectedIds.size > 0 && hasActionScopeConflict && (
               <p className="mt-2 text-xs font-bold text-destructive">
-                {selectionConflictMessage}
+                {actionScopeConflictMessage}
               </p>
             )}
             {selectedIds.size > 0 &&
-              !hasSelectionConflict &&
+              !hasActionScopeConflict &&
               activeBatchAction && (
                 <p className="mt-2 text-xs font-bold text-foreground">
                   Detected status: {singleSelectedStatus?.replaceAll("_", " ")}.
@@ -2210,7 +2603,7 @@ export default function PipelineBatchView({
                 </p>
               )}
             {selectedIds.size > 0 &&
-              !hasSelectionConflict &&
+              !hasActionScopeConflict &&
               !activeBatchAction && (
                 <p className="mt-2 text-xs font-bold text-foreground">
                   No state-aware batch action is available for this status yet.
@@ -2241,7 +2634,7 @@ export default function PipelineBatchView({
                       {allSelected ? (
                         <CheckSquare className="size-4 text-primary-foreground" />
                       ) : (
-                        <Square className="size-4 text-primary-foreground/60" />
+                        <Square className="size-4 text-primary-foreground/70" />
                       )}
                     </button>
                   </TableHead>
@@ -2374,10 +2767,17 @@ export default function PipelineBatchView({
                         </span>
                       </TableCell>
                       <TableCell>
-                        <StatusBadge
-                          status={app.status}
-                          className="text-sm font-bold"
-                        />
+                        <div className="flex flex-col items-center gap-1">
+                          <StatusBadge
+                            status={app.status}
+                            className="text-sm font-bold"
+                          />
+                          {app.status === "NOT_QUALIFIED" && (
+                            <p className="max-w-[210px] text-[11px] font-bold text-destructive leading-tight">
+                              {getNotQualifiedReason(app)}
+                            </p>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-sm hidden xl:table-cell font-bold">
                         {format(new Date(app.createdAt), "MMMM dd, yyyy")}
@@ -2485,6 +2885,7 @@ export default function PipelineBatchView({
             setIsActionModalOpen(open);
             if (!open) {
               setActionFormError(null);
+              void fetchData();
             }
           }
         }}>
@@ -2516,66 +2917,12 @@ export default function PipelineBatchView({
                 <p className="text-xs text-foreground font-bold">
                   {selectedApplications.length} in batch scope
                 </p>
-                {shouldShowScpAssessmentPreview && (
-                  <p className="text-[11px] text-foreground font-bold mt-1">
-                    SCP assessment timeline preview
-                  </p>
-                )}
               </div>
-              <div
-                className={`flex-1 overflow-y-auto ${
-                  shouldShowScpAssessmentPreview
-                    ? "p-3 space-y-3"
-                    : "p-2 space-y-2"
-                }`}>
+              <div className="flex-1 overflow-y-auto p-2 space-y-2">
                 {selectedApplications.length === 0 ? (
                   <p className="text-xs font-bold text-foreground px-2 py-3">
                     No applicants selected.
                   </p>
-                ) : shouldShowScpAssessmentPreview ? (
-                  <>
-                    {scpBatchPreviewRows.map((row) => {
-                      const rowIsStaged = getScpPreviewStagedState(row.id);
-
-                      return (
-                        <div key={row.id} className="rounded-md border p-2">
-                          <div className="flex items-center justify-between gap-2 mb-2">
-                            <div className="min-w-0">
-                              <p className="text-xs font-bold uppercase truncate">
-                                {row.name}
-                              </p>
-                              <p className="text-[11px] font-bold text-foreground truncate">
-                                #{row.trackingNumber}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              {rowIsStaged && (
-                                <Badge
-                                  variant="secondary"
-                                  className="h-5 px-2 text-[10px] font-bold border border-emerald-300 bg-emerald-50 text-emerald-700">
-                                  Staged
-                                </Badge>
-                              )}
-                              <StatusBadge
-                                status={row.status}
-                                className="text-[10px]"
-                              />
-                            </div>
-                          </div>
-
-                          <SCPAssessmentBlock applicant={row.applicant} />
-                        </div>
-                      );
-                    })}
-
-                    {scpPreviewOverflowCount > 0 && (
-                      <p className="text-[11px] font-bold text-foreground px-1">
-                        Showing first {scpBatchPreviewRows.length} previews.{" "}
-                        {scpPreviewOverflowCount} more selected applicant(s) are
-                        hidden.
-                      </p>
-                    )}
-                  </>
                 ) : (
                   selectedApplications.map((app) => (
                     <div
@@ -2589,10 +2936,17 @@ export default function PipelineBatchView({
                           #{app.trackingNumber}
                         </p>
                       </div>
-                      <StatusBadge
-                        status={app.status}
-                        className="text-[10px]"
-                      />
+                      <div className="flex flex-col items-end gap-1">
+                        <StatusBadge
+                          status={app.status}
+                          className="text-[10px]"
+                        />
+                        {app.status === "NOT_QUALIFIED" && (
+                          <p className="max-w-[190px] text-right text-[10px] font-bold text-destructive leading-tight">
+                            {getNotQualifiedReason(app)}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   ))
                 )}
@@ -2611,8 +2965,8 @@ export default function PipelineBatchView({
               <div
                 className={`h-full w-[2px] rounded-full transition-colors ${
                   isResizingSplitPanes
-                    ? "bg-primary/60"
-                    : "bg-border hover:bg-primary/40"
+                    ? "bg-primary/70"
+                    : "bg-border hover:bg-primary/30"
                 }`}
               />
             </div>
@@ -2646,7 +3000,9 @@ export default function PipelineBatchView({
                 </p>
                 <p className="text-xs font-bold text-foreground">
                   Target status:{" "}
-                  {derivedTargetStatus.replaceAll("_", " ") || "N/A"}
+                  {activeBatchAction?.id === "ASSIGN_REGULAR_SECTION"
+                    ? "ENROLLED / TEMPORARILY ENROLLED"
+                    : derivedTargetStatus.replaceAll("_", " ") || "N/A"}
                 </p>
               </div>
 
@@ -2669,7 +3025,7 @@ export default function PipelineBatchView({
               {renderActionForm()}
 
               {preflightSummary && preflightSummary.ineligible.length > 0 && (
-                <div className="rounded-lg border border-red-200 bg-red-50/40 p-3 space-y-2">
+                <div className="rounded-lg border border-red-200 bg-red-50/30 p-3 space-y-2">
                   <p className="text-sm font-bold text-red-700">
                     Blocked groups
                   </p>
@@ -2692,7 +3048,11 @@ export default function PipelineBatchView({
           <DialogFooter className="gap-2">
             <Button
               variant="outline"
-              onClick={() => setIsActionModalOpen(false)}
+              onClick={() => {
+                setIsActionModalOpen(false);
+                setActionFormError(null);
+                void fetchData();
+              }}
               disabled={isBatchProcessing}
               className="font-bold">
               Cancel

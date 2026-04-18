@@ -27,11 +27,14 @@ export const REGISTRATION_VALID_TRANSITIONS: Record<string, string[]> = {
   VERIFIED: [
     "UNDER_REVIEW",
     "ELIGIBLE",
+    "ENROLLED",
+    "TEMPORARILY_ENROLLED",
     "ASSESSMENT_SCHEDULED",
     "REJECTED",
     "WITHDRAWN",
   ],
   UNDER_REVIEW: [
+    "VERIFIED",
     "FOR_REVISION",
     "ELIGIBLE",
     "ASSESSMENT_SCHEDULED",
@@ -41,12 +44,16 @@ export const REGISTRATION_VALID_TRANSITIONS: Record<string, string[]> = {
   FOR_REVISION: ["UNDER_REVIEW", "WITHDRAWN"],
   ELIGIBLE: ["ASSESSMENT_SCHEDULED", "PASSED", "WITHDRAWN"],
   ASSESSMENT_SCHEDULED: [
+    "PASSED",
+    "NOT_QUALIFIED",
     "ASSESSMENT_TAKEN",
     "ASSESSMENT_SCHEDULED",
     "INTERVIEW_SCHEDULED",
     "WITHDRAWN",
   ],
   EXAM_SCHEDULED: [
+    "PASSED",
+    "NOT_QUALIFIED",
     "ASSESSMENT_TAKEN",
     "ASSESSMENT_SCHEDULED",
     "INTERVIEW_SCHEDULED",
@@ -107,10 +114,12 @@ export const REGISTRATION_RECOMMENDED_TARGET_BY_STATUS: Record<string, string> =
 
 export type RegistrationBatchActionId =
   | "VERIFY_DOCUMENTS"
+  | "ASSIGN_REGULAR_SECTION"
   | "SCHEDULE_EXAM"
   | "RECORD_ASSESSMENT"
   | "SCHEDULE_INTERVIEW"
-  | "FINALIZE_PHASE_ONE";
+  | "FINALIZE_PHASE_ONE"
+  | "ENDORSE_REGULAR_TRACK";
 
 export interface RegistrationBatchActionConfig {
   id: RegistrationBatchActionId;
@@ -196,10 +205,59 @@ export const REGISTRATION_BATCH_ACTIONS_BY_STATUS: Record<
       "Finalize post-interview outcomes for selected applicants.",
     submitLabel: "Finalize Phase 1 Results",
   },
+  NOT_QUALIFIED: {
+    id: "ENDORSE_REGULAR_TRACK",
+    triggerStatus: "NOT_QUALIFIED",
+    targetStatus: "UNDER_REVIEW",
+    buttonLabel: "Batch Endorse as Regular",
+    modalTitle: "Batch Regular Track Endorsement",
+    modalDescription:
+      "Move selected NOT_QUALIFIED applicants to UNDER_REVIEW for regular-track processing.",
+    submitLabel: "Move to Under Review",
+  },
 };
 
-export function getRegistrationBatchActionByStatus(status: string) {
+const REGULAR_BATCH_ACTION_OVERRIDES_BY_STATUS: Partial<
+  Record<string, RegistrationBatchActionConfig>
+> = {
+  UNDER_REVIEW: {
+    id: "VERIFY_DOCUMENTS",
+    triggerStatus: "UNDER_REVIEW",
+    targetStatus: "VERIFIED",
+    buttonLabel: "Batch Verify Documents",
+    modalTitle: "Batch Documentary Checklist",
+    modalDescription:
+      "Review selected applicants and verify documentary requirements in one run.",
+    submitLabel: "Verify Applicants",
+  },
+  VERIFIED: {
+    id: "ASSIGN_REGULAR_SECTION",
+    triggerStatus: "VERIFIED",
+    targetStatus: "ENROLLED",
+    buttonLabel: "Batch Assign Section",
+    modalTitle: "Batch Section Assignment",
+    modalDescription:
+      "Assign selected regular applicants to one section and finalize enrollment status.",
+    submitLabel: "Assign Section",
+  },
+};
+
+export function getRegistrationBatchActionByStatus(
+  status: string,
+  applicantType?: string,
+) {
   const normalizedStatus =
     status === "EXAM_SCHEDULED" ? "ASSESSMENT_SCHEDULED" : status;
+
+  const normalizedProgram = String(applicantType ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (normalizedProgram === "REGULAR") {
+    const regularOverride =
+      REGULAR_BATCH_ACTION_OVERRIDES_BY_STATUS[normalizedStatus];
+    if (regularOverride) return regularOverride;
+  }
+
   return REGISTRATION_BATCH_ACTIONS_BY_STATUS[normalizedStatus] ?? null;
 }

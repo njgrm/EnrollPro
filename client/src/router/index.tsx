@@ -28,7 +28,7 @@ import SystemHealth from "@/features/admin/pages/SystemHealth";
 import AtlasIntegration from "@/features/admin/pages/AtlasIntegration";
 import Teachers from "@/features/teachers/pages/Index";
 
-// F2F BASIC EDUCATION EARLY REGISTRATION FORM Page
+// F2F Basic Education Early Registration Form Page
 import F2FEarlyRegistration from "@/features/admission/pages/f2f/Index";
 
 import Apply from "@/features/admission/pages/apply/Index";

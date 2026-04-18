@@ -14,17 +14,17 @@ function resolvePageTitle(pathname: string): string | null {
     "/": "Dashboard",
     "/dashboard": "Dashboard",
     "/login": "Sign In",
-    "/early-registration": "BASIC EDUCATION EARLY REGISTRATION FORM",
+    "/early-registration": "Basic Education Early Registration Form",
     "/change-password": "Change Password",
     "/enrollment": "BASIC EDUCATION ENROLLMENT FORM",
     "/monitoring/f2f-early-registration":
-      "Walk-in BASIC EDUCATION EARLY REGISTRATION FORM",
-    "/applications": "BASIC EDUCATION EARLY REGISTRATION FORM",
+      "Walk-in Basic Education Early Registration Form",
+    "/applications": "Basic Education Early Registration Form",
     "/applications/early-registration":
-      "BASIC EDUCATION EARLY REGISTRATION FORM",
+      "Basic Education Early Registration Form",
     "/applications/enrollment": "Enrollment",
     "/monitoring/early-registration":
-      "BASIC EDUCATION EARLY REGISTRATION FORM — Monitoring",
+      "Basic Education Early Registration Form — Monitoring",
     "/monitoring/early-registration/pipelines": "Registration Pipelines",
     "/monitoring/enrollment": "Enrollment Monitoring",
     "/students": "Students",

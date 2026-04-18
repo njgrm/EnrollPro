@@ -432,7 +432,10 @@ const CHECKLIST_FIELD_KEYS = [
   "isConfirmationSlipReceived",
 ] as const;
 
+const ACADEMIC_STATUS_VALUES = ["PROMOTED", "RETAINED"] as const;
+
 export const checklistFieldKeySchema = z.enum(CHECKLIST_FIELD_KEYS);
+export const academicStatusSchema = z.enum(ACADEMIC_STATUS_VALUES);
 
 const checklistUpdateInputSchema = z.object({
   isPsaBirthCertPresented: z.boolean().optional(),
@@ -444,6 +447,7 @@ const checklistUpdateInputSchema = z.object({
   isCertOfRecognitionPresented: z.boolean().optional(),
   isUndertakingSigned: z.boolean().optional(),
   isConfirmationSlipReceived: z.boolean().optional(),
+  academicStatus: academicStatusSchema.optional(),
 });
 
 export const batchVerifyDocumentsPreviewSchema = z.object({
@@ -459,10 +463,20 @@ export const batchVerifyDocumentsSchema = z.object({
       z.object({
         id: z.number().int().positive(),
         checklist: checklistUpdateInputSchema.default({}),
+        academicStatus: academicStatusSchema.optional(),
       }),
     )
     .min(1, "Select at least one applicant")
     .max(500, "Cannot process more than 500 applicants at once"),
+  expectedStatuses: z.record(z.string(), z.string().min(1)).optional(),
+});
+
+export const batchAssignRegularSectionSchema = z.object({
+  ids: z
+    .array(z.number().int().positive())
+    .min(1, "Select at least one applicant")
+    .max(500, "Cannot process more than 500 applicants at once"),
+  sectionId: z.number().int().positive("Target section is required"),
   expectedStatuses: z.record(z.string(), z.string().min(1)).optional(),
 });
 

@@ -60,6 +60,8 @@ export type ChecklistFieldKey =
   | "isUndertakingSigned"
   | "isConfirmationSlipReceived";
 
+export type AcademicStatusValue = "PROMOTED" | "RETAINED";
+
 export interface VerifyGridColumn {
   key: ChecklistFieldKey;
   label: string;
@@ -71,8 +73,23 @@ export interface VerifyGridApplicant {
   name: string;
   trackingNumber: string;
   status: string;
+  lrn: string;
+  sex: string;
+  isPendingLrnCreation: boolean;
+  academicStatus: AcademicStatusValue;
   checklist: Record<ChecklistFieldKey, boolean>;
   requiredChecklistKeys: ChecklistFieldKey[];
+}
+
+export interface RegularSectionOption {
+  id: number;
+  name: string;
+  gradeLevelId: number;
+  gradeLevelName: string;
+  programType: string;
+  maxCapacity: number;
+  enrolledCount: number;
+  fillPercent: number;
 }
 
 export interface RankingFormulaComponent {

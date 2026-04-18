@@ -2,6 +2,7 @@ import { Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
+import { TimePicker } from "@/shared/ui/time-picker";
 import { Textarea } from "@/shared/ui/textarea";
 import type { ScheduleFormRenderOptions, ScheduleFormState } from "./types";
 
@@ -10,6 +11,7 @@ interface PipelineBatchScheduleFormProps {
   onChange: (patch: Partial<ScheduleFormState>) => void;
   modeLabel: "Exam" | "Interview";
   isBatchProcessing: boolean;
+  isReadOnly?: boolean;
   options?: ScheduleFormRenderOptions;
 }
 
@@ -18,11 +20,12 @@ export default function PipelineBatchScheduleForm({
   onChange,
   modeLabel,
   isBatchProcessing,
+  isReadOnly = false,
   options,
 }: PipelineBatchScheduleFormProps) {
   return (
     <div className="space-y-4">
-      {modeLabel === "Exam" && (
+      {options && (
         <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-bold text-foreground">
@@ -60,15 +63,17 @@ export default function PipelineBatchScheduleForm({
                   Cut-off Score: {options.stepTemplate.cutoffScore}
                 </p>
               )}
-              <p className="text-[11px] font-bold text-foreground">
-                Prefilled values are editable for this batch and can be
-                overridden.
-              </p>
+              {isReadOnly && (
+                <p className="text-[11px] font-bold text-foreground">
+                  To change {modeLabel} Date, {modeLabel} Time, Venue, and
+                  Notes, go to Settings -&gt; Curriculum Tab.
+                </p>
+              )}
             </div>
           ) : (
             <p className="text-xs font-bold text-foreground">
-              No non-interview SCP step defaults were found for this applicant
-              type.
+              No SCP step defaults were found for this applicant type and{" "}
+              {modeLabel.toLowerCase()} step.
             </p>
           )}
         </div>
@@ -85,7 +90,7 @@ export default function PipelineBatchScheduleForm({
             onChange={(event) =>
               onChange({ scheduledDate: event.target.value })
             }
-            disabled={isBatchProcessing}
+            disabled={isBatchProcessing || isReadOnly}
             className="font-bold"
           />
         </div>
@@ -93,14 +98,11 @@ export default function PipelineBatchScheduleForm({
           <Label className="text-xs font-bold uppercase tracking-wide">
             {modeLabel} Time
           </Label>
-          <Input
-            type="time"
+          <TimePicker
             value={form.scheduledTime}
-            onChange={(event) =>
-              onChange({ scheduledTime: event.target.value })
-            }
-            disabled={isBatchProcessing}
-            className="font-bold"
+            onChange={(scheduledTime) => onChange({ scheduledTime })}
+            disabled={isBatchProcessing || isReadOnly}
+            className="h-10"
           />
         </div>
       </div>
@@ -113,7 +115,7 @@ export default function PipelineBatchScheduleForm({
           value={form.venue}
           onChange={(event) => onChange({ venue: event.target.value })}
           placeholder={`Enter ${modeLabel.toLowerCase()} venue`}
-          disabled={isBatchProcessing}
+          disabled={isBatchProcessing || isReadOnly}
           className="font-bold"
         />
       </div>
@@ -126,10 +128,20 @@ export default function PipelineBatchScheduleForm({
           value={form.notes}
           onChange={(event) => onChange({ notes: event.target.value })}
           placeholder="Optional schedule notes"
-          disabled={isBatchProcessing}
+          disabled={isBatchProcessing || isReadOnly}
           className="min-h-[92px] text-sm font-bold"
         />
       </div>
+
+      {isReadOnly && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
+          <p className="text-xs font-bold text-amber-900">
+            This schedule uses values from scp_program_steps. To change{" "}
+            {modeLabel} Date, {modeLabel} Time, Venue, and Notes, update
+            Settings -&gt; Curriculum Tab.
+          </p>
+        </div>
+      )}
 
       <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
         <p className="text-xs font-bold text-foreground">

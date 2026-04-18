@@ -2,6 +2,7 @@ import { Loader2, RefreshCw } from "lucide-react";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Checkbox } from "@/shared/ui/checkbox";
+import { Input } from "@/shared/ui/input";
 import {
   Table,
   TableBody,
@@ -11,6 +12,7 @@ import {
   TableRow,
 } from "@/shared/ui/table";
 import type {
+  AcademicStatusValue,
   ChecklistFieldKey,
   VerifyGridApplicant,
   VerifyGridColumn,
@@ -21,6 +23,9 @@ interface PipelineBatchVerifyGridProps {
   verifyGridColumns: VerifyGridColumn[];
   verifyGridApplicants: VerifyGridApplicant[];
   verifyGridValues: Record<number, Record<ChecklistFieldKey, boolean>>;
+  verifyAcademicStatuses: Record<number, AcademicStatusValue>;
+  verifyLrnDrafts: Record<number, string>;
+  savingLrnId: number | null;
   verifyRowsMarked: Record<number, boolean>;
   verifyAllChecked: boolean;
   isBatchProcessing: boolean;
@@ -35,6 +40,12 @@ interface PipelineBatchVerifyGridProps {
     key: ChecklistFieldKey,
     value: boolean,
   ) => void;
+  setVerifyAcademicStatus: (
+    applicantId: number,
+    status: AcademicStatusValue,
+  ) => void;
+  setVerifyLrnDraft: (applicantId: number, value: string) => void;
+  onSaveLrn: (applicantId: number) => void;
 }
 
 export default function PipelineBatchVerifyGrid({
@@ -42,6 +53,9 @@ export default function PipelineBatchVerifyGrid({
   verifyGridColumns,
   verifyGridApplicants,
   verifyGridValues,
+  verifyAcademicStatuses,
+  verifyLrnDrafts,
+  savingLrnId,
   verifyRowsMarked,
   verifyAllChecked,
   isBatchProcessing,
@@ -52,6 +66,9 @@ export default function PipelineBatchVerifyGrid({
   setVerifyColumnForAll,
   setVerifyAll,
   setVerifyCell,
+  setVerifyAcademicStatus,
+  setVerifyLrnDraft,
+  onSaveLrn,
 }: PipelineBatchVerifyGridProps) {
   const markedCount = verifyGridApplicants.reduce(
     (count, applicant) => count + (verifyRowsMarked[applicant.id] ? 1 : 0),
@@ -65,6 +82,10 @@ export default function PipelineBatchVerifyGrid({
           <span className="block">
             Mark document checklist per applicant. Mandatory columns are
             highlighted.
+          </span>
+          <span className="block text-[11px]">
+            Retained rows skip checklist validation and will be routed for
+            advising follow-up.
           </span>
           <span className="block text-[11px]">
             Marked as verified: {markedCount}/{verifyGridApplicants.length}
@@ -156,19 +177,113 @@ export default function PipelineBatchVerifyGrid({
 
             <TableBody>
               {verifyGridApplicants.map((applicant) => {
+                const academicStatus =
+                  verifyAcademicStatuses[applicant.id] ?? "PROMOTED";
+                const isRetained = academicStatus === "RETAINED";
                 const rowReady = isVerifyRowReady(applicant.id);
                 const rowMarked = Boolean(verifyRowsMarked[applicant.id]);
+                const lrnDraft = verifyLrnDrafts[applicant.id] ?? "";
 
                 return (
                   <TableRow key={applicant.id}>
                     <TableCell className="sticky left-0 bg-background z-[80] shadow-[2px_0_0_0_hsl(var(--border))] min-w-[220px]">
-                      <div className="space-y-1">
+                      <div className="space-y-2">
                         <p className="text-xs font-bold uppercase">
                           {applicant.name}
                         </p>
                         <p className="text-[11px] font-bold text-foreground">
                           #{applicant.trackingNumber}
                         </p>
+
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-bold text-foreground">
+                            Academic Status
+                          </p>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={
+                                academicStatus === "PROMOTED"
+                                  ? "default"
+                                  : "outline"
+                              }
+                              className="h-7 px-2 text-[10px] font-bold"
+                              disabled={isBatchProcessing}
+                              onClick={() =>
+                                setVerifyAcademicStatus(
+                                  applicant.id,
+                                  "PROMOTED",
+                                )
+                              }>
+                              Promoted
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={
+                                academicStatus === "RETAINED"
+                                  ? "destructive"
+                                  : "outline"
+                              }
+                              className="h-7 px-2 text-[10px] font-bold"
+                              disabled={isBatchProcessing}
+                              onClick={() =>
+                                setVerifyAcademicStatus(
+                                  applicant.id,
+                                  "RETAINED",
+                                )
+                              }>
+                              Retained
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-bold text-foreground">
+                            LRN Correction (12 digits)
+                          </p>
+                          <div className="flex items-center gap-1">
+                            <Input
+                              value={lrnDraft}
+                              onChange={(event) =>
+                                setVerifyLrnDraft(
+                                  applicant.id,
+                                  event.target.value,
+                                )
+                              }
+                              className="h-7 text-[10px] font-bold"
+                              placeholder="Enter LRN"
+                              maxLength={12}
+                              disabled={isBatchProcessing}
+                            />
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-[10px] font-bold"
+                              disabled={
+                                isBatchProcessing ||
+                                savingLrnId === applicant.id ||
+                                !/^\d{12}$/.test(lrnDraft.trim())
+                              }
+                              onClick={() => onSaveLrn(applicant.id)}>
+                              {savingLrnId === applicant.id ? (
+                                <Loader2 className="size-3 animate-spin" />
+                              ) : (
+                                "Save"
+                              )}
+                            </Button>
+                          </div>
+                          <p className="text-[10px] font-bold text-foreground">
+                            {applicant.isPendingLrnCreation
+                              ? "Current learner record is tagged pending LRN creation."
+                              : applicant.lrn
+                                ? `Current LRN: ${applicant.lrn}`
+                                : "No LRN currently assigned."}
+                          </p>
+                        </div>
+
                         <div className="mt-1 flex items-center gap-2">
                           <Checkbox
                             checked={rowMarked}
@@ -179,11 +294,17 @@ export default function PipelineBatchVerifyGrid({
                           />
                           <span
                             className={`text-[10px] font-bold ${
-                              rowReady ? "text-emerald-700" : "text-foreground"
+                              isRetained
+                                ? "text-destructive"
+                                : rowReady
+                                  ? "text-emerald-700"
+                                  : "text-foreground"
                             }`}>
-                            {rowReady
-                              ? "Mark as Verified"
-                              : "Complete required docs first"}
+                            {isRetained
+                              ? "Mark for Rejection"
+                              : rowReady
+                                ? "Mark as Verified"
+                                : "Complete required docs first"}
                           </span>
                         </div>
                       </div>
@@ -210,7 +331,7 @@ export default function PipelineBatchVerifyGrid({
                                   Boolean(checked),
                                 )
                               }
-                              disabled={isBatchProcessing}
+                              disabled={isBatchProcessing || isRetained}
                             />
                             {required && (
                               <span className="text-[10px] font-bold text-primary">

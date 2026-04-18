@@ -22,7 +22,7 @@ function mapPipelineStepToEditableStep(step: PipelineStep): ScpStepConfig {
     description: step.description,
     isRequired: step.isRequired,
     scheduledDate: null,
-    scheduledTime: null,
+    scheduledTime: "08:00 AM",
     venue: null,
     notes: null,
     cutoffScore: null,

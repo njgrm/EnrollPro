@@ -187,6 +187,7 @@
 ## Practical guardrails for AI-assisted changes
 
 - Keep newly generated code under 600 lines per file whenever feasible.
+- If a file being modified is already 600+ lines, refactor and modularize it appropriately before adding substantial new logic.
 - If a change is likely to exceed 600 lines, split it into focused modules before finalizing (for example: service/helper split on backend, or component/hook/type split on frontend).
 - After editing `server/prisma/schema.prisma`, run `pnpm --filter server run db:generate` before server build or type checks.
 - Keep API/env assumptions aligned with actual sources:

@@ -404,6 +404,7 @@ model ApplicationChecklist {
   id                                 Int       @id @default(autoincrement())
   earlyRegistrationId                Int?      @unique(map: "uq_early_reg_checklist_id") @map("early_registration_id")
   enrollmentId                       Int?      @unique(map: "uq_enrollment_checklist_id") @map("enrollment_id")
+  academicStatus                     AcademicStatus @default(PROMOTED) @map("academic_status")
   isPsaBirthCertPresented            Boolean   @default(false) @map("is_psa_birth_cert_presented")
   isOriginalPsaBcCollected           Boolean   @default(false) @map("is_original_psa_bc_collected")
   isSf9Submitted                     Boolean   @default(false) @map("is_sf9_submitted")
@@ -805,6 +806,13 @@ enum AtlasSyncStatus {
   FAILED
 
   @@map("atlas_sync_status")
+}
+
+enum AcademicStatus {
+  PROMOTED
+  RETAINED
+
+  @@map("academic_status")
 }
 
 enum FamilyRelationship {

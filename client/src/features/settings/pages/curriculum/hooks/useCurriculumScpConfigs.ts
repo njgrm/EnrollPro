@@ -15,6 +15,15 @@ export function useCurriculumScpConfigs() {
   const [loading, setLoading] = useState(true);
   const [savingScp, setSavingScp] = useState(false);
 
+  const withDefaultStepTimes = useCallback(
+    (steps: ScpStepConfig[] | null | undefined): ScpStepConfig[] =>
+      (steps ?? []).map((step) => ({
+        ...step,
+        scheduledTime: step.scheduledTime?.trim() || "08:00 AM",
+      })),
+    [],
+  );
+
   const fetchData = useCallback(async () => {
     if (!ayId) {
       setLoading(false);
@@ -38,7 +47,7 @@ export function useCurriculumScpConfigs() {
             notes: found.notes ?? null,
             gradeRequirements: found.gradeRequirements ?? null,
             rankingFormula: found.rankingFormula ?? null,
-            steps: found.steps ?? [],
+            steps: withDefaultStepTimes(found.steps),
           };
         }
 
@@ -63,7 +72,7 @@ export function useCurriculumScpConfigs() {
     } finally {
       setLoading(false);
     }
-  }, [ayId]);
+  }, [ayId, withDefaultStepTimes]);
 
   useEffect(() => {
     fetchData();
@@ -113,7 +122,15 @@ export function useCurriculumScpConfigs() {
       setScpConfigs((current) => {
         const next = [...current];
         const steps = [...next[scpIndex].steps];
-        steps[stepIndex] = { ...steps[stepIndex], [field]: value };
+        const normalizedValue =
+          field === "scheduledTime" &&
+          (value == null || String(value).trim() === "")
+            ? "08:00 AM"
+            : value;
+        steps[stepIndex] = {
+          ...steps[stepIndex],
+          [field]: normalizedValue,
+        };
         next[scpIndex] = { ...next[scpIndex], steps };
         return next;
       });

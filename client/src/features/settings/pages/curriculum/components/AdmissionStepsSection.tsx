@@ -107,7 +107,7 @@ export function AdmissionStepsSection({
                 )}
               </div>
 
-              <div className="px-3 py-2.5 grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="px-3 py-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <DatePicker
                   date={
                     step.scheduledDate
