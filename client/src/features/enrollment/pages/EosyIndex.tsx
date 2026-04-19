@@ -25,11 +25,13 @@ import {
 } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
+import { ConfirmationModal } from "@/shared/ui/confirmation-modal";
 import {
   TrendingUp,
   Lock,
   Unlock,
   Building2,
+  Download,
   ChevronRight,
   RefreshCw,
   AlertCircle,
@@ -64,6 +66,7 @@ interface EnrollmentRecord {
       lrn: string | null;
       firstName: string;
       lastName: string;
+      sex?: "MALE" | "FEMALE" | null;
     };
   };
 }
@@ -100,6 +103,8 @@ export default function EosyUpdating() {
   );
   const [loading, setLoading] = useState(false);
   const [loadingRecords, setLoadingRecords] = useState(false);
+  const [isDownloadingFinalExport, setIsDownloadingFinalExport] =
+    useState(false);
 
   // Modals
   const [dropoutModal, setDropoutModal] = useState<{
@@ -127,6 +132,9 @@ export default function EosyUpdating() {
     open: false,
     section: null,
   });
+  const [batchPromoteConfirmOpen, setBatchPromoteConfirmOpen] = useState(false);
+  const [schoolFinalizeConfirmOpen, setSchoolFinalizeConfirmOpen] =
+    useState(false);
 
   const showSkeleton = useDelayedLoading(loadingRecords);
 
@@ -187,44 +195,50 @@ export default function EosyUpdating() {
     }
   }, [selectedSectionId, fetchRecords]);
 
-  const handleStatusChange = async (recordId: number, status: string) => {
-    if (exportLock?.schoolYearFinalized) {
-      sileo.error({
-        title: "School Year Locked",
-        description:
-          "School year EOSY is finalized. Status updates are no longer allowed.",
-      });
-      return;
-    }
+  const handleStatusChange = useCallback(
+    async (recordId: number, status: string) => {
+      if (exportLock?.schoolYearFinalized) {
+        sileo.error({
+          title: "School Year Locked",
+          description:
+            "School year EOSY is finalized. Status updates are no longer allowed.",
+        });
+        return;
+      }
 
-    if (status === "DROPPED_OUT") {
-      setDropoutModal({ open: true, recordId, reason: "" });
-      return;
-    }
-    if (status === "TRANSFERRED_OUT") {
-      setTransferModal({
-        open: true,
-        recordId,
-        date: format(new Date(), "yyyy-MM-dd"),
-      });
-      return;
-    }
+      if (status === "DROPPED_OUT") {
+        setDropoutModal({ open: true, recordId, reason: "" });
+        return;
+      }
+      if (status === "TRANSFERRED_OUT") {
+        setTransferModal({
+          open: true,
+          recordId,
+          date: format(new Date(), "yyyy-MM-dd"),
+        });
+        return;
+      }
 
-    try {
-      await api.patch(`/eosy/records/${recordId}`, { eosyStatus: status });
-      setRecords((prev) =>
-        prev.map((r) =>
-          r.id === recordId ? { ...r, eosyStatus: status as EosyStatus } : r,
-        ),
-      );
-      sileo.success({
-        title: "Status Updated",
-        description: "Learner status saved successfully.",
-      });
-    } catch {
-      sileo.error({ title: "Error", description: "Failed to update status." });
-    }
-  };
+      try {
+        await api.patch(`/eosy/records/${recordId}`, { eosyStatus: status });
+        setRecords((prev) =>
+          prev.map((r) =>
+            r.id === recordId ? { ...r, eosyStatus: status as EosyStatus } : r,
+          ),
+        );
+        sileo.success({
+          title: "Status Updated",
+          description: "Learner status saved successfully.",
+        });
+      } catch {
+        sileo.error({
+          title: "Error",
+          description: "Failed to update status.",
+        });
+      }
+    },
+    [exportLock?.schoolYearFinalized],
+  );
 
   const submitDropoutReason = async () => {
     if (!dropoutModal.recordId) return;
@@ -374,11 +388,14 @@ export default function EosyUpdating() {
     (s) => String(s.id) === selectedSectionId,
   );
   const isSchoolYearFinalized = exportLock?.schoolYearFinalized ?? false;
+  const canFinalizeSchoolLevel =
+    (exportLock?.canFinalizeSchoolYear ?? false) && !isSchoolYearFinalized;
   const isFinalized = Boolean(
     selectedSection?.isEosyFinalized || isSchoolYearFinalized,
   );
+  const emptyRowsCount = records.filter((r) => !r.eosyStatus).length;
 
-  const handleMarkAllPromoted = async () => {
+  const requestMarkAllPromoted = () => {
     if (isSchoolYearFinalized) {
       sileo.error({
         title: "School Year Locked",
@@ -388,8 +405,7 @@ export default function EosyUpdating() {
       return;
     }
 
-    const emptyRows = records.filter((r) => !r.eosyStatus);
-    if (emptyRows.length === 0) {
+    if (emptyRowsCount === 0) {
       sileo.info({
         title: "No Empty Rows",
         description: "All learners already have a status.",
@@ -397,12 +413,15 @@ export default function EosyUpdating() {
       return;
     }
 
-    if (
-      !confirm(
-        `Are you sure you want to mark ${emptyRows.length} learners as PROMOTED?`,
-      )
-    )
+    setBatchPromoteConfirmOpen(true);
+  };
+
+  const handleMarkAllPromoted = async () => {
+    const emptyRows = records.filter((r) => !r.eosyStatus);
+    if (emptyRows.length === 0) {
+      setBatchPromoteConfirmOpen(false);
       return;
+    }
 
     try {
       await Promise.all(
@@ -418,6 +437,7 @@ export default function EosyUpdating() {
         title: "Batch Updated",
         description: `${emptyRows.length} learners marked as PROMOTED.`,
       });
+      setBatchPromoteConfirmOpen(false);
     } catch {
       sileo.error({
         title: "Batch Error",
@@ -426,7 +446,7 @@ export default function EosyUpdating() {
     }
   };
 
-  const handleSchoolFinalize = async () => {
+  const requestSchoolFinalize = () => {
     if (isSchoolYearFinalized) {
       sileo.info({
         title: "Already Finalized",
@@ -435,30 +455,29 @@ export default function EosyUpdating() {
       return;
     }
 
-    if (exportLock && !exportLock.canFinalizeSchoolYear) {
-      sileo.error({
-        title: "Finalization Blocked",
-        description:
-          exportLock.lockReason ?? "All classes must be locked first.",
-      });
+    if (!canFinalizeSchoolLevel) {
       return;
     }
 
     const unfinalized = sections.filter((s) => !s.isEosyFinalized);
     if (unfinalized.length > 0) {
-      sileo.error({
-        title: "Finalization Blocked",
-        description: `There are still ${unfinalized.length} unfinalized classes. All classes must be locked first.`,
-      });
       return;
     }
 
-    if (
-      !confirm(
-        "CRITICAL ACTION: This will finalize the ENTIRE School Year EOSY and lock all records permanently. Proceed?",
-      )
-    )
+    setSchoolFinalizeConfirmOpen(true);
+  };
+
+  const handleSchoolFinalize = async () => {
+    if (isSchoolYearFinalized || !canFinalizeSchoolLevel) {
+      setSchoolFinalizeConfirmOpen(false);
       return;
+    }
+
+    const unfinalized = sections.filter((s) => !s.isEosyFinalized);
+    if (unfinalized.length > 0) {
+      setSchoolFinalizeConfirmOpen(false);
+      return;
+    }
 
     try {
       const response = await api.post("/eosy/school-year/finalize", {
@@ -467,6 +486,7 @@ export default function EosyUpdating() {
       if (response.data?.exportLock) {
         setExportLock(response.data.exportLock as EosyExportLockState);
       }
+      setSchoolFinalizeConfirmOpen(false);
       sileo.success({
         title: "School Year Finalized",
         description:
@@ -474,10 +494,69 @@ export default function EosyUpdating() {
       });
       void fetchSections();
     } catch {
+      setSchoolFinalizeConfirmOpen(false);
       sileo.error({
         title: "Error",
         description: "Failed to finalize school year.",
       });
+    }
+  };
+
+  const handleDownloadFinalExport = async () => {
+    if (!ayId) return;
+    if (!isSchoolYearFinalized) {
+      sileo.error({
+        title: "Finalize Required",
+        description:
+          "Finalize the School Year EOSY first before downloading the final LIS export.",
+      });
+      return;
+    }
+
+    setIsDownloadingFinalExport(true);
+    try {
+      const response = await api.get(
+        `/eosy/school-year/${ayId}/final-lis-export`,
+        {
+          responseType: "blob",
+        },
+      );
+
+      const contentDisposition =
+        (response.headers?.["content-disposition"] as string | undefined) ?? "";
+      const fileNameMatch = contentDisposition.match(
+        /filename\*?=(?:UTF-8''|")?([^";]+)/i,
+      );
+      const fileName = fileNameMatch?.[1]
+        ? decodeURIComponent(fileNameMatch[1].replace(/"/g, ""))
+        : `final-lis-export-${ayId}.csv`;
+
+      const blob = new Blob([response.data], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+
+      sileo.success({
+        title: "Final LIS Export Ready",
+        description: "Final school-year LIS CSV downloaded successfully.",
+      });
+    } catch (err) {
+      const apiMessage = (err as { response?: { data?: { message?: string } } })
+        .response?.data?.message;
+
+      sileo.error({
+        title: "Export Error",
+        description: apiMessage ?? "Failed to download final LIS export.",
+      });
+    } finally {
+      setIsDownloadingFinalExport(false);
     }
   };
 
@@ -490,6 +569,25 @@ export default function EosyUpdating() {
     dropped: records.filter((r) => r.eosyStatus === "DROPPED_OUT").length,
     transferred: records.filter((r) => r.eosyStatus === "TRANSFERRED_OUT")
       .length,
+  };
+
+  const formatStatusLabel = (status: EosyStatus | null) => {
+    const normalized = status ?? "PROMOTED";
+
+    switch (normalized) {
+      case "PROMOTED":
+        return "Promoted";
+      case "RETAINED":
+        return "Retained";
+      case "IRREGULAR":
+        return "Irregular";
+      case "TRANSFERRED_OUT":
+        return "Transferred Out";
+      case "DROPPED_OUT":
+        return "Dropped Out";
+      default:
+        return "Promoted";
+    }
   };
 
   const columns = useMemo<ColumnDef<EnrollmentRecord>[]>(
@@ -506,27 +604,48 @@ export default function EosyUpdating() {
       {
         id: "name",
         header: "NAME",
-        cell: ({ row }) => (
-          <div className="flex flex-col text-left pl-2">
-            <span className="font-bold uppercase">
-              {row.original.enrollmentApplication.learner.lastName},{" "}
-              {row.original.enrollmentApplication.learner.firstName}
-            </span>
-            <span className="text-[10px] text-muted-foreground font-bold uppercase">
-              {row.original.enrollmentApplication.trackingNumber}
-            </span>
-          </div>
-        ),
+        cell: ({ row }) => {
+          const sex = row.original.enrollmentApplication.learner.sex;
+          const genderLabel =
+            sex === "MALE" ? "M" : sex === "FEMALE" ? "F" : null;
+
+          return (
+            <div className="flex flex-col text-left pl-2">
+              <span className="font-bold uppercase">
+                {row.original.enrollmentApplication.learner.lastName},{" "}
+                {row.original.enrollmentApplication.learner.firstName}
+              </span>
+              {genderLabel && (
+                <span className="text-[10px] text-muted-foreground font-bold uppercase">
+                  Gender: {genderLabel}
+                </span>
+              )}
+            </div>
+          );
+        },
       },
       {
         id: "status",
         header: "STATUS",
         cell: ({ row }) => {
           const r = row.original;
+          const resolvedStatus = r.eosyStatus ?? "PROMOTED";
+          const statusLabel = formatStatusLabel(r.eosyStatus);
+
+          if (isFinalized) {
+            return (
+              <div className="flex justify-center min-w-[200px]">
+                <div className="h-9 w-full rounded-md border border-border bg-muted px-3 text-sm font-bold text-muted-foreground flex items-center justify-center">
+                  {statusLabel}
+                </div>
+              </div>
+            );
+          }
+
           return (
             <div className="flex justify-center min-w-[200px]">
               <Select
-                value={r.eosyStatus || "PROMOTED"}
+                value={resolvedStatus}
                 onValueChange={(val) => handleStatusChange(r.id, val)}
                 disabled={isFinalized}>
                 <SelectTrigger
@@ -534,7 +653,7 @@ export default function EosyUpdating() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="PROMOTED">Promoted (No Status)</SelectItem>
+                  <SelectItem value="PROMOTED">Promoted</SelectItem>
                   <SelectItem value="RETAINED">Retained</SelectItem>
                   <SelectItem value="IRREGULAR">Irregular</SelectItem>
                   <SelectItem value="TRANSFERRED_OUT">
@@ -550,13 +669,16 @@ export default function EosyUpdating() {
       {
         id: "actions",
         header: "ACTIONS",
-        cell: () => (
-          <div className="flex justify-center">
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        ),
+        cell: () =>
+          isFinalized ? (
+            <div className="h-8 w-8" aria-hidden="true" />
+          ) : (
+            <div className="flex justify-center">
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          ),
       },
     ],
     [isFinalized, handleStatusChange],
@@ -585,15 +707,30 @@ export default function EosyUpdating() {
                 : `${exportLock.finalizedSections}/${exportLock.totalSections} Classes Finalized`}
             </Badge>
           )}
-          {isAdmin && (
+          {isSchoolYearFinalized ? (
             <Button
-              variant="outline"
-              className="h-10 border-amber-500 text-amber-700 hover:bg-amber-50 font-bold"
-              disabled={isSchoolYearFinalized}
-              onClick={handleSchoolFinalize}>
-              <Building2 className="h-4 w-4 mr-2" />
-              Finalize School EOSY
+              className="h-10 font-bold bg-primary text-primary-foreground hover:bg-primary/90"
+              disabled={isDownloadingFinalExport}
+              onClick={handleDownloadFinalExport}>
+              <Download className="h-4 w-4 mr-2" />
+              {isDownloadingFinalExport
+                ? "Preparing Final Export..."
+                : "Download Final LIS Export"}
             </Button>
+          ) : (
+            isAdmin && (
+              <Button
+                className={`h-10 font-bold ${
+                  canFinalizeSchoolLevel
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "bg-muted text-muted-foreground hover:bg-muted"
+                }`}
+                disabled={!canFinalizeSchoolLevel}
+                onClick={requestSchoolFinalize}>
+                <Building2 className="h-4 w-4 mr-2" />
+                Finalize School EOSY & Export
+              </Button>
+            )
           )}
           <Button
             variant="outline"
@@ -718,9 +855,10 @@ export default function EosyUpdating() {
                     variant="default"
                     size="sm"
                     className="h-9 font-bold bg-primary hover:bg-primary/90"
-                    onClick={handleMarkAllPromoted}>
+                    disabled={emptyRowsCount === 0 || isSchoolYearFinalized}
+                    onClick={requestMarkAllPromoted}>
                     <TrendingUp className="h-4 w-4 mr-2" />
-                    Mark all as PROMOTED
+                    Mark all empty rows as PROMOTED
                   </Button>
                 )}
                 <div className="h-8 w-px bg-muted" />
@@ -910,6 +1048,26 @@ export default function EosyUpdating() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmationModal
+        open={batchPromoteConfirmOpen}
+        onOpenChange={setBatchPromoteConfirmOpen}
+        title="Confirm Batch Promote"
+        description={`Are you sure you want to mark ${emptyRowsCount} learner${emptyRowsCount === 1 ? "" : "s"} as PROMOTED?`}
+        confirmText="Yes, Mark as Promoted"
+        onConfirm={handleMarkAllPromoted}
+        variant="primary"
+      />
+
+      <ConfirmationModal
+        open={schoolFinalizeConfirmOpen}
+        onOpenChange={setSchoolFinalizeConfirmOpen}
+        title="Finalize School EOSY & Export"
+        description="CRITICAL ACTION: This will finalize the ENTIRE School Year EOSY and lock all records permanently. Proceed?"
+        confirmText="Yes, Finalize School EOSY"
+        onConfirm={handleSchoolFinalize}
+        variant="danger"
+      />
     </div>
   );
 }

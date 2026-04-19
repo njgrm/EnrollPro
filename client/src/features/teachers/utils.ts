@@ -1,23 +1,15 @@
+import {
+  DEPED_TEACHER_PLANTILLA_POSITION_OPTIONS,
+  DEPED_TEACHER_SUBJECT_OPTIONS,
+} from "@enrollpro/shared";
 import type { Teacher, TeacherFormState, TeacherSyncFilter } from "./types";
 
 export const MAX_TEACHER_PHOTO_BYTES = 5 * 1024 * 1024;
 
-export const DEPED_LEARNING_AREA_OPTIONS = [
-  { value: "ENGLISH", label: "English" },
-  { value: "FILIPINO", label: "Filipino" },
-  { value: "MATHEMATICS", label: "Mathematics" },
-  { value: "SCIENCE", label: "Science" },
-  { value: "ARALING PANLIPUNAN", label: "Araling Panlipunan" },
-  { value: "ESP", label: "Edukasyon sa Pagpapakatao (ESP)" },
-  { value: "VALUES EDUCATION", label: "Values Education" },
-  { value: "MAPEH", label: "MAPEH" },
-  { value: "TLE", label: "Technology and Livelihood Education (TLE)" },
-  { value: "ICT", label: "Information and Communications Technology (ICT)" },
-  { value: "FOREIGN LANGUAGE", label: "Foreign Language" },
-  { value: "JOURNALISM", label: "Journalism" },
-  { value: "ARTS", label: "Arts" },
-  { value: "SPORTS", label: "Sports" },
-] as const;
+export const DEPED_LEARNING_AREA_OPTIONS = DEPED_TEACHER_SUBJECT_OPTIONS;
+export const TEACHER_SUBJECT_OPTIONS = DEPED_TEACHER_SUBJECT_OPTIONS;
+export const TEACHER_PLANTILLA_POSITION_OPTIONS =
+  DEPED_TEACHER_PLANTILLA_POSITION_OPTIONS;
 
 export function createEmptyTeacherForm(): TeacherFormState {
   return {
@@ -28,20 +20,10 @@ export function createEmptyTeacherForm(): TeacherFormState {
     employeeId: "",
     contactNumber: "",
     specialization: "",
-    subjectsText: "",
+    plantillaPosition: "",
+    subjects: [],
     photo: null,
   };
-}
-
-export function parseSubjectsInput(subjectsText: string): string[] {
-  return Array.from(
-    new Set(
-      subjectsText
-        .split(",")
-        .map((subject) => subject.trim().toUpperCase())
-        .filter((subject) => subject.length > 0),
-    ),
-  );
 }
 
 export function normalizeOptionalInput(value: string): string | null {

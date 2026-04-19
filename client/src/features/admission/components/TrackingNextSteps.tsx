@@ -25,7 +25,10 @@ type TrackingNextStepsPayload = Pick<
   "applicantType" | "programType" | "status" | "currentStep" | "assessmentData"
 >;
 
-interface TrackingNextStepsProps extends Partial<TrackingNextStepsPayload> {
+interface TrackingNextStepsProps extends Omit<
+  Partial<TrackingNextStepsPayload>,
+  "status" | "currentStep"
+> {
   status?: TrackingNextStepsPayload["status"] | string | null;
   currentStep?: TrackingNextStepsPayload["currentStep"] | string | null;
   className?: string;

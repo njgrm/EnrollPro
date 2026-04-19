@@ -13,8 +13,8 @@ import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Input } from "@/shared/ui/input";
-import { Skeleton } from "@/shared/ui/skeleton";
 import { DataTable } from "@/shared/ui/data-table";
+import type { ColumnDef } from "@tanstack/react-table";
 import type { Application } from "./types";
 
 interface PipelineBatchApplicantsTableProps {
@@ -302,7 +302,9 @@ export default function PipelineBatchApplicantsTable({
       />
 
       <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mt-4 font-bold">
-        <span className="text-xs">Showing {applications.length} applicants</span>
+        <span className="text-xs">
+          Showing {applications.length} applicants
+        </span>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"

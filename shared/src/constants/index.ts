@@ -221,6 +221,73 @@ export const LastSchoolTypeEnum = z.enum([
 ]);
 export const GradeLevelEnum = z.enum(["7", "8", "9", "10"]);
 
+// ─── Teacher Reference Catalogs ─────────────────────────
+export const DEPED_TEACHER_SUBJECT_VALUES = [
+  "ENGLISH",
+  "FILIPINO",
+  "MATHEMATICS",
+  "SCIENCE",
+  "ARALING PANLIPUNAN",
+  "ESP",
+  "VALUES EDUCATION",
+  "MAPEH",
+  "TLE",
+  "ICT",
+  "FOREIGN LANGUAGE",
+  "JOURNALISM",
+  "ARTS",
+  "SPORTS",
+] as const;
+
+export type DepedTeacherSubject = (typeof DEPED_TEACHER_SUBJECT_VALUES)[number];
+
+export const DEPED_TEACHER_SUBJECT_OPTIONS: ReadonlyArray<{
+  value: DepedTeacherSubject;
+  label: string;
+}> = [
+  { value: "ENGLISH", label: "English" },
+  { value: "FILIPINO", label: "Filipino" },
+  { value: "MATHEMATICS", label: "Mathematics" },
+  { value: "SCIENCE", label: "Science" },
+  { value: "ARALING PANLIPUNAN", label: "Araling Panlipunan" },
+  { value: "ESP", label: "Edukasyon sa Pagpapakatao (ESP)" },
+  { value: "VALUES EDUCATION", label: "Values Education" },
+  { value: "MAPEH", label: "MAPEH" },
+  { value: "TLE", label: "Technology and Livelihood Education (TLE)" },
+  { value: "ICT", label: "Information and Communications Technology (ICT)" },
+  { value: "FOREIGN LANGUAGE", label: "Foreign Language" },
+  { value: "JOURNALISM", label: "Journalism" },
+  { value: "ARTS", label: "Arts" },
+  { value: "SPORTS", label: "Sports" },
+];
+
+export const DEPED_TEACHER_PLANTILLA_POSITION_VALUES = [
+  "TEACHER I",
+  "TEACHER II",
+  "TEACHER III",
+  "MASTER TEACHER I",
+  "MASTER TEACHER II",
+  "MASTER TEACHER III",
+  "MASTER TEACHER IV",
+  "HEAD TEACHER I",
+  "HEAD TEACHER II",
+  "HEAD TEACHER III",
+  "HEAD TEACHER IV",
+  "HEAD TEACHER V",
+  "HEAD TEACHER VI",
+] as const;
+
+export type DepedTeacherPlantillaPosition =
+  (typeof DEPED_TEACHER_PLANTILLA_POSITION_VALUES)[number];
+
+export const DEPED_TEACHER_PLANTILLA_POSITION_OPTIONS: ReadonlyArray<{
+  value: DepedTeacherPlantillaPosition;
+  label: string;
+}> = DEPED_TEACHER_PLANTILLA_POSITION_VALUES.map((value) => ({
+  value,
+  label: value,
+}));
+
 // ─── DO 017 s.2025 Early Registration Enums ─────────────
 export const EarlyRegGradeLevelEnum = z.enum(["7", "8", "9", "10"]);
 export const DisabilityTypeEnum = z.enum([

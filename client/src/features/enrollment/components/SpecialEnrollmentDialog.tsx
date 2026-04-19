@@ -136,6 +136,9 @@ export function SpecialEnrollmentDialog({
         applicantType: "REGULAR",
         gradeLevelId: "",
         academicStatus: "PROMOTED",
+        originSchoolName: "",
+        peptCertificateNumber: "",
+        peptPassingDate: "",
       });
     } catch (err) {
       toastApiError(err as never);

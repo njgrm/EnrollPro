@@ -76,6 +76,7 @@ export interface Teacher {
   email: string | null;
   contactNumber: string | null;
   specialization: string | null;
+  plantillaPosition: string | null;
   photoPath: string | null;
   subjects: string[];
   sectionCount: number;
@@ -93,7 +94,8 @@ export interface TeacherFormState {
   employeeId: string;
   contactNumber: string;
   specialization: string;
-  subjectsText: string;
+  plantillaPosition: string;
+  subjects: string[];
   photo: string | null;
 }
 

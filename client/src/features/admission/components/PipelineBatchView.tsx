@@ -363,12 +363,22 @@ export default function PipelineBatchView({
       return null;
     }
 
+    const isAssessmentBatchAction =
+      activeBatchAction?.id === "RECORD_ASSESSMENT";
+
     const eligible: Application[] = [];
     const ineligible: Array<{ app: Application; reason: string }> = [];
 
     for (const app of selectedApplications) {
       const allowedTargets = REGISTRATION_VALID_TRANSITIONS[app.status] ?? [];
-      if (!allowedTargets.includes(derivedTargetStatus)) {
+      const matchesConfiguredTarget =
+        allowedTargets.includes(derivedTargetStatus);
+      const hasAssessmentBridgeTransition =
+        isAssessmentBatchAction &&
+        app.status === "EXAM_SCHEDULED" &&
+        allowedTargets.includes("ASSESSMENT_TAKEN");
+
+      if (!matchesConfiguredTarget && !hasAssessmentBridgeTransition) {
         ineligible.push({
           app,
           reason: `${app.status.replaceAll("_", " ")} cannot move to ${derivedTargetStatus.replaceAll("_", " ")}.`,
@@ -392,7 +402,7 @@ export default function PipelineBatchView({
       ineligible,
       reasonGroups,
     };
-  }, [selectedApplications, derivedTargetStatus]);
+  }, [selectedApplications, derivedTargetStatus, activeBatchAction?.id]);
 
   const scopedEligibleIds = useMemo(
     () => preflightSummary?.eligible.map((app) => app.id) ?? [],
@@ -1793,6 +1803,7 @@ export default function PipelineBatchView({
         succeeded: [],
         failed: skippedAsFailed,
       });
+      setSelectedIds(new Set(skippedAsFailed.map((item) => item.id)));
       setIsActionModalOpen(false);
       void fetchData();
       return;
@@ -2199,6 +2210,36 @@ export default function PipelineBatchView({
         };
       });
 
+      if (failed.length === 0) {
+        const successCount = succeeded.length || selectedIds.size;
+        const applicantLabel = successCount === 1 ? "applicant" : "applicants";
+        const movedToLabels = Array.from(
+          new Set(
+            succeeded
+              .map((item) => {
+                const summary = item.outcomeSummary?.trim() ?? "";
+                if (!summary.startsWith("Moved to:")) return null;
+                return summary.replace("Moved to:", "").trim();
+              })
+              .filter((label): label is string => Boolean(label)),
+          ),
+        );
+
+        const description =
+          movedToLabels.length === 1
+            ? `${successCount} ${applicantLabel} successfully moved to ${movedToLabels[0]}.`
+            : `${successCount} ${applicantLabel} processed successfully.`;
+
+        setBatchResults(null);
+        setSelectedIds(new Set());
+        setIsActionModalOpen(false);
+        sileo.success({
+          title: "Batch Completed",
+          description,
+        });
+        return;
+      }
+
       setBatchResults({
         processed: selectedIds.size,
         succeeded,
@@ -2245,7 +2286,6 @@ export default function PipelineBatchView({
 
   const handleResultsClose = () => {
     setBatchResults(null);
-    fetchData();
   };
 
   const handleSaveResult = async (appId: number) => {
@@ -2967,7 +3007,6 @@ export default function PipelineBatchView({
         preflightSummary={preflightSummary}
         actionFormError={actionFormError}
         actionReadinessHint={actionReadinessHint}
-        derivedTargetStatus={derivedTargetStatus}
         isActionFormReady={isActionFormReady}
         actionSubmitCount={actionSubmitCount}
         renderActionForm={renderActionForm}
@@ -2977,11 +3016,7 @@ export default function PipelineBatchView({
       />
 
       {/* Batch Results Modal */}
-      <BatchResultsModal
-        results={batchResults}
-        onReselectFailed={(ids) => setSelectedIds(new Set(ids))}
-        onClose={handleResultsClose}
-      />
+      <BatchResultsModal results={batchResults} onClose={handleResultsClose} />
     </>
   );
 }

@@ -47,6 +47,13 @@ router.get(
   ctrl.getSchoolYearExportLock,
 );
 
+router.get(
+  "/school-year/:schoolYearId/final-lis-export",
+  authenticate,
+  authorize("REGISTRAR", "SYSTEM_ADMIN"),
+  ctrl.downloadFinalLisExport,
+);
+
 router.post(
   "/school-year/finalize",
   authenticate,

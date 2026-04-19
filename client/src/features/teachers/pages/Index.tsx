@@ -42,10 +42,9 @@ import {
   getImageUrl,
   getSyncFilterValue,
   normalizeOptionalInput,
-  parseSubjectsInput,
 } from "../utils";
 
-type TeacherFormField = Exclude<keyof TeacherFormState, "photo">;
+type TeacherFormField = Exclude<keyof TeacherFormState, "photo" | "subjects">;
 
 function normalizeTeacherFieldValue(
   field: TeacherFormField,
@@ -238,7 +237,8 @@ export default function Teachers() {
       employeeId: normalizeOptionalInput(formData.employeeId),
       contactNumber: normalizeOptionalInput(formData.contactNumber),
       specialization: normalizeOptionalInput(formData.specialization),
-      subjects: parseSubjectsInput(formData.subjectsText),
+      plantillaPosition: normalizeOptionalInput(formData.plantillaPosition),
+      subjects: formData.subjects,
       photo: formData.photo,
     };
 
@@ -286,7 +286,8 @@ export default function Teachers() {
       employeeId: teacher.employeeId || "",
       contactNumber: teacher.contactNumber || "",
       specialization: teacher.specialization || "",
-      subjectsText: teacher.subjects.join(", "),
+      plantillaPosition: teacher.plantillaPosition || "",
+      subjects: teacher.subjects,
       photo: teacher.photoPath,
     });
     setEditOpen(true);
@@ -312,7 +313,8 @@ export default function Teachers() {
       employeeId: normalizeOptionalInput(editFormData.employeeId),
       contactNumber: normalizeOptionalInput(editFormData.contactNumber),
       specialization: normalizeOptionalInput(editFormData.specialization),
-      subjects: parseSubjectsInput(editFormData.subjectsText),
+      plantillaPosition: normalizeOptionalInput(editFormData.plantillaPosition),
+      subjects: editFormData.subjects,
     };
 
     if (editPhotoChanged) {
@@ -386,6 +388,7 @@ export default function Teachers() {
           teacher.employeeId ?? "",
           teacher.contactNumber ?? "",
           teacher.specialization ?? "",
+          teacher.plantillaPosition ?? "",
           teacher.designation?.advisorySection?.name ?? "",
           teacher.designation?.advisorySection?.gradeLevelName ?? "",
         ]
@@ -718,7 +721,7 @@ export default function Teachers() {
         mode="create"
         open={createOpen}
         title="Add Teacher"
-        description="Create a teacher profile using full schema fields including photo, email, and teaching subjects."
+        description="Capture teacher profile, DepEd plantilla details, and strict subject assignments."
         formData={formData}
         photoPreviewUrl={createPhotoPreviewUrl}
         submitting={submitting}
@@ -734,6 +737,9 @@ export default function Teachers() {
             ...prev,
             [field]: normalizeTeacherFieldValue(field, value),
           }))
+        }
+        onSubjectsChange={(subjects) =>
+          setFormData((prev) => ({ ...prev, subjects }))
         }
         onPhotoSelect={(file) => {
           void handlePhotoFileSelection(file, "create");
@@ -752,7 +758,7 @@ export default function Teachers() {
         title="Edit Teacher"
         description={
           editingTeacher
-            ? `Update ${formatTeacherName(editingTeacher)} profile fields and photo.`
+            ? `Update ${formatTeacherName(editingTeacher)} profile, plantilla data, and subject assignments.`
             : "Update teacher details."
         }
         formData={editFormData}
@@ -771,6 +777,9 @@ export default function Teachers() {
             ...prev,
             [field]: normalizeTeacherFieldValue(field, value),
           }))
+        }
+        onSubjectsChange={(subjects) =>
+          setEditFormData((prev) => ({ ...prev, subjects }))
         }
         onPhotoSelect={(file) => {
           void handlePhotoFileSelection(file, "edit");

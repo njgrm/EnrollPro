@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Trash2,
   Upload,
@@ -344,7 +344,10 @@ export function DocumentManagement({
         cell: ({ row }) => (
           <span className="text-xs font-medium min-w-[150px] block text-center">
             {row.original.lastModified
-              ? format(new Date(row.original.lastModified), "MMM dd, yyyy - hh:mm a")
+              ? format(
+                  new Date(row.original.lastModified),
+                  "MMM dd, yyyy - hh:mm a",
+                )
               : "N/A"}
           </span>
         ),

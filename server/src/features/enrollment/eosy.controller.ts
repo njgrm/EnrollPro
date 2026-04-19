@@ -3,6 +3,22 @@ import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../lib/AppError.js";
 import { auditLog } from "../audit-logs/audit-logs.service.js";
 
+function csvEscape(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  const str = String(value).replace(/\r?\n|\r/g, " ");
+  if (/[",]/.test(str)) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+function toDateOnly(value: Date | string | null | undefined): string {
+  if (!value) return "";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
+}
+
 async function getSchoolYearExportLockState(schoolYearId: number) {
   const [schoolYear, totalSections, finalizedSections] = await Promise.all([
     prisma.schoolYear.findUnique({
@@ -371,6 +387,155 @@ export async function finalizeSchoolYear(
 
     const state = await getSchoolYearExportLockState(syId);
     res.json({ schoolYear: updated, exportLock: state });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function downloadFinalLisExport(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const syId = parseInt(String(req.params.schoolYearId), 10);
+    if (!Number.isInteger(syId)) {
+      throw new AppError(400, "A valid schoolYearId is required.");
+    }
+
+    const exportState = await getSchoolYearExportLockState(syId);
+    if (!exportState.schoolYearFinalized) {
+      throw new AppError(
+        422,
+        "Cannot download final LIS export until school EOSY is finalized.",
+      );
+    }
+
+    const records = await prisma.enrollmentRecord.findMany({
+      where: {
+        section: {
+          gradeLevel: {
+            schoolYearId: syId,
+          },
+        },
+      },
+      include: {
+        section: {
+          select: {
+            name: true,
+            gradeLevel: {
+              select: {
+                name: true,
+                displayOrder: true,
+              },
+            },
+          },
+        },
+        enrollmentApplication: {
+          select: {
+            trackingNumber: true,
+            status: true,
+            learnerType: true,
+            applicantType: true,
+            learner: {
+              select: {
+                lrn: true,
+                lastName: true,
+                firstName: true,
+                middleName: true,
+                extensionName: true,
+                sex: true,
+                birthdate: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const sortedRecords = records.sort((a, b) => {
+      const gradeA = a.section.gradeLevel.displayOrder ?? 999;
+      const gradeB = b.section.gradeLevel.displayOrder ?? 999;
+      if (gradeA !== gradeB) return gradeA - gradeB;
+
+      const sectionCompare = a.section.name.localeCompare(
+        b.section.name,
+        "en",
+        {
+          sensitivity: "base",
+        },
+      );
+      if (sectionCompare !== 0) return sectionCompare;
+
+      const lastNameCompare =
+        a.enrollmentApplication.learner.lastName.localeCompare(
+          b.enrollmentApplication.learner.lastName,
+          "en",
+          { sensitivity: "base" },
+        );
+      if (lastNameCompare !== 0) return lastNameCompare;
+
+      return a.enrollmentApplication.learner.firstName.localeCompare(
+        b.enrollmentApplication.learner.firstName,
+        "en",
+        { sensitivity: "base" },
+      );
+    });
+
+    const headers = [
+      "LRN",
+      "LAST_NAME",
+      "FIRST_NAME",
+      "MIDDLE_NAME",
+      "EXTENSION_NAME",
+      "SEX",
+      "BIRTHDATE",
+      "GRADE_LEVEL",
+      "SECTION",
+      "EOSY_STATUS",
+      "DROPOUT_REASON",
+      "TRANSFER_OUT_DATE",
+      "PROGRAM_TYPE",
+      "LEARNER_TYPE",
+      "APPLICATION_STATUS",
+      "TRACKING_NUMBER",
+    ];
+
+    const rows = sortedRecords.map((record) => [
+      record.enrollmentApplication.learner.lrn,
+      record.enrollmentApplication.learner.lastName,
+      record.enrollmentApplication.learner.firstName,
+      record.enrollmentApplication.learner.middleName,
+      record.enrollmentApplication.learner.extensionName,
+      record.enrollmentApplication.learner.sex,
+      toDateOnly(record.enrollmentApplication.learner.birthdate),
+      record.section.gradeLevel.name,
+      record.section.name,
+      record.eosyStatus ?? "PROMOTED",
+      record.dropOutReason,
+      toDateOnly(record.transferOutDate),
+      record.enrollmentApplication.applicantType,
+      record.enrollmentApplication.learnerType,
+      record.enrollmentApplication.status,
+      record.enrollmentApplication.trackingNumber,
+    ]);
+
+    const csvBody = [headers, ...rows]
+      .map((row) => row.map(csvEscape).join(","))
+      .join("\r\n");
+
+    const safeLabel = exportState.schoolYearLabel.replace(
+      /[^a-zA-Z0-9_-]+/g,
+      "-",
+    );
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="final-lis-export-${safeLabel}.csv"`,
+    );
+
+    res.status(200).send(`\uFEFF${csvBody}`);
   } catch (error) {
     next(error);
   }

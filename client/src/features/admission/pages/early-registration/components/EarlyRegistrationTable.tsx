@@ -30,7 +30,7 @@ function resolveHandoffSearchToken(application: Application): string {
 export function EarlyRegistrationTable({
   applications,
   showSkeleton,
-  selectedId,
+  selectedId: _selectedId,
   setSelectedId,
   getNextAction,
 }: TableProps) {
@@ -140,7 +140,9 @@ export function EarlyRegistrationTable({
         id: "nextAction",
         header: "NEXT ACTION",
         cell: ({ row: tableRow }) => (
-          <p className="text-xs font-bold">{getNextAction(tableRow.original.status)}</p>
+          <p className="text-xs font-bold">
+            {getNextAction(tableRow.original.status)}
+          </p>
         ),
       },
       {

@@ -1,9 +1,10 @@
-import { useMemo, useRef, type KeyboardEvent } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { CheckCircle2, Minus, XCircle } from "lucide-react";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Badge } from "@/shared/ui/badge";
 import { Input } from "@/shared/ui/input";
 import { DataTable } from "@/shared/ui/data-table";
+import type { ColumnDef } from "@tanstack/react-table";
 import type { Application } from "./types";
 
 interface PipelineBatchScpAssessmentInterviewGridProps {
@@ -37,7 +38,7 @@ export default function PipelineBatchScpAssessmentInterviewGrid({
   onInterviewDecisionChange,
 }: PipelineBatchScpAssessmentInterviewGridProps) {
   const isAssessmentMode = mode === "RECORD_ASSESSMENT";
-  const scoreInputRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const scoreInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   const hasConfiguredCutoffScore =
     assessmentCutoffScore != null && Number.isFinite(assessmentCutoffScore);
@@ -45,30 +46,21 @@ export default function PipelineBatchScpAssessmentInterviewGrid({
     ? `Score (Cut-off: ${hasConfiguredCutoffScore ? assessmentCutoffScore : "Not set"})`
     : "Recorded Assessment Score";
 
-  const handleScoreKeyDown = (
-    event: KeyboardEvent<HTMLInputElement>,
-    rowIndex: number,
-  ) => {
-    if (!isAssessmentMode) return;
+  const handleScoreChange = useCallback(
+    (applicantId: number, value: string) => {
+      onScoreChange(applicantId, value);
 
-    const isForwardNavigationKey =
-      event.key === "Enter" || (event.key === "Tab" && !event.shiftKey);
-
-    if (!isForwardNavigationKey) return;
-
-    const nextInput = scoreInputRefs.current[rowIndex + 1];
-    if (!nextInput) {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        event.currentTarget.blur();
-      }
-      return;
-    }
-
-    event.preventDefault();
-    nextInput.focus();
-    nextInput.select();
-  };
+      requestAnimationFrame(() => {
+        if (!isAssessmentMode) return;
+        const input = scoreInputRefs.current[applicantId];
+        if (!input || input.disabled) return;
+        if (document.activeElement !== input) {
+          input.focus();
+        }
+      });
+    },
+    [isAssessmentMode, onScoreChange],
+  );
 
   const columns = useMemo<ColumnDef<Application>[]>(() => {
     const cols: ColumnDef<Application>[] = [
@@ -94,7 +86,6 @@ export default function PipelineBatchScpAssessmentInterviewGrid({
         header: scoreHeaderLabel,
         cell: ({ row }) => {
           const applicant = row.original;
-          const rowIndex = row.index;
           const scoreValue = getScoreValue(applicant.id, applicant);
           const absentNoShow = getAbsentNoShow(applicant.id);
           const normalizedScore = scoreValue.trim();
@@ -138,22 +129,20 @@ export default function PipelineBatchScpAssessmentInterviewGrid({
             <div className="space-y-1.5 min-w-[280px]">
               <Input
                 ref={(node) => {
-                  scoreInputRefs.current[rowIndex] = node;
+                  scoreInputRefs.current[applicant.id] = node;
                 }}
                 type="number"
                 min={0}
                 max={100}
                 step="1"
                 value={scoreValue}
-                onChange={(event) =>
-                  onScoreChange(applicant.id, event.target.value)
-                }
-                onFocus={(event) => {
-                  event.currentTarget.select();
+                onChange={(event) => {
+                  handleScoreChange(applicant.id, event.target.value);
                 }}
-                onKeyDown={(event) => handleScoreKeyDown(event, rowIndex)}
                 readOnly={!isAssessmentMode}
-                disabled={isBatchProcessing || !isAssessmentMode || absentNoShow}
+                disabled={
+                  isBatchProcessing || !isAssessmentMode || absentNoShow
+                }
                 placeholder={isAssessmentMode ? "0 - 100" : "No score encoded"}
                 className={`h-8 text-center text-sm font-bold ${scoreInputToneClass}`}
               />
@@ -189,7 +178,9 @@ export default function PipelineBatchScpAssessmentInterviewGrid({
           const hasNumericScore =
             normalizedScore.length > 0 && Number.isFinite(numericScore);
           const scoreInvalid =
-            !absentNoShow && normalizedScore.length > 0 && isScoreInvalid(scoreValue);
+            !absentNoShow &&
+            normalizedScore.length > 0 &&
+            isScoreInvalid(scoreValue);
 
           const isPassed =
             !absentNoShow &&
@@ -302,6 +293,7 @@ export default function PipelineBatchScpAssessmentInterviewGrid({
     return cols;
   }, [
     isAssessmentMode,
+    handleScoreChange,
     scoreHeaderLabel,
     getScoreValue,
     getAbsentNoShow,
@@ -310,7 +302,6 @@ export default function PipelineBatchScpAssessmentInterviewGrid({
     hasConfiguredCutoffScore,
     isBatchProcessing,
     getInterviewDecision,
-    onScoreChange,
     onAbsentNoShowChange,
     onInterviewDecisionChange,
   ]);

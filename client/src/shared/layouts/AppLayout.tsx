@@ -549,13 +549,23 @@ function AppSidebar() {
 }
 
 export default function AppLayout({ children }: { children: ReactNode }) {
-  const { selectedAccentHsl, colorScheme, accentForeground } =
-    useSettingsStore();
+  const {
+    selectedAccentHsl,
+    colorScheme,
+    accentForeground,
+    activeSchoolYearId,
+    viewingSchoolYearId,
+  } = useSettingsStore();
   const { width } = useWindowSize();
   const accentHsl =
     selectedAccentHsl ??
     (colorScheme as { accent_hsl?: string } | null)?.accent_hsl;
   const location = useLocation();
+
+  const isHistoricalReadOnly =
+    viewingSchoolYearId !== null &&
+    activeSchoolYearId !== null &&
+    viewingSchoolYearId !== activeSchoolYearId;
 
   const toastTheme = accentForeground === "0 0% 100%" ? "light" : "dark";
   const toastPosition = width < 768 ? "top-center" : "top-right";
@@ -642,6 +652,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4!" />
           <span className="text-sm font-medium text-muted-foreground"></span>
+          {isHistoricalReadOnly ? (
+            <Badge variant="danger" className="uppercase tracking-wide">
+              Historical View: Read Only
+            </Badge>
+          ) : null}
           <div className="ml-auto flex items-center gap-2">
             <AccessibilityMenu />
             <SYSwitcher />

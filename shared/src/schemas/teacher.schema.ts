@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  DEPED_TEACHER_PLANTILLA_POSITION_VALUES,
+  DEPED_TEACHER_SUBJECT_VALUES,
+} from "../constants/index.js";
 
 const optionalUpperText = z.preprocess((value) => {
   if (value === undefined || value === null) {
@@ -32,6 +36,12 @@ const optionalContactNumber = z.preprocess(
     .nullable(),
 );
 
+const teacherSubjectSchema = z.enum(DEPED_TEACHER_SUBJECT_VALUES);
+
+const teacherPlantillaPositionSchema = z.enum(
+  DEPED_TEACHER_PLANTILLA_POSITION_VALUES,
+);
+
 export const teacherSchema = z.object({
   firstName: z
     .string()
@@ -48,15 +58,35 @@ export const teacherSchema = z.object({
   employeeId: optionalUpperText.optional(),
   contactNumber: optionalContactNumber.optional(),
   specialization: optionalUpperText.optional(),
+  plantillaPosition: z
+    .preprocess(
+      (value) => {
+        if (value === undefined || value === null || value === "") {
+          return null;
+        }
+
+        if (typeof value === "string") {
+          return value.trim().toUpperCase();
+        }
+
+        return value;
+      },
+      z.union([teacherPlantillaPositionSchema, z.null()]),
+    )
+    .optional(),
   subjects: z
     .array(
-      z
-        .string()
-        .trim()
-        .transform((value) => value.toUpperCase()),
+      z.preprocess((value) => {
+        if (typeof value === "string") {
+          return value.trim().toUpperCase();
+        }
+
+        return value;
+      }, teacherSubjectSchema),
     )
     .optional()
-    .default([]),
+    .default([])
+    .transform((subjects) => Array.from(new Set(subjects))),
   photo: z
     .string()
     .startsWith("data:image", "Photo must be a valid base64 data URL")

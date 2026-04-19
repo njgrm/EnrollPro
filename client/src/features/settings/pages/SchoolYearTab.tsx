@@ -134,8 +134,9 @@ interface SYItem {
   classEndDate: string | null;
   _count: {
     gradeLevels: number;
-    applicants: number;
-    enrollments: number;
+    earlyRegistrationApplications: number;
+    enrollmentApplications: number;
+    enrollmentRecords: number;
   };
 }
 
@@ -147,6 +148,15 @@ interface Defaults {
   earlyRegCloseDate: string;
   enrollOpenDate: string;
   enrollCloseDate: string;
+}
+
+interface RolloverSummary {
+  processedRecords: number;
+  createdApplications: number;
+  skippedByEosyOutcome: number;
+  skippedNoTargetGrade: number;
+  skippedExistingApplications: number;
+  skippedDuplicateRecords: number;
 }
 
 export default function SchoolYearTab() {
@@ -164,10 +174,9 @@ export default function SchoolYearTab() {
   const [editClassOpening, setClassOpening] = useState<Date | undefined>();
   const [editClassEnd, setClassEnd] = useState<Date | undefined>();
 
-  const [cloneSettings, setCloneSettings] = useState({
-    gradeLevels: true,
-    sections: true,
-    capacities: false,
+  const [rolloverOptions, setRolloverOptions] = useState({
+    cloneStructure: true,
+    carryOverLearners: true,
   });
 
   // Delete state
@@ -289,7 +298,8 @@ export default function SchoolYearTab() {
         editClassOpening,
         editClassEnd,
       );
-      const payload = {
+
+      const activationPayload = {
         yearLabel: derivedSchedule.yearLabel,
         classOpeningDate: derivedSchedule.classOpeningDate.toISOString(),
         classEndDate: derivedSchedule.classEndDate.toISOString(),
@@ -297,19 +307,44 @@ export default function SchoolYearTab() {
         earlyRegCloseDate: derivedSchedule.earlyRegCloseDate.toISOString(),
         enrollOpenDate: derivedSchedule.enrollOpenDate.toISOString(),
         enrollCloseDate: derivedSchedule.enrollCloseDate.toISOString(),
-        cloneFromId: activeYear?.id || null,
-        cloneOptions: cloneSettings,
       };
 
-      const res = await api.post("/school-years/activate", payload);
+      const requestPath = activeYear
+        ? "/school-years/rollover"
+        : "/school-years/activate";
+      const requestPayload = activeYear
+        ? {
+            classOpeningDate: activationPayload.classOpeningDate,
+            classEndDate: activationPayload.classEndDate,
+            cloneStructure: rolloverOptions.cloneStructure,
+            carryOverLearners: rolloverOptions.carryOverLearners,
+          }
+        : {
+            ...activationPayload,
+            cloneFromId: null,
+          };
+
+      const res = await api.post(requestPath, requestPayload);
+      const rolloverSummary =
+        (res.data.rolloverSummary as RolloverSummary | null | undefined) ??
+        null;
+
       setSettings({
         activeSchoolYearId: res.data.year.id,
         activeSchoolYearLabel: res.data.year.yearLabel,
       });
+
+      const successDescription = activeYear
+        ? rolloverSummary
+          ? `School Year ${derivedSchedule.yearLabel} is now active. ${rolloverSummary.createdApplications} learner application(s) were carried over.`
+          : `School Year ${derivedSchedule.yearLabel} is now active.`
+        : `School Year ${derivedSchedule.yearLabel} is now active.`;
+
       sileo.success({
-        title: "School Year Activated",
-        description: `School Year ${derivedSchedule.yearLabel} is now active.`,
+        title: activeYear ? "Rollover Completed" : "School Year Activated",
+        description: successDescription,
       });
+
       setShowNextForm(false);
       fetchData();
     } catch (err) {
@@ -346,11 +381,14 @@ export default function SchoolYearTab() {
           <CardHeader className="bg-muted border-3 border-border rounded-tl-lg rounded-t-lg">
             <CardTitle className="flex items-center gap-2 text-xl">
               <CalendarIcon className="h-5 w-5" />
-              Smart Setup: School Year {editYearLabel}
+              {activeYear
+                ? `School Year Rollover: ${editYearLabel}`
+                : `School Year Setup: ${editYearLabel}`}
             </CardTitle>
             <CardDescription>
-              We've pre-filled the fields based on DepEd's calendar. You can
-              adjust them if needed.
+              {activeYear
+                ? `Create and activate the next school year from ${activeYear.yearLabel}.`
+                : "We pre-filled the dates based on DepEd calendar defaults. Adjust them as needed."}
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6 space-y-6">
@@ -400,25 +438,28 @@ export default function SchoolYearTab() {
 
             {activeYear && (
               <div className="p-4 border rounded-lg space-y-3">
-                <p className="text-sm font-medium">
-                  Clone from previous year ({activeYear.yearLabel})?
+                <p className="text-sm font-semibold">
+                  Rollover options from {activeYear.yearLabel}
                 </p>
-                <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  EOSY finalization must be completed before rollover can run.
+                </p>
+                <div className="space-y-2 pt-1">
                   <div className="flex items-center space-x-2">
                     <input
                       type="checkbox"
                       id="c1"
                       className="h-4 w-4"
-                      checked={cloneSettings.gradeLevels}
+                      checked={rolloverOptions.cloneStructure}
                       onChange={(e) =>
-                        setCloneSettings({
-                          ...cloneSettings,
-                          gradeLevels: e.target.checked,
+                        setRolloverOptions({
+                          ...rolloverOptions,
+                          cloneStructure: e.target.checked,
                         })
                       }
                     />
                     <label htmlFor="c1" className="text-sm">
-                      Grade Levels (Grade 7–10)
+                      Clone grade levels, sections, and SCP configuration
                     </label>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -426,16 +467,17 @@ export default function SchoolYearTab() {
                       type="checkbox"
                       id="c3"
                       className="h-4 w-4"
-                      checked={cloneSettings.sections}
+                      checked={rolloverOptions.carryOverLearners}
                       onChange={(e) =>
-                        setCloneSettings({
-                          ...cloneSettings,
-                          sections: e.target.checked,
+                        setRolloverOptions({
+                          ...rolloverOptions,
+                          carryOverLearners: e.target.checked,
                         })
                       }
                     />
                     <label htmlFor="c3" className="text-sm">
-                      Section names (without student assignments)
+                      Carry over eligible enrolled learners as continuing
+                      applications
                     </label>
                   </div>
                 </div>
@@ -451,7 +493,7 @@ export default function SchoolYearTab() {
                     setDeleteId(activeYear.id);
                     setDeleteLabel(activeYear.yearLabel);
                   }}
-                  disabled={activeYear._count.enrollments > 0}>
+                  disabled={activeYear._count.enrollmentRecords > 0}>
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete Active Year
                 </Button>
@@ -468,7 +510,13 @@ export default function SchoolYearTab() {
                 onClick={handleActivateNext}
                 className="font-bold"
                 disabled={creating || !editYearLabel.trim()}>
-                {creating ? "Activating..." : "Activate This School Year"}
+                {creating
+                  ? activeYear
+                    ? "Running rollover..."
+                    : "Activating..."
+                  : activeYear
+                    ? "Run Rollover"
+                    : "Activate This School Year"}
               </Button>
             </div>
           </CardContent>
@@ -490,7 +538,7 @@ export default function SchoolYearTab() {
                 {formatManilaDate(activeYear.classEndDate)}
               </p>
               <p className="text-sm font-bold">
-                Enrolled: {activeYear._count.enrollments} students
+                Enrolled: {activeYear._count.enrollmentRecords} students
               </p>
             </div>
             <div className="flex gap-2">
@@ -501,11 +549,11 @@ export default function SchoolYearTab() {
                   setDeleteId(activeYear.id);
                   setDeleteLabel(activeYear.yearLabel);
                 }}
-                disabled={activeYear._count.enrollments > 0}>
+                disabled={activeYear._count.enrollmentRecords > 0}>
                 <Trash2 className="h-4 w-4" />
               </Button>
               <Button onClick={() => setShowNextForm(true)}>
-                Prepare S.Y. {defaults?.yearLabel}{" "}
+                Prepare Rollover to S.Y. {defaults?.yearLabel}{" "}
                 <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </div>
@@ -534,7 +582,7 @@ export default function SchoolYearTab() {
               </div>
               <div className="flex items-center gap-4">
                 <span className=" hidden sm:inline">
-                  {y._count.enrollments} Enrolled
+                  {y._count.enrollmentRecords} Enrolled
                 </span>
                 <Button
                   size="sm"
@@ -544,7 +592,7 @@ export default function SchoolYearTab() {
                     setDeleteId(y.id);
                     setDeleteLabel(y.yearLabel);
                   }}
-                  disabled={y._count.enrollments > 0}>
+                  disabled={y._count.enrollmentRecords > 0}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>

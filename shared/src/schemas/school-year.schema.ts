@@ -9,9 +9,17 @@ export const createSchoolYearSchema = z.object({
   earlyRegCloseDate: z.string().or(z.date()).optional().nullable(),
   enrollOpenDate: z.string().or(z.date()).optional().nullable(),
   enrollCloseDate: z.string().or(z.date()).optional().nullable(),
+  cloneFromId: z.number().int().positive().optional().nullable(),
 });
 
 export const updateSchoolYearSchema = createSchoolYearSchema.partial();
+
+export const rolloverSchoolYearSchema = z.object({
+  classOpeningDate: z.string().or(z.date()),
+  classEndDate: z.string().or(z.date()).optional().nullable(),
+  cloneStructure: z.boolean().optional().default(true),
+  carryOverLearners: z.boolean().optional().default(true),
+});
 
 export const transitionSchoolYearSchema = z.object({
   status: SchoolYearStatusEnum,

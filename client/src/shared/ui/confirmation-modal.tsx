@@ -45,8 +45,6 @@ const variantStyles: Record<
     iconBg: string;
     iconRing: string;
     iconText: string;
-    btnBg: string;
-    btnText: string;
   }
 > = {
   danger: {
@@ -54,40 +52,30 @@ const variantStyles: Record<
     iconBg: "bg-[hsl(var(--primary))]",
     iconRing: "ring-[6px] ring-[hsl(var(--primary)/0.1)]",
     iconText: "text-[hsl(var(--primary-foreground))]",
-    btnBg: "bg-red-500",
-    btnText: "text-white",
   },
   warning: {
     icon: AlertCircle,
     iconBg: "bg-[hsl(var(--primary))]",
     iconRing: "ring-[6px] ring-[hsl(var(--primary)/0.1)]",
     iconText: "text-[hsl(var(--primary-foreground))]",
-    btnBg: "bg-amber-500",
-    btnText: "text-white",
   },
   info: {
     icon: Info,
     iconBg: "bg-[hsl(var(--primary))]",
     iconRing: "ring-[6px] ring-[hsl(var(--primary)/0.1)]",
     iconText: "text-[hsl(var(--primary-foreground))]",
-    btnBg: "bg-blue-500",
-    btnText: "text-white",
   },
   success: {
     icon: CheckCircle2,
     iconBg: "bg-[hsl(var(--primary))]",
     iconRing: "ring-[6px] ring-[hsl(var(--primary)/0.1)]",
     iconText: "text-[hsl(var(--primary-foreground))]",
-    btnBg: "bg-green-500",
-    btnText: "text-white",
   },
   primary: {
     icon: HelpCircle,
     iconBg: "bg-[hsl(var(--primary))]",
     iconRing: "ring-[6px] ring-[hsl(var(--primary)/0.1)]",
     iconText: "text-[hsl(var(--primary-foreground))]",
-    btnBg: "bg-[hsl(var(--primary))]",
-    btnText: "text-[hsl(var(--primary-foreground))]",
   },
 };
 
@@ -175,7 +163,7 @@ export function ConfirmationModal({
             Cancel
           </Button>
 
-          {/* Confirm / destructive */}
+          {/* Confirm / primary action */}
           <Button
             variant="default"
             onClick={() => {
@@ -185,8 +173,8 @@ export function ConfirmationModal({
             disabled={loading}
             className={cn(
               "flex-1 h-12 rounded-2xl font-semibold text-sm",
-              style.btnBg,
-              style.btnText,
+              "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]",
+              "hover:bg-[hsl(var(--primary)/0.9)]",
               "shadow-md",
               "transition-all duration-150 active:scale-[0.97]",
               confirmClassName,

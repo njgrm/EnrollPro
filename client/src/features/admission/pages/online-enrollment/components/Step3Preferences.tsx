@@ -71,10 +71,7 @@ export default function Step3Preferences() {
                 <Select
                   value={scpType}
                   onValueChange={(val: string) =>
-                    setValue(
-                      "scpType",
-                      val as EnrollmentFormData["scpType"],
-                    )
+                    setValue("scpType", val as EnrollmentFormData["scpType"])
                   }>
                   <SelectTrigger className="font-bold">
                     <SelectValue placeholder="Select SCP" />
@@ -270,15 +267,9 @@ export default function Step3Preferences() {
           </Label>
           <Select
             value={watch("learnerType")}
-            onValueChange={(
-              val:
-                | "NEW_ENROLLEE"
-                | "TRANSFEREE"
-                | "RETURNING"
-                | "CONTINUING"
-                | "OSCYA"
-                | "ALS",
-            ) => setValue("learnerType", val)}>
+            onValueChange={(val: "NEW_ENROLLEE" | "TRANSFEREE" | "RETURNING") =>
+              setValue("learnerType", val)
+            }>
             <SelectTrigger className="font-bold">
               <SelectValue />
             </SelectTrigger>
@@ -288,11 +279,6 @@ export default function Step3Preferences() {
               <SelectItem value="RETURNING">
                 Returning Learner (Balik-Aral)
               </SelectItem>
-              <SelectItem value="CONTINUING">Continuing</SelectItem>
-              <SelectItem value="OSCYA">
-                Out-of-School Children Youth & Adults (OSCYA)
-              </SelectItem>
-              <SelectItem value="ALS">ALS Learner</SelectItem>
             </SelectContent>
           </Select>
         </div>

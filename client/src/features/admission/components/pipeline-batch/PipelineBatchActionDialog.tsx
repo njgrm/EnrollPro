@@ -32,7 +32,6 @@ interface PipelineBatchActionDialogProps {
   preflightSummary: PipelineBatchPreflightSummary | null;
   actionFormError: string | null;
   actionReadinessHint: string | null;
-  derivedTargetStatus: string;
   isActionFormReady: boolean;
   actionSubmitCount: number;
   renderActionForm: () => ReactNode;
@@ -50,7 +49,6 @@ export default function PipelineBatchActionDialog({
   preflightSummary,
   actionFormError,
   actionReadinessHint,
-  derivedTargetStatus,
   isActionFormReady,
   actionSubmitCount,
   renderActionForm,
@@ -87,7 +85,7 @@ export default function PipelineBatchActionDialog({
         }
         onOpenChange(nextOpen);
       }}>
-      <DialogContent className="w-[94vw] max-w-[94vw] h-[88vh] overflow-hidden flex flex-col">
+      <DialogContent className="w-[94vw] max-w-[94vw] max-h-[88vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-base font-bold">
             {activeBatchAction?.modalTitle ?? "Batch Action"}
@@ -154,21 +152,6 @@ export default function PipelineBatchActionDialog({
               </div>
             </CollapsibleContent>
           </Collapsible>
-
-          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-1">
-            <p className="text-xs text-foreground font-bold">
-              Current Batch Action
-            </p>
-            <p className="text-sm font-bold">
-              {activeBatchAction?.buttonLabel ?? "No action available"}
-            </p>
-            <p className="text-xs font-bold text-foreground">
-              Target status:{" "}
-              {activeBatchAction?.id === "ASSIGN_REGULAR_SECTION"
-                ? "ENROLLED / TEMPORARILY ENROLLED"
-                : derivedTargetStatus.replaceAll("_", " ") || "N/A"}
-            </p>
-          </div>
 
           {actionFormError && (
             <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2">

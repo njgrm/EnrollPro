@@ -1,5 +1,8 @@
 import type { Request, Response } from "express";
-import type { TeacherDesignationInput } from "@enrollpro/shared";
+import {
+  DEPED_TEACHER_SUBJECT_VALUES,
+  type TeacherDesignationInput,
+} from "@enrollpro/shared";
 import { prisma } from "../../lib/prisma.js";
 import {
   deleteUploadedFileByRelativePath,
@@ -13,6 +16,11 @@ import {
 } from "./atlas-sync.service.js";
 
 const DEFAULT_ADVISORY_EQUIVALENT_HOURS = 5;
+const AUTO_EMPLOYEE_ID_PREFIX = "TCH-";
+const AUTO_EMPLOYEE_ID_DIGITS = 4;
+const AUTO_EMPLOYEE_ID_PATTERN = /^TCH-(\d+)$/;
+const AUTO_EMPLOYEE_ID_MAX_RETRIES = 10;
+const ALLOWED_TEACHER_SUBJECTS = new Set<string>(DEPED_TEACHER_SUBJECT_VALUES);
 
 type ParsedSchoolYearId = number | null | "invalid";
 
@@ -91,6 +99,80 @@ function normalizeContactNumber(value?: string | null): string | null {
 
 function isValidContactNumber(value: string | null): boolean {
   return value === null || /^\d{11}$/.test(value);
+}
+
+function isEmployeeIdUniqueViolation(error: unknown): boolean {
+  const candidate = error as {
+    code?: string;
+    meta?: {
+      target?: unknown;
+    };
+  };
+
+  if (candidate.code !== "P2002") {
+    return false;
+  }
+
+  const target = candidate.meta?.target;
+  if (Array.isArray(target)) {
+    return target.some((entry) => String(entry).includes("employeeId"));
+  }
+
+  return String(target ?? "").includes("employeeId");
+}
+
+function normalizeTeacherSubjects(subjects: unknown): string[] {
+  if (!Array.isArray(subjects)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      subjects
+        .map((subject: unknown) => String(subject).trim().toUpperCase())
+        .filter(
+          (subject: string) =>
+            subject.length > 0 && ALLOWED_TEACHER_SUBJECTS.has(subject),
+        ),
+    ),
+  );
+}
+
+async function getNextAutoEmployeeId(): Promise<string> {
+  const teachers = await prisma.teacher.findMany({
+    where: {
+      employeeId: {
+        startsWith: AUTO_EMPLOYEE_ID_PREFIX,
+      },
+    },
+    select: {
+      employeeId: true,
+    },
+  });
+
+  let maxSequence = 0;
+  for (const teacher of teachers) {
+    const employeeId = teacher.employeeId;
+    if (!employeeId) {
+      continue;
+    }
+
+    const match = employeeId.match(AUTO_EMPLOYEE_ID_PATTERN);
+    if (!match) {
+      continue;
+    }
+
+    const parsed = Number.parseInt(match[1], 10);
+    if (!Number.isInteger(parsed) || parsed < 0) {
+      continue;
+    }
+
+    if (parsed > maxSequence) {
+      maxSequence = parsed;
+    }
+  }
+
+  return `${AUTO_EMPLOYEE_ID_PREFIX}${String(maxSequence + 1).padStart(AUTO_EMPLOYEE_ID_DIGITS, "0")}`;
 }
 
 function toDateOnlyString(value: Date | null): string | null {
@@ -390,6 +472,7 @@ export async function index(req: Request, res: Response) {
         email: teacher.email,
         contactNumber: teacher.contactNumber,
         specialization: teacher.specialization,
+        plantillaPosition: teacher.plantillaPosition,
         photoPath: teacher.photoPath,
         isActive: teacher.isActive,
         createdAt: teacher.createdAt,
@@ -468,6 +551,7 @@ export async function store(req: Request, res: Response) {
       employeeId,
       contactNumber,
       specialization,
+      plantillaPosition,
       subjects,
       photo,
     } = req.body;
@@ -488,15 +572,8 @@ export async function store(req: Request, res: Response) {
         .json({ message: "Contact number must be exactly 11 digits" });
     }
 
-    const normalizedSubjects = Array.isArray(subjects)
-      ? Array.from(
-          new Set(
-            subjects
-              .map((subject: unknown) => String(subject).trim().toUpperCase())
-              .filter((subject: string) => subject.length > 0),
-          ),
-        )
-      : [];
+    const normalizedSubjects = normalizeTeacherSubjects(subjects);
+    const normalizedEmployeeId = normalizeOptionalUpperText(employeeId);
 
     let stagedPhotoPath: string | null = null;
     if (typeof photo === "string" && photo.trim().length > 0) {
@@ -508,26 +585,53 @@ export async function store(req: Request, res: Response) {
 
     const teacher = await (async () => {
       try {
-        return await prisma.teacher.create({
-          data: {
-            firstName: normalizedFirstName,
-            lastName: normalizedLastName,
-            middleName: normalizeOptionalUpperText(middleName),
-            email: normalizeOptionalText(email),
-            employeeId: normalizeOptionalUpperText(employeeId),
-            contactNumber: normalizedContactNumber,
-            specialization: normalizeOptionalUpperText(specialization),
-            photoPath: stagedPhotoPath,
-            subjects: normalizedSubjects.length
-              ? {
-                  createMany: {
-                    data: normalizedSubjects.map((subject) => ({ subject })),
-                  },
-                }
-              : undefined,
-          },
-          include: { subjects: true },
-        });
+        const createTeacher = async (resolvedEmployeeId: string | null) => {
+          return prisma.teacher.create({
+            data: {
+              firstName: normalizedFirstName,
+              lastName: normalizedLastName,
+              middleName: normalizeOptionalUpperText(middleName),
+              email: normalizeOptionalText(email),
+              employeeId: resolvedEmployeeId,
+              contactNumber: normalizedContactNumber,
+              specialization: normalizeOptionalUpperText(specialization),
+              plantillaPosition: normalizeOptionalUpperText(plantillaPosition),
+              photoPath: stagedPhotoPath,
+              subjects: normalizedSubjects.length
+                ? {
+                    createMany: {
+                      data: normalizedSubjects.map((subject) => ({ subject })),
+                    },
+                  }
+                : undefined,
+            },
+            include: { subjects: true },
+          });
+        };
+
+        if (normalizedEmployeeId) {
+          return createTeacher(normalizedEmployeeId);
+        }
+
+        for (
+          let attempt = 0;
+          attempt < AUTO_EMPLOYEE_ID_MAX_RETRIES;
+          attempt++
+        ) {
+          const generatedEmployeeId = await getNextAutoEmployeeId();
+
+          try {
+            return await createTeacher(generatedEmployeeId);
+          } catch (error) {
+            if (!isEmployeeIdUniqueViolation(error)) {
+              throw error;
+            }
+          }
+        }
+
+        throw new Error(
+          "Unable to auto-generate a unique Employee ID. Please try again.",
+        );
       } catch (error) {
         if (stagedPhotoPath) {
           deleteUploadedFileByRelativePath(stagedPhotoPath);
@@ -554,7 +658,7 @@ export async function store(req: Request, res: Response) {
 
     res.status(201).json({ teacher, atlasSync: mapAtlasSync(atlasSync) });
   } catch (error: any) {
-    if (error.code === "P2002" && error.meta?.target?.includes("employeeId")) {
+    if (isEmployeeIdUniqueViolation(error)) {
       return res.status(400).json({ message: "Employee ID already exists" });
     }
     res.status(500).json({ message: error.message });
@@ -576,6 +680,7 @@ export async function update(req: Request, res: Response) {
       employeeId,
       contactNumber,
       specialization,
+      plantillaPosition,
       subjects,
       photo,
     } = req.body;
@@ -585,15 +690,8 @@ export async function update(req: Request, res: Response) {
       return res.status(404).json({ message: "Teacher not found" });
     }
 
-    const normalizedSubjects = Array.isArray(subjects)
-      ? Array.from(
-          new Set(
-            subjects
-              .map((subject: unknown) => String(subject).trim().toUpperCase())
-              .filter((subject: string) => subject.length > 0),
-          ),
-        )
-      : undefined;
+    const normalizedSubjects =
+      subjects !== undefined ? normalizeTeacherSubjects(subjects) : undefined;
 
     const normalizedContactNumber =
       contactNumber !== undefined
@@ -664,6 +762,12 @@ export async function update(req: Request, res: Response) {
               ...(specialization !== undefined
                 ? { specialization: normalizeOptionalUpperText(specialization) }
                 : {}),
+              ...(plantillaPosition !== undefined
+                ? {
+                    plantillaPosition:
+                      normalizeOptionalUpperText(plantillaPosition),
+                  }
+                : {}),
               ...(stagedPhotoPath !== undefined
                 ? { photoPath: stagedPhotoPath }
                 : {}),
@@ -708,7 +812,7 @@ export async function update(req: Request, res: Response) {
 
     res.json({ teacher, atlasSync: mapAtlasSync(atlasSync) });
   } catch (error: any) {
-    if (error.code === "P2002" && error.meta?.target?.includes("employeeId")) {
+    if (isEmployeeIdUniqueViolation(error)) {
       return res.status(400).json({ message: "Employee ID already exists" });
     }
     res.status(500).json({ message: error.message });

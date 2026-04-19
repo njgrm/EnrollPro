@@ -3,7 +3,6 @@ import { useSettingsStore } from "@/store/settings.slice";
 import { sileo } from "sileo";
 import { useAuthStore } from "@/store/auth.slice";
 import {
-  UserCog,
   Search,
   Plus,
   Edit2,
@@ -15,7 +14,6 @@ import {
   ArrowDown,
   RefreshCw,
   ShieldAlert,
-  Check,
   Copy,
   Briefcase,
   IdCard,
@@ -48,7 +46,6 @@ import {
 import { ConfirmationModal } from "@/shared/ui/confirmation-modal";
 import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group";
 import { motion, AnimatePresence } from "motion/react";
-import { Skeleton } from "@/shared/ui/skeleton";
 import { useDelayedLoading } from "@/shared/hooks/useDelayedLoading";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/shared/ui/data-table";
@@ -893,7 +890,7 @@ export default function AdminUsers() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 w-full max-w-full overflow-x-hidden">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
           <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
@@ -961,7 +958,7 @@ export default function AdminUsers() {
         </Card>
       </div>
 
-      <Card className="border-none shadow-sm bg-[hsl(var(--card))]">
+      <Card className="w-full min-w-0 overflow-hidden border-none shadow-sm bg-[hsl(var(--card))]">
         <CardHeader className="px-3 sm:px-6 pb-3">
           <div className="flex flex-col md:flex-row gap-3 md:gap-4 items-stretch md:items-end">
             <div className="flex-1 space-y-2 w-full">
@@ -1048,7 +1045,7 @@ export default function AdminUsers() {
         </CardHeader>
       </Card>
 
-      <Card className="border-none shadow-sm bg-[hsl(var(--card))]">
+      <Card className="w-full min-w-0 overflow-hidden border-none shadow-sm bg-[hsl(var(--card))]">
         <CardHeader className="px-3 sm:px-6 pb-2">
           <CardTitle className="text-base sm:text-lg font-extrabold">
             Staff Accounts
@@ -1057,7 +1054,7 @@ export default function AdminUsers() {
             Showing {users.length} of {total} users
           </p>
         </CardHeader>
-        <CardContent className="px-3 sm:px-6 pb-4">
+        <CardContent className="px-3 sm:px-6 pb-4 min-w-0">
           <div className="md:hidden space-y-3">
             {showSkeleton ? (
               Array.from({ length: 4 }).map((_, index) => (
@@ -1265,11 +1262,12 @@ export default function AdminUsers() {
             )}
           </div>
 
-          <div className="hidden md:block">
+          <div className="hidden md:block w-full max-w-full overflow-x-hidden">
             <DataTable
               columns={columns}
               data={users}
               loading={showSkeleton}
+              tableClassName="table-fixed w-full"
               noResultsMessage="No users found matching the selected criteria."
             />
           </div>

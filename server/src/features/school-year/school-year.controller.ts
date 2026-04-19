@@ -6,6 +6,7 @@ export {
 } from "./controllers/school-year.query.controller.js";
 export {
   createSchoolYear,
+  rolloverSchoolYear,
   toggleOverride,
   updateDates,
   updateSchoolYear,

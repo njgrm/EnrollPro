@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/shared/ui/select";
 import { DataTable } from "@/shared/ui/data-table";
+import type { ColumnDef } from "@tanstack/react-table";
 import type {
   AcademicStatusValue,
   ChecklistFieldKey,
@@ -159,9 +160,7 @@ export default function PipelineBatchVerifyGrid({
                     className="h-7 w-36 text-[11px] font-bold"
                     placeholder="12-digit LRN"
                     maxLength={12}
-                    disabled={
-                      isBatchProcessing || savingLrnId === applicant.id
-                    }
+                    disabled={isBatchProcessing || savingLrnId === applicant.id}
                   />
                   <Button
                     type="button"
@@ -186,9 +185,7 @@ export default function PipelineBatchVerifyGrid({
                     size="sm"
                     variant="ghost"
                     className="h-7 px-1"
-                    disabled={
-                      isBatchProcessing || savingLrnId === applicant.id
-                    }
+                    disabled={isBatchProcessing || savingLrnId === applicant.id}
                     onClick={() => onCancelLrnEdit(applicant.id)}>
                     <X className="size-3.5" />
                   </Button>

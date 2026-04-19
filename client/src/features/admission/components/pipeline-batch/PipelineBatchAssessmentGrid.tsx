@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { Input } from "@/shared/ui/input";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { DataTable } from "@/shared/ui/data-table";
+import type { ColumnDef } from "@tanstack/react-table";
 import type {
   Application,
   RankingFormulaComponent,
@@ -37,6 +38,24 @@ export default function PipelineBatchAssessmentGrid({
   setAbsentNoShow,
   isScoreValueInvalid,
 }: PipelineBatchAssessmentGridProps) {
+  const scoreInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const handleScoreChange = useCallback(
+    (applicantId: number, componentKey: string, value: string) => {
+      updateScoreCell(applicantId, componentKey, value);
+
+      requestAnimationFrame(() => {
+        const inputKey = `${applicantId}:${componentKey}`;
+        const input = scoreInputRefs.current[inputKey];
+        if (!input || input.disabled) return;
+        if (document.activeElement !== input) {
+          input.focus();
+        }
+      });
+    },
+    [updateScoreCell],
+  );
+
   const columns = useMemo<ColumnDef<Application>[]>(() => {
     const cols: ColumnDef<Application>[] = [
       {
@@ -83,13 +102,17 @@ export default function PipelineBatchAssessmentGrid({
           return (
             <div className="flex justify-center min-w-[170px]">
               <Input
+                ref={(node) => {
+                  scoreInputRefs.current[`${applicant.id}:${component.key}`] =
+                    node;
+                }}
                 type="number"
                 min={0}
                 max={100}
                 step="1"
                 value={scoreValue}
                 onChange={(event) =>
-                  updateScoreCell(
+                  handleScoreChange(
                     applicant.id,
                     component.key,
                     event.target.value,
@@ -181,7 +204,7 @@ export default function PipelineBatchAssessmentGrid({
     scoreComponents,
     scoreGridRows,
     isBatchProcessing,
-    updateScoreCell,
+    handleScoreChange,
     updateScoreRemarks,
     setAbsentNoShow,
     isScoreValueInvalid,

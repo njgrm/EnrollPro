@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { Input } from "@/shared/ui/input";
 import {
   Select,
@@ -27,6 +27,25 @@ export default function PipelineBatchFinalizeInterviewGrid({
   isBatchProcessing,
   updateFinalizeRow,
 }: PipelineBatchFinalizeInterviewGridProps) {
+  const scoreInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+
+  const handleInterviewScoreChange = useCallback(
+    (applicantId: number, value: string) => {
+      updateFinalizeRow(applicantId, {
+        interviewScore: value,
+      });
+
+      requestAnimationFrame(() => {
+        const input = scoreInputRefs.current[applicantId];
+        if (!input || input.disabled) return;
+        if (document.activeElement !== input) {
+          input.focus();
+        }
+      });
+    },
+    [updateFinalizeRow],
+  );
+
   const columns = useMemo<ColumnDef<Application>[]>(() => {
     return [
       {
@@ -60,16 +79,17 @@ export default function PipelineBatchFinalizeInterviewGrid({
           return (
             <div className="flex justify-center min-w-[140px]">
               <Input
+                ref={(node) => {
+                  scoreInputRefs.current[applicant.id] = node;
+                }}
                 type="number"
                 min={0}
                 max={100}
                 step="1"
                 value={rowData.interviewScore}
-                onChange={(event) =>
-                  updateFinalizeRow(applicant.id, {
-                    interviewScore: event.target.value,
-                  })
-                }
+                onChange={(event) => {
+                  handleInterviewScoreChange(applicant.id, event.target.value);
+                }}
                 disabled={isBatchProcessing}
                 className="h-8 w-24 text-center text-sm font-bold"
               />
@@ -176,7 +196,12 @@ export default function PipelineBatchFinalizeInterviewGrid({
         },
       },
     ];
-  }, [finalizeInterviewRows, isBatchProcessing, updateFinalizeRow]);
+  }, [
+    finalizeInterviewRows,
+    isBatchProcessing,
+    updateFinalizeRow,
+    handleInterviewScoreChange,
+  ]);
 
   return (
     <div className="space-y-3 min-h-0 flex flex-col">

@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
+import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
@@ -21,6 +22,7 @@ import earlyRegRoutes from "./features/early-registration/early-reg.router.js";
 import eosyRoutes from "./features/enrollment/eosy.router.js";
 import integrationRoutes from "./features/integration/integration.router.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { historicalReadOnlyGuard } from "./middleware/historical-read-only.guard.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -69,6 +71,8 @@ app.use(
 );
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
+app.use(cookieParser());
+app.use(historicalReadOnlyGuard);
 
 // Static files for uploads
 app.use("/uploads", express.static(uploadsDir));
