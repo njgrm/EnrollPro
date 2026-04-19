@@ -13,6 +13,7 @@ import EarlyRegistrationDetail from "@/features/admission/pages/early-registrati
 import RegistrationPipelines from "@/features/admission/pages/pipelines/RegistrationPipelines";
 import Enrollment from "@/features/enrollment/pages/Index";
 import EosyUpdating from "@/features/enrollment/pages/EosyIndex";
+import WalkInEncoder from "@/features/enrollment/pages/WalkInEncoder";
 import Students from "@/features/students/pages/Index";
 import Profile from "@/features/students/pages/Profile";
 import LearnerPortal from "@/features/learner/pages/LearnerPortal";
@@ -144,6 +145,14 @@ export const router = createBrowserRouter([
             element: (
               <AppLayout>
                 <Enrollment />
+              </AppLayout>
+            ),
+          },
+          {
+            path: "/monitoring/enrollment/walk-in",
+            element: (
+              <AppLayout>
+                <WalkInEncoder />
               </AppLayout>
             ),
           },

@@ -37,10 +37,22 @@ Use this order:
 
 See [Subsystem API Quick Start](./SUBSYSTEM_API_QUICK_START.md) for shared setup.
 
+## Connection Model (Host and Team)
+
+- Host machine only: Node connects to PostgreSQL at `localhost:5432`.
+- Team machines: fetch API from host at `http://100.120.169.123:5000`.
+
+API endpoint bases for this system:
+
+- Main API base: `http://100.120.169.123:5000/api`
+- Integration API base: `http://100.120.169.123:5000/api/integration/v1`
+
 ## 1. Environment Values
 
 ```env
 ENROLLPRO_BASE_URL="http://100.120.169.123:5000"
+ENROLLPRO_API_BASE_URL="http://100.120.169.123:5000/api"
+ENROLLPRO_INTEGRATION_BASE_URL="http://100.120.169.123:5000/api/integration/v1"
 ```
 
 ## 2. Health Checks Before Fetch
@@ -107,18 +119,18 @@ Meta fields to keep for logging:
 
 ```js
 async function fetchAtlasFaculty() {
-  const base = process.env.ENROLLPRO_BASE_URL;
+  const integrationBase =
+    process.env.ENROLLPRO_INTEGRATION_BASE_URL ||
+    "http://100.120.169.123:5000/api/integration/v1";
 
-  const defaultRes = await fetch(
-    `${base}/api/integration/v1/default/atlas/faculty`,
-  );
+  const defaultRes = await fetch(`${integrationBase}/default/atlas/faculty`);
 
   if (defaultRes.ok) {
     return defaultRes.json();
   }
 
   // Optional testing fallback
-  const sampleRes = await fetch(`${base}/api/integration/v1/sample/teachers`);
+  const sampleRes = await fetch(`${integrationBase}/sample/teachers`);
   if (!sampleRes.ok) {
     throw new Error("Both default and sample ATLAS feeds failed");
   }

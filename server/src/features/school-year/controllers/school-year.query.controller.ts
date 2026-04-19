@@ -8,9 +8,50 @@ function parseSchoolYearId(req: Request): number {
   return Number.parseInt(String(req.params.id ?? ""), 10);
 }
 
+function parseSchoolYearIdFromQuery(req: Request): number | null {
+  const raw = req.query.schoolYearId;
+  if (raw == null || raw === "") return null;
+
+  const parsed = Number.parseInt(String(raw), 10);
+  return Number.isInteger(parsed) ? parsed : null;
+}
+
 export function createSchoolYearQueryController(
   deps: SchoolYearControllerDeps = createSchoolYearControllerDeps(),
 ) {
+  async function listGradeLevels(req: Request, res: Response): Promise<void> {
+    let schoolYearId = parseSchoolYearIdFromQuery(req);
+
+    if (!schoolYearId) {
+      const setting = await deps.prisma.schoolSetting.findFirst({
+        select: { activeSchoolYearId: true },
+      });
+      schoolYearId = setting?.activeSchoolYearId ?? null;
+    }
+
+    if (!schoolYearId) {
+      const activeYear = await deps.prisma.schoolYear.findFirst({
+        where: { status: "ACTIVE" },
+        orderBy: { createdAt: "desc" },
+        select: { id: true },
+      });
+      schoolYearId = activeYear?.id ?? null;
+    }
+
+    if (!schoolYearId) {
+      res.status(422).json({ message: "No active school year found." });
+      return;
+    }
+
+    const gradeLevels = await deps.prisma.gradeLevel.findMany({
+      where: { schoolYearId },
+      orderBy: { displayOrder: "asc" },
+      select: { id: true, name: true, displayOrder: true },
+    });
+
+    res.json({ gradeLevels, schoolYearId });
+  }
+
   async function listSchoolYears(_req: Request, res: Response): Promise<void> {
     const years = await deps.prisma.schoolYear.findMany({
       orderBy: { createdAt: "desc" },
@@ -66,6 +107,7 @@ export function createSchoolYearQueryController(
   }
 
   return {
+    listGradeLevels,
     listSchoolYears,
     getNextDefaults,
     getSchoolYear,
@@ -74,5 +116,9 @@ export function createSchoolYearQueryController(
 
 const schoolYearQueryController = createSchoolYearQueryController();
 
-export const { listSchoolYears, getNextDefaults, getSchoolYear } =
-  schoolYearQueryController;
+export const {
+  listGradeLevels,
+  listSchoolYears,
+  getNextDefaults,
+  getSchoolYear,
+} = schoolYearQueryController;

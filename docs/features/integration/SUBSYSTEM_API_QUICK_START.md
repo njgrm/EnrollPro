@@ -29,6 +29,22 @@ Notes:
 
 - Use Tailnet DNS if your team prefers hostname.
 
+## 1.1 Connection Map (Host as Gatekeeper)
+
+With standard ports (PostgreSQL 5432 and Node 5000), only the host machine needs database access.
+Teammate devices should call API endpoints only.
+
+| Device       | Action                    | Address/Port                |
+| ------------ | ------------------------- | --------------------------- |
+| Host Machine | Node connects to local DB | localhost:5432              |
+| Host Machine | Node listens for team     | 0.0.0.0:5000                |
+| Team Machine | React/frontend fetches    | http://100.120.169.123:5000 |
+
+API endpoint bases for this system:
+
+- Main API base: `http://100.120.169.123:5000/api`
+- Integration API base: `http://100.120.169.123:5000/api/integration/v1`
+
 ## 2. Start Order (Must Follow)
 
 ### Step A: Start EnrollPro API first (host machine)
@@ -44,6 +60,30 @@ or API only:
 ```bash
 pnpm run dev:server
 ```
+
+### Step A.1: Host Implementation and Firewall Checklist
+
+In your Node/Express code (index.js), connect to PostgreSQL locally, then expose API on all host interfaces:
+
+```js
+// Database config (internal to host)
+const pool = new Pool({
+  host: "localhost",
+  port: 5432,
+  // ...other credentials
+});
+
+// Express config (external to teammates)
+const PORT = 5000;
+app.listen(PORT, "0.0.0.0", () => {
+  console.log("Team can now connect at http://100.120.169.123:5000");
+});
+```
+
+Open host firewall for port 5000:
+
+- Windows: Firewall and Network Protection -> Advanced Settings -> Inbound Rules -> New Rule -> Allow TCP 5000.
+- Linux (ufw): `sudo ufw allow 5000/tcp`
 
 ### Step B: Start your subsystem app (your machine)
 
@@ -181,11 +221,36 @@ Shared support feed (public):
 
 - Staff list: `GET /api/integration/v1/staff`
 
-Sample feeds (keyless, for demo/testing):
+Sample feeds (for demo/testing):
 
 - `GET /api/integration/v1/sample/teachers`
 - `GET /api/integration/v1/sample/staff`
 - `GET /api/integration/v1/sample/students`
+
+## 4.1 How Teammates Fetch (React Example)
+
+Teammate apps should use the host Tailnet API endpoint base, not `localhost`.
+
+```js
+// Use this system's Tailnet API endpoint base
+const API_BASE_URL = "http://100.120.169.123:5000/api";
+const INTEGRATION_BASE_URL = "http://100.120.169.123:5000/api/integration/v1";
+
+// Example: main API route
+const usersUrl = `${API_BASE_URL}/users`;
+
+// Example: integration route
+const staffFeedUrl = `${INTEGRATION_BASE_URL}/staff`;
+
+async function fetchData(url) {
+  const response = await fetch(url);
+  const data = await response.json();
+  console.log(data);
+}
+
+fetchData(usersUrl);
+fetchData(staffFeedUrl);
+```
 
 ## 5. Common Error Meanings
 
@@ -212,6 +277,16 @@ Sample feeds (keyless, for demo/testing):
 
 - Add startup wait logic before your first fetch.
 - Do not start sync jobs at import time.
+
+5. Ping works but API still fails:
+
+- Usually CORS policy in Express or host firewall blocking port 5000.
+
+6. Team needs host details quickly:
+
+- Host Tailscale IPv4 from `tailscale ip -4`
+- API Port: `5000`
+- Team members must be in the same Tailnet (or have shared access)
 
 ## 7. Next Guides
 

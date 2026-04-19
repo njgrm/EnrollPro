@@ -81,6 +81,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/school-years", schoolYearRoutes);
+// Backward-compatible singular alias used by legacy clients.
+app.use("/api/school-year", schoolYearRoutes);
 app.use("/api/curriculum", curriculumRoutes);
 app.use("/api/sections", sectionsRoutes);
 app.use("/api/students", studentsRoutes);

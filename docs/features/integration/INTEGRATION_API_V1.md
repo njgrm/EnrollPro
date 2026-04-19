@@ -9,6 +9,20 @@ This document defines the external read-only integration surface for partner sys
 - Data model note: learner primary key is internal Int, external integrations should use learner.externalId (UUID)
 - Scope model: schoolYearId query scoping for roster, faculty, and section routes
 
+## System Endpoint Bases (Current Host)
+
+For this EnrollPro deployment, use these base endpoints:
+
+- Host base: `http://100.120.169.123:5000`
+- Main API base: `http://100.120.169.123:5000/api`
+- Integration API base: `http://100.120.169.123:5000/api/integration/v1`
+
+Connection model:
+
+- Host machine only: Node -> PostgreSQL on `localhost:5432`.
+- Team machines: API calls to host on `http://100.120.169.123:5000`.
+- Team machines do not connect directly to PostgreSQL.
+
 ## Companion Guides (Simple English)
 
 Use these guides for subsystem-specific setup and fetch flow.

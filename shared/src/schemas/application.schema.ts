@@ -246,6 +246,76 @@ export const rejectSchema = z.object({
   rejectionReason: z.string().optional(),
 });
 
+export const unenrollSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(1, "Reason is required")
+    .max(200, "Reason must not exceed 200 characters"),
+  note: z
+    .string()
+    .trim()
+    .max(500, "Note must not exceed 500 characters")
+    .optional()
+    .nullable(),
+});
+
+export const specialEnrollmentSchema = z
+  .object({
+    lrn: z
+      .string()
+      .trim()
+      .regex(/^\d{12}$/, "LRN must be exactly 12 numeric digits")
+      .optional()
+      .nullable(),
+    firstName: z.string().trim().min(1, "First name is required"),
+    lastName: z.string().trim().min(1, "Last name is required"),
+    middleName: z.string().trim().optional().nullable(),
+    extensionName: z.string().trim().optional().nullable(),
+    birthdate: z.string().or(z.date()),
+    sex: SexEnum,
+    learnerType: z.enum(["NEW_ENROLLEE", "TRANSFEREE", "RETURNING", "ALS"]),
+    applicantType: ApplicantTypeEnum.default("REGULAR"),
+    gradeLevelId: z.number().int().positive("Grade level is required"),
+    academicStatus: z.enum(["PROMOTED", "RETAINED"]).default("PROMOTED"),
+    originSchoolName: z.string().trim().optional().nullable(),
+    peptCertificateNumber: z.string().trim().optional().nullable(),
+    peptPassingDate: z.string().or(z.date()).optional().nullable(),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      data.learnerType === "TRANSFEREE" &&
+      (!data.originSchoolName || data.originSchoolName.trim().length === 0)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["originSchoolName"],
+        message: "Origin school name is required for transferees.",
+      });
+    }
+
+    if (data.learnerType === "ALS") {
+      if (
+        !data.peptCertificateNumber ||
+        data.peptCertificateNumber.length === 0
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["peptCertificateNumber"],
+          message: "PEPT certificate number is required for ALS/PEPT passers.",
+        });
+      }
+
+      if (!data.peptPassingDate) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["peptPassingDate"],
+          message: "PEPT passing date is required for ALS/PEPT passers.",
+        });
+      }
+    }
+  });
+
 export const scheduleExamSchema = z.object({
   examDate: z.string().or(z.date()),
   examTime: z.string().optional().nullable(),

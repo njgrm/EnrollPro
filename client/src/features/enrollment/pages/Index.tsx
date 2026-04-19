@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import {
   Search,
   Eye,
@@ -46,6 +46,7 @@ import {
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Sheet, SheetContent } from "@/shared/ui/sheet";
 import { Label } from "@/shared/ui/label";
+import { Textarea } from "@/shared/ui/textarea";
 import { useDelayedLoading } from "@/shared/hooks/useDelayedLoading";
 import { format } from "date-fns";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -54,7 +55,6 @@ import { ApplicationDetailPanel } from "@/features/enrollment/components/Applica
 import { ScheduleExamDialog } from "@/features/enrollment/components/ScheduleExamDialog";
 import { StatusBadge } from "@/features/enrollment/components/StatusBadge";
 import { EnrollmentWorkflowTabs } from "@/features/enrollment/components/EnrollmentWorkflowTabs";
-import { SpecialEnrollmentDialog } from "@/features/enrollment/components/SpecialEnrollmentDialog";
 import {
   ENROLLMENT_SUB_MENU_DESCRIPTIONS,
   ENROLLMENT_SUB_MENU_OPTIONS,
@@ -71,6 +71,7 @@ interface Application {
   id: number;
   lrn: string;
   isPendingLrnCreation: boolean;
+  learnerType?: string;
   lastName: string;
   firstName: string;
   middleName: string | null;
@@ -95,6 +96,34 @@ interface SectionOption {
   enrolledCount: number;
   availableSlots: number;
   isFull: boolean;
+}
+
+type PendingQueueFilter = "ALL" | "INCOMING_G7" | "CONTINUING_JHS";
+type WalkInRouteType = "new-learner" | "transferee" | "pept" | "balik-aral";
+
+const PENDING_QUEUE_FILTER_OPTIONS: Array<{
+  value: PendingQueueFilter;
+  label: string;
+}> = [
+  { value: "ALL", label: "All" },
+  { value: "INCOMING_G7", label: "Incoming G7" },
+  { value: "CONTINUING_JHS", label: "Continuing JHS" },
+];
+
+const UNENROLL_REASONS = [
+  "Data Entry Error",
+  "Transferred before opening of classes",
+  "Requested withdrawal by guardian",
+  "Duplicate enrollment record",
+  "Other registrar correction",
+] as const;
+
+function extractGradeLevelNumber(rawGradeLevel: string): number | null {
+  const match = rawGradeLevel.match(/\d+/);
+  if (!match) return null;
+
+  const parsed = Number.parseInt(match[0], 10);
+  return Number.isNaN(parsed) ? null : parsed;
 }
 
 function formatGradeLevelLabel(gradeLevelName: string): string {
@@ -152,6 +181,7 @@ function resolveWorkflowFromQuery(value: string | null): EnrollmentSubMenu {
 export default function Enrollment() {
   const { activeSchoolYearId, viewingSchoolYearId } = useSettingsStore();
   const ayId = viewingSchoolYearId ?? activeSchoolYearId;
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const workflowParam = searchParams.get("workflow");
   const searchParam = searchParams.get("search");
@@ -170,6 +200,8 @@ export default function Enrollment() {
   // Filters
   const [search, setSearch] = useState(() => searchParam?.trim() ?? "");
   const [page, setPage] = useState(1);
+  const [pendingQueueFilter, setPendingQueueFilter] =
+    useState<PendingQueueFilter>("ALL");
 
   const [sectionOptionsByApplicationId, setSectionOptionsByApplicationId] =
     useState<Record<number, SectionOption[]>>({});
@@ -190,14 +222,17 @@ export default function Enrollment() {
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
   const [scheduleStep, setScheduleStep] = useState<AssessmentStep | null>(null);
 
-  const [isSpecialEnrollOpen, setIsSpecialEnrollOpen] = useState(false);
-  const [initialEnrollmentType, setInitialEnrollmentType] =
-    useState<string>("TRANSFEREE");
-
-  const openSpecialEnroll = (type: string) => {
-    setInitialEnrollmentType(type);
-    setIsSpecialEnrollOpen(true);
-  };
+  const [unenrollDialog, setUnenrollDialog] = useState<{
+    open: boolean;
+    application: Application | null;
+    reason: string;
+    note: string;
+  }>({
+    open: false,
+    application: null,
+    reason: "",
+    note: "",
+  });
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
@@ -205,6 +240,46 @@ export default function Enrollment() {
   const [selectedBatchIds, setSelectedBatchIds] = useState<number[]>([]);
   const [isBatchAssigning, setIsBatchAssigning] = useState(false);
   const [batchSectionId, setBatchSectionId] = useState<string>("");
+  const [isBatchAssignModalOpen, setIsBatchAssignModalOpen] = useState(false);
+  const [batchSectionOptions, setBatchSectionOptions] = useState<
+    SectionOption[]
+  >([]);
+  const [batchSectionOptionsLoading, setBatchSectionOptionsLoading] =
+    useState(false);
+
+  const visibleApplications = useMemo(() => {
+    if (workflowView !== "PENDING_VERIFICATION") {
+      return applications;
+    }
+
+    if (pendingQueueFilter === "ALL") {
+      return applications;
+    }
+
+    return applications.filter((application) => {
+      const gradeLevelNumber = extractGradeLevelNumber(
+        application.gradeLevel.name,
+      );
+
+      if (pendingQueueFilter === "INCOMING_G7") {
+        return gradeLevelNumber === 7;
+      }
+
+      return application.learnerType === "CONTINUING";
+    });
+  }, [applications, pendingQueueFilter, workflowView]);
+
+  const visibleApplicationIds = useMemo(
+    () => visibleApplications.map((application) => application.id),
+    [visibleApplications],
+  );
+
+  const isAllVisibleSelected = useMemo(
+    () =>
+      visibleApplicationIds.length > 0 &&
+      visibleApplicationIds.every((id) => selectedBatchIds.includes(id)),
+    [visibleApplicationIds, selectedBatchIds],
+  );
 
   const toggleBatchSelect = (id: number) => {
     setSelectedBatchIds((prev) =>
@@ -213,12 +288,52 @@ export default function Enrollment() {
   };
 
   const selectAllVisible = () => {
-    if (selectedBatchIds.length === applications.length) {
-      setSelectedBatchIds([]);
-    } else {
-      setSelectedBatchIds(applications.map((app) => app.id));
+    if (visibleApplicationIds.length === 0) return;
+
+    if (isAllVisibleSelected) {
+      setSelectedBatchIds((prev) =>
+        prev.filter((id) => !visibleApplicationIds.includes(id)),
+      );
+      return;
     }
+
+    setSelectedBatchIds((prev) =>
+      Array.from(new Set([...prev, ...visibleApplicationIds])),
+    );
   };
+
+  const openWalkInEncoder = useCallback(
+    (type: WalkInRouteType) => {
+      navigate(`/monitoring/enrollment/walk-in?type=${type}`);
+    },
+    [navigate],
+  );
+
+  const openBatchAssignModal = useCallback(async () => {
+    if (selectedBatchIds.length === 0) {
+      sileo.error({
+        title: "No Learners Selected",
+        description: "Select at least one learner before opening batch action.",
+      });
+      return;
+    }
+
+    setBatchSectionId("");
+    setBatchSectionOptions([]);
+    setIsBatchAssignModalOpen(true);
+    setBatchSectionOptionsLoading(true);
+
+    try {
+      const response = await api.get(
+        `/applications/${selectedBatchIds[0]}/sections`,
+      );
+      setBatchSectionOptions(response.data.sections ?? []);
+    } catch (err) {
+      toastApiError(err as never);
+    } finally {
+      setBatchSectionOptionsLoading(false);
+    }
+  }, [selectedBatchIds]);
 
   const fetchData = useCallback(async () => {
     if (!ayId) {
@@ -390,26 +505,55 @@ export default function Enrollment() {
     [sectionSelectionByApplicationId, fetchData],
   );
 
-  const handleUnenroll = useCallback(
-    async (app: Application) => {
-      const confirmed = window.confirm(
-        `Are you sure you want to UN-ENROL ${app.firstName} ${app.lastName}? \n\nThis will remove them from their assigned section and free up seat capacity.`,
-      );
-      if (!confirmed) return;
+  const openUnenrollDialog = useCallback((app: Application) => {
+    setUnenrollDialog({
+      open: true,
+      application: app,
+      reason: "",
+      note: "",
+    });
+  }, []);
 
-      try {
-        await api.patch(`/applications/${app.id}/unenroll`);
-        sileo.success({
-          title: "Un-enrolled",
-          description: "Learner has been removed from the official roster.",
-        });
-        fetchData();
-      } catch (err) {
-        toastApiError(err as never);
-      }
-    },
-    [fetchData],
-  );
+  const closeUnenrollDialog = useCallback(() => {
+    setUnenrollDialog({
+      open: false,
+      application: null,
+      reason: "",
+      note: "",
+    });
+  }, []);
+
+  const handleUnenrollSubmit = useCallback(async () => {
+    if (!unenrollDialog.application) return;
+
+    if (!unenrollDialog.reason) {
+      sileo.error({
+        title: "Reason Required",
+        description: "Select a reason before un-enrolling this learner.",
+      });
+      return;
+    }
+
+    try {
+      await api.patch(
+        `/applications/${unenrollDialog.application.id}/unenroll`,
+        {
+          reason: unenrollDialog.reason,
+          note: unenrollDialog.note.trim() || undefined,
+        },
+      );
+
+      sileo.success({
+        title: "Un-enrolled",
+        description: "Learner has been removed from the official roster.",
+      });
+
+      closeUnenrollDialog();
+      await fetchData();
+    } catch (err) {
+      toastApiError(err as never);
+    }
+  }, [closeUnenrollDialog, fetchData, unenrollDialog]);
 
   const columns = useMemo<ColumnDef<Application>[]>(() => {
     const cols: ColumnDef<Application>[] = [];
@@ -419,10 +563,7 @@ export default function Enrollment() {
         id: "select",
         header: () => (
           <Checkbox
-            checked={
-              applications.length > 0 &&
-              selectedBatchIds.length === applications.length
-            }
+            checked={isAllVisibleSelected}
             onCheckedChange={selectAllVisible}
             className="border-primary-foreground data-[state=checked]:bg-white data-[state=checked]:text-primary mx-auto block"
           />
@@ -441,7 +582,7 @@ export default function Enrollment() {
     cols.push(
       {
         id: "student",
-        header: "STUDENT",
+        header: "LEARNER",
         cell: ({ row }) => (
           <div className="flex flex-col gap-1 text-left min-w-[200px]">
             <span className="font-bold text-sm uppercase">
@@ -608,7 +749,7 @@ export default function Enrollment() {
                   className="h-8 text-sm font-bold border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
                   onClick={(e) => {
                     e.stopPropagation();
-                    void handleUnenroll(app);
+                    openUnenrollDialog(app);
                   }}>
                   <LogOut className="h-3.5 w-3.5 mr-1" />
                   Un-enrol
@@ -653,7 +794,7 @@ export default function Enrollment() {
                   ) : (
                     <>
                       <School className="h-3.5 w-3.5 mr-1" />
-                      Enroll & Assign
+                      Finalize + Assign
                     </>
                   )
                 ) : (
@@ -671,7 +812,7 @@ export default function Enrollment() {
     return cols;
   }, [
     workflowView,
-    applications,
+    isAllVisibleSelected,
     selectedBatchIds,
     sectionSelectionByApplicationId,
     sectionOptionsByApplicationId,
@@ -681,9 +822,20 @@ export default function Enrollment() {
     toggleBatchSelect,
     ensureSectionOptionsLoaded,
     handleAssignAndEnroll,
-    handleUnenroll,
+    openUnenrollDialog,
     setSelectedId,
   ]);
+
+  useEffect(() => {
+    if (workflowView !== "PENDING_VERIFICATION") {
+      setPendingQueueFilter("ALL");
+    }
+
+    if (workflowView !== "SECTION_ASSIGNMENT") {
+      setSelectedBatchIds([]);
+      setBatchSectionId("");
+    }
+  }, [workflowView]);
 
   const handleBatchAssign = async () => {
     if (!batchSectionId) {
@@ -694,11 +846,6 @@ export default function Enrollment() {
       return;
     }
 
-    const confirmed = window.confirm(
-      `Are you sure you want to assign ${selectedBatchIds.length} learners to the selected section and enroll them?`,
-    );
-    if (!confirmed) return;
-
     setIsBatchAssigning(true);
     try {
       await api.post("/applications/batch-assign-section", {
@@ -708,11 +855,12 @@ export default function Enrollment() {
 
       sileo.success({
         title: "Batch Assignment Success",
-        description: `${selectedBatchIds.length} learners have been assigned and enrolled.`,
+        description: `${selectedBatchIds.length} learners were finalized and assigned to the selected LIS section.`,
       });
 
       setSelectedBatchIds([]);
       setBatchSectionId("");
+      setIsBatchAssignModalOpen(false);
       fetchData();
     } catch (err) {
       toastApiError(err as never);
@@ -850,10 +998,10 @@ export default function Enrollment() {
       <div className="flex-1 flex flex-col space-y-4 sm:space-y-6 overflow-auto px-2 sm:px-0 pb-24">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-primary">
+            <h1 className="text-3xl font-bold tracking-tight">
               Enrollment Management
             </h1>
-            <p className="font-bold">
+            <p className="text-xs font-bold">
               {ENROLLMENT_SUB_MENU_DESCRIPTIONS[workflowView]}
             </p>
           </div>
@@ -870,16 +1018,28 @@ export default function Enrollment() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 font-bold">
                 <DropdownMenuItem
-                  onClick={() => openSpecialEnroll("TRANSFEREE")}
+                  onClick={() => openWalkInEncoder("new-learner")}
                   className="cursor-pointer">
                   <UserPlus className="mr-2 h-4 w-4" />
-                  Encode Walk-In / Transferee
+                  Enrol New Learner (No existing LRN)
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => openSpecialEnroll("PEPT_PASSER")}
+                  onClick={() => openWalkInEncoder("transferee")}
+                  className="cursor-pointer">
+                  <School className="mr-2 h-4 w-4" />
+                  Enrol Transferee (From another school)
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => openWalkInEncoder("pept")}
                   className="cursor-pointer">
                   <Zap className="mr-2 h-4 w-4 text-amber-500" />
-                  Encode Accelerated / PEPT Passer
+                  Enrol Accelerated / PEPT Passer
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => openWalkInEncoder("balik-aral")}
+                  className="cursor-pointer">
+                  <UserCheck className="mr-2 h-4 w-4" />
+                  Enrol Balik-Aral
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -956,12 +1116,61 @@ export default function Enrollment() {
                 Reset
               </Button>
             </div>
+
+            {workflowView === "PENDING_VERIFICATION" && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Queue Filter
+                </span>
+                {PENDING_QUEUE_FILTER_OPTIONS.map((option) => (
+                  <Button
+                    key={option.value}
+                    type="button"
+                    variant={
+                      pendingQueueFilter === option.value
+                        ? "default"
+                        : "outline"
+                    }
+                    size="sm"
+                    className="h-8 text-xs font-bold"
+                    onClick={() => {
+                      setPendingQueueFilter(option.value);
+                    }}>
+                    {option.label}
+                  </Button>
+                ))}
+              </div>
+            )}
+
+            {workflowView === "SECTION_ASSIGNMENT" && (
+              <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-primary">
+                    LIS BOSY Batch Action
+                  </p>
+                  <p className="text-xs font-semibold text-muted-foreground">
+                    Selected learners: {selectedBatchIds.length}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8 text-xs font-bold"
+                  disabled={selectedBatchIds.length === 0}
+                  onClick={() => {
+                    void openBatchAssignModal();
+                  }}>
+                  <School className="h-3.5 w-3.5 mr-1" />
+                  Open Batch Section Assignment
+                </Button>
+              </div>
+            )}
           </CardHeader>
 
           <CardContent className="px-3 sm:px-6">
             <DataTable
               columns={columns}
-              data={applications}
+              data={visibleApplications}
               loading={showSkeleton}
               onRowClick={(app) => {
                 if (workflowView === "SECTION_ASSIGNMENT") {
@@ -975,7 +1184,7 @@ export default function Enrollment() {
 
             <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mt-4 font-bold">
               <span className="text-xs text-muted-foreground">
-                Showing {applications.length} learners in{" "}
+                Showing {visibleApplications.length} learners in{" "}
                 {
                   ENROLLMENT_SUB_MENU_OPTIONS.find(
                     (option) => option.value === workflowView,
@@ -1351,78 +1560,197 @@ export default function Enrollment() {
         onCloseSheet={() => setSelectedId(null)}
       />
 
-      <SpecialEnrollmentDialog
-        open={isSpecialEnrollOpen}
-        onOpenChange={setIsSpecialEnrollOpen}
-        onSuccess={fetchData}
-        initialType={initialEnrollmentType}
-      />
+      <Dialog
+        open={unenrollDialog.open}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeUnenrollDialog();
+          }
+        }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-xs font-bold uppercase tracking-wider">
+              Un-enrol Learner
+            </DialogTitle>
+            <DialogDescription className="text-xs font-semibold">
+              Record the reason for removing this learner from the official
+              roster.
+            </DialogDescription>
+          </DialogHeader>
 
-      {/* Floating Action Bar for Batch Assignment */}
-      {selectedBatchIds.length > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <Card className="shadow-2xl border-primary bg-primary text-primary-foreground px-6 py-4 flex items-center gap-6">
-            <div className="flex flex-col">
-              <span className="text-sm font-bold">
-                {selectedBatchIds.length} learners selected
-              </span>
-              <span className="text-[10px] opacity-90 uppercase tracking-wider font-bold">
-                Batch Section Assignment
-              </span>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider">
+                Learner
+              </Label>
+              <p className="text-xs font-semibold">
+                {unenrollDialog.application
+                  ? `${unenrollDialog.application.lastName}, ${unenrollDialog.application.firstName}`
+                  : "N/A"}
+              </p>
             </div>
 
-            <div className="h-8 w-px bg-primary-foreground/20" />
-
-            <div className="flex items-center gap-3">
+            <div className="space-y-2">
+              <Label
+                htmlFor="unenrollReason"
+                className="text-xs font-bold uppercase tracking-wider">
+                Reason
+              </Label>
               <Select
-                value={batchSectionId}
-                onValueChange={setBatchSectionId}
-                onOpenChange={(open) => {
-                  if (open && selectedBatchIds.length > 0) {
-                    void ensureSectionOptionsLoaded(selectedBatchIds[0]);
-                  }
+                value={unenrollDialog.reason}
+                onValueChange={(value) => {
+                  setUnenrollDialog((prev) => ({ ...prev, reason: value }));
                 }}>
-                <SelectTrigger className="h-10 w-48 bg-white text-black font-bold border-none">
-                  <SelectValue placeholder="Select Section" />
+                <SelectTrigger
+                  id="unenrollReason"
+                  className="h-10 text-xs font-bold">
+                  <SelectValue placeholder="Select reason" />
                 </SelectTrigger>
                 <SelectContent>
-                  {selectedBatchIds.length > 0 &&
-                    (
-                      sectionOptionsByApplicationId[selectedBatchIds[0]] || []
-                    ).map((section) => (
-                      <SelectItem
-                        key={section.id}
-                        value={String(section.id)}
-                        disabled={section.isFull}>
-                        {section.name} ({section.enrolledCount}/
-                        {section.maxCapacity})
-                      </SelectItem>
-                    ))}
+                  {UNENROLL_REASONS.map((reason) => (
+                    <SelectItem key={reason} value={reason}>
+                      {reason}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-
-              <Button
-                className="bg-white text-primary hover:bg-white/90 font-bold h-10 px-6"
-                onClick={handleBatchAssign}
-                disabled={isBatchAssigning || !batchSectionId}>
-                {isBatchAssigning ? (
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <UserCheck className="h-4 w-4 mr-2" />
-                )}
-                Batch Assign & Enrol
-              </Button>
-
-              <Button
-                variant="ghost"
-                className="text-primary-foreground hover:bg-white/10 h-10 px-4 font-bold"
-                onClick={() => setSelectedBatchIds([])}>
-                Cancel
-              </Button>
             </div>
-          </Card>
-        </div>
-      )}
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="unenrollNote"
+                className="text-xs font-bold uppercase tracking-wider">
+                Note (Optional)
+              </Label>
+              <Textarea
+                id="unenrollNote"
+                value={unenrollDialog.note}
+                onChange={(event) => {
+                  setUnenrollDialog((prev) => ({
+                    ...prev,
+                    note: event.target.value,
+                  }));
+                }}
+                placeholder="Add extra details for audit context"
+                className="min-h-24 text-xs font-semibold"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              className="text-xs font-bold"
+              onClick={closeUnenrollDialog}>
+              Cancel
+            </Button>
+            <Button
+              className="text-xs font-bold bg-destructive hover:bg-destructive/90"
+              disabled={!unenrollDialog.reason}
+              onClick={() => {
+                void handleUnenrollSubmit();
+              }}>
+              Confirm Un-enrol
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isBatchAssignModalOpen}
+        onOpenChange={(open) => {
+          setIsBatchAssignModalOpen(open);
+          if (!open) {
+            setBatchSectionId("");
+          }
+        }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-xs font-bold uppercase tracking-wider">
+              Batch Section Assignment
+            </DialogTitle>
+            <DialogDescription className="text-xs font-semibold">
+              Finalize official enrollment and assign selected learners to one
+              section in a single LIS BOSY action.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Selected Learners
+              </p>
+              <p className="text-sm font-bold">{selectedBatchIds.length}</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="batchSection"
+                className="text-xs font-bold uppercase tracking-wider">
+                Target Section
+              </Label>
+              <Select value={batchSectionId} onValueChange={setBatchSectionId}>
+                <SelectTrigger
+                  id="batchSection"
+                  className="h-10 text-xs font-bold">
+                  <SelectValue
+                    placeholder={
+                      batchSectionOptionsLoading
+                        ? "Loading sections..."
+                        : "Select section"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {batchSectionOptionsLoading && (
+                    <SelectItem value="LOADING" disabled>
+                      Loading sections...
+                    </SelectItem>
+                  )}
+                  {!batchSectionOptionsLoading &&
+                    batchSectionOptions.length === 0 && (
+                      <SelectItem value="NO_SECTION_AVAILABLE" disabled>
+                        No sections available
+                      </SelectItem>
+                    )}
+                  {batchSectionOptions.map((section) => (
+                    <SelectItem
+                      key={section.id}
+                      value={String(section.id)}
+                      disabled={section.isFull}>
+                      {section.name} ({section.enrolledCount}/
+                      {section.maxCapacity})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              className="text-xs font-bold"
+              onClick={() => {
+                setIsBatchAssignModalOpen(false);
+              }}>
+              Cancel
+            </Button>
+            <Button
+              className="text-xs font-bold"
+              disabled={
+                isBatchAssigning ||
+                !batchSectionId ||
+                selectedBatchIds.length === 0
+              }
+              onClick={() => {
+                void handleBatchAssign();
+              }}>
+              {isBatchAssigning ? "Assigning..." : "Confirm Batch Assignment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

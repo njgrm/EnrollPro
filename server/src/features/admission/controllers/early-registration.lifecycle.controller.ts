@@ -544,6 +544,10 @@ export function createEarlyRegistrationLifecycleController(
   async function unenroll(req: Request, res: Response, next: NextFunction) {
     try {
       const applicantId = parseInt(String(req.params.id));
+      const reason = String(req.body.reason ?? "").trim();
+      const note =
+        typeof req.body.note === "string" ? req.body.note.trim() : undefined;
+
       const { data: applicant } = await findApplicantOrThrow(applicantId);
 
       if (applicant.status !== "ENROLLED") {
@@ -575,7 +579,7 @@ export function createEarlyRegistrationLifecycleController(
       await auditLog({
         userId: req.user!.userId,
         actionType: "APPLICATION_UNENROLLED",
-        description: `Unenrolled learner ${updated.learner.firstName} ${updated.learner.lastName} (#${applicantId})`,
+        description: `Unenrolled learner ${updated.learner.firstName} ${updated.learner.lastName} (#${applicantId}). Reason: ${reason}.${note ? ` Note: ${note}` : ""}`,
         subjectType: "EnrollmentApplication",
         recordId: applicantId,
         req,
@@ -634,6 +638,26 @@ export function createEarlyRegistrationLifecycleController(
         throw new AppError(422, "No active school year found.");
       }
 
+      const existingEnrollment = await prisma.enrollmentApplication.findFirst({
+        where: {
+          learnerId: learner.id,
+          schoolYearId: settings.activeSchoolYearId,
+          status: { notIn: ["REJECTED", "WITHDRAWN"] },
+        },
+        select: {
+          id: true,
+          status: true,
+          trackingNumber: true,
+        },
+      });
+
+      if (existingEnrollment) {
+        throw new AppError(
+          409,
+          `An active enrollment already exists for this learner (Tracking: ${existingEnrollment.trackingNumber ?? `#${existingEnrollment.id}`}, Status: ${existingEnrollment.status}).`,
+        );
+      }
+
       // 3. Create Enrollment Application
       const application = await prisma.enrollmentApplication.create({
         data: {
@@ -642,7 +666,7 @@ export function createEarlyRegistrationLifecycleController(
           gradeLevelId: parseInt(String(gradeLevelId)),
           applicantType: applicantType as any,
           learnerType: learnerType as any,
-          status: "SUBMITTED",
+          status: "VERIFIED",
           admissionChannel: "F2F",
           encodedById: req.user!.userId,
           isPrivacyConsentGiven: true,
@@ -671,7 +695,7 @@ export function createEarlyRegistrationLifecycleController(
       await auditLog({
         userId: req.user!.userId,
         actionType: "APPLICATION_SUBMITTED",
-        description: `Walk-in special enrollment created for ${updated.learner.firstName} ${updated.learner.lastName} (#${updated.id})`,
+        description: `Walk-in special enrollment created and auto-verified for ${updated.learner.firstName} ${updated.learner.lastName} (#${updated.id})`,
         subjectType: "EnrollmentApplication",
         recordId: updated.id,
         req,

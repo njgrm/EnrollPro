@@ -23,6 +23,19 @@ The sample seed creates:
 - 10 staff user records (SYSTEM_ADMIN and REGISTRAR)
 - 10 enrolled learner records with grade level and section mappings
 
+## Connection model and endpoint bases
+
+For this EnrollPro setup:
+
+- Host machine only: Node connects to PostgreSQL at `localhost:5432`.
+- Team machines call API on `http://100.120.169.123:5000`.
+- Team machines do not connect to PostgreSQL directly.
+
+API endpoint bases:
+
+- Main API base: `http://100.120.169.123:5000/api`
+- Integration API base: `http://100.120.169.123:5000/api/integration/v1`
+
 ## Endpoint groups
 
 Default partner feeds (public):

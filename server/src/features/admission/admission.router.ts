@@ -6,6 +6,7 @@ import {
   applicationSubmitSchema,
   approveSchema,
   rejectSchema,
+  unenrollSchema,
   scheduleExamSchema,
   recordResultSchema,
   rescheduleExamSchema,
@@ -17,6 +18,7 @@ import {
   recordStepResultSchema,
   rescheduleAssessmentStepSchema,
   batchProcessSchema,
+  specialEnrollmentSchema,
 } from "@enrollpro/shared";
 import * as ctrl from "./early-registration.controller.js";
 import * as docCtrl from "./document.controller.js";
@@ -195,12 +197,14 @@ router.patch(
   "/:id/unenroll",
   authenticate,
   authorize("REGISTRAR", "SYSTEM_ADMIN"),
+  validate(unenrollSchema),
   ctrl.unenroll,
 );
 router.post(
   "/special-enrollment",
   authenticate,
   authorize("REGISTRAR", "SYSTEM_ADMIN"),
+  validate(specialEnrollmentSchema),
   ctrl.specialEnrollment,
 );
 router.patch(

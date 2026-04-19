@@ -20,18 +20,63 @@ All subsystems must use these static addresses for cross-module communication.
 ### A. Connectivity Prerequisites
 
 - MagicDNS: Ensure Tailscale is connected. Always prefer the .ts.net hostname over raw IP.
-- Firewall: The EnrollPro host must keep ports 5000 (API) and 5432 (PostgreSQL) open.
+- Firewall: The EnrollPro host must allow port 5000 for teammate API access.
 - Vite: Run frontend dev servers with --host for cross-device testing.
 
-### B. Shared Database Access (PostgreSQL)
+### B. Host-Only Database Access (PostgreSQL)
 
-To fetch students, teachers, and registrars directly from EnrollPro host:
+Only the EnrollPro host machine should connect to PostgreSQL on port 5432.
+Teammate machines should not connect to PostgreSQL directly.
+
+Host-side database example:
 
 ```env
 DATABASE_URL="postgresql://postgres:postgres@enrollpro.buru-degree.ts.net:5432/enrollpro?schema=public"
 ```
 
-### C. Authorized Data Scope
+### C. Connection Map (Standard Ports)
+
+Because teammate systems only consume API feeds, the Node/Express server is the gatekeeper.
+
+| Device       | Action                    | Address/Port                |
+| ------------ | ------------------------- | --------------------------- |
+| Host Machine | Node connects to local DB | localhost:5432              |
+| Host Machine | Node listens for team     | 0.0.0.0:5000                |
+| Team Machine | React/frontend fetches    | http://100.120.169.123:5000 |
+
+API endpoint bases for this system:
+
+- Main API base: http://100.120.169.123:5000/api
+- Integration API base: http://100.120.169.123:5000/api/integration/v1
+- Health endpoints:
+  - http://100.120.169.123:5000/api/health
+  - http://100.120.169.123:5000/api/integration/v1/health
+
+### D. Host Implementation Steps
+
+In your Node/Express host code (index.js):
+
+```js
+// Database config (internal to host)
+const pool = new Pool({
+  host: "localhost",
+  port: 5432,
+  // ...other credentials
+});
+
+// Express config (external to teammates)
+const PORT = 5000;
+app.listen(PORT, "0.0.0.0", () => {
+  console.log("Team can now connect at http://100.120.169.123:5000");
+});
+```
+
+Open host firewall for port 5000:
+
+- Windows: Firewall and Network Protection -> Advanced Settings -> Inbound Rules -> New Rule -> Allow TCP 5000.
+- Linux (ufw): `sudo ufw allow 5000/tcp`
+
+### E. Authorized Data Scope
 
 Subsystems are authorized to fetch:
 
@@ -58,6 +103,27 @@ Operational boundary:
 - SMART still performs academic record operations in SMART.
 - AIMS still performs assessment and remediation operations in AIMS.
 
+### Team Fetch Example (React)
+
+Teammate apps should call the host Tailnet API endpoint base, not localhost.
+
+```js
+const API_BASE_URL = "http://100.120.169.123:5000/api";
+const INTEGRATION_BASE_URL = "http://100.120.169.123:5000/api/integration/v1";
+
+const usersUrl = `${API_BASE_URL}/users`;
+const staffFeedUrl = `${INTEGRATION_BASE_URL}/staff`;
+
+async function fetchData(url) {
+  const response = await fetch(url);
+  const data = await response.json();
+  console.log(data);
+}
+
+fetchData(usersUrl);
+fetchData(staffFeedUrl);
+```
+
 ## 4. Real-Time Data Flow Logic
 
 - Single source of truth: Data is not copied between devices; one database lives on EnrollPro host.
@@ -78,6 +144,7 @@ Operational boundary:
 - CORS error: Update CLIENT_URLS in server .env to include requester Tailscale hostname.
 - DNS fail: Use fallback host 100.120.169.123 temporarily.
 - Data not found: Ensure learner status is ENROLLED or COMPLETED as required by consumer flow.
+- Ping works but API fails: Usually CORS config in Express or firewall block on port 5000.
 
 ## 7. Security Rule (Mandatory)
 
@@ -117,3 +184,16 @@ Use these files for teammate setup and API fetch flow.
 - AIMS guide: docs/features/integration/AIMS_API_GUIDE.md
 - SMART guide: docs/features/integration/SMART_API_GUIDE.md
 - Full endpoint spec: docs/features/integration/INTEGRATION_API_V1.md
+
+## 10. Team Quick Check
+
+1. Host runs `tailscale ip -4` and shares the IP with teammates.
+2. Teammates confirm they are logged into the same Tailnet.
+3. Teammates test reachability:
+
+```bash
+ping 100.120.169.123
+curl http://100.120.169.123:5000/api/health
+```
+
+If ping works but API calls fail, check CORS and host firewall rules.

@@ -40,6 +40,13 @@ router.post(
   ctrl.reopenSection,
 );
 
+router.get(
+  "/school-year/:schoolYearId/export-lock",
+  authenticate,
+  authorize("REGISTRAR", "SYSTEM_ADMIN"),
+  ctrl.getSchoolYearExportLock,
+);
+
 router.post(
   "/school-year/finalize",
   authenticate,

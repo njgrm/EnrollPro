@@ -20,7 +20,6 @@ import {
 import { sileo } from "sileo";
 import api from "@/shared/api/axiosInstance";
 import { toastApiError } from "@/shared/hooks/useApiToast";
-import { useSettingsStore } from "@/store/settings.slice";
 
 interface SpecialEnrollmentDialogProps {
   open: boolean;
@@ -35,9 +34,10 @@ export function SpecialEnrollmentDialog({
   onSuccess,
   initialType = "TRANSFEREE",
 }: SpecialEnrollmentDialogProps) {
-  const { activeSchoolYearId } = useSettingsStore();
   const [loading, setLoading] = useState(false);
-  const [gradeLevels, setGradeLevels] = useState<{ id: number; name: string }[]>([]);
+  const [gradeLevels, setGradeLevels] = useState<
+    { id: number; name: string }[]
+  >([]);
 
   const [formData, setFormData] = useState({
     lrn: "",
@@ -68,7 +68,7 @@ export function SpecialEnrollmentDialog({
 
   const fetchGradeLevels = async () => {
     try {
-      const res = await api.get("/school-year/grade-levels");
+      const res = await api.get("/school-years/grade-levels");
       setGradeLevels(res.data.gradeLevels || res.data || []);
     } catch (err) {
       console.error("Failed to fetch grade levels", err);
@@ -77,8 +77,14 @@ export function SpecialEnrollmentDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.firstName || !formData.lastName || !formData.birthdate || !formData.sex || !formData.gradeLevelId) {
+
+    if (
+      !formData.firstName ||
+      !formData.lastName ||
+      !formData.birthdate ||
+      !formData.sex ||
+      !formData.gradeLevelId
+    ) {
       sileo.error({
         title: "Required Fields",
         description: "Please fill in all required fields.",
@@ -89,15 +95,20 @@ export function SpecialEnrollmentDialog({
     if (formData.learnerType === "TRANSFEREE" && !formData.originSchoolName) {
       sileo.error({
         title: "Origin School Required",
-        description: "Please provide the name of the school student is transferring from.",
+        description:
+          "Please provide the name of the school student is transferring from.",
       });
       return;
     }
 
-    if (formData.learnerType === "PEPT_PASSER" && (!formData.peptCertificateNumber || !formData.peptPassingDate)) {
+    if (
+      formData.learnerType === "PEPT_PASSER" &&
+      (!formData.peptCertificateNumber || !formData.peptPassingDate)
+    ) {
       sileo.error({
         title: "PEPT Details Required",
-        description: "Please provide the PEPT Certificate Number and Passing Date.",
+        description:
+          "Please provide the PEPT Certificate Number and Passing Date.",
       });
       return;
     }
@@ -107,7 +118,8 @@ export function SpecialEnrollmentDialog({
       await api.post("/applications/special-enrollment", formData);
       sileo.success({
         title: "Success",
-        description: "Special enrollment created successfully. Student is now in the verification queue.",
+        description:
+          "Special enrollment created successfully. Student is now in the verification queue.",
       });
       onSuccess();
       onOpenChange(false);
@@ -140,35 +152,52 @@ export function SpecialEnrollmentDialog({
             Walk-in / Special Enrollment
           </DialogTitle>
           <DialogDescription>
-            Directly inject Transferees or PEPT Passers into the official verification queue.
+            Directly inject Transferees or PEPT Passers into the official
+            verification queue.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="lrn" className="text-xs font-bold uppercase">LRN (12 Digits - Optional)</Label>
+              <Label htmlFor="lrn" className="text-xs font-bold uppercase">
+                LRN (12 Digits - Optional)
+              </Label>
               <Input
                 id="lrn"
                 placeholder="Enter LRN"
                 value={formData.lrn}
-                onChange={(e) => setFormData({ ...formData, lrn: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, lrn: e.target.value })
+                }
                 className="h-10 font-bold"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="learnerType" className="text-xs font-bold uppercase">Enrollment Type</Label>
+              <Label
+                htmlFor="learnerType"
+                className="text-xs font-bold uppercase">
+                Enrollment Type
+              </Label>
               <Select
                 value={formData.learnerType}
-                onValueChange={(val) => setFormData({ ...formData, learnerType: val })}>
+                onValueChange={(val) =>
+                  setFormData({ ...formData, learnerType: val })
+                }>
                 <SelectTrigger className="h-10 font-bold">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="TRANSFEREE">Transferee (from other school)</SelectItem>
+                  <SelectItem value="TRANSFEREE">
+                    Transferee (from other school)
+                  </SelectItem>
                   <SelectItem value="PEPT_PASSER">ALS / PEPT Passer</SelectItem>
-                  <SelectItem value="NEW_ENROLLEE">New Enrollee (Late Registration)</SelectItem>
-                  <SelectItem value="RETURNING">Balik-Aral (Returning)</SelectItem>
+                  <SelectItem value="NEW_ENROLLEE">
+                    New Enrollee (Late Registration)
+                  </SelectItem>
+                  <SelectItem value="RETURNING">
+                    Balik-Aral (Returning)
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -176,13 +205,22 @@ export function SpecialEnrollmentDialog({
 
           {formData.learnerType === "TRANSFEREE" && (
             <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-              <Label htmlFor="originSchoolName" className="text-xs font-bold uppercase">Origin School Name *</Label>
+              <Label
+                htmlFor="originSchoolName"
+                className="text-xs font-bold uppercase">
+                Origin School Name *
+              </Label>
               <Input
                 id="originSchoolName"
                 placeholder="e.g. Manila Science High School"
                 required
                 value={formData.originSchoolName}
-                onChange={(e) => setFormData({ ...formData, originSchoolName: e.target.value.toUpperCase() })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    originSchoolName: e.target.value.toUpperCase(),
+                  })
+                }
                 className="h-10 font-bold uppercase"
               />
             </div>
@@ -191,24 +229,42 @@ export function SpecialEnrollmentDialog({
           {formData.learnerType === "PEPT_PASSER" && (
             <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
               <div className="space-y-2">
-                <Label htmlFor="peptCertificateNumber" className="text-xs font-bold uppercase">PEPT Cert No. *</Label>
+                <Label
+                  htmlFor="peptCertificateNumber"
+                  className="text-xs font-bold uppercase">
+                  PEPT Cert No. *
+                </Label>
                 <Input
                   id="peptCertificateNumber"
                   placeholder="Cert Number"
                   required
                   value={formData.peptCertificateNumber}
-                  onChange={(e) => setFormData({ ...formData, peptCertificateNumber: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      peptCertificateNumber: e.target.value,
+                    })
+                  }
                   className="h-10 font-bold"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="peptPassingDate" className="text-xs font-bold uppercase">Passing Date *</Label>
+                <Label
+                  htmlFor="peptPassingDate"
+                  className="text-xs font-bold uppercase">
+                  Passing Date *
+                </Label>
                 <Input
                   id="peptPassingDate"
                   type="date"
                   required
                   value={formData.peptPassingDate}
-                  onChange={(e) => setFormData({ ...formData, peptPassingDate: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      peptPassingDate: e.target.value,
+                    })
+                  }
                   className="h-10 font-bold"
                 />
               </div>
@@ -217,24 +273,40 @@ export function SpecialEnrollmentDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="firstName" className="text-xs font-bold uppercase">First Name *</Label>
+              <Label
+                htmlFor="firstName"
+                className="text-xs font-bold uppercase">
+                First Name *
+              </Label>
               <Input
                 id="firstName"
                 placeholder="First Name"
                 required
                 value={formData.firstName}
-                onChange={(e) => setFormData({ ...formData, firstName: e.target.value.toUpperCase() })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    firstName: e.target.value.toUpperCase(),
+                  })
+                }
                 className="h-10 font-bold uppercase"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="lastName" className="text-xs font-bold uppercase">Last Name *</Label>
+              <Label htmlFor="lastName" className="text-xs font-bold uppercase">
+                Last Name *
+              </Label>
               <Input
                 id="lastName"
                 placeholder="Last Name"
                 required
                 value={formData.lastName}
-                onChange={(e) => setFormData({ ...formData, lastName: e.target.value.toUpperCase() })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    lastName: e.target.value.toUpperCase(),
+                  })
+                }
                 className="h-10 font-bold uppercase"
               />
             </div>
@@ -242,18 +314,26 @@ export function SpecialEnrollmentDialog({
 
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="birthdate" className="text-xs font-bold uppercase">Birthdate *</Label>
+              <Label
+                htmlFor="birthdate"
+                className="text-xs font-bold uppercase">
+                Birthdate *
+              </Label>
               <Input
                 id="birthdate"
                 type="date"
                 required
                 value={formData.birthdate}
-                onChange={(e) => setFormData({ ...formData, birthdate: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, birthdate: e.target.value })
+                }
                 className="h-10 font-bold"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="sex" className="text-xs font-bold uppercase">Sex *</Label>
+              <Label htmlFor="sex" className="text-xs font-bold uppercase">
+                Sex *
+              </Label>
               <Select
                 value={formData.sex}
                 onValueChange={(val) => setFormData({ ...formData, sex: val })}>
@@ -267,10 +347,16 @@ export function SpecialEnrollmentDialog({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="gradeLevel" className="text-xs font-bold uppercase">Grade to Enroll *</Label>
+              <Label
+                htmlFor="gradeLevel"
+                className="text-xs font-bold uppercase">
+                Grade to Enroll *
+              </Label>
               <Select
                 value={formData.gradeLevelId}
-                onValueChange={(val) => setFormData({ ...formData, gradeLevelId: val })}>
+                onValueChange={(val) =>
+                  setFormData({ ...formData, gradeLevelId: val })
+                }>
                 <SelectTrigger className="h-10 font-bold">
                   <SelectValue placeholder="Select" />
                 </SelectTrigger>
@@ -287,7 +373,9 @@ export function SpecialEnrollmentDialog({
 
           <div className="p-3 rounded-lg bg-blue-50 border border-blue-100">
             <p className="text-xs text-blue-700 italic">
-              Note: This student will be created as a <strong>Regular (BEC)</strong> applicant and will appear immediately in the Pending Verification tab for document checking.
+              Note: This student will be created as a{" "}
+              <strong>Regular (BEC)</strong> applicant and will appear
+              immediately in the Pending Verification tab for document checking.
             </p>
           </div>
 
