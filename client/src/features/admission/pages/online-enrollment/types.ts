@@ -134,6 +134,7 @@ export const EnrollmentFormSchema = z
     contactNumber: z
       .string()
       .regex(/^09\d{2}-\d{3}-\d{4}$/, "Use format 09XX-XXX-XXXX."),
+    isContactInfoConfirmed: z.boolean().default(false),
     guardianRelationship: z.string().optional().nullable(),
     email: z
       .string()
@@ -235,6 +236,24 @@ export const EnrollmentFormSchema = z
           path: ["sportsList"],
         });
       }
+
+      if (!data.earlyRegistrationId) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "SCP applicants must complete Early Registration and run LRN lookup before final enrollment.",
+          path: ["earlyRegistrationId"],
+        });
+      }
+    }
+
+    if (data.earlyRegistrationId && !data.isContactInfoConfirmed) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Please confirm that your contact details are current before submitting enrollment.",
+        path: ["isContactInfoConfirmed"],
+      });
     }
 
     const isMotherAvailable = !data.hasNoMother;

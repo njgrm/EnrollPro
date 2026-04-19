@@ -704,8 +704,7 @@ export default function AdminUsers() {
                       ...editFormData,
                       role: value,
                     })
-                  }
-                >
+                  }>
                   <SelectTrigger className="h-8 w-32 text-xs font-bold uppercase">
                     <SelectValue />
                   </SelectTrigger>
@@ -798,8 +797,7 @@ export default function AdminUsers() {
                   size="sm"
                   className="h-8 px-2 text-xs gap-1 font-bold"
                   onClick={() => handleUpdate(user.id)}
-                  disabled={submitting}
-                >
+                  disabled={submitting}>
                   <CheckIcon className="h-3 w-3" />
                   Update
                 </Button>
@@ -808,8 +806,7 @@ export default function AdminUsers() {
                   size="sm"
                   className="h-8 px-2 text-xs gap-1 font-bold"
                   onClick={cancelEditing}
-                  disabled={submitting}
-                >
+                  disabled={submitting}>
                   Cancel
                 </Button>
               </div>
@@ -822,8 +819,7 @@ export default function AdminUsers() {
                 variant="outline"
                 size="sm"
                 className="h-8 px-2 text-xs gap-1 font-bold"
-                onClick={() => startEditing(user)}
-              >
+                onClick={() => startEditing(user)}>
                 <Edit2 className="h-3 w-3" />
                 Quick Edit
               </Button>
@@ -831,8 +827,7 @@ export default function AdminUsers() {
                 variant="outline"
                 size="sm"
                 className="h-8 px-2 text-xs gap-1 font-bold"
-                onClick={() => openProfileEditor(user)}
-              >
+                onClick={() => openProfileEditor(user)}>
                 <UserCogIcon className="h-3 w-3" />
                 Full Edit
               </Button>
@@ -848,8 +843,7 @@ export default function AdminUsers() {
                     mustChangePassword: true,
                   });
                   setResetOpen(true);
-                }}
-              >
+                }}>
                 <Key className="h-3 w-3 text-orange-600" />
                 Password
               </Button>
@@ -859,8 +853,7 @@ export default function AdminUsers() {
                   size="sm"
                   disabled={currentUser?.id === user.id}
                   className="h-8 px-2 text-xs gap-1 font-bold text-destructive hover:bg-destructive hover:text-destructive-foreground disabled:opacity-30"
-                  onClick={() => setDeactivateId(user.id)}
-                >
+                  onClick={() => setDeactivateId(user.id)}>
                   <UserMinus className="h-3 w-3" />
                   Deactivate
                 </Button>
@@ -869,8 +862,7 @@ export default function AdminUsers() {
                   variant="outline"
                   size="sm"
                   className="h-8 px-2 text-xs gap-1 font-bold text-emerald-600 hover:bg-emerald-600 hover:text-white"
-                  onClick={() => setReactivateId(user.id)}
-                >
+                  onClick={() => setReactivateId(user.id)}>
                   <UserCheck className="h-3 w-3" />
                   Reactivate
                 </Button>
@@ -932,8 +924,7 @@ export default function AdminUsers() {
             });
             setCreateOpen(true);
           }}
-          className="h-10 w-full md:w-auto font-bold"
-        >
+          className="h-10 w-full md:w-auto font-bold">
           <Plus className="h-4 w-4 mr-2" />
           Add User
         </Button>
@@ -997,8 +988,7 @@ export default function AdminUsers() {
                   onValueChange={(value) => {
                     setRoleFilter(value);
                     setPage(1);
-                  }}
-                >
+                  }}>
                   <SelectTrigger className="h-10 w-full md:w-44 text-sm font-bold">
                     <SelectValue placeholder="All Roles" />
                   </SelectTrigger>
@@ -1018,8 +1008,7 @@ export default function AdminUsers() {
                   onValueChange={(value) => {
                     setStatusFilter(value);
                     setPage(1);
-                  }}
-                >
+                  }}>
                   <SelectTrigger className="h-10 w-full md:w-44 text-sm font-bold">
                     <SelectValue placeholder="All Status" />
                   </SelectTrigger>
@@ -1036,8 +1025,7 @@ export default function AdminUsers() {
                 variant="outline"
                 size="icon"
                 className="h-10 w-10 shrink-0"
-                onClick={fetchUsers}
-              >
+                onClick={fetchUsers}>
                 <RefreshCw
                   className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
                 />
@@ -1052,8 +1040,7 @@ export default function AdminUsers() {
                   setSortBy("createdAt");
                   setSortOrder("desc");
                   setPage(1);
-                }}
-              >
+                }}>
                 Reset
               </Button>
             </div>
@@ -1076,8 +1063,7 @@ export default function AdminUsers() {
               Array.from({ length: 4 }).map((_, index) => (
                 <div
                   key={index}
-                  className="rounded-xl border p-3 space-y-3 animate-pulse"
-                >
+                  className="rounded-xl border p-3 space-y-3 animate-pulse">
                   <div className="h-4 bg-muted rounded w-2/3" />
                   <div className="h-3 bg-muted rounded w-1/2" />
                   <div className="h-9 bg-muted rounded w-full" />
@@ -1091,8 +1077,7 @@ export default function AdminUsers() {
               users.map((user) => (
                 <div
                   key={user.id}
-                  className={`rounded-xl border bg-[hsl(var(--card))] p-3 ${!user.isActive ? "opacity-70 bg-muted/20" : ""}`}
-                >
+                  className={`rounded-xl border bg-[hsl(var(--card))] p-3 ${!user.isActive ? "opacity-70 bg-muted/20" : ""}`}>
                   {editingId === user.id ? (
                     <div className="space-y-2">
                       <Input
@@ -1132,8 +1117,7 @@ export default function AdminUsers() {
                         value={editFormData.role}
                         onValueChange={(value: "REGISTRAR" | "SYSTEM_ADMIN") =>
                           setEditFormData({ ...editFormData, role: value })
-                        }
-                      >
+                        }>
                         <SelectTrigger className="h-9 text-sm font-bold">
                           <SelectValue />
                         </SelectTrigger>
@@ -1147,8 +1131,7 @@ export default function AdminUsers() {
                           size="sm"
                           className="h-9 flex-1 font-bold"
                           onClick={() => handleUpdate(user.id)}
-                          disabled={submitting}
-                        >
+                          disabled={submitting}>
                           Save
                         </Button>
                         <Button
@@ -1156,8 +1139,7 @@ export default function AdminUsers() {
                           size="sm"
                           className="h-9 flex-1 font-bold"
                           onClick={cancelEditing}
-                          disabled={submitting}
-                        >
+                          disabled={submitting}>
                           Cancel
                         </Button>
                       </div>
@@ -1180,8 +1162,7 @@ export default function AdminUsers() {
                             user.role === "REGISTRAR"
                               ? "border-primary/20 bg-primary/10 text-primary"
                               : "border-purple-200 bg-purple-50 text-purple-700"
-                          }`}
-                        >
+                          }`}>
                           {user.role === "SYSTEM_ADMIN" ? "ADMIN" : "REGISTRAR"}
                         </Badge>
                       </div>
@@ -1228,8 +1209,7 @@ export default function AdminUsers() {
                           variant="outline"
                           size="sm"
                           className="h-9 text-xs font-bold"
-                          onClick={() => startEditing(user)}
-                        >
+                          onClick={() => startEditing(user)}>
                           <Edit2 className="h-3.5 w-3.5 mr-1.5" />
                           Quick Edit
                         </Button>
@@ -1237,8 +1217,7 @@ export default function AdminUsers() {
                           variant="outline"
                           size="sm"
                           className="h-9 text-xs font-bold"
-                          onClick={() => openProfileEditor(user)}
-                        >
+                          onClick={() => openProfileEditor(user)}>
                           <UserCogIcon className="h-3.5 w-3.5 mr-1.5" />
                           Full Edit
                         </Button>
@@ -1254,8 +1233,7 @@ export default function AdminUsers() {
                               mustChangePassword: true,
                             });
                             setResetOpen(true);
-                          }}
-                        >
+                          }}>
                           <Key className="h-3.5 w-3.5 mr-1.5 text-orange-600" />
                           Password
                         </Button>
@@ -1265,8 +1243,7 @@ export default function AdminUsers() {
                             size="sm"
                             disabled={currentUser?.id === user.id}
                             className="h-9 text-xs font-bold text-destructive hover:bg-destructive hover:text-destructive-foreground disabled:opacity-30"
-                            onClick={() => setDeactivateId(user.id)}
-                          >
+                            onClick={() => setDeactivateId(user.id)}>
                             <UserMinus className="h-3.5 w-3.5 mr-1.5" />
                             Deactivate
                           </Button>
@@ -1275,8 +1252,7 @@ export default function AdminUsers() {
                             variant="outline"
                             size="sm"
                             className="h-9 text-xs font-bold text-emerald-600 hover:bg-emerald-600 hover:text-white"
-                            onClick={() => setReactivateId(user.id)}
-                          >
+                            onClick={() => setReactivateId(user.id)}>
                             <UserCheck className="h-3.5 w-3.5 mr-1.5" />
                             Reactivate
                           </Button>
@@ -1309,8 +1285,7 @@ export default function AdminUsers() {
                   size="sm"
                   className="h-9 font-bold"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1 || loading}
-                >
+                  disabled={page === 1 || loading}>
                   Previous
                 </Button>
                 <Button
@@ -1318,8 +1293,7 @@ export default function AdminUsers() {
                   size="sm"
                   className="h-9 font-bold"
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages || loading}
-                >
+                  disabled={page === totalPages || loading}>
                   Next
                 </Button>
               </div>
@@ -1334,8 +1308,7 @@ export default function AdminUsers() {
         onOpenChange={(open) => {
           setCreateOpen(open);
           if (!open) setCreateErrors({});
-        }}
-      >
+        }}>
         <DialogContent className="w-[95vw] max-w-2xl sm:w-full overflow-y-auto max-h-[90vh] scrollbar-thin">
           <DialogHeader>
             <DialogTitle>Add User Account</DialogTitle>
@@ -1409,14 +1382,12 @@ export default function AdminUsers() {
                   onValueChange={(v: "MALE" | "FEMALE") =>
                     setFormData({ ...formData, sex: v })
                   }
-                  className="flex gap-6 mt-1"
-                >
+                  className="flex gap-6 mt-1">
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="MALE" id="sex-male" />
                     <Label
                       htmlFor="sex-male"
-                      className="font-medium cursor-pointer"
-                    >
+                      className="font-medium cursor-pointer">
                       Male
                     </Label>
                   </div>
@@ -1424,8 +1395,7 @@ export default function AdminUsers() {
                     <RadioGroupItem value="FEMALE" id="sex-female" />
                     <Label
                       htmlFor="sex-female"
-                      className="font-medium cursor-pointer"
-                    >
+                      className="font-medium cursor-pointer">
                       Female
                     </Label>
                   </div>
@@ -1507,8 +1477,7 @@ export default function AdminUsers() {
                 onValueChange={(v: "REGISTRAR" | "SYSTEM_ADMIN") =>
                   setFormData({ ...formData, role: v })
                 }
-                className="flex flex-row gap-4"
-              >
+                className="flex flex-row gap-4">
                 <div
                   className={`flex items-center gap-3 rounded-lg border p-2.5 hover:bg-muted/50 cursor-pointer transition-all relative flex-1 ${
                     formData.role === "SYSTEM_ADMIN"
@@ -1517,23 +1486,20 @@ export default function AdminUsers() {
                   }`}
                   onClick={() =>
                     setFormData({ ...formData, role: "SYSTEM_ADMIN" })
-                  }
-                >
+                  }>
                   <RadioGroupItem value="SYSTEM_ADMIN" id="role-admin" />
                   <Label
                     htmlFor="role-admin"
                     className={`flex flex-col gap-0.5 cursor-pointer flex-1 ${
                       formData.role === "SYSTEM_ADMIN" ? "text-primary" : ""
-                    }`}
-                  >
+                    }`}>
                     <span className="font-bold text-sm">Admin</span>
                     <span
                       className={`text-sm leading-tight ${
                         formData.role === "SYSTEM_ADMIN"
                           ? "text-primary/70"
                           : "text-muted-foreground"
-                      }`}
-                    >
+                      }`}>
                       Full access & logs.
                     </span>
                   </Label>
@@ -1546,23 +1512,20 @@ export default function AdminUsers() {
                   }`}
                   onClick={() =>
                     setFormData({ ...formData, role: "REGISTRAR" })
-                  }
-                >
+                  }>
                   <RadioGroupItem value="REGISTRAR" id="role-reg" />
                   <Label
                     htmlFor="role-reg"
                     className={`flex flex-col gap-0.5 cursor-pointer flex-1 ${
                       formData.role === "REGISTRAR" ? "text-primary" : ""
-                    }`}
-                  >
+                    }`}>
                     <span className="font-bold text-sm">Registrar</span>
                     <span
                       className={`text-sm leading-tight ${
                         formData.role === "REGISTRAR"
                           ? "text-primary/70"
                           : "text-muted-foreground"
-                      }`}
-                    >
+                      }`}>
                       Enrollment & sections.
                     </span>
                   </Label>
@@ -1594,12 +1557,10 @@ export default function AdminUsers() {
                     setFormData({ ...formData, password: generatePassword() });
                     setTimeout(() => setIsGenerating(false), 600);
                   }}
-                  title="Generate"
-                >
+                  title="Generate">
                   <motion.div
                     animate={isGenerating ? { rotate: 360 } : { rotate: 0 }}
-                    transition={{ duration: 0.5, ease: "easeInOut" }}
-                  >
+                    transition={{ duration: 0.5, ease: "easeInOut" }}>
                     <RefreshCw className="h-4 w-4" />
                   </motion.div>
                 </Button>
@@ -1608,8 +1569,7 @@ export default function AdminUsers() {
                   size="icon"
                   className="shrink-0 h-9 w-9 overflow-hidden"
                   onClick={() => copyToClipboard(formData.password)}
-                  title="Copy"
-                >
+                  title="Copy">
                   <AnimatePresence mode="wait">
                     {copied ? (
                       <motion.div
@@ -1617,8 +1577,7 @@ export default function AdminUsers() {
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                      >
+                        transition={{ duration: 0.2 }}>
                         <CheckIcon className="h-4 w-4 text-green-600" />
                       </motion.div>
                     ) : (
@@ -1627,8 +1586,7 @@ export default function AdminUsers() {
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                      >
+                        transition={{ duration: 0.2 }}>
                         <Copy className="h-4 w-4" />
                       </motion.div>
                     )}
@@ -1655,8 +1613,7 @@ export default function AdminUsers() {
               variant="outline"
               onClick={() => setCreateOpen(false)}
               disabled={submitting}
-              className="w-full sm:w-auto"
-            >
+              className="w-full sm:w-auto">
               Cancel
             </Button>
             <Button
@@ -1669,8 +1626,7 @@ export default function AdminUsers() {
                 !formData.mobileNumber ||
                 !formData.password
               }
-              className="w-full sm:w-auto"
-            >
+              className="w-full sm:w-auto">
               {submitting ? "Creating..." : "Create Account"}
             </Button>
           </DialogFooter>
@@ -1686,8 +1642,7 @@ export default function AdminUsers() {
             setProfileUser(null);
             setProfileErrors({});
           }
-        }}
-      >
+        }}>
         <DialogContent className="w-[95vw] max-w-2xl sm:w-full overflow-y-auto max-h-[90vh] scrollbar-thin">
           <DialogHeader>
             <DialogTitle>Edit User Profile</DialogTitle>
@@ -1772,14 +1727,12 @@ export default function AdminUsers() {
                   onValueChange={(v: "MALE" | "FEMALE") =>
                     setProfileFormData({ ...profileFormData, sex: v })
                   }
-                  className="flex gap-6 mt-1"
-                >
+                  className="flex gap-6 mt-1">
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="MALE" id="sex-profile-male" />
                     <Label
                       htmlFor="sex-profile-male"
-                      className="font-medium cursor-pointer"
-                    >
+                      className="font-medium cursor-pointer">
                       Male
                     </Label>
                   </div>
@@ -1787,8 +1740,7 @@ export default function AdminUsers() {
                     <RadioGroupItem value="FEMALE" id="sex-profile-female" />
                     <Label
                       htmlFor="sex-profile-female"
-                      className="font-medium cursor-pointer"
-                    >
+                      className="font-medium cursor-pointer">
                       Female
                     </Label>
                   </div>
@@ -1874,8 +1826,7 @@ export default function AdminUsers() {
                 onValueChange={(v: "REGISTRAR" | "SYSTEM_ADMIN") =>
                   setProfileFormData({ ...profileFormData, role: v })
                 }
-                className="flex flex-row gap-4"
-              >
+                className="flex flex-row gap-4">
                 <div
                   className={`flex items-center gap-3 rounded-lg border p-2.5 hover:bg-muted/50 cursor-pointer transition-all relative flex-1 ${
                     profileFormData.role === "SYSTEM_ADMIN"
@@ -1887,8 +1838,7 @@ export default function AdminUsers() {
                       ...profileFormData,
                       role: "SYSTEM_ADMIN",
                     })
-                  }
-                >
+                  }>
                   <RadioGroupItem
                     value="SYSTEM_ADMIN"
                     id="role-profile-admin"
@@ -1899,16 +1849,14 @@ export default function AdminUsers() {
                       profileFormData.role === "SYSTEM_ADMIN"
                         ? "text-primary"
                         : ""
-                    }`}
-                  >
+                    }`}>
                     <span className="font-bold text-sm">Admin</span>
                     <span
                       className={`text-sm leading-tight ${
                         profileFormData.role === "SYSTEM_ADMIN"
                           ? "text-primary/70"
                           : "text-muted-foreground"
-                      }`}
-                    >
+                      }`}>
                       Full access & logs.
                     </span>
                   </Label>
@@ -1924,23 +1872,20 @@ export default function AdminUsers() {
                       ...profileFormData,
                       role: "REGISTRAR",
                     })
-                  }
-                >
+                  }>
                   <RadioGroupItem value="REGISTRAR" id="role-profile-reg" />
                   <Label
                     htmlFor="role-profile-reg"
                     className={`flex flex-col gap-0.5 cursor-pointer flex-1 ${
                       profileFormData.role === "REGISTRAR" ? "text-primary" : ""
-                    }`}
-                  >
+                    }`}>
                     <span className="font-bold text-sm">Registrar</span>
                     <span
                       className={`text-sm leading-tight ${
                         profileFormData.role === "REGISTRAR"
                           ? "text-primary/70"
                           : "text-muted-foreground"
-                      }`}
-                    >
+                      }`}>
                       Enrollment & sections.
                     </span>
                   </Label>
@@ -1957,15 +1902,13 @@ export default function AdminUsers() {
                 setProfileErrors({});
               }}
               disabled={submitting}
-              className="w-full sm:w-auto"
-            >
+              className="w-full sm:w-auto">
               Cancel
             </Button>
             <Button
               onClick={handleProfileSave}
               disabled={submitting}
-              className="w-full sm:w-auto"
-            >
+              className="w-full sm:w-auto">
               {submitting ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
@@ -2010,12 +1953,10 @@ export default function AdminUsers() {
                     setFormData({ ...formData, password: generatePassword() });
                     setTimeout(() => setIsGenerating(false), 600);
                   }}
-                  title="Generate"
-                >
+                  title="Generate">
                   <motion.div
                     animate={isGenerating ? { rotate: 360 } : { rotate: 0 }}
-                    transition={{ duration: 0.5, ease: "easeInOut" }}
-                  >
+                    transition={{ duration: 0.5, ease: "easeInOut" }}>
                     <RefreshCw className="h-4 w-4" />
                   </motion.div>
                 </Button>
@@ -2024,8 +1965,7 @@ export default function AdminUsers() {
                   size="icon"
                   className="shrink-0 h-9 w-9 overflow-hidden"
                   onClick={() => copyToClipboard(formData.password)}
-                  title="Copy"
-                >
+                  title="Copy">
                   <AnimatePresence mode="wait">
                     {copied ? (
                       <motion.div
@@ -2033,8 +1973,7 @@ export default function AdminUsers() {
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                      >
+                        transition={{ duration: 0.2 }}>
                         <CheckIcon className="h-4 w-4 text-green-600" />
                       </motion.div>
                     ) : (
@@ -2043,8 +1982,7 @@ export default function AdminUsers() {
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                      >
+                        transition={{ duration: 0.2 }}>
                         <Copy className="h-4 w-4" />
                       </motion.div>
                     )}
@@ -2066,15 +2004,13 @@ export default function AdminUsers() {
               variant="outline"
               onClick={() => setResetOpen(false)}
               disabled={submitting}
-              className="w-full sm:w-auto"
-            >
+              className="w-full sm:w-auto">
               Cancel
             </Button>
             <Button
               onClick={handleResetPassword}
               disabled={submitting || !formData.password}
-              className="w-full sm:w-auto"
-            >
+              className="w-full sm:w-auto">
               {submitting ? "Resetting..." : "Reset Password"}
             </Button>
           </DialogFooter>

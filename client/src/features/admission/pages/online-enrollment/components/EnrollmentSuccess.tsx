@@ -180,7 +180,7 @@ export default function EnrollmentSuccess({
 
           <div
             style={{ backgroundColor: "#f9fafb", borderColor: "#061E29" }}
-            className="p-12 rounded-3xl border-4 text-center space-y-6 relative overflow-hidden border-dashed">
+            className="p-12 rounded-lg border-4 text-center space-y-6 relative overflow-hidden border-dashed">
             <p
               style={{ color: "#6b7280" }}
               className="text-xs uppercase tracking-[0.3em] font-black">
@@ -226,7 +226,7 @@ export default function EnrollmentSuccess({
 
           <div
             style={{ borderColor: "#f3f4f6" }}
-            className="space-y-8 bg-white p-8 border-2 rounded-3xl">
+            className="space-y-8 bg-white p-8 border-2 rounded-lg">
             <h3
               style={{ color: "#061E29" }}
               className="text-2xl font-black flex items-center gap-3 uppercase tracking-tight -mt-3">

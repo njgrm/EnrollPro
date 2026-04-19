@@ -1,3 +1,5 @@
+import { APPLICATION_VALID_TRANSITIONS } from "@enrollpro/shared";
+
 export const ACTIVE_REGISTRATION_EXCLUDED_STATUSES = ["ENROLLED"] as const;
 
 export const REGISTRATION_STAGE_QUICK_FILTERS = [
@@ -16,71 +18,13 @@ export const REGISTRATION_STAGE_QUICK_FILTERS = [
   { value: "ENROLLED", label: "Enrolled" },
 ] as const;
 
-export const REGISTRATION_VALID_TRANSITIONS: Record<string, string[]> = {
-  SUBMITTED: [
-    "VERIFIED",
-    "UNDER_REVIEW",
-    "EXAM_SCHEDULED",
-    "REJECTED",
-    "WITHDRAWN",
-  ],
-  VERIFIED: [
-    "UNDER_REVIEW",
-    "ELIGIBLE",
-    "ENROLLED",
-    "TEMPORARILY_ENROLLED",
-    "EXAM_SCHEDULED",
-    "REJECTED",
-    "WITHDRAWN",
-  ],
-  UNDER_REVIEW: [
-    "VERIFIED",
-    "FOR_REVISION",
-    "ELIGIBLE",
-    "EXAM_SCHEDULED",
-    "REJECTED",
-    "WITHDRAWN",
-  ],
-  FOR_REVISION: ["UNDER_REVIEW", "WITHDRAWN"],
-  ELIGIBLE: ["EXAM_SCHEDULED", "PASSED", "WITHDRAWN"],
-  EXAM_SCHEDULED: [
-    "PASSED",
-    "ASSESSMENT_TAKEN",
-    "EXAM_SCHEDULED",
-    "INTERVIEW_SCHEDULED",
-    "WITHDRAWN",
-  ],
-  ASSESSMENT_TAKEN: [
-    "PASSED",
-    "SUBMITTED",
-    "ASSESSMENT_TAKEN",
-    "EXAM_SCHEDULED",
-    "WITHDRAWN",
-  ],
-  PASSED: [
-    "READY_FOR_ENROLLMENT",
-    "INTERVIEW_SCHEDULED",
-    "EXAM_SCHEDULED",
-    "WITHDRAWN",
-  ],
-  INTERVIEW_SCHEDULED: [
-    "PASSED",
-    "READY_FOR_ENROLLMENT",
-    "SUBMITTED",
-    "WITHDRAWN",
-  ],
-  READY_FOR_ENROLLMENT: [
-    "ENROLLED",
-    "TEMPORARILY_ENROLLED",
-    "REJECTED",
-    "WITHDRAWN",
-  ],
-  TEMPORARILY_ENROLLED: ["ENROLLED", "WITHDRAWN"],
-  ENROLLED: ["WITHDRAWN"],
-  FAILED_ASSESSMENT: ["UNDER_REVIEW", "WITHDRAWN", "REJECTED"],
-  REJECTED: ["UNDER_REVIEW", "WITHDRAWN"],
-  WITHDRAWN: [],
-};
+export const REGISTRATION_VALID_TRANSITIONS: Record<string, string[]> =
+  Object.fromEntries(
+    Object.entries(APPLICATION_VALID_TRANSITIONS).map(([status, targets]) => [
+      status,
+      [...targets],
+    ]),
+  );
 
 export const REGISTRATION_BATCH_TARGET_OPTIONS = [
   { value: "SUBMITTED", label: "Submitted" },

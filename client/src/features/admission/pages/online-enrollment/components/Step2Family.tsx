@@ -42,6 +42,8 @@ export default function Step2Family() {
   const hasNoFather = data.hasNoFather;
   const isPermanentSameAsCurrent = data.isPermanentSameAsCurrent;
   const isGuardianRequired = hasNoMother && hasNoFather;
+  const isLinkedFromEarlyRegistration =
+    typeof data.earlyRegistrationId === "number";
 
   const motherInfoFilled =
     !hasNoMother &&
@@ -116,6 +118,17 @@ export default function Step2Family() {
           updates and enrollment notices.
         </AlertDescription>
       </Alert>
+
+      {isLinkedFromEarlyRegistration && (
+        <Alert className="bg-amber-50 border-amber-200">
+          <Info className="h-4 w-4 stroke-amber-600" />
+          <AlertDescription className="text-amber-900 font-semibold">
+            You are submitting from a linked Early Registration record. Please
+            review and confirm the contact details below before final
+            submission.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="space-y-8">
         <h3 className="text-sm font-bold uppercase tracking-widest text-primary">
@@ -840,12 +853,18 @@ export default function Step2Family() {
                 <button
                   key={option.value}
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
                     setValue("primaryContact", option.value, {
                       shouldValidate: true,
                       shouldDirty: true,
-                    })
-                  }
+                    });
+                    if (isLinkedFromEarlyRegistration) {
+                      setValue("isContactInfoConfirmed", false, {
+                        shouldValidate: false,
+                        shouldDirty: true,
+                      });
+                    }
+                  }}
                   className={cn(
                     "flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 transition-all group",
                     data.primaryContact === option.value
@@ -893,6 +912,35 @@ export default function Step2Family() {
             <p className="text-sm text-muted-foreground italic">
               Select a primary contact above before entering contact details.
             </p>
+          )}
+
+          {isLinkedFromEarlyRegistration && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  id="isContactInfoConfirmed"
+                  checked={!!data.isContactInfoConfirmed}
+                  onCheckedChange={(checked) => {
+                    setValue("isContactInfoConfirmed", checked === true, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    });
+                  }}
+                />
+                <Label
+                  htmlFor="isContactInfoConfirmed"
+                  className="text-xs font-semibold leading-relaxed cursor-pointer text-amber-900">
+                  I confirm that the primary contact number and email are still
+                  active and correct for this enrollment.
+                </Label>
+              </div>
+              {errors.isContactInfoConfirmed && (
+                <p className="text-xs text-destructive font-medium flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {errors.isContactInfoConfirmed.message}
+                </p>
+              )}
+            </div>
           )}
 
           <div
@@ -946,6 +994,12 @@ export default function Step2Family() {
                       onInput={(event) => {
                         const input = event.target as HTMLInputElement;
                         input.value = formatContactNumber(input.value);
+                        if (isLinkedFromEarlyRegistration) {
+                          setValue("isContactInfoConfirmed", false, {
+                            shouldValidate: false,
+                            shouldDirty: true,
+                          });
+                        }
                       }}
                     />
                     {errors.contactNumber && (
@@ -972,6 +1026,14 @@ export default function Step2Family() {
                         errors.email &&
                           "border-destructive focus-visible:ring-destructive",
                       )}
+                      onInput={() => {
+                        if (isLinkedFromEarlyRegistration) {
+                          setValue("isContactInfoConfirmed", false, {
+                            shouldValidate: false,
+                            shouldDirty: true,
+                          });
+                        }
+                      }}
                     />
                     {errors.email && (
                       <p className="text-xs text-destructive font-bold flex items-center gap-1 mt-1">

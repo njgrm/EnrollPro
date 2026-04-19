@@ -1,10 +1,12 @@
-import { useFormContext } from "react-hook-form";
+import { Controller, useFormContext } from "react-hook-form";
 import { isAxiosError } from "axios";
 import type { EnrollmentFormData } from "../types";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Checkbox } from "@/shared/ui/checkbox";
-import { DatePicker } from "@/shared/ui/date-picker";
+import { Calendar } from "@/shared/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
+import { Button } from "@/shared/ui/button";
 import {
   AlertCircle,
   Camera,
@@ -14,8 +16,16 @@ import {
   Search,
   Mars,
   Venus,
+  Calendar as CalendarIcon,
 } from "lucide-react";
-import { differenceInYears } from "date-fns";
+import {
+  differenceInYears,
+  format,
+  isAfter,
+  isBefore,
+  isValid,
+  parse,
+} from "date-fns";
 import { cn } from "@/shared/lib/utils";
 import {
   Select,
@@ -24,7 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import api from "@/shared/api/axiosInstance";
 import { sileo } from "sileo";
 
@@ -32,6 +42,7 @@ export default function Step1Personal() {
   const {
     register,
     watch,
+    control,
     setValue,
     setError,
     clearErrors,
@@ -52,6 +63,30 @@ export default function Step1Personal() {
   const [lastLookedUpLrn, setLastLookedUpLrn] = useState<string | null>(null);
   const [hasFilledEarlyRegistrationForm, setHasFilledEarlyRegistrationForm] =
     useState(false);
+  const [dateInput, setDateInput] = useState(() => {
+    if (!birthdate) return "";
+    const d = new Date(birthdate);
+    return isValid(d) ? format(d, "MM/dd/yyyy") : "";
+  });
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState<Date>(() => {
+    if (birthdate) {
+      const d = new Date(birthdate);
+      if (isValid(d)) return d;
+    }
+    return new Date();
+  });
+
+  const clearLinkedEarlyRegistration = useCallback(() => {
+    setValue("earlyRegistrationId", undefined, {
+      shouldDirty: true,
+      shouldValidate: false,
+    });
+    setValue("isContactInfoConfirmed", false, {
+      shouldDirty: true,
+      shouldValidate: false,
+    });
+  }, [setValue]);
 
   useEffect(() => {
     if (!canDeclareNoLrn && hasNoLrn) {
@@ -64,14 +99,33 @@ export default function Step1Personal() {
     if (lrn) {
       setValue("lrn", "", { shouldValidate: true, shouldDirty: true });
     }
+    clearLinkedEarlyRegistration();
     clearErrors("lrn");
     setLookupSuccess(false);
     setLastLookedUpLrn(null);
-  }, [hasNoLrn, lrn, setValue, clearErrors]);
+  }, [hasNoLrn, lrn, setValue, clearErrors, clearLinkedEarlyRegistration]);
+
+  useEffect(() => {
+    if (!birthdate) {
+      setDateInput("");
+      return;
+    }
+    const d = new Date(birthdate);
+    if (!isValid(d)) {
+      setDateInput("");
+      return;
+    }
+
+    setDateInput(format(d, "MM/dd/yyyy"));
+    setCalendarMonth(d);
+    const age = differenceInYears(new Date(), d);
+    setValue("age", age >= 0 ? age : 0);
+  }, [birthdate, setValue]);
 
   // Auto-lookup only when LRN is exactly 12 digits (debounced by 1 second).
   useEffect(() => {
     if (!hasFilledEarlyRegistrationForm) {
+      clearLinkedEarlyRegistration();
       setIsLookingUp(false);
       setLookupSuccess(false);
       setLastLookedUpLrn(null);
@@ -81,6 +135,7 @@ export default function Step1Personal() {
     const normalizedLrn = String(lrn ?? "").trim();
 
     if (hasNoLrn) {
+      clearLinkedEarlyRegistration();
       setLookupSuccess(false);
       setLastLookedUpLrn(null);
       setIsLookingUp(false);
@@ -89,6 +144,7 @@ export default function Step1Personal() {
     }
 
     if (!normalizedLrn) {
+      clearLinkedEarlyRegistration();
       setLookupSuccess(false);
       setLastLookedUpLrn(null);
       clearErrors("lrn");
@@ -96,6 +152,7 @@ export default function Step1Personal() {
     }
 
     if (normalizedLrn.length !== 12) {
+      clearLinkedEarlyRegistration();
       setLookupSuccess(false);
       setLastLookedUpLrn(null);
       setIsLookingUp(false);
@@ -113,6 +170,7 @@ export default function Step1Personal() {
     }
 
     setLookupSuccess(false);
+    clearLinkedEarlyRegistration();
 
     const timer = window.setTimeout(async () => {
       setLastLookedUpLrn(normalizedLrn);
@@ -135,6 +193,10 @@ export default function Step1Personal() {
           });
 
           setValue("earlyRegistrationId", data.earlyRegistrationId);
+          setValue("isContactInfoConfirmed", false, {
+            shouldDirty: true,
+            shouldValidate: false,
+          });
           setValue("firstName", data.firstName);
           setValue("lastName", data.lastName);
           setValue("middleName", data.middleName || "");
@@ -195,6 +257,11 @@ export default function Step1Personal() {
           }
 
           setValue("email", data.email || "");
+          setValue("contactNumber", data.contactNumber || "");
+          setValue("primaryContact", data.primaryContact || "MOTHER");
+          setValue("guardianRelationship", data.guardianRelationship || "");
+          setValue("hasNoMother", data.hasNoMother ?? false);
+          setValue("hasNoFather", data.hasNoFather ?? false);
           setValue("learnerType", data.learnerType);
 
           if (data.applicantType && data.applicantType !== "REGULAR") {
@@ -207,6 +274,7 @@ export default function Step1Personal() {
           setLookupSuccess(true);
         }
       } catch (error: unknown) {
+        clearLinkedEarlyRegistration();
         if (isAxiosError(error) && error.response?.status === 404) {
           sileo.error({
             title: "Early Registration Not Found",
@@ -237,13 +305,49 @@ export default function Step1Personal() {
     setError,
     clearErrors,
     watch,
+    clearLinkedEarlyRegistration,
   ]);
 
-  const onBirthdateChange = (date: Date | undefined) => {
-    if (date) {
-      setValue("birthdate", date);
-      const age = differenceInYears(new Date(), date);
-      setValue("age", age);
+  const handleDateTyping = (
+    value: string,
+    onChange: (val: Date | undefined) => void,
+  ) => {
+    const isDeleting = value.length < dateInput.length;
+    const cleaned = value.replace(/\D/g, "").slice(0, 8);
+
+    let masked = "";
+    if (cleaned.length > 0) {
+      masked = cleaned.slice(0, 2);
+      if (cleaned.length > 2 || (cleaned.length === 2 && !isDeleting)) {
+        masked += "/";
+      }
+      if (cleaned.length > 2) {
+        masked += cleaned.slice(2, 4);
+        if (cleaned.length > 4 || (cleaned.length === 4 && !isDeleting)) {
+          masked += "/";
+        }
+      }
+      if (cleaned.length > 4) {
+        masked += cleaned.slice(4, 8);
+      }
+    }
+
+    setDateInput(masked);
+
+    if (masked.length === 10) {
+      const parsedDate = parse(masked, "MM/dd/yyyy", new Date());
+      if (
+        isValid(parsedDate) &&
+        !isAfter(parsedDate, new Date()) &&
+        !isBefore(parsedDate, new Date(1900, 0, 1))
+      ) {
+        onChange(parsedDate);
+        setCalendarMonth(parsedDate);
+      } else {
+        onChange(undefined);
+      }
+    } else {
+      onChange(undefined);
     }
   };
 
@@ -289,10 +393,7 @@ export default function Step1Personal() {
               setLookupSuccess(false);
               setIsLookingUp(false);
               setLastLookedUpLrn(null);
-              setValue("earlyRegistrationId", null, {
-                shouldDirty: true,
-                shouldValidate: false,
-              });
+              clearLinkedEarlyRegistration();
               clearErrors("lrn");
             }
           }}
@@ -558,15 +659,73 @@ export default function Step1Personal() {
           <Label className="text-sm font-semibold">
             Date of Birth <span className="text-destructive">*</span>
           </Label>
-          <DatePicker
-            date={birthdate}
-            setDate={onBirthdateChange}
-            minDate={new Date("2000-01-01")}
-            maxDate={new Date()}
-            placeholder="Select Birthdate"
-            className={cn(
-              "h-11 font-bold border-input uppercase",
-              errors.birthdate && "border-destructive",
+          <Controller
+            control={control}
+            name="birthdate"
+            render={({ field }) => (
+              <div className="relative">
+                <Input
+                  placeholder="MM/DD/YYYY"
+                  maxLength={10}
+                  inputMode="numeric"
+                  value={dateInput}
+                  onChange={(e) =>
+                    handleDateTyping(e.target.value, field.onChange)
+                  }
+                  className={cn(
+                    "h-11 font-bold pr-12",
+                    errors.birthdate &&
+                      "border-destructive focus-visible:ring-destructive",
+                  )}
+                />
+                <Popover
+                  open={isCalendarOpen}
+                  onOpenChange={(open) => {
+                    if (open && field.value) {
+                      const d = new Date(field.value);
+                      if (isValid(d)) setCalendarMonth(d);
+                    }
+                    setIsCalendarOpen(open);
+                  }}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full w-10 hover:bg-transparent">
+                      <CalendarIcon
+                        className={cn(
+                          "w-5 h-5 transition-colors",
+                          isCalendarOpen
+                            ? "text-primary"
+                            : "text-muted-foreground",
+                        )}
+                      />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                      mode="single"
+                      captionLayout="dropdown"
+                      selected={field.value ? new Date(field.value) : undefined}
+                      month={calendarMonth}
+                      onMonthChange={setCalendarMonth}
+                      onSelect={(date) => {
+                        if (date) {
+                          field.onChange(date);
+                          setDateInput(format(date, "MM/dd/yyyy"));
+                          setCalendarMonth(date);
+                          setIsCalendarOpen(false);
+                        }
+                      }}
+                      disabled={(date) =>
+                        date > new Date() || date < new Date(1950, 0, 1)
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             )}
           />
           {errors.birthdate && (

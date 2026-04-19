@@ -164,6 +164,15 @@ export interface ApplicantDetail {
   isProfileLocked?: boolean;
   profileLockedAt?: string | null;
   profileLockedById?: number | null;
+  readingProfileLevel?:
+    | "INDEPENDENT"
+    | "INSTRUCTIONAL"
+    | "FRUSTRATION"
+    | "NON_READER"
+    | null;
+  readingProfileNotes?: string | null;
+  readingProfileAssessedAt?: string | null;
+  readingProfileAssessedById?: number | null;
   studentPhoto: string | null;
   psaBirthCertNumber: string | null;
   lastName: string;

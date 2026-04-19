@@ -146,7 +146,8 @@ export default function SystemHealth() {
   const countData = useMemo(() => {
     if (!health) return [];
     return Object.entries(health.counts).map(([key, value]) => ({
-      metric: key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1"),
+      metric:
+        key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1"),
       value,
     }));
   }, [health]);
@@ -165,7 +166,9 @@ export default function SystemHealth() {
       {
         accessorKey: "value",
         header: "Value",
-        cell: ({ row }) => <span className="text-left block">{row.original.value}</span>,
+        cell: ({ row }) => (
+          <span className="text-left block">{row.original.value}</span>
+        ),
       },
     ],
     [],
@@ -218,8 +221,7 @@ export default function SystemHealth() {
               <>
                 <Badge
                   variant="outline"
-                  className={statusClass(health?.database.status || "DOWN")}
-                >
+                  className={statusClass(health?.database.status || "DOWN")}>
                   {health?.database.status || "DOWN"}
                 </Badge>
                 <p className="text-muted-foreground">
@@ -251,8 +253,7 @@ export default function SystemHealth() {
               <>
                 <Badge
                   variant="outline"
-                  className={statusClass(health?.email.status || "DEGRADED")}
-                >
+                  className={statusClass(health?.email.status || "DEGRADED")}>
                   {health?.email.status || "DEGRADED"}
                 </Badge>
                 <p className="text-muted-foreground">
@@ -285,8 +286,7 @@ export default function SystemHealth() {
               <>
                 <Badge
                   variant="outline"
-                  className={statusClass(stats?.systemStatus || "DOWN")}
-                >
+                  className={statusClass(stats?.systemStatus || "DOWN")}>
                   System: {stats?.systemStatus || "DOWN"}
                 </Badge>
                 <p className="text-muted-foreground">

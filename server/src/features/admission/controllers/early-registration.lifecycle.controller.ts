@@ -156,6 +156,15 @@ export function createEarlyRegistrationLifecycleController(
     return missingMandatory;
   }
 
+  function assertReadingProfileCompleted(
+    applicant: { readingProfileLevel?: string | null },
+    contextMessage: string,
+  ): void {
+    if (!applicant.readingProfileLevel) {
+      throw new AppError(422, contextMessage);
+    }
+  }
+
   async function approve(req: Request, res: Response, next: NextFunction) {
     try {
       const { sectionId } = req.body;
@@ -183,6 +192,11 @@ export function createEarlyRegistrationLifecycleController(
         applicant,
         "READY_FOR_ENROLLMENT",
         `Cannot approve an application with status "${applicant.status}". Only VERIFIED, ELIGIBLE, or PASSED applications can be approved (moved to READY_FOR_ENROLLMENT).`,
+      );
+
+      assertReadingProfileCompleted(
+        applicant,
+        "Reading Profile is required before section assignment. Encode a reading profile first.",
       );
 
       const result = await prisma.$transaction(async (tx) => {
@@ -393,6 +407,79 @@ export function createEarlyRegistrationLifecycleController(
     }
   }
 
+  async function updateReadingProfile(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const { readingProfileLevel, readingProfileNotes } = req.body as {
+        readingProfileLevel: string;
+        readingProfileNotes?: string | null;
+      };
+
+      let applicantId = parseInt(String(req.params.id));
+      let { data: applicant, type: appType } =
+        await findApplicantOrThrow(applicantId);
+
+      if (appType === "EARLY_REGISTRATION") {
+        const migratedApp = await deps.prisma.$transaction(async (tx) => {
+          return await migrateEarlyRegToEnrollment(
+            applicantId,
+            req.user!.userId,
+            tx,
+          );
+        });
+
+        applicantId = migratedApp.id;
+        applicant = migratedApp;
+        appType = "ENROLLMENT";
+      }
+
+      if (appType !== "ENROLLMENT") {
+        throw new AppError(
+          422,
+          "Reading Profile can only be encoded on enrollment applications.",
+        );
+      }
+
+      if (applicant.status === "REJECTED" || applicant.status === "WITHDRAWN") {
+        throw new AppError(
+          422,
+          `Cannot encode Reading Profile while application is "${applicant.status}".`,
+        );
+      }
+
+      const normalizedNotes =
+        typeof readingProfileNotes === "string"
+          ? readingProfileNotes.trim() || null
+          : null;
+
+      const updated = await prisma.enrollmentApplication.update({
+        where: { id: applicantId },
+        data: {
+          readingProfileLevel: readingProfileLevel as any,
+          readingProfileNotes: normalizedNotes,
+          readingProfileAssessedAt: new Date(),
+          readingProfileAssessedById: req.user!.userId,
+        },
+      });
+
+      await auditLog({
+        userId: req.user!.userId,
+        actionType: "READING_PROFILE_UPDATED",
+        description: `Updated Reading Profile (${readingProfileLevel}) for application #${applicantId}`,
+        subjectType: "EnrollmentApplication",
+        recordId: applicantId,
+        req,
+      });
+
+      res.json(updated);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // Finalize Enrollment (Phase 2 complete)
   async function enroll(req: Request, res: Response, next: NextFunction) {
     try {
@@ -444,6 +531,11 @@ export function createEarlyRegistrationLifecycleController(
           `Cannot finalize enrollment. Current status: "${fullApplicant.status}". Only READY_FOR_ENROLLMENT or TEMPORARILY_ENROLLED applications can be enrolled.`,
         );
       }
+
+      assertReadingProfileCompleted(
+        fullApplicant,
+        "Reading Profile is required before finalizing enrollment. Encode a reading profile first.",
+      );
 
       if (!fullApplicant.enrollmentRecord) {
         throw new AppError(
@@ -1274,6 +1366,11 @@ export function createEarlyRegistrationLifecycleController(
           // Simple validation: must be VERIFIED
           if (applicant.status !== "VERIFIED") continue;
 
+          assertReadingProfileCompleted(
+            applicant,
+            `Reading Profile is required before section assignment (application #${applicantId}).`,
+          );
+
           // Check Grade Level
           if (section.gradeLevelId !== applicant.gradeLevelId) continue;
 
@@ -1335,6 +1432,7 @@ export function createEarlyRegistrationLifecycleController(
   return {
     approve,
     verify,
+    updateReadingProfile,
     enroll,
     markTemporarilyEnrolled,
     assignLrn,
@@ -1352,6 +1450,7 @@ const lifecycleController = createEarlyRegistrationLifecycleController();
 
 export const approve = lifecycleController.approve;
 export const verify = lifecycleController.verify;
+export const updateReadingProfile = lifecycleController.updateReadingProfile;
 export const enroll = lifecycleController.enroll;
 export const unenroll = lifecycleController.unenroll;
 export const specialEnrollment = lifecycleController.specialEnrollment;

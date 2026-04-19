@@ -370,11 +370,7 @@ export default function AtlasIntegration() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <DataTable
-            columns={columns}
-            data={events}
-            loading={showSkeleton}
-          />
+          <DataTable columns={columns} data={events} loading={showSkeleton} />
 
           <div className="flex items-center justify-between pt-2">
             <div className="text-xs text-muted-foreground flex items-center gap-1">

@@ -246,6 +246,23 @@ function NavItemChild({
     isActive = true;
   }
 
+  // Enrollment BOSY (/monitoring/enrollment) should NOT highlight when EOSY is active
+  if (
+    to === "/monitoring/enrollment" &&
+    pathname.startsWith("/monitoring/enrollment/eosy")
+  ) {
+    isActive = false;
+  }
+
+  // Enrollment detail routes (/monitoring/enrollment/* except EOSY) should highlight BOSY Registration
+  if (
+    to === "/monitoring/enrollment" &&
+    pathname.startsWith("/monitoring/enrollment/") &&
+    !pathname.startsWith("/monitoring/enrollment/eosy")
+  ) {
+    isActive = true;
+  }
+
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
@@ -393,7 +410,7 @@ function AppSidebar() {
                     <NavItemParent
                       icon={CheckCircle}
                       label="Enrollment Operations"
-                      isActive={pathname.startsWith("/monitoring/enrollment")}>
+                      isActive={false}>
                       <NavItemChild
                         to="/monitoring/enrollment"
                         icon={ClipboardList}

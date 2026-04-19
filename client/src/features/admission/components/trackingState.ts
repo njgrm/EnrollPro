@@ -1,7 +1,8 @@
-import type {
-  TrackingCurrentStep,
-  TrackingProgramType,
-  TrackingStatus,
+import {
+  APPLICATION_STATUS_TO_TRACKING_STATUS,
+  type TrackingCurrentStep,
+  type TrackingProgramType,
+  type TrackingStatus,
 } from "@enrollpro/shared";
 
 const NORMALIZED_STATUSES = new Set<TrackingStatus>([
@@ -15,23 +16,8 @@ const NORMALIZED_STATUSES = new Set<TrackingStatus>([
   "WITHDRAWN",
 ]);
 
-const RAW_TO_TRACKING_STATUS: Record<string, TrackingStatus> = {
-  SUBMITTED: "SUBMITTED",
-  VERIFIED: "IN_REVIEW",
-  UNDER_REVIEW: "IN_REVIEW",
-  FOR_REVISION: "IN_REVIEW",
-  ELIGIBLE: "IN_REVIEW",
-  EXAM_SCHEDULED: "ASSESSMENT_IN_PROGRESS",
-  ASSESSMENT_TAKEN: "ASSESSMENT_IN_PROGRESS",
-  INTERVIEW_SCHEDULED: "ASSESSMENT_IN_PROGRESS",
-  PASSED: "QUALIFIED_FOR_ENROLLMENT",
-  READY_FOR_ENROLLMENT: "QUALIFIED_FOR_ENROLLMENT",
-  TEMPORARILY_ENROLLED: "QUALIFIED_FOR_ENROLLMENT",
-  FAILED_ASSESSMENT: "NOT_QUALIFIED",
-  ENROLLED: "ENROLLED",
-  REJECTED: "REJECTED",
-  WITHDRAWN: "WITHDRAWN",
-};
+const RAW_TO_TRACKING_STATUS =
+  APPLICATION_STATUS_TO_TRACKING_STATUS as Record<string, TrackingStatus>;
 
 export function deriveProgramTypeFromApplicantType(
   applicantType?: string | null,

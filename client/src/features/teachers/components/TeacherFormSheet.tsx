@@ -1,8 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trash2, User } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/select";
 import { ImageEnlarger } from "@/shared/components/ImageEnlarger";
 import {
   Sheet,
@@ -12,8 +19,10 @@ import {
   SheetTitle,
 } from "@/shared/ui/sheet";
 import type { TeacherFormState } from "../types";
+import { DEPED_LEARNING_AREA_OPTIONS } from "../utils";
 
 type TeacherFormField = Exclude<keyof TeacherFormState, "photo">;
+const EMPTY_LEARNING_AREA_VALUE = "__NONE__";
 
 interface TeacherFormSheetProps {
   mode: "create" | "edit";
@@ -120,6 +129,29 @@ export function TeacherFormSheet({
       ? "Use the file picker to upload. JPG, PNG, or WEBP up to 5 MB."
       : "Use the file picker to replace the current photo.";
   const canShowPhoto = Boolean(photoPreviewUrl);
+  const learningAreaOptions = useMemo(() => {
+    const currentValue = formData.specialization.trim();
+    const hasCurrentValue = DEPED_LEARNING_AREA_OPTIONS.some(
+      (option) => option.value === currentValue,
+    );
+
+    if (!currentValue || hasCurrentValue) {
+      return DEPED_LEARNING_AREA_OPTIONS;
+    }
+
+    return [
+      ...DEPED_LEARNING_AREA_OPTIONS,
+      {
+        value: currentValue,
+        label: `${currentValue} (existing)`,
+      },
+    ] as const;
+  }, [formData.specialization]);
+
+  const selectedLearningAreaValue =
+    formData.specialization.trim().length > 0
+      ? formData.specialization
+      : EMPTY_LEARNING_AREA_VALUE;
 
   return (
     <Sheet
@@ -283,14 +315,29 @@ export function TeacherFormSheet({
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Specialization</Label>
-                  <Input
-                    placeholder="e.g. Mathematics"
-                    value={formData.specialization}
-                    onChange={(event) =>
-                      onFieldChange("specialization", event.target.value)
-                    }
-                  />
+                  <Label>Learning Area / Department</Label>
+                  <Select
+                    value={selectedLearningAreaValue}
+                    onValueChange={(value) =>
+                      onFieldChange(
+                        "specialization",
+                        value === EMPTY_LEARNING_AREA_VALUE ? "" : value,
+                      )
+                    }>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a learning area" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={EMPTY_LEARNING_AREA_VALUE}>
+                        Not set
+                      </SelectItem>
+                      {learningAreaOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Subjects (comma separated)</Label>

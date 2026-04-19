@@ -76,7 +76,7 @@ export default function Step4PreviousSchool() {
               <Label htmlFor="prev-school-id" className="text-sm font-bold">
                 DepEd School ID
               </Label>
-              <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+              <HelpCircle className="w-3.5 h-3.5 text-foreground cursor-help" />
             </div>
             <Input
               autoComplete="off"
@@ -153,7 +153,7 @@ export default function Step4PreviousSchool() {
                   "flex items-center justify-center p-3 rounded-xl border-2 transition-all text-center h-14 uppercase focus:outline-none focus:ring-2 focus:ring-primary/50",
                   selectedLastSchoolType === lt.value
                     ? "border-primary bg-primary text-primary-foreground shadow-md"
-                    : "border-border bg-white hover:bg-primary/5 text-muted-foreground hover:text-foreground",
+                    : "border-border bg-white hover:bg-primary/5 text-foreground hover:text-foreground",
                 )}>
                 <span className="font-bold text-sm leading-tight tracking-wide">
                   {lt.label}
@@ -166,7 +166,7 @@ export default function Step4PreviousSchool() {
         <div className="space-y-2 pt-2">
           <Label
             htmlFor="prev-addr"
-            className="text-sm font-bold text-muted-foreground">
+            className="text-sm font-bold text-foreground">
             School Address / Division (Optional)
           </Label>
           <Input

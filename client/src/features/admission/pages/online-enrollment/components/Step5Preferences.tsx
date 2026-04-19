@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFormContext } from "react-hook-form";
 import { motion, AnimatePresence } from "motion/react";
 import { AlertCircle, BookOpen, Info } from "lucide-react";
@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select";
+import api from "@/shared/api/axiosInstance";
 
 const LEARNER_TYPES = [
   { value: "NEW_ENROLLEE", label: "NEW ENROLLEE" },
@@ -34,7 +35,26 @@ const GRADE_OPTIONS = [
   { value: "10", label: "GRADE 10" },
 ] as const;
 
-const SCP_PROGRAMS = [
+type ScpTypeValue = NonNullable<EnrollmentFormData["scpType"]>;
+
+interface PublicScpProgramConfig {
+  scpType: unknown;
+  isOffered?: boolean;
+}
+
+interface OfferedScpProgramConfig {
+  scpType: ScpTypeValue;
+}
+
+interface PublicScpConfigResponse {
+  scpProgramConfigs?: PublicScpProgramConfig[];
+}
+
+const isScpTypeValue = (value: unknown): value is ScpTypeValue =>
+  typeof value === "string" &&
+  SCP_PROGRAMS.some((program) => program.id === value);
+
+const SCP_PROGRAMS: Array<{ id: ScpTypeValue; label: string; desc: string }> = [
   {
     id: "SCIENCE_TECHNOLOGY_AND_ENGINEERING",
     label: SCP_LABELS.SCIENCE_TECHNOLOGY_AND_ENGINEERING,
@@ -79,17 +99,40 @@ export default function Step5Enrollment() {
   const gradeLevel = watch("gradeLevel");
   const isScpApplication = watch("isScpApplication");
   const scpType = watch("scpType");
+  const quickLrnLookupId = watch("earlyRegistrationId");
   const hasNoLrn = watch("hasNoLrn");
   const artField = watch("artField");
   const sportsList = watch("sportsList");
   const foreignLanguage = watch("foreignLanguage");
   const learningModalities = watch("learningModalities");
 
+  const [isLoadingScpConfig, setIsLoadingScpConfig] = useState(true);
+  const [scpConfigError, setScpConfigError] = useState<string | null>(null);
+  const [offeredScpConfigs, setOfferedScpConfigs] = useState<
+    OfferedScpProgramConfig[]
+  >([]);
+
   const selectedSportsList = sportsList ?? [];
   const selectedSportsCount = sportsList?.length ?? 0;
   const selectedLearningModalities = learningModalities ?? [];
 
   const isScpEligible = learnerType === "NEW_ENROLLEE" && gradeLevel === "7";
+  const hasQuickLrnLookupSuccess =
+    typeof quickLrnLookupId === "number" && Number.isFinite(quickLrnLookupId);
+  const shouldShowScpCard = isScpEligible && hasQuickLrnLookupSuccess;
+
+  const availableScpPrograms = useMemo(
+    () =>
+      SCP_PROGRAMS.filter((program) =>
+        offeredScpConfigs.some((config) => config.scpType === program.id),
+      ),
+    [offeredScpConfigs],
+  );
+
+  const hasOfferedScpPrograms = availableScpPrograms.length > 0;
+  const canSelectScpTrack =
+    shouldShowScpCard && !isLoadingScpConfig && hasOfferedScpPrograms;
+
   const canDeclareNoLrn =
     learnerType === "TRANSFEREE" ||
     (learnerType === "NEW_ENROLLEE" && gradeLevel === "7");
@@ -99,18 +142,103 @@ export default function Step5Enrollment() {
       : GRADE_OPTIONS;
 
   useEffect(() => {
+    let isMounted = true;
+
+    const loadScpConfig = async () => {
+      setIsLoadingScpConfig(true);
+      setScpConfigError(null);
+
+      try {
+        const response = await api.get<PublicScpConfigResponse>(
+          "/settings/scp-config",
+        );
+
+        const offered = (response.data.scpProgramConfigs ?? []).reduce<
+          OfferedScpProgramConfig[]
+        >((acc, config) => {
+          if (config.isOffered !== false && isScpTypeValue(config.scpType)) {
+            acc.push({
+              scpType: config.scpType,
+            });
+          }
+          return acc;
+        }, []);
+
+        if (!isMounted) return;
+        const deduped = Array.from(
+          new Map(offered.map((config) => [config.scpType, config])).values(),
+        );
+        setOfferedScpConfigs(deduped);
+      } catch (error) {
+        console.error("Failed to load SCP configuration:", error);
+        if (!isMounted) return;
+        setOfferedScpConfigs([]);
+        setScpConfigError(
+          "We could not load available SCP tracks right now. Please try again in a few minutes.",
+        );
+      } finally {
+        if (isMounted) {
+          setIsLoadingScpConfig(false);
+        }
+      }
+    };
+
+    void loadScpConfig();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (learnerType === "NEW_ENROLLEE" && gradeLevel !== "7") {
       setValue("gradeLevel", "7", { shouldValidate: true });
     }
   }, [learnerType, gradeLevel, setValue]);
 
   useEffect(() => {
-    if (!isScpEligible && (isScpApplication || scpType)) {
+    if (!shouldShowScpCard && (isScpApplication || scpType)) {
       setValue("isScpApplication", false, { shouldValidate: true });
       setValue("scpType", undefined, { shouldValidate: true });
       clearErrors("scpType");
     }
-  }, [isScpEligible, isScpApplication, scpType, setValue, clearErrors]);
+  }, [shouldShowScpCard, isScpApplication, scpType, setValue, clearErrors]);
+
+  useEffect(() => {
+    if (isLoadingScpConfig || !isScpApplication || hasOfferedScpPrograms) {
+      return;
+    }
+
+    setValue("isScpApplication", false, { shouldValidate: true });
+    setValue("scpType", undefined, { shouldValidate: true });
+    clearErrors("scpType");
+  }, [
+    isLoadingScpConfig,
+    isScpApplication,
+    hasOfferedScpPrograms,
+    setValue,
+    clearErrors,
+  ]);
+
+  useEffect(() => {
+    if (isLoadingScpConfig || !scpType) return;
+
+    const isStillAvailable = availableScpPrograms.some(
+      (program) => program.id === scpType,
+    );
+
+    if (!isStillAvailable) {
+      setValue("isScpApplication", false, { shouldValidate: true });
+      setValue("scpType", undefined, { shouldValidate: true });
+      clearErrors("scpType");
+    }
+  }, [
+    isLoadingScpConfig,
+    scpType,
+    availableScpPrograms,
+    setValue,
+    clearErrors,
+  ]);
 
   useEffect(() => {
     if (
@@ -174,7 +302,7 @@ export default function Step5Enrollment() {
   };
 
   const selectScpTrack = () => {
-    if (!isScpEligible) return;
+    if (!canSelectScpTrack) return;
     setValue("isScpApplication", true, {
       shouldValidate: true,
       shouldDirty: true,
@@ -268,7 +396,11 @@ export default function Step5Enrollment() {
             </Label>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div
+            className={cn(
+              "grid gap-4",
+              shouldShowScpCard ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1",
+            )}>
             <button
               type="button"
               className={cn(
@@ -303,45 +435,50 @@ export default function Step5Enrollment() {
               </p>
             </button>
 
-            <button
-              type="button"
-              disabled={!isScpEligible}
-              className={cn(
-                "flex flex-col p-4 rounded-xl border-2 transition-all text-left",
-                isScpApplication
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-white",
-                !isScpEligible &&
-                  "opacity-60 cursor-not-allowed border-dashed border-muted-foreground/40",
-                isScpEligible && !isScpApplication && "hover:bg-primary/5",
-              )}
-              onClick={selectScpTrack}>
-              <div className="flex items-center gap-3 mb-1">
-                <div
-                  className={cn(
-                    "w-5 h-5 rounded-full border-2 flex items-center justify-center",
-                    isScpApplication
-                      ? "border-white"
-                      : "border-muted-foreground",
-                  )}>
-                  {isScpApplication && (
-                    <div className="w-2.5 h-2.5 rounded-full bg-white" />
-                  )}
-                </div>
-                <span className="font-bold">
-                  Special Curricular Program (SCP)
-                </span>
-              </div>
-              <p
+            {shouldShowScpCard && (
+              <button
+                type="button"
+                disabled={!canSelectScpTrack}
                 className={cn(
-                  "text-xs pl-8",
+                  "flex flex-col p-4 rounded-xl border-2 transition-all text-left",
                   isScpApplication
-                    ? "text-primary-foreground/80"
-                    : "text-muted-foreground",
-                )}>
-                Select this if the learner will apply for an SCP track.
-              </p>
-            </button>
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : canSelectScpTrack
+                      ? "border-border bg-white hover:bg-primary/5"
+                      : "border-border bg-muted/40 text-muted-foreground cursor-not-allowed opacity-70",
+                )}
+                onClick={selectScpTrack}>
+                <div className="flex items-center gap-3 mb-1">
+                  <div
+                    className={cn(
+                      "w-5 h-5 rounded-full border-2 flex items-center justify-center",
+                      isScpApplication
+                        ? "border-white"
+                        : "border-muted-foreground",
+                    )}>
+                    {isScpApplication && (
+                      <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                    )}
+                  </div>
+                  <span className="font-bold">
+                    Special Curricular Program (SCP)
+                  </span>
+                </div>
+                <p
+                  className={cn(
+                    "text-xs pl-8",
+                    isScpApplication
+                      ? "text-primary-foreground/80"
+                      : "text-muted-foreground",
+                  )}>
+                  {isLoadingScpConfig
+                    ? "Loading available SCP tracks..."
+                    : hasOfferedScpPrograms
+                      ? "Select this if the learner will apply for an SCP track."
+                      : "No SCP tracks are open for this School Year."}
+                </p>
+              </button>
+            )}
           </div>
 
           {!isScpEligible && (
@@ -351,8 +488,32 @@ export default function Step5Enrollment() {
             </p>
           )}
 
+          {shouldShowScpCard && isLoadingScpConfig && (
+            <p className="font-bold text-xs italic flex items-center gap-1 text-muted-foreground">
+              <Info className="w-4 h-4" />
+              Loading available SCP programs...
+            </p>
+          )}
+
+          {shouldShowScpCard && !isLoadingScpConfig && scpConfigError && (
+            <p className="text-xs text-destructive font-medium flex items-center gap-1 mt-2">
+              <AlertCircle className="w-3 h-3" />
+              {scpConfigError}
+            </p>
+          )}
+
+          {shouldShowScpCard &&
+            !isLoadingScpConfig &&
+            !scpConfigError &&
+            !hasOfferedScpPrograms && (
+              <p className="font-bold text-xs italic flex items-center gap-1 text-muted-foreground">
+                <Info className="w-4 h-4" />
+                No SCP programs are currently offered for this School Year.
+              </p>
+            )}
+
           <AnimatePresence>
-            {isScpApplication && isScpEligible && (
+            {isScpApplication && shouldShowScpCard && hasOfferedScpPrograms && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
@@ -364,7 +525,7 @@ export default function Step5Enrollment() {
                     <span className="text-destructive">*</span>
                   </Label>
                   <div className="grid grid-cols-1 gap-3">
-                    {SCP_PROGRAMS.map((program) => (
+                    {availableScpPrograms.map((program) => (
                       <div key={program.id} className="space-y-0">
                         <button
                           type="button"
@@ -375,16 +536,10 @@ export default function Step5Enrollment() {
                               : "border-border bg-white text-foreground hover:bg-primary/5",
                           )}
                           onClick={() =>
-                            setValue(
-                              "scpType",
-                              program.id as NonNullable<
-                                EnrollmentFormData["scpType"]
-                              >,
-                              {
-                                shouldValidate: true,
-                                shouldDirty: true,
-                              },
-                            )
+                            setValue("scpType", program.id, {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                            })
                           }>
                           <div className="flex items-center gap-3 mb-1">
                             <div

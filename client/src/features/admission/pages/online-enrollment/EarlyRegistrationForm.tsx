@@ -40,6 +40,7 @@ const DEFAULT_VALUES = {
   learnerType: "NEW_ENROLLEE",
   hasNoMother: false,
   hasNoFather: false,
+  isContactInfoConfirmed: false,
   isCertifiedTrue: false,
 } as const;
 
@@ -102,6 +103,7 @@ const FAMILY_SCALAR_FIELDS = new Set([
   "hasNoFather",
   "primaryContact",
   "contactNumber",
+  "isContactInfoConfirmed",
   "guardianRelationship",
   "email",
 ]);
@@ -114,6 +116,7 @@ const FIELD_LABEL_OVERRIDES: Record<string, string> = {
   householdId4Ps: "4Ps Household ID",
   primaryContact: "Primary Contact",
   contactNumber: "Contact Number",
+  isContactInfoConfirmed: "Contact Details Confirmation",
   email: "Email Address",
   guardianRelationship: "Guardian Relationship",
   lastSchoolName: "Name of Last School Attended",
@@ -466,16 +469,24 @@ export default function EnrollmentForm({
         contactNumber,
         primaryContact,
         guardianRelationship,
+        isContactInfoConfirmed: _isContactInfoConfirmed,
+        earlyRegistrationId,
         ...payloadBase
       } = uppercaseData as EnrollmentFormData & {
         contactNumber: string;
         primaryContact: "MOTHER" | "FATHER" | "GUARDIAN";
+        isContactInfoConfirmed?: boolean;
+        earlyRegistrationId?: number | null;
         guardianRelationship?: string;
       };
 
+      void _isContactInfoConfirmed;
+
       const mother = { ...payloadBase.mother };
       const father = { ...payloadBase.father };
-      const guardian = { ...payloadBase.guardian };
+      const guardian = payloadBase.guardian
+        ? { ...payloadBase.guardian }
+        : null;
 
       if (primaryContact === "MOTHER") {
         mother.contactNumber = contactNumber;
@@ -487,20 +498,44 @@ export default function EnrollmentForm({
         father.email = payloadBase.email;
       }
 
-      if (primaryContact === "GUARDIAN") {
+      if (primaryContact === "GUARDIAN" && guardian) {
         guardian.contactNumber = contactNumber;
         guardian.email = payloadBase.email;
       }
 
-      if (guardianRelationship?.trim()) {
+      if (guardian && guardianRelationship?.trim()) {
         guardian.relationship = guardianRelationship;
       }
 
+      const hasGuardianData =
+        guardian !== null &&
+        [
+          guardian.firstName,
+          guardian.lastName,
+          guardian.middleName,
+          guardian.contactNumber,
+          guardian.email,
+          guardian.relationship,
+        ].some((value) => String(value ?? "").trim().length > 0);
+
+      const normalizedLrn = data.hasNoLrn
+        ? null
+        : String(data.lrn ?? "").trim() || null;
+      const normalizedEarlyRegistrationId =
+        typeof earlyRegistrationId === "number" &&
+        Number.isFinite(earlyRegistrationId)
+          ? earlyRegistrationId
+          : null;
+
       const payload = {
         ...payloadBase,
+        lrn: normalizedLrn,
+        ...(normalizedEarlyRegistrationId !== null
+          ? { earlyRegistrationId: normalizedEarlyRegistrationId }
+          : {}),
         mother,
         father,
-        guardian,
+        guardian: hasGuardianData ? guardian : null,
         birthdate:
           data.birthdate instanceof Date
             ? data.birthdate.toISOString()
@@ -549,9 +584,37 @@ export default function EnrollmentForm({
       sessionStorage.removeItem(MAX_STEP_KEY);
       sessionStorage.removeItem(EDITING_KEY);
     } catch (error: unknown) {
-      const message =
-        (error as { response?: { data?: { message?: string } } })?.response
-          ?.data?.message || "Failed to submit application. Please try again.";
+      const responseData = (
+        error as {
+          response?: {
+            data?: {
+              message?: string;
+              errors?: Record<string, string[]>;
+            };
+          };
+        }
+      )?.response?.data;
+
+      let message =
+        responseData?.message ||
+        "Failed to submit application. Please try again.";
+
+      if (
+        responseData?.message === "Validation failed" &&
+        responseData.errors
+      ) {
+        const firstErrorEntry = Object.entries(responseData.errors).find(
+          ([, messages]) => Array.isArray(messages) && messages.length > 0,
+        );
+
+        if (firstErrorEntry) {
+          const [fieldPath, messages] = firstErrorEntry;
+          const readableField =
+            fieldPath === "_root" ? "Request" : getFieldLabel(fieldPath);
+          message = `${readableField}: ${messages[0]}`;
+        }
+      }
+
       setSubmitError(message);
       scrollToTopInstant();
     } finally {

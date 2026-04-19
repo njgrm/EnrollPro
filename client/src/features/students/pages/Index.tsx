@@ -1,7 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router";
 import {
   Search,
   Eye,
+  FileText,
+  MoreHorizontal,
+  Mars,
+  Venus,
   Users,
   ArrowUpDown,
   ArrowUp,
@@ -22,7 +27,11 @@ import {
   CardTitle,
 } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
-import { formatManilaDate } from "@/shared/lib/utils";
+import {
+  formatManilaDate,
+  formatScpType,
+  SCP_ACRONYMS,
+} from "@/shared/lib/utils";
 import {
   Select,
   SelectContent,
@@ -37,12 +46,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/shared/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/shared/ui/dropdown-menu";
 import { Label } from "@/shared/ui/label";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/shared/ui/data-table";
 
 interface Student {
   id: number;
+  learningProgram: string;
+  dateEnrolled: string;
   lrn: string;
   fullName: string;
   firstName: string;
@@ -88,11 +105,13 @@ interface Section {
   id: number;
   name: string;
   gradeLevelId: number;
+  programType: string;
 }
 
 interface ApiSection {
   id: number;
   name: string;
+  programType: string;
   maxCapacity: number;
   enrolledCount: number;
   fillPercent: number;
@@ -106,7 +125,90 @@ interface ApiGradeLevelGroup {
   sections: ApiSection[];
 }
 
+interface StudentsSummary {
+  totalEnrolled: number;
+  genderBreakdown: {
+    male: number;
+    female: number;
+    other: number;
+  };
+  programBreakdown: Record<string, number>;
+}
+
+const PROGRAM_FILTER_OPTIONS = [
+  { value: "REGULAR", label: "Regular" },
+  { value: "SCIENCE_TECHNOLOGY_AND_ENGINEERING", label: "STE" },
+  { value: "SPECIAL_PROGRAM_IN_THE_ARTS", label: "SPA" },
+  { value: "SPECIAL_PROGRAM_IN_SPORTS", label: "SPS" },
+  { value: "SPECIAL_PROGRAM_IN_JOURNALISM", label: "SPJ" },
+  { value: "SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE", label: "SPFL" },
+  {
+    value: "SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION",
+    label: "SPTVE",
+  },
+];
+
+const SECTION_ACRONYMS = new Set(["STE", "SPA", "SPS", "SPJ", "SPFL", "SPTVE"]);
+
+const formatSectionLabel = (rawSection: string | null | undefined): string => {
+  if (!rawSection) return "—";
+
+  let sectionName = rawSection.trim();
+  if (!sectionName) return "—";
+
+  if (sectionName.includes("--")) {
+    const segments = sectionName.split("--").filter(Boolean);
+    sectionName = segments[segments.length - 1] || sectionName;
+  }
+
+  sectionName = sectionName
+    .replace(/^G(?:RADE)?\s*\d+\s*[-_ ]*/i, "")
+    .replace(/_/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!sectionName) return rawSection;
+
+  return sectionName
+    .split(/(\s|-)/)
+    .map((part) => {
+      if (part === " " || part === "-") return part;
+
+      const upperPart = part.toUpperCase();
+      if (SECTION_ACRONYMS.has(upperPart) || /^\d+[A-Z]*$/.test(upperPart)) {
+        return upperPart;
+      }
+
+      if (upperPart.length <= 1) return upperPart;
+      return `${upperPart.charAt(0)}${upperPart.slice(1).toLowerCase()}`;
+    })
+    .join("");
+};
+
+const formatLearningProgramLabel = (
+  learningProgram: string | null | undefined,
+): string => {
+  const normalizedProgram = String(learningProgram || "REGULAR")
+    .trim()
+    .toUpperCase();
+
+  if (normalizedProgram === "REGULAR") {
+    return "Regular Program";
+  }
+
+  const displayName = formatScpType(normalizedProgram).replace(
+    "Tech-Voc Education",
+    "Tech-Voc",
+  );
+  const acronym = SCP_ACRONYMS[normalizedProgram];
+
+  return acronym && acronym !== "Regular"
+    ? `${displayName} (${acronym})`
+    : displayName;
+};
+
 export default function Students() {
+  const navigate = useNavigate();
   const { activeSchoolYearId, viewingSchoolYearId } = useSettingsStore();
   const ayId = viewingSchoolYearId ?? activeSchoolYearId;
 
@@ -117,11 +219,12 @@ export default function Students() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [gradeLevelFilter, setGradeLevelFilter] = useState<string>("all");
+  const [programFilter, setProgramFilter] = useState<string>("all");
   const [sectionFilter, setSectionFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const [sortBy, setSortBy] = useState<string>("createdAt");
+  const [sortBy, setSortBy] = useState<string>("dateEnrolled");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const [gradeLevels, setGradeLevels] = useState<GradeLevel[]>([]);
@@ -133,6 +236,9 @@ export default function Students() {
   );
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
+
+  const [summary, setSummary] = useState<StudentsSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
 
   // Debounce search input
   useEffect(() => {
@@ -173,38 +279,52 @@ export default function Students() {
   // Filter sections by grade level
   useEffect(() => {
     if (gradeLevelFilter === "all") {
-      setFilteredSections(sections);
+      setFilteredSections(
+        programFilter === "all"
+          ? sections
+          : sections.filter((s) => s.programType === programFilter),
+      );
     } else {
       setFilteredSections(
-        sections.filter(
-          (s) => s.gradeLevelId === parseInt(gradeLevelFilter, 10),
-        ),
+        sections.filter((s) => {
+          const isGradeMatch =
+            s.gradeLevelId === parseInt(gradeLevelFilter, 10);
+          const isProgramMatch =
+            programFilter === "all" || s.programType === programFilter;
+          return isGradeMatch && isProgramMatch;
+        }),
       );
     }
     setSectionFilter("all");
-  }, [gradeLevelFilter, sections]);
+  }, [gradeLevelFilter, programFilter, sections]);
 
   // Handle sorting
-  const handleSort = (field: string) => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-    } else {
-      setSortBy(field);
-      setSortOrder("asc");
-    }
-    setPage(1);
-  };
+  const handleSort = useCallback(
+    (field: string) => {
+      if (sortBy === field) {
+        setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+      } else {
+        setSortBy(field);
+        setSortOrder("asc");
+      }
+      setPage(1);
+    },
+    [sortBy, sortOrder],
+  );
 
-  const getSortIcon = (field: string) => {
-    if (sortBy !== field) {
-      return <ArrowUpDown className="h-4 w-4 ml-1 opacity-40" />;
-    }
-    return sortOrder === "asc" ? (
-      <ArrowUp className="h-4 w-4 ml-1" />
-    ) : (
-      <ArrowDown className="h-4 w-4 ml-1" />
-    );
-  };
+  const getSortIcon = useCallback(
+    (field: string) => {
+      if (sortBy !== field) {
+        return <ArrowUpDown className="h-4 w-4 ml-1 opacity-40" />;
+      }
+      return sortOrder === "asc" ? (
+        <ArrowUp className="h-4 w-4 ml-1" />
+      ) : (
+        <ArrowDown className="h-4 w-4 ml-1" />
+      );
+    },
+    [sortBy, sortOrder],
+  );
 
   // Fetch students
   const fetchStudents = useCallback(async () => {
@@ -221,6 +341,7 @@ export default function Students() {
       };
       if (debouncedSearch) params.search = debouncedSearch;
       if (gradeLevelFilter !== "all") params.gradeLevelId = gradeLevelFilter;
+      if (programFilter !== "all") params.programType = programFilter;
       if (sectionFilter !== "all") params.sectionId = sectionFilter;
 
       const res = await api.get("/students", { params });
@@ -239,17 +360,41 @@ export default function Students() {
     page,
     debouncedSearch,
     gradeLevelFilter,
+    programFilter,
     sectionFilter,
     sortBy,
     sortOrder,
     initialLoad,
   ]);
 
+  const fetchSummary = useCallback(async () => {
+    if (!ayId) return;
+    setSummaryLoading(true);
+    try {
+      const res = await api.get<StudentsSummary>("/students/summary", {
+        params: {
+          schoolYearId: ayId,
+          status: "ENROLLED",
+        },
+      });
+      setSummary(res.data);
+    } catch (err) {
+      toastApiError(err as never);
+      setSummary(null);
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, [ayId]);
+
   useEffect(() => {
     fetchStudents();
   }, [fetchStudents]);
 
-  const handleViewDetails = async (studentId: number) => {
+  useEffect(() => {
+    void fetchSummary();
+  }, [fetchSummary]);
+
+  const handleViewDetails = useCallback(async (studentId: number) => {
     setDetailLoading(true);
     setDetailDialogOpen(true);
     try {
@@ -261,7 +406,7 @@ export default function Students() {
     } finally {
       setDetailLoading(false);
     }
-  };
+  }, []);
 
   const getEnrolledBadge = () => (
     <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200">
@@ -291,13 +436,44 @@ export default function Students() {
     return age;
   };
 
-  const visibleSectionCount = useMemo(() => {
-    const unique = new Set<string>();
-    students.forEach((student) => {
-      if (student.section) unique.add(student.section);
-    });
-    return unique.size;
-  }, [students]);
+  const handleOpenPermanentRecord = useCallback(
+    (studentId: number) => {
+      navigate(`/students/${studentId}?tab=academic`);
+    },
+    [navigate],
+  );
+
+  const handleOpenProfilePage = useCallback(
+    (studentId: number) => {
+      navigate(`/students/${studentId}`);
+    },
+    [navigate],
+  );
+
+  const programBreakdownItems = useMemo(() => {
+    if (!summary) return [];
+
+    return PROGRAM_FILTER_OPTIONS.map((option) => ({
+      key: option.value,
+      label: option.label,
+      count: summary.programBreakdown[option.value] || 0,
+    }))
+      .filter((item) => item.count > 0)
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+  }, [summary]);
+
+  const topProgramBreakdownItems = useMemo(
+    () => programBreakdownItems.slice(0, 3),
+    [programBreakdownItems],
+  );
+
+  const otherProgramLearnerCount = useMemo(
+    () =>
+      programBreakdownItems
+        .slice(3)
+        .reduce((totalCount, item) => totalCount + item.count, 0),
+    [programBreakdownItems],
+  );
 
   const columns = useMemo<ColumnDef<Student>[]>(
     () => [
@@ -307,7 +483,7 @@ export default function Students() {
           <button
             onClick={() => handleSort("lastName")}
             className="flex h-11 w-full items-center justify-center gap-1 px-3 text-xs font-bold uppercase tracking-wider text-primary-foreground/90 hover:bg-primary/90 transition-colors">
-            Student
+            Learner
             {getSortIcon("lastName")}
           </button>
         ),
@@ -316,8 +492,8 @@ export default function Students() {
             <span className="font-bold text-sm uppercase leading-tight">
               {row.original.fullName}
             </span>
-            <span className="text-xs font-bold text-muted-foreground">
-              {row.original.trackingNumber}
+            <span className="text-xs font-semibold text-muted-foreground leading-snug">
+              {formatLearningProgramLabel(row.original.learningProgram)}
             </span>
           </div>
         ),
@@ -335,6 +511,25 @@ export default function Students() {
         cell: ({ row }) => (
           <span className="font-bold text-sm">{row.original.lrn}</span>
         ),
+      },
+      {
+        id: "gender",
+        header: () => (
+          <div className="flex h-11 w-full items-center justify-center px-3 text-xs font-bold uppercase tracking-wider text-primary-foreground/90">
+            Gender
+          </div>
+        ),
+        cell: ({ row }) => {
+          const normalized = row.original.sex?.trim().toUpperCase();
+          const display =
+            normalized === "MALE" || normalized === "M"
+              ? "M"
+              : normalized === "FEMALE" || normalized === "F"
+                ? "F"
+                : row.original.sex || "—";
+
+          return <span className="font-bold text-sm uppercase">{display}</span>;
+        },
       },
       {
         id: "gradeLevel",
@@ -362,7 +557,7 @@ export default function Students() {
         ),
         cell: ({ row }) => (
           <span className="font-bold text-sm">
-            {row.original.section || "—"}
+            {formatSectionLabel(row.original.section)}
           </span>
         ),
       },
@@ -370,15 +565,15 @@ export default function Students() {
         id: "enrolled",
         header: () => (
           <button
-            onClick={() => handleSort("createdAt")}
+            onClick={() => handleSort("dateEnrolled")}
             className="flex h-11 w-full items-center justify-center gap-1 px-3 text-xs font-bold uppercase tracking-wider text-primary-foreground/90 hover:bg-primary/90 transition-colors">
-            Enrolled
-            {getSortIcon("createdAt")}
+            Date Enrolled
+            {getSortIcon("dateEnrolled")}
           </button>
         ),
         cell: ({ row }) => (
           <span className="text-sm font-bold block text-center">
-            {formatDate(row.original.createdAt)}
+            {formatDate(row.original.dateEnrolled || row.original.createdAt)}
           </span>
         ),
       },
@@ -386,23 +581,51 @@ export default function Students() {
         id: "actions",
         header: "Actions",
         cell: ({ row }) => (
-          <div className="flex justify-center min-w-[100px]">
+          <div className="flex items-center justify-center gap-2 min-w-[180px]">
             <Button
               variant="secondary"
               size="sm"
-              className="h-8 text-xs font-bold bg-primary/10 hover:bg-primary border-2 border-primary/20 hover:text-primary-foreground"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleViewDetails(row.original.id);
-              }}>
+              className="h-8 px-3 text-xs font-bold bg-primary/10 hover:bg-primary border-2 border-primary/20 hover:text-primary-foreground"
+              onClick={() => handleViewDetails(row.original.id)}>
               <Eye className="h-3.5 w-3.5 mr-1.5" />
               View
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="h-8 w-8 px-0 text-xs font-bold bg-primary/10 hover:bg-primary border-2 border-primary/20 hover:text-primary-foreground"
+                  aria-label={`Open actions for ${row.original.fullName}`}>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 font-semibold">
+                <DropdownMenuItem
+                  onClick={() => handleOpenProfilePage(row.original.id)}
+                  className="cursor-pointer">
+                  <Eye className="mr-2 h-4 w-4" />
+                  Open Full Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleOpenPermanentRecord(row.original.id)}
+                  className="cursor-pointer">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Generate SF10 / Permanent Record
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         ),
       },
     ],
-    [handleSort, getSortIcon, handleViewDetails],
+    [
+      handleSort,
+      getSortIcon,
+      handleViewDetails,
+      handleOpenProfilePage,
+      handleOpenPermanentRecord,
+    ],
   );
 
   if (!ayId) {
@@ -449,28 +672,98 @@ export default function Students() {
             <CardDescription className="text-xs uppercase tracking-wider font-bold">
               Total Enrolled
             </CardDescription>
-            <CardTitle className="text-2xl font-extrabold">{total}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card className="border-none shadow-sm bg-[hsl(var(--card))]">
-          <CardHeader className="pb-2">
-            <CardDescription className="text-xs uppercase tracking-wider font-bold">
-              Showing On Current Page
-            </CardDescription>
-            <CardTitle className="text-2xl font-extrabold text-green-600">
-              {students.length}
+            <CardTitle className="text-2xl font-extrabold">
+              {summaryLoading ? "..." : (summary?.totalEnrolled ?? 0)}
             </CardTitle>
           </CardHeader>
         </Card>
         <Card className="border-none shadow-sm bg-[hsl(var(--card))]">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-1">
             <CardDescription className="text-xs uppercase tracking-wider font-bold">
-              Sections On Current Page
+              Gender Breakdown
             </CardDescription>
-            <CardTitle className="text-2xl font-extrabold text-blue-600">
-              {visibleSectionCount}
-            </CardTitle>
           </CardHeader>
+          <CardContent className="pt-0">
+            {summaryLoading ? (
+              <div className="text-sm font-bold text-muted-foreground">...</div>
+            ) : !summary ? (
+              <p className="text-xs font-semibold text-muted-foreground">
+                No enrolled learners yet.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-md border bg-muted/40 px-2 py-1 flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-bold uppercase inline-flex items-center gap-1">
+                    <Mars className="h-3.5 w-3.5 text-sky-700" />
+                    Male
+                  </span>
+                  <span className="text-xs font-extrabold text-sky-700">
+                    {summary.genderBreakdown.male}
+                  </span>
+                </div>
+                <div className="rounded-md border bg-muted/40 px-2 py-1 flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-bold uppercase inline-flex items-center gap-1">
+                    <Venus className="h-3.5 w-3.5 text-rose-700" />
+                    Female
+                  </span>
+                  <span className="text-xs font-extrabold text-rose-700">
+                    {summary.genderBreakdown.female}
+                  </span>
+                </div>
+                {summary.genderBreakdown.other > 0 && (
+                  <div className="rounded-md border border-dashed bg-muted/30 px-2 py-1 flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold uppercase text-muted-foreground">
+                      Others
+                    </span>
+                    <span className="text-xs font-extrabold text-muted-foreground">
+                      {summary.genderBreakdown.other}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        <Card className="border-none shadow-sm bg-[hsl(var(--card))]">
+          <CardHeader className="pb-1">
+            <CardDescription className="text-xs uppercase tracking-wider font-bold">
+              Program Breakdown
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {summaryLoading ? (
+              <div className="text-sm font-bold text-muted-foreground">...</div>
+            ) : programBreakdownItems.length === 0 ? (
+              <p className="text-xs font-semibold text-muted-foreground">
+                No enrolled learners yet.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {topProgramBreakdownItems.map((item) => (
+                  <div
+                    key={item.key}
+                    className="rounded-md border bg-muted/40 px-2 py-1 flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold uppercase">
+                      {item.label}
+                    </span>
+                    <span className="text-xs font-extrabold text-blue-700">
+                      {item.count}
+                    </span>
+                  </div>
+                ))}
+                {otherProgramLearnerCount > 0 && (
+                  <div className="rounded-md border border-dashed bg-muted/30 px-2 py-1 flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold uppercase text-muted-foreground">
+                      Others
+                    </span>
+                    <span className="text-xs font-extrabold text-muted-foreground">
+                      {otherProgramLearnerCount}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
         </Card>
       </div>
 
@@ -526,6 +819,34 @@ export default function Students() {
               </div>
               <div className="space-y-2">
                 <Label className="text-xs sm:text-sm uppercase tracking-wider font-bold">
+                  Program
+                </Label>
+                <Select
+                  value={programFilter}
+                  onValueChange={(value) => {
+                    setProgramFilter(value);
+                    setPage(1);
+                  }}>
+                  <SelectTrigger className="h-10 w-full md:w-52 text-sm font-bold">
+                    <SelectValue placeholder="All Programs" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className="text-sm font-bold">
+                      All Programs
+                    </SelectItem>
+                    {PROGRAM_FILTER_OPTIONS.map((option) => (
+                      <SelectItem
+                        key={option.value}
+                        value={option.value}
+                        className="text-sm font-bold">
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs sm:text-sm uppercase tracking-wider font-bold">
                   Section
                 </Label>
                 <Select
@@ -546,7 +867,7 @@ export default function Students() {
                         key={sec.id}
                         value={sec.id.toString()}
                         className="text-sm font-bold">
-                        {sec.name}
+                        {formatSectionLabel(sec.name)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -558,7 +879,7 @@ export default function Students() {
                 variant="outline"
                 className="h-10 px-3 text-sm font-bold w-full md:w-auto"
                 onClick={() => {
-                  void fetchStudents();
+                  void Promise.all([fetchStudents(), fetchSummary()]);
                 }}
                 disabled={loading || !ayId}>
                 <RefreshCw
@@ -573,8 +894,9 @@ export default function Students() {
                 onClick={() => {
                   setSearch("");
                   setGradeLevelFilter("all");
+                  setProgramFilter("all");
                   setSectionFilter("all");
-                  setSortBy("createdAt");
+                  setSortBy("dateEnrolled");
                   setSortOrder("desc");
                   setPage(1);
                 }}>
@@ -621,8 +943,8 @@ export default function Students() {
                       <p className="font-bold text-sm uppercase leading-tight break-words">
                         {student.fullName}
                       </p>
-                      <p className="text-xs font-bold text-muted-foreground truncate">
-                        {student.trackingNumber}
+                      <p className="text-xs font-semibold text-muted-foreground leading-snug">
+                        {formatLearningProgramLabel(student.learningProgram)}
                       </p>
                     </div>
                     {getEnrolledBadge()}
@@ -637,6 +959,18 @@ export default function Students() {
                     </div>
                     <div>
                       <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
+                        Gender
+                      </p>
+                      <p className="font-bold uppercase">
+                        {student.sex === "MALE" || student.sex === "M"
+                          ? "M"
+                          : student.sex === "FEMALE" || student.sex === "F"
+                            ? "F"
+                            : student.sex || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
                         Grade Level
                       </p>
                       <p className="font-bold">{student.gradeLevel}</p>
@@ -645,22 +979,54 @@ export default function Students() {
                       <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
                         Section
                       </p>
-                      <p className="font-bold">{student.section || "—"}</p>
+                      <p className="font-bold">
+                        {formatSectionLabel(student.section)}
+                      </p>
                     </div>
                   </div>
 
                   <p className="mt-2 text-[11px] font-bold text-muted-foreground">
-                    Enrolled {formatDate(student.createdAt)}
+                    Enrolled{" "}
+                    {formatDate(student.dateEnrolled || student.createdAt)}
                   </p>
 
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="mt-3 h-9 w-full text-xs font-bold bg-primary/10 hover:bg-primary border-2 border-primary/20 hover:text-primary-foreground"
-                    onClick={() => handleViewDetails(student.id)}>
-                    <Eye className="h-3.5 w-3.5 mr-1.5" />
-                    View Learner
-                  </Button>
+                  <div className="mt-3 flex items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="h-9 flex-1 text-xs font-bold bg-primary/10 hover:bg-primary border-2 border-primary/20 hover:text-primary-foreground"
+                      onClick={() => handleViewDetails(student.id)}>
+                      <Eye className="h-3.5 w-3.5 mr-1.5" />
+                      View
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="h-9 w-10 px-0 text-xs font-bold bg-primary/10 hover:bg-primary border-2 border-primary/20 hover:text-primary-foreground"
+                          aria-label={`Open actions for ${student.fullName}`}>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        align="end"
+                        className="w-56 font-semibold">
+                        <DropdownMenuItem
+                          onClick={() => handleOpenProfilePage(student.id)}
+                          className="cursor-pointer">
+                          <Eye className="mr-2 h-4 w-4" />
+                          Open Full Profile
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleOpenPermanentRecord(student.id)}
+                          className="cursor-pointer">
+                          <FileText className="mr-2 h-4 w-4" />
+                          Generate SF10 / Permanent Record
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
               ))
             )}

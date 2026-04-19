@@ -1,13 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { sileo } from "sileo";
 import { Link } from "react-router";
-import { CloudUpload, GraduationCap, Plus } from "lucide-react";
+import {
+  ChevronDown,
+  CloudUpload,
+  GraduationCap,
+  Plus,
+  Upload,
+} from "lucide-react";
 import api from "@/shared/api/axiosInstance";
 import { useSettingsStore } from "@/store/settings.slice";
 import { toastApiError } from "@/shared/hooks/useApiToast";
 import { useDelayedLoading } from "@/shared/hooks/useDelayedLoading";
 import { Button } from "@/shared/ui/button";
 import { ConfirmationModal } from "@/shared/ui/confirmation-modal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/shared/ui/dropdown-menu";
 import { TeacherDirectoryCard } from "../components/TeacherDirectoryCard";
 import { TeacherFormSheet } from "../components/TeacherFormSheet";
 import { TeacherDesignationSheet } from "../components/TeacherDesignationSheet";
@@ -599,8 +611,21 @@ export default function Teachers() {
     editFormData.lastName.trim().length > 0 &&
     isValidContactNumber(editFormData.contactNumber);
 
+  const openCreateTeacherSheet = () => {
+    setFormData(createEmptyTeacherForm());
+    setCreateOpen(true);
+  };
+
+  const handleBulkImportPlaceholder = () => {
+    sileo.info({
+      title: "Bulk Import Coming Soon",
+      description:
+        "CSV bulk teacher import is queued for the next release. Use Add Teacher for now.",
+    });
+  };
+
   return (
-    <div className="space-y-6 min-w-0">
+    <div className="space-y-6 min-w-0 w-full max-w-full overflow-x-hidden">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1 text-left">
           <h1 className="text-2xl md:text-3xl font-bold flex items-center justify-start gap-2 text-balance">
@@ -608,7 +633,7 @@ export default function Teachers() {
             Teacher Management
           </h1>
           <p className="text-sm text-muted-foreground text-balance">
-            Manage teacher profiles for section adviser assignment
+            Manage teacher profiles, learning areas, and adviser assignments.
           </p>
         </div>
         <div className="flex justify-end gap-2 flex-wrap">
@@ -618,15 +643,36 @@ export default function Teachers() {
               ATLAS Sync Health
             </Link>
           </Button>
-          <Button
-            onClick={() => {
-              setFormData(createEmptyTeacherForm());
-              setCreateOpen(true);
-            }}
-            className="w-fit shadow-sm">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Teacher
-          </Button>
+          <div className="inline-flex shadow-sm rounded-lg overflow-hidden">
+            <Button onClick={openCreateTeacherSheet} className="rounded-r-none">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Teacher
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon-sm"
+                  className="rounded-l-none border-l border-primary-foreground/20"
+                  aria-label="Open add teacher options">
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem
+                  onClick={openCreateTeacherSheet}
+                  className="cursor-pointer">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Single Teacher
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleBulkImportPlaceholder}
+                  className="cursor-pointer">
+                  <Upload className="mr-2 h-4 w-4" />
+                  Bulk Import (CSV)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 

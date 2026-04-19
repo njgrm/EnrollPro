@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   ApplicantTypeEnum,
   ApplicationStatusEnum,
+  ReadingProfileLevelEnum,
   SexEnum,
   GradeLevelEnum,
   ScpTypeEnum,
@@ -68,7 +69,7 @@ export const applicationSubmitSchema = z
       .nullable(),
     psaBirthCertNumber: z.string().trim().toUpperCase().optional().nullable(),
 
-    earlyRegistrationId: z.number().int().positive().optional(),
+    earlyRegistrationId: z.number().int().positive().optional().nullable(),
 
     gradeLevel: GradeLevelEnum,
     isScpApplication: z.boolean().default(false),
@@ -181,6 +182,15 @@ export const applicationSubmitSchema = z
         message: "Select an SCP track to continue.",
       });
     }
+
+    if (data.isScpApplication && !data.earlyRegistrationId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["earlyRegistrationId"],
+        message:
+          "SCP applicants must complete Early Registration and run LRN lookup before final enrollment.",
+      });
+    }
   });
 
 export const assessmentTrackerStepSchema = z.object({
@@ -256,6 +266,16 @@ export const unenrollSchema = z.object({
     .string()
     .trim()
     .max(500, "Note must not exceed 500 characters")
+    .optional()
+    .nullable(),
+});
+
+export const readingProfileUpdateSchema = z.object({
+  readingProfileLevel: ReadingProfileLevelEnum,
+  readingProfileNotes: z
+    .string()
+    .trim()
+    .max(500, "Reading profile notes must not exceed 500 characters")
     .optional()
     .nullable(),
 });

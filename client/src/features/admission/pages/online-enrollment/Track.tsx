@@ -96,6 +96,12 @@ const statusConfig: Record<
     color: "text-blue-600 bg-blue-50 border-blue-200",
     desc: "The Registrar is currently looking over your documents. We'll keep you posted!",
   },
+  VERIFIED: {
+    label: "Verified",
+    icon: CheckCircle2,
+    color: "text-cyan-600 bg-cyan-50 border-cyan-200",
+    desc: "Your submitted records have been verified by the Registrar.",
+  },
   UNDER_REVIEW: {
     label: "Under Review",
     icon: Search,
@@ -307,8 +313,17 @@ export default function TrackApplication({
         status.status || status.trackingStatus || status.rawStatus,
       )
     : null;
-  const config = normalizedStatus
-    ? statusConfig[normalizedStatus] || statusConfig.SUBMITTED
+  const rawStatusKey = String(
+    status?.rawStatus || status?.status || status?.trackingStatus || "",
+  )
+    .trim()
+    .toUpperCase();
+  const displayStatusKey =
+    (rawStatusKey && statusConfig[rawStatusKey] ? rawStatusKey : null) ||
+    normalizedStatus ||
+    "SUBMITTED";
+  const config = displayStatusKey
+    ? statusConfig[displayStatusKey] || statusConfig.SUBMITTED
     : null;
   const Icon = config?.icon;
 
@@ -338,6 +353,12 @@ export default function TrackApplication({
     normalizedStatus === "ASSESSMENT_IN_PROGRESS" ||
     status?.rawStatus === "EXAM_SCHEDULED" ||
     status?.rawStatus === "INTERVIEW_SCHEDULED";
+  const nextStepsStatus =
+    status?.rawStatus ||
+    status?.status ||
+    status?.trackingStatus ||
+    normalizedStatus ||
+    undefined;
 
   return (
     <div
@@ -346,7 +367,7 @@ export default function TrackApplication({
       )}>
       <Card
         className={cn(
-          "shadow-xl border-2 border-primary/5 rounded-3xl overflow-hidden transition-all duration-500 w-full",
+          "shadow-xl border-2 border-primary/5 rounded-lg overflow-hidden transition-all duration-500 w-full",
         )}>
         <CardHeader className="bg-primary text-primary-foreground p-8 text-center">
           <CardTitle className="text-2xl font-black uppercase tracking-tight">
@@ -431,7 +452,7 @@ export default function TrackApplication({
                 className="mt-10 space-y-8">
                 <div
                   className={cn(
-                    "p-8 rounded-3xl border-2 flex flex-col items-center text-center gap-4",
+                    "p-8 rounded-lg border-2 flex flex-col items-center text-center gap-4",
                     config.color,
                   )}>
                   <div className="p-4 rounded-full bg-white shadow-sm border border-current/20">
@@ -539,7 +560,7 @@ export default function TrackApplication({
                   <TrackingNextSteps
                     applicantType={status.applicantType}
                     programType={status.programType}
-                    status={normalizedStatus ?? status.status}
+                    status={nextStepsStatus}
                     currentStep={status.currentStep}
                     assessmentData={status.assessmentData}
                   />
@@ -660,7 +681,7 @@ export default function TrackApplication({
 
                 <div
                   style={{ backgroundColor: "#f9fafb", borderColor: "#061E29" }}
-                  className="p-12 rounded-3xl border-4 text-center space-y-6 relative overflow-hidden border-dashed">
+                  className="p-12 rounded-lg border-4 text-center space-y-6 relative overflow-hidden border-dashed">
                   <p
                     style={{ color: "#6b7280" }}
                     className="text-xs uppercase tracking-[0.3em] font-black">
@@ -709,7 +730,7 @@ export default function TrackApplication({
 
                 <div
                   style={{ borderColor: "#f3f4f6" }}
-                  className="space-y-8 bg-white p-8 border-2 rounded-3xl">
+                  className="space-y-8 bg-white p-8 border-2 rounded-lg">
                   <h3
                     style={{ color: "#061E29" }}
                     className="text-2xl font-black flex items-center gap-3 uppercase tracking-tight -mt-3">
@@ -718,7 +739,7 @@ export default function TrackApplication({
                   <TrackingNextSteps
                     applicantType={status.applicantType}
                     programType={status.programType}
-                    status={normalizedStatus ?? status.status}
+                    status={nextStepsStatus}
                     currentStep={status.currentStep}
                     assessmentData={status.assessmentData}
                   />

@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router";
+import { useParams, useNavigate, useSearchParams } from "react-router";
 import {
   ArrowLeft,
   User,
@@ -14,7 +14,7 @@ import { Button } from "@/shared/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { motion, AnimatePresence } from "motion/react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { HealthRecords } from "@/features/students/components/tabs/HealthRecords";
 import { StatusTimeline } from "@/features/enrollment/components/StatusTimeline";
@@ -30,7 +30,26 @@ import { toastApiError } from "@/shared/hooks/useApiToast";
 export default function StudentProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("personal");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const validTabs = useMemo(
+    () =>
+      new Set([
+        "personal",
+        "academic",
+        "application",
+        "classifications",
+        "health",
+      ]),
+    [],
+  );
+
+  const initialTabFromQuery = searchParams.get("tab") || "personal";
+  const resolvedInitialTab = validTabs.has(initialTabFromQuery)
+    ? initialTabFromQuery
+    : "personal";
+
+  const [activeTab, setActiveTab] = useState(resolvedInitialTab);
   const {
     data: student,
     loading,
@@ -123,7 +142,15 @@ export default function StudentProfile() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs
+        value={activeTab}
+        onValueChange={(tab) => {
+          setActiveTab(tab);
+          const next = new URLSearchParams(searchParams);
+          next.set("tab", tab);
+          setSearchParams(next, { replace: true });
+        }}
+        className="w-full">
         <TabsList className="grid w-full grid-cols-5 h-auto p-1 bg-muted/50">
           <TabsTrigger value="personal" className="py-2">
             Personal Info

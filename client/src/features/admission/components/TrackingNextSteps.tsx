@@ -111,6 +111,49 @@ function normalizeCurrentStep(
   return undefined;
 }
 
+function resolveCurrentStepFromRawStatus(
+  rawStatus: string,
+  programType: TrackingProgramType,
+): TrackingCurrentStep | undefined {
+  const normalizedRaw = rawStatus.trim().toUpperCase();
+
+  switch (normalizedRaw) {
+    case "SUBMITTED":
+      return "APPLICATION_SUBMITTED";
+    case "IN_REVIEW":
+    case "UNDER_REVIEW":
+    case "FOR_REVISION":
+      return "REGISTRAR_REVIEW";
+    case "VERIFIED":
+    case "ELIGIBLE":
+      return programType === "SCP"
+        ? "ASSESSMENT_PHASE"
+        : "ENROLLMENT_QUALIFICATION";
+    case "ASSESSMENT_IN_PROGRESS":
+    case "EXAM_SCHEDULED":
+    case "ASSESSMENT_TAKEN":
+    case "INTERVIEW_SCHEDULED":
+    case "FAILED_ASSESSMENT":
+      return "ASSESSMENT_PHASE";
+    case "QUALIFIED_FOR_ENROLLMENT":
+    case "PASSED":
+    case "READY_FOR_ENROLLMENT":
+    case "TEMPORARILY_ENROLLED":
+      return "ENROLLMENT_QUALIFICATION";
+    case "ENROLLED":
+      return "ENROLLED";
+    case "NOT_QUALIFIED":
+      return programType === "SCP"
+        ? "ASSESSMENT_PHASE"
+        : "ENROLLMENT_QUALIFICATION";
+    case "REJECTED":
+    case "WITHDRAWN":
+      return "REGISTRAR_REVIEW";
+    default:
+      return undefined;
+  }
+}
+
 function formatAssessmentHint(
   assessmentData?: TrackingAssessmentData,
 ): string | null {
@@ -172,8 +215,16 @@ export default function TrackingNextSteps({
 }: TrackingNextStepsProps) {
   const resolvedProgramType =
     programType ?? deriveProgramTypeFromApplicantType(applicantType);
+  const normalizedStatusInput = String(status ?? "")
+    .trim()
+    .toUpperCase();
   const resolvedStatus = normalizeTrackingStatus(status);
+  const derivedStepFromRawStatus = resolveCurrentStepFromRawStatus(
+    normalizedStatusInput,
+    resolvedProgramType,
+  );
   const resolvedCurrentStep =
+    derivedStepFromRawStatus ??
     normalizeCurrentStep(currentStep) ??
     resolveCurrentStep(resolvedStatus, resolvedProgramType);
 

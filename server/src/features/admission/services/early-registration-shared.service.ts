@@ -4,6 +4,10 @@ import type {
   EarlyRegistrationApplication,
   ApplicationStatus,
 } from "../../../generated/prisma/index.js";
+import {
+  APPLICATION_STATUS_TO_TRACKING_STATUS,
+  APPLICATION_VALID_TRANSITIONS,
+} from "@enrollpro/shared";
 import type { AdmissionControllerDeps } from "./admission-controller.deps.js";
 
 export type PublicProgramType = "REGULAR" | "SCP";
@@ -65,24 +69,10 @@ const NORMALIZED_TRACKING_STATUSES = new Set<PublicTrackingStatus>([
   "WITHDRAWN",
 ]);
 
-const RAW_TO_TRACKING_STATUS: Record<ApplicationStatus, PublicTrackingStatus> =
-  {
-    SUBMITTED: "SUBMITTED",
-    VERIFIED: "IN_REVIEW",
-    UNDER_REVIEW: "IN_REVIEW",
-    FOR_REVISION: "IN_REVIEW",
-    ELIGIBLE: "IN_REVIEW",
-    EXAM_SCHEDULED: "ASSESSMENT_IN_PROGRESS",
-    ASSESSMENT_TAKEN: "ASSESSMENT_IN_PROGRESS",
-    PASSED: "QUALIFIED_FOR_ENROLLMENT",
-    INTERVIEW_SCHEDULED: "ASSESSMENT_IN_PROGRESS",
-    READY_FOR_ENROLLMENT: "QUALIFIED_FOR_ENROLLMENT",
-    TEMPORARILY_ENROLLED: "QUALIFIED_FOR_ENROLLMENT",
-    FAILED_ASSESSMENT: "NOT_QUALIFIED",
-    ENROLLED: "ENROLLED",
-    REJECTED: "REJECTED",
-    WITHDRAWN: "WITHDRAWN",
-  };
+const RAW_TO_TRACKING_STATUS = APPLICATION_STATUS_TO_TRACKING_STATUS as Record<
+  ApplicationStatus,
+  PublicTrackingStatus
+>;
 
 export function deriveProgramType(
   applicantType: string | null | undefined,
@@ -206,70 +196,29 @@ export function createInitialTrackingPayload(
   };
 }
 
-export const VALID_TRANSITIONS: Record<string, ApplicationStatus[]> = {
-  SUBMITTED: [
-    "VERIFIED",
-    "UNDER_REVIEW",
-    "EXAM_SCHEDULED",
-    "REJECTED",
-    "WITHDRAWN",
-  ],
-  VERIFIED: [
-    "UNDER_REVIEW",
-    "ELIGIBLE",
-    "EXAM_SCHEDULED",
-    "READY_FOR_ENROLLMENT",
-    "REJECTED",
-    "WITHDRAWN",
-  ],
-  UNDER_REVIEW: [
-    "VERIFIED",
-    "FOR_REVISION",
-    "ELIGIBLE",
-    "EXAM_SCHEDULED",
-    "TEMPORARILY_ENROLLED",
-    "REJECTED",
-    "WITHDRAWN",
-  ],
-  FOR_REVISION: ["UNDER_REVIEW", "WITHDRAWN"],
-  ELIGIBLE: ["EXAM_SCHEDULED", "READY_FOR_ENROLLMENT", "WITHDRAWN"],
-  EXAM_SCHEDULED: [
-    "ASSESSMENT_TAKEN",
-    "EXAM_SCHEDULED",
-    "INTERVIEW_SCHEDULED",
-    "WITHDRAWN",
-  ],
-  ASSESSMENT_TAKEN: [
-    "PASSED",
-    "SUBMITTED",
-    "FAILED_ASSESSMENT",
-    "ASSESSMENT_TAKEN",
-    "EXAM_SCHEDULED",
-    "WITHDRAWN",
-  ],
-  PASSED: [
-    "READY_FOR_ENROLLMENT",
-    "INTERVIEW_SCHEDULED",
-    "EXAM_SCHEDULED",
-    "WITHDRAWN",
-  ],
-  INTERVIEW_SCHEDULED: ["READY_FOR_ENROLLMENT", "SUBMITTED", "WITHDRAWN"],
-  READY_FOR_ENROLLMENT: [
-    "ENROLLED",
-    "TEMPORARILY_ENROLLED",
-    "REJECTED",
-    "WITHDRAWN",
-  ],
-  TEMPORARILY_ENROLLED: ["ENROLLED", "WITHDRAWN"],
-  FAILED_ASSESSMENT: ["UNDER_REVIEW", "WITHDRAWN", "REJECTED"],
-  ENROLLED: ["WITHDRAWN"],
-  REJECTED: ["UNDER_REVIEW", "WITHDRAWN"],
-  WITHDRAWN: [],
-};
+export const VALID_TRANSITIONS = APPLICATION_VALID_TRANSITIONS as Record<
+  string,
+  ApplicationStatus[]
+>;
 
 export function createEarlyRegistrationSharedService(
   deps: AdmissionControllerDeps,
 ) {
+  const LINKABLE_EARLY_REG_STATUSES = new Set<ApplicationStatus>([
+    "SUBMITTED",
+    "VERIFIED",
+    "UNDER_REVIEW",
+    "FOR_REVISION",
+    "ELIGIBLE",
+    "EXAM_SCHEDULED",
+    "ASSESSMENT_TAKEN",
+    "PASSED",
+    "INTERVIEW_SCHEDULED",
+    "READY_FOR_ENROLLMENT",
+    "TEMPORARILY_ENROLLED",
+    "FAILED_ASSESSMENT",
+  ]);
+
   async function findApplicantOrThrow(
     id: number,
     tx?: any,
@@ -826,6 +775,104 @@ export function createEarlyRegistrationSharedService(
     throw new AppError(404, "Application not found");
   }
 
+  async function resolveLinkedEarlyRegistration(
+    params: {
+      requestedEarlyRegistrationId: unknown;
+      activeSchoolYearId: number;
+      submittedLrn: string | null;
+      expectedApplicantType: string;
+    },
+    tx?: any,
+  ): Promise<{
+    linkedEarlyRegistrationId: number | null;
+    reason:
+      | "missing"
+      | "invalid"
+      | "school_year_mismatch"
+      | "lrn_mismatch"
+      | "applicant_type_mismatch"
+      | "status_ineligible"
+      | "ok";
+  }> {
+    const {
+      requestedEarlyRegistrationId,
+      activeSchoolYearId,
+      submittedLrn,
+      expectedApplicantType,
+    } = params;
+
+    if (
+      typeof requestedEarlyRegistrationId !== "number" ||
+      !Number.isInteger(requestedEarlyRegistrationId) ||
+      requestedEarlyRegistrationId <= 0
+    ) {
+      return {
+        linkedEarlyRegistrationId: null,
+        reason: "missing",
+      };
+    }
+
+    const p = tx || deps.prisma;
+    const linkedEarlyRegistration =
+      await p.earlyRegistrationApplication.findUnique({
+        where: { id: requestedEarlyRegistrationId },
+        select: {
+          id: true,
+          schoolYearId: true,
+          status: true,
+          applicantType: true,
+          learner: { select: { lrn: true } },
+        },
+      });
+
+    if (!linkedEarlyRegistration) {
+      return {
+        linkedEarlyRegistrationId: null,
+        reason: "invalid",
+      };
+    }
+
+    if (linkedEarlyRegistration.schoolYearId !== activeSchoolYearId) {
+      return {
+        linkedEarlyRegistrationId: null,
+        reason: "school_year_mismatch",
+      };
+    }
+
+    if (
+      submittedLrn &&
+      linkedEarlyRegistration.learner?.lrn &&
+      linkedEarlyRegistration.learner.lrn !== submittedLrn
+    ) {
+      return {
+        linkedEarlyRegistrationId: null,
+        reason: "lrn_mismatch",
+      };
+    }
+
+    if (
+      expectedApplicantType !== "REGULAR" &&
+      linkedEarlyRegistration.applicantType !== expectedApplicantType
+    ) {
+      return {
+        linkedEarlyRegistrationId: null,
+        reason: "applicant_type_mismatch",
+      };
+    }
+
+    if (!LINKABLE_EARLY_REG_STATUSES.has(linkedEarlyRegistration.status)) {
+      return {
+        linkedEarlyRegistrationId: null,
+        reason: "status_ineligible",
+      };
+    }
+
+    return {
+      linkedEarlyRegistrationId: linkedEarlyRegistration.id,
+      reason: "ok",
+    };
+  }
+
   async function migrateEarlyRegToEnrollment(
     earlyRegId: number,
     userId: number,
@@ -938,6 +985,7 @@ export function createEarlyRegistrationSharedService(
     getDetailedApplicationOrThrow,
     toUpperCaseRecursive,
     updateApplicationStatus,
+    resolveLinkedEarlyRegistration,
     migrateEarlyRegToEnrollment,
   };
 }

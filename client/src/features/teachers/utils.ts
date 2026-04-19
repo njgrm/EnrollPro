@@ -2,6 +2,23 @@ import type { Teacher, TeacherFormState, TeacherSyncFilter } from "./types";
 
 export const MAX_TEACHER_PHOTO_BYTES = 5 * 1024 * 1024;
 
+export const DEPED_LEARNING_AREA_OPTIONS = [
+  { value: "ENGLISH", label: "English" },
+  { value: "FILIPINO", label: "Filipino" },
+  { value: "MATHEMATICS", label: "Mathematics" },
+  { value: "SCIENCE", label: "Science" },
+  { value: "ARALING PANLIPUNAN", label: "Araling Panlipunan" },
+  { value: "ESP", label: "Edukasyon sa Pagpapakatao (ESP)" },
+  { value: "VALUES EDUCATION", label: "Values Education" },
+  { value: "MAPEH", label: "MAPEH" },
+  { value: "TLE", label: "Technology and Livelihood Education (TLE)" },
+  { value: "ICT", label: "Information and Communications Technology (ICT)" },
+  { value: "FOREIGN LANGUAGE", label: "Foreign Language" },
+  { value: "JOURNALISM", label: "Journalism" },
+  { value: "ARTS", label: "Arts" },
+  { value: "SPORTS", label: "Sports" },
+] as const;
+
 export function createEmptyTeacherForm(): TeacherFormState {
   return {
     firstName: "",
@@ -120,29 +137,29 @@ export function getSyncDetailText(teacher: Teacher): string {
   const sync = teacher.atlasSync;
 
   if (!sync || sync.status === "SKIPPED") {
-    return "No delivery attempt yet";
+    return "Waiting for first ATLAS sync";
   }
 
   if (sync.status === "SYNCED") {
     return sync.acknowledgedAt
-      ? `Acknowledged ${formatDateTime(sync.acknowledgedAt)}`
-      : "Delivered successfully";
+      ? `ATLAS confirmed receipt on ${formatDateTime(sync.acknowledgedAt)}`
+      : "Sent to ATLAS successfully";
   }
 
   if (sync.status === "PENDING") {
     return sync.nextRetryAt
-      ? `Attempt ${sync.attemptCount}/${sync.maxAttempts} · Retry ${formatDateTime(sync.nextRetryAt)}`
-      : `Attempt ${sync.attemptCount}/${sync.maxAttempts}`;
+      ? `Retry scheduled ${formatDateTime(sync.nextRetryAt)} (attempt ${sync.attemptCount}/${sync.maxAttempts})`
+      : `Sync in progress (attempt ${sync.attemptCount}/${sync.maxAttempts})`;
   }
 
   const httpStatus = sync.httpStatus
     ? `HTTP ${sync.httpStatus}`
-    : "Delivery failed";
+    : "Sync failed";
   const errorSnippet = sync.errorMessage
     ? sync.errorMessage.slice(0, 56)
-    : "Open ATLAS logs for details";
+    : "Check ATLAS sync health for details";
 
-  return `${httpStatus} · ${errorSnippet}`;
+  return `Action needed: ${httpStatus} · ${errorSnippet}`;
 }
 
 export function getSyncDetailClassName(teacher: Teacher): string {

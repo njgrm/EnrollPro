@@ -19,6 +19,7 @@ import {
   rescheduleAssessmentStepSchema,
   batchProcessSchema,
   specialEnrollmentSchema,
+  readingProfileUpdateSchema,
 } from "@enrollpro/shared";
 import * as ctrl from "./early-registration.controller.js";
 import * as docCtrl from "./document.controller.js";
@@ -186,6 +187,13 @@ router.patch(
   authenticate,
   authorize("REGISTRAR", "SYSTEM_ADMIN"),
   ctrl.verify,
+);
+router.patch(
+  "/:id/reading-profile",
+  authenticate,
+  authorize("REGISTRAR", "SYSTEM_ADMIN"),
+  validate(readingProfileUpdateSchema),
+  ctrl.updateReadingProfile,
 );
 router.patch(
   "/:id/enroll",

@@ -45,6 +45,7 @@ model User {
   // Relations to Enrollment
   encodedEnrollmentApps EnrollmentApplication[] @relation("EnrollmentAppEncodedBy")
   profileLockedEnrollmentApps EnrollmentApplication[] @relation("EnrollmentProfileLockedBy")
+  readingProfileAssessedEnrollmentApps EnrollmentApplication[] @relation("EnrollmentReadingProfileAssessedBy")
   enrollmentRecords      EnrollmentRecord[]
   
   recordedHealthRecords HealthRecord[] @relation("HealthRecordRecordedBy")
@@ -303,6 +304,10 @@ model EnrollmentApplication {
   isProfileLocked         Boolean           @default(false) @map("is_profile_locked")
   profileLockedAt         DateTime?         @db.Timestamptz @map("profile_locked_at")
   profileLockedById       Int?              @map("profile_locked_by_id")
+  readingProfileLevel     ReadingProfileLevel? @map("reading_profile_level")
+  readingProfileNotes     String?           @map("reading_profile_notes")
+  readingProfileAssessedAt DateTime?        @db.Timestamptz @map("reading_profile_assessed_at")
+  readingProfileAssessedById Int?           @map("reading_profile_assessed_by_id")
   encodedById             Int?              @map("encoded_by_id")
   createdAt               DateTime          @default(now()) @db.Timestamptz @map("created_at")
   updatedAt               DateTime          @updatedAt @db.Timestamptz @map("updated_at")
@@ -313,6 +318,7 @@ model EnrollmentApplication {
   gradeLevel              GradeLevel        @relation(fields: [gradeLevelId], references: [id])
   encodedBy               User?             @relation("EnrollmentAppEncodedBy", fields: [encodedById], references: [id])
   profileLockedBy         User?             @relation("EnrollmentProfileLockedBy", fields: [profileLockedById], references: [id])
+  readingProfileAssessedBy User?            @relation("EnrollmentReadingProfileAssessedBy", fields: [readingProfileAssessedById], references: [id])
   
   addresses               ApplicationAddress[]
   familyMembers           ApplicationFamilyMember[]
@@ -711,6 +717,15 @@ enum ApplicationStatus {
   WITHDRAWN
 
   @@map("application_status")
+}
+
+enum ReadingProfileLevel {
+  INDEPENDENT
+  INSTRUCTIONAL
+  FRUSTRATION
+  NON_READER
+
+  @@map("reading_profile_level")
 }
 
 enum SchoolYearStatus {

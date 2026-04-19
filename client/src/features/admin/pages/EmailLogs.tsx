@@ -198,7 +198,9 @@ export default function EmailLogs() {
         header: "Status",
         cell: ({ row }) => (
           <div className="text-left">
-            <Badge variant="outline" className={statusClass(row.original.status)}>
+            <Badge
+              variant="outline"
+              className={statusClass(row.original.status)}>
               {row.original.status}
             </Badge>
           </div>
@@ -316,8 +318,7 @@ export default function EmailLogs() {
           <Button
             variant="outline"
             onClick={() => fetchLogs(page)}
-            disabled={loading}
-          >
+            disabled={loading}>
             <RefreshCw
               className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
             />
@@ -343,8 +344,7 @@ export default function EmailLogs() {
                 onValueChange={(value) => {
                   setStatusFilter(value);
                   setPage(1);
-                }}
-              >
+                }}>
                 <SelectTrigger>
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
@@ -366,8 +366,7 @@ export default function EmailLogs() {
                 onValueChange={(value) => {
                   setTriggerFilter(value);
                   setPage(1);
-                }}
-              >
+                }}>
                 <SelectTrigger>
                   <SelectValue placeholder="All triggers" />
                 </SelectTrigger>
@@ -430,8 +429,7 @@ export default function EmailLogs() {
                 setDateTo("");
                 setSearch("");
                 setPage(1);
-              }}
-            >
+              }}>
               <RotateCcw className="h-4 w-4 mr-2" />
               Reset Filters
             </Button>
@@ -497,16 +495,14 @@ export default function EmailLogs() {
                   variant="outline"
                   size="sm"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1 || loading}
-                >
+                  disabled={page === 1 || loading}>
                   Previous
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages || loading}
-                >
+                  disabled={page === totalPages || loading}>
                   Next
                 </Button>
               </div>

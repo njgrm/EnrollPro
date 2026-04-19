@@ -47,25 +47,25 @@ const WALK_IN_MODE_CONFIG: Record<
   }
 > = {
   "new-learner": {
-    title: "Enrol New Learner (No existing LRN)",
+    title: "Enroll New Learner (No existing LRN)",
     description:
       "Encode incoming learners with no existing LRN and route to section assignment after verification.",
     learnerType: "NEW_ENROLLEE",
   },
   transferee: {
-    title: "Enrol Transferee (From another school)",
+    title: "Enroll Transferee (From another school)",
     description:
       "Input LRN first and run local lookup to prevent duplicate records before encoding.",
     learnerType: "TRANSFEREE",
   },
   pept: {
-    title: "Enrol Accelerated / PEPT Passer",
+    title: "Enroll Accelerated / PEPT Passer",
     description:
       "Encode accelerated PEPT passers using certificate and assessment details.",
     learnerType: "ALS",
   },
   "balik-aral": {
-    title: "Enrol Balik-Aral",
+    title: "Enroll Balik-Aral",
     description:
       "Encode returning learners and route them directly into enrollment processing.",
     learnerType: "RETURNING",
@@ -499,7 +499,7 @@ export default function WalkInEncoder() {
               <Label
                 htmlFor="gradeLevelId"
                 className="text-[11px] font-bold uppercase tracking-wider">
-                Grade to Enrol *
+                Grade to Enroll *
               </Label>
               <Select
                 value={formData.gradeLevelId}

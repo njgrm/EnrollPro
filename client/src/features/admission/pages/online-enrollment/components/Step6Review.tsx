@@ -18,7 +18,6 @@ import { Label } from "@/shared/ui/label";
 import { Switch } from "@/shared/ui/switch";
 import { ConfirmationModal } from "@/shared/ui/confirmation-modal";
 import { cn, formatScpType } from "@/shared/lib/utils";
-import { useSettingsStore } from "@/store/settings.slice";
 
 interface Step6ReviewProps {
   onEdit: (stepId: number) => void;
@@ -99,7 +98,6 @@ export default function Step6Review({
     formState: { errors },
   } = useFormContext<EnrollmentFormData>();
 
-  const { schoolName } = useSettingsStore();
   const data = watch();
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
 
@@ -293,12 +291,6 @@ export default function Step6Review({
                         is true, correct, and complete to the best of my
                         knowledge. I understand that false information may
                         affect the learner&apos;s enrollment processing.
-                      </p>
-
-                      <p className="font-semibold text-destructive/90 border-l-2 border-primary/30 pl-3 py-1">
-                        I fully understand that due to registrant volume and
-                        school capacity, {schoolName || "the school"} may not
-                        guarantee enrollment for SY {data.schoolYear || ""}.
                       </p>
                     </Label>
                   </div>

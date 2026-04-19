@@ -2,6 +2,7 @@ import {
   CloudUpload,
   Edit2,
   FilterX,
+  MoreHorizontal,
   RefreshCw,
   UserCheck,
   UserMinus,
@@ -9,6 +10,12 @@ import {
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
 import { Input } from "@/shared/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/shared/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -20,7 +27,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Skeleton } from "@/shared/ui/skeleton";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/shared/ui/data-table";
-import { useMemo } from "react";
 import type {
   Teacher,
   TeacherDesignationFilter,
@@ -66,18 +72,18 @@ function renderAtlasSyncBadge(teacher: Teacher) {
   const status = teacher.atlasSync?.status;
 
   if (!status || status === "SKIPPED") {
-    return <Badge variant="outline">Not Synced</Badge>;
+    return <Badge variant="outline">Not Sent</Badge>;
   }
 
   if (status === "SYNCED") {
-    return <Badge variant="success">Synced</Badge>;
+    return <Badge variant="success">Delivered</Badge>;
   }
 
   if (status === "FAILED") {
-    return <Badge variant="danger">Failed</Badge>;
+    return <Badge variant="danger">Action Needed</Badge>;
   }
 
-  return <Badge variant="warning">Pending</Badge>;
+  return <Badge variant="warning">Queued</Badge>;
 }
 
 export function TeacherDirectoryCard({
@@ -106,6 +112,29 @@ export function TeacherDirectoryCard({
   onDeactivateTeacher,
   onReactivateTeacher,
 }: TeacherDirectoryCardProps) {
+  const renderAdvisoryStatus = (teacher: Teacher) => {
+    const advisorySummary = formatAdvisorySectionSummary(teacher);
+
+    if (advisorySummary === "-") {
+      return (
+        <Badge
+          variant="outline"
+          className="text-[0.625rem] text-muted-foreground">
+          None
+        </Badge>
+      );
+    }
+
+    return (
+      <Badge
+        variant="success"
+        className="max-w-[220px] truncate text-[0.625rem]"
+        title={`Assigned to ${advisorySummary}`}>
+        Assigned: {advisorySummary}
+      </Badge>
+    );
+  };
+
   const renderTeacherStatus = (teacher: Teacher) => (
     <div className="flex items-center justify-center gap-1.5">
       <div
@@ -123,7 +152,7 @@ export function TeacherDirectoryCard({
       <Button
         variant="outline"
         size="sm"
-        className="h-7 px-2 text-[0.625rem] gap-1"
+        className="h-7 px-2 text-[0.625rem] gap-1 whitespace-nowrap"
         onClick={() => onOpenDesignationEditor(teacher)}
         disabled={!ayId}
         title={
@@ -134,142 +163,140 @@ export function TeacherDirectoryCard({
       <Button
         variant="outline"
         size="sm"
-        className="h-7 px-2 text-[0.625rem] gap-1"
-        onClick={() => onEditTeacher(teacher)}>
+        className="h-7 px-2 text-[0.625rem] gap-1 whitespace-nowrap"
+        onClick={() => onEditTeacher(teacher)}
+        title="Edit profile">
         <Edit2 className="h-3 w-3" />
         Edit
       </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        className="h-7 px-2 text-[0.625rem] gap-1"
-        onClick={() => onForceSyncTeacher(teacher)}
-        disabled={
-          !ayId || forceSyncingAll || forceSyncingTeacherId === teacher.id
-        }>
-        <CloudUpload className="h-3 w-3" />
-        {forceSyncingTeacherId === teacher.id ? "Syncing" : "Force Sync"}
-      </Button>
-      {teacher.isActive ? (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 px-2 text-[0.625rem] gap-1 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-          onClick={() => onDeactivateTeacher(teacher.id)}>
-          <UserMinus className="h-3 w-3" />
-          Deactivate
-        </Button>
-      ) : (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 px-2 text-[0.625rem] gap-1 text-emerald-600 hover:bg-emerald-600 hover:text-white"
-          onClick={() => onReactivateTeacher(teacher.id)}>
-          <UserCheck className="h-3 w-3" />
-          Reactivate
-        </Button>
-      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            className="h-7 w-7"
+            aria-label={`Open row actions for ${formatTeacherName(teacher)}`}>
+            <MoreHorizontal className="h-3.5 w-3.5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align={compact ? "start" : "end"} className="w-48">
+          <DropdownMenuItem
+            onClick={() => onForceSyncTeacher(teacher)}
+            disabled={
+              !ayId || forceSyncingAll || forceSyncingTeacherId === teacher.id
+            }
+            className="cursor-pointer">
+            <CloudUpload className="mr-2 h-4 w-4" />
+            {forceSyncingTeacherId === teacher.id
+              ? "Syncing to ATLAS..."
+              : "Force ATLAS Sync"}
+          </DropdownMenuItem>
+          {teacher.isActive ? (
+            <DropdownMenuItem
+              onClick={() => onDeactivateTeacher(teacher.id)}
+              className="cursor-pointer text-destructive focus:text-destructive">
+              <UserMinus className="mr-2 h-4 w-4" />
+              Deactivate
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem
+              onClick={() => onReactivateTeacher(teacher.id)}
+              className="cursor-pointer text-emerald-700 focus:text-emerald-700">
+              <UserCheck className="mr-2 h-4 w-4" />
+              Reactivate
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 
-  const columns = useMemo<ColumnDef<Teacher>[]>(
-    () => [
-      {
-        id: "teacher",
-        header: "TEACHER",
-        cell: ({ row }) => (
-          <div className="flex flex-col text-left min-w-[200px] pl-2">
-            <span className="font-bold text-sm uppercase leading-tight">
-              {formatTeacherName(row.original)}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {row.original.email ||
-                row.original.contactNumber ||
-                "No contact info"}
-            </span>
-          </div>
-        ),
-      },
-      {
-        id: "employeeId",
-        header: "EMPLOYEE ID",
-        cell: ({ row }) => (
-          <span className="text-xs font-semibold block text-center min-w-[100px]">
-            {row.original.employeeId || "-"}
+  const columns: ColumnDef<Teacher>[] = [
+    {
+      id: "teacher",
+      header: "TEACHER",
+      cell: ({ row }) => (
+        <div className="flex flex-col text-left max-w-[220px] pl-2">
+          <span className="font-bold text-sm uppercase leading-tight">
+            {formatTeacherName(row.original)}
           </span>
-        ),
-      },
-      {
-        id: "specialization",
-        header: "SPECIALIZATION",
-        cell: ({ row }) => (
-          <span className="text-xs font-semibold block text-center min-w-[140px]">
-            {row.original.specialization || "-"}
+          <span className="text-xs text-muted-foreground truncate">
+            {row.original.email ||
+              row.original.contactNumber ||
+              "No contact info"}
           </span>
-        ),
-      },
-      {
-        id: "status",
-        header: "STATUS",
-        cell: ({ row }) => (
-          <div className="min-w-[100px] flex justify-center">
-            {renderTeacherStatus(row.original)}
-          </div>
-        ),
-      },
-      {
-        id: "designation",
-        header: "DESIGNATION",
-        cell: ({ row }) => (
-          <span className="text-xs font-semibold block text-center min-w-[140px]">
-            {formatDesignationSummary(row.original)}
-          </span>
-        ),
-      },
-      {
-        id: "advisory",
-        header: "ADVISORY",
-        cell: ({ row }) => (
-          <span className="text-xs font-semibold block text-center min-w-[140px]">
-            {formatAdvisorySectionSummary(row.original)}
-          </span>
-        ),
-      },
-      {
-        id: "sync",
-        header: "SYNC",
-        cell: ({ row }) => (
-          <div className="flex flex-col items-center gap-1 min-w-[180px]">
-            {renderAtlasSyncBadge(row.original)}
-            <p
-              className={`max-w-[180px] truncate text-[0.625rem] ${getSyncDetailClassName(row.original)}`}
-              title={getSyncDetailText(row.original)}>
-              {getSyncDetailText(row.original)}
-            </p>
-          </div>
-        ),
-      },
-      {
-        id: "actions",
-        header: "ACTIONS",
-        cell: ({ row }) => (
-          <div className="min-w-[200px] flex justify-center">
-            {renderTeacherActions(row.original)}
-          </div>
-        ),
-      },
-    ],
-    [
-      onOpenDesignationEditor,
-      onEditTeacher,
-      onForceSyncTeacher,
-      onDeactivateTeacher,
-      onReactivateTeacher,
-      ayId,
-      forceSyncingAll,
-      forceSyncingTeacherId,
-    ],
-  );
+        </div>
+      ),
+    },
+    {
+      id: "employeeId",
+      header: "EMPLOYEE ID",
+      cell: ({ row }) => (
+        <span className="text-xs font-semibold block text-center">
+          {row.original.employeeId || "-"}
+        </span>
+      ),
+    },
+    {
+      id: "specialization",
+      header: "LEARNING AREA / DEPARTMENT",
+      cell: ({ row }) => (
+        <span className="text-xs font-semibold block text-center break-words">
+          {row.original.specialization || "Not set"}
+        </span>
+      ),
+    },
+    {
+      id: "status",
+      header: "STATUS",
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          {renderTeacherStatus(row.original)}
+        </div>
+      ),
+    },
+    {
+      id: "designation",
+      header: "DESIGNATION",
+      cell: ({ row }) => (
+        <span className="text-xs font-semibold block text-center break-words">
+          {formatDesignationSummary(row.original)}
+        </span>
+      ),
+    },
+    {
+      id: "advisory",
+      header: "ADVISORY",
+      cell: ({ row }) => (
+        <div className="flex justify-center">
+          {renderAdvisoryStatus(row.original)}
+        </div>
+      ),
+    },
+    {
+      id: "sync",
+      header: "SYNC",
+      cell: ({ row }) => (
+        <div className="flex flex-col items-center gap-1">
+          {renderAtlasSyncBadge(row.original)}
+          <p
+            className={`max-w-[180px] truncate text-[0.625rem] ${getSyncDetailClassName(row.original)}`}
+            title={getSyncDetailText(row.original)}>
+            {getSyncDetailText(row.original)}
+          </p>
+        </div>
+      ),
+    },
+    {
+      id: "actions",
+      header: "ACTIONS",
+      cell: ({ row }) => (
+        <div className="w-full flex justify-center">
+          {renderTeacherActions(row.original)}
+        </div>
+      ),
+    },
+  ];
 
   return (
     <Card className="w-full min-w-0 overflow-hidden">
@@ -310,7 +337,7 @@ export function TeacherDirectoryCard({
             <Input
               value={searchQuery}
               onChange={(event) => onSearchQueryChange(event.target.value)}
-              placeholder="Search name, ID, specialization, section"
+              placeholder="Search name, ID, learning area, section"
               className="h-9 md:col-span-2 xl:col-span-2"
             />
             <Select
@@ -419,6 +446,14 @@ export function TeacherDirectoryCard({
                     </div>
                     <div>
                       <p className="text-muted-foreground uppercase tracking-wide">
+                        Learning Area
+                      </p>
+                      <p className="font-semibold">
+                        {teacher.specialization || "Not set"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground uppercase tracking-wide">
                         Contact
                       </p>
                       <p className="font-semibold">
@@ -437,9 +472,7 @@ export function TeacherDirectoryCard({
                       <p className="text-muted-foreground uppercase tracking-wide">
                         Advisory
                       </p>
-                      <p className="font-semibold">
-                        {formatAdvisorySectionSummary(teacher)}
-                      </p>
+                      {renderAdvisoryStatus(teacher)}
                     </div>
                   </div>
 
@@ -458,10 +491,11 @@ export function TeacherDirectoryCard({
             )}
           </div>
 
-          <div className="hidden md:block">
+          <div className="hidden md:block w-full max-w-full overflow-x-hidden">
             <DataTable
               columns={columns}
               data={filteredTeachers}
+              tableClassName="table-fixed w-full"
               loading={showSkeleton}
               noResultsMessage={
                 hasActiveFilters

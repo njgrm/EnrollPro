@@ -231,9 +231,10 @@ export async function deleteSection(
   }
 
   if (section._count.enrollmentRecords > 0) {
-    res
-      .status(400)
-      .json({ message: "Cannot delete a section with enrolled students" });
+    const learnerCount = section._count.enrollmentRecords;
+    res.status(400).json({
+      message: `Cannot delete section. Please un-enrol or transfer the ${learnerCount} learner${learnerCount === 1 ? "" : "s"} first.`,
+    });
     return;
   }
 

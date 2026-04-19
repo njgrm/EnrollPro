@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link } from "react-router";
 import { sileo } from "sileo";
 import {
@@ -42,6 +42,7 @@ import {
   DialogTitle,
 } from "@/shared/ui/dialog";
 import { Skeleton } from "@/shared/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { useDelayedLoading } from "@/shared/hooks/useDelayedLoading";
 
 interface Teacher {
@@ -79,6 +80,62 @@ const PROGRAM_TYPE_OPTIONS = [
     label: "SPTVE",
   },
 ];
+
+const SECTION_ACRONYMS = new Set(["STE", "SPA", "SPS", "SPJ", "SPFL", "SPTVE"]);
+
+function formatSectionLabel(rawSection: string | null | undefined): string {
+  if (!rawSection) return "-";
+
+  let sectionName = rawSection.trim();
+  if (!sectionName) return "-";
+
+  if (sectionName.includes("--")) {
+    const segments = sectionName.split("--").filter(Boolean);
+    sectionName = segments[segments.length - 1] || sectionName;
+  }
+
+  sectionName = sectionName
+    .replace(/^G(?:RADE)?\s*\d+\s*[-_ ]*/i, "")
+    .replace(/_/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!sectionName) return rawSection;
+
+  return sectionName
+    .split(/(\s|-)/)
+    .map((part) => {
+      if (part === " " || part === "-") return part;
+
+      const upperPart = part.toUpperCase();
+      if (SECTION_ACRONYMS.has(upperPart) || /^\d+[A-Z]*$/.test(upperPart)) {
+        return upperPart;
+      }
+
+      if (upperPart.length <= 1) return upperPart;
+      return `${upperPart.charAt(0)}${upperPart.slice(1).toLowerCase()}`;
+    })
+    .join("");
+}
+
+function extractGradeLevelNumber(rawGradeLevel: string): string {
+  const matchedNumber = rawGradeLevel.match(/\d+/)?.[0];
+  if (matchedNumber) return matchedNumber;
+
+  const normalized = rawGradeLevel.replace(/^grade\s+/i, "").trim();
+  return normalized || rawGradeLevel;
+}
+
+function formatHeatmapLabel(
+  gradeLevelName: string,
+  sectionName: string,
+): string {
+  return `${extractGradeLevelNumber(gradeLevelName)} - ${formatSectionLabel(sectionName)}`;
+}
+
+function formatLearnerCountLabel(count: number): string {
+  return `${count} learner${count === 1 ? "" : "s"}`;
+}
 
 function formatProgramType(programType: string): string {
   return (
@@ -137,6 +194,9 @@ export default function Sections() {
   const [deleteName, setDeleteName] = useState("");
   const [deleting, setDeleting] = useState(false);
 
+  // Heatmap grade filter
+  const [heatmapGradeFilter, setHeatmapGradeFilter] = useState<string>("all");
+
   const fetchData = useCallback(async () => {
     if (!ayId) {
       setLoading(false);
@@ -160,6 +220,54 @@ export default function Sections() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    if (heatmapGradeFilter === "all") return;
+
+    const selectedGradeExists = groups.some(
+      (group) => group.gradeLevelId.toString() === heatmapGradeFilter,
+    );
+
+    if (!selectedGradeExists) {
+      setHeatmapGradeFilter("all");
+    }
+  }, [groups, heatmapGradeFilter]);
+
+  const heatmapGradeOptions = useMemo(
+    () =>
+      groups.map((group) => ({
+        value: group.gradeLevelId.toString(),
+        label: group.gradeLevelName,
+      })),
+    [groups],
+  );
+
+  const filteredHeatmapGroups = useMemo(
+    () =>
+      heatmapGradeFilter === "all"
+        ? groups
+        : groups.filter(
+            (group) => group.gradeLevelId.toString() === heatmapGradeFilter,
+          ),
+    [groups, heatmapGradeFilter],
+  );
+
+  const heatmapItems = useMemo(
+    () =>
+      filteredHeatmapGroups.flatMap((group) =>
+        group.sections.map((section) => ({ group, section })),
+      ),
+    [filteredHeatmapGroups],
+  );
+
+  const selectedHeatmapGradeLabel = useMemo(() => {
+    if (heatmapGradeFilter === "all") return "All Grades";
+
+    return (
+      heatmapGradeOptions.find((option) => option.value === heatmapGradeFilter)
+        ?.label ?? "Selected Grade"
+    );
+  }, [heatmapGradeFilter, heatmapGradeOptions]);
 
   const toggleAddMode = (glId: number) => {
     if (addGlId === glId) {
@@ -200,7 +308,7 @@ export default function Sections() {
 
   const openEdit = (section: SectionItem) => {
     setEditSection(section);
-    setEditName(section.name);
+    setEditName(formatSectionLabel(section.name));
     setEditCap(section.maxCapacity.toString());
     setEditProgramType(section.programType ?? "REGULAR");
     setEditAdvisingTeacherId(
@@ -329,11 +437,31 @@ export default function Sections() {
         <>
           {/* Capacity Heatmap overview */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <Grid3X3 className="h-5 w-5" />
-                Capacity Heatmap
-              </CardTitle>
+            <CardHeader className="space-y-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <Grid3X3 className="h-5 w-5" />
+                  Capacity Heatmap
+                </CardTitle>
+                <Tabs
+                  value={heatmapGradeFilter}
+                  onValueChange={setHeatmapGradeFilter}
+                  className="w-full lg:w-auto">
+                  <TabsList className="h-auto w-full flex-wrap justify-start bg-muted/40 lg:w-auto lg:justify-end">
+                    <TabsTrigger value="all" className="py-1.5 text-xs">
+                      All Grades
+                    </TabsTrigger>
+                    {heatmapGradeOptions.map((option) => (
+                      <TabsTrigger
+                        key={option.value}
+                        value={option.value}
+                        className="py-1.5 text-xs">
+                        {option.label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
+              </div>
               <CardDescription>
                 Visual overview of section fill rates. 🟢 &lt;50% · 🟡 50-74% ·
                 🟠 75-89% · 🔴 90%+
@@ -346,40 +474,45 @@ export default function Sections() {
                 </p>
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {groups.flatMap((g) =>
-                    g.sections.map((s) => (
-                      <div
-                        key={s.id}
-                        className="flex items-center gap-3 rounded-lg border border-[hsl(var(--border))] p-3">
-                        <span className="text-lg">
-                          {fillEmoji(s.fillPercent)}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {g.gradeLevelName} — {s.name} (
-                            {formatProgramType(s.programType)})
-                          </p>
-                          <div className="mt-1 h-2 w-full rounded-full bg-[hsl(var(--muted))]">
-                            <div
-                              className={`h-2 rounded-full transition-all ${fillColor(s.fillPercent)}`}
-                              style={{
-                                width: `${Math.min(s.fillPercent, 100)}%`,
-                              }}
-                            />
-                          </div>
+                  {heatmapItems.map(({ group, section }) => (
+                    <div
+                      key={section.id}
+                      className="flex items-center gap-3 rounded-lg border border-[hsl(var(--border))] p-3">
+                      <span className="text-lg">
+                        {fillEmoji(section.fillPercent)}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {formatHeatmapLabel(
+                            group.gradeLevelName,
+                            section.name,
+                          )}
+                        </p>
+                        <div className="mt-1 h-2 w-full rounded-full bg-[hsl(var(--muted))]">
+                          <div
+                            className={`h-2 rounded-full transition-all ${fillColor(section.fillPercent)}`}
+                            style={{
+                              width: `${Math.min(section.fillPercent, 100)}%`,
+                            }}
+                          />
                         </div>
-                        <span className="text-xs  text-[hsl(var(--muted-foreground))] whitespace-nowrap">
-                          {s.enrolledCount}/{s.maxCapacity}
-                        </span>
                       </div>
-                    )),
-                  )}
-                  {groups.every((g) => g.sections.length === 0) && (
-                    <p className="col-span-full text-sm text-[hsl(var(--muted-foreground))] text-center py-4">
-                      No sections created yet. Add sections to grade levels
-                      below.
-                    </p>
-                  )}
+                      <span className="text-xs  text-[hsl(var(--muted-foreground))] whitespace-nowrap">
+                        {section.enrolledCount}/{section.maxCapacity}
+                      </span>
+                    </div>
+                  ))}
+                  {heatmapItems.length === 0 &&
+                    (groups.every((group) => group.sections.length === 0) ? (
+                      <p className="col-span-full text-sm text-[hsl(var(--muted-foreground))] text-center py-4">
+                        No sections created yet. Add sections to grade levels
+                        below.
+                      </p>
+                    ) : (
+                      <p className="col-span-full text-sm text-[hsl(var(--muted-foreground))] text-center py-4">
+                        No sections found for {selectedHeatmapGradeLabel}.
+                      </p>
+                    ))}
                 </div>
               )}
             </CardContent>
@@ -499,57 +632,67 @@ export default function Sections() {
                     </p>
                   ) : (
                     <div className="space-y-2">
-                      {g.sections.map((s) => (
-                        <div
-                          key={s.id}
-                          className="flex items-center gap-3 rounded-lg border border-[hsl(var(--border))] px-3 py-2">
-                          <span className="text-sm">
-                            {fillEmoji(s.fillPercent)}
-                          </span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {s.name}
-                            </p>
-                            <p className="text-[10px] uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
-                              {formatProgramType(s.programType)}
-                            </p>
-                          </div>
-                          {s.advisingTeacher && (
-                            <span
-                              className="text-xs text-[hsl(var(--muted-foreground))] truncate max-w-25"
-                              title={s.advisingTeacher.name}>
-                              {s.advisingTeacher.name}
+                      {g.sections.map((s) => {
+                        const displaySectionName = formatSectionLabel(s.name);
+                        const deleteLockMessage = `Cannot delete section. Please un-enrol or transfer the ${formatLearnerCountLabel(s.enrolledCount)} first.`;
+
+                        return (
+                          <div
+                            key={s.id}
+                            className="flex items-center gap-3 rounded-lg border border-[hsl(var(--border))] px-3 py-2">
+                            <span className="text-sm">
+                              {fillEmoji(s.fillPercent)}
                             </span>
-                          )}
-                          <span className="text-xs  text-[hsl(var(--muted-foreground))]">
-                            {s.enrolledCount}/{s.maxCapacity} ({s.fillPercent}%)
-                          </span>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 w-7 p-0"
-                            onClick={() => openEdit(s)}
-                            title="Edit section">
-                            <Edit2 className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 w-7 p-0 text-[hsl(var(--destructive))]"
-                            onClick={() => {
-                              setDeleteId(s.id);
-                              setDeleteName(s.name);
-                            }}
-                            disabled={s.enrolledCount > 0}
-                            title={
-                              s.enrolledCount > 0
-                                ? "Cannot delete — has enrolled students"
-                                : "Delete section"
-                            }>
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      ))}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {displaySectionName}
+                              </p>
+                              <p className="text-[10px] uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+                                {formatProgramType(s.programType)}
+                              </p>
+                              {s.advisingTeacher ? (
+                                <p
+                                  className="text-xs text-gray-600 truncate"
+                                  title={s.advisingTeacher.name}>
+                                  Adviser: {s.advisingTeacher.name}
+                                </p>
+                              ) : (
+                                <p className="text-xs text-orange-500">
+                                  ⚠ No Adviser Assigned
+                                </p>
+                              )}
+                            </div>
+                            <span className="text-xs  text-[hsl(var(--muted-foreground))]">
+                              {s.enrolledCount}/{s.maxCapacity} ({s.fillPercent}
+                              %)
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0"
+                              onClick={() => openEdit(s)}
+                              title="Edit section">
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-[hsl(var(--destructive))] disabled:text-[hsl(var(--muted-foreground))]"
+                              onClick={() => {
+                                setDeleteId(s.id);
+                                setDeleteName(displaySectionName);
+                              }}
+                              disabled={s.enrolledCount > 0}
+                              title={
+                                s.enrolledCount > 0
+                                  ? deleteLockMessage
+                                  : "Delete section"
+                              }>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>

@@ -49,12 +49,13 @@ import { Label } from "@/shared/ui/label";
 import { Textarea } from "@/shared/ui/textarea";
 import { useDelayedLoading } from "@/shared/hooks/useDelayedLoading";
 import { format } from "date-fns";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/shared/ui/data-table";
 import { ApplicationDetailPanel } from "@/features/enrollment/components/ApplicationDetailPanel";
 import { ScheduleExamDialog } from "@/features/enrollment/components/ScheduleExamDialog";
 import { StatusBadge } from "@/features/enrollment/components/StatusBadge";
 import { EnrollmentWorkflowTabs } from "@/features/enrollment/components/EnrollmentWorkflowTabs";
+import { OneTimePinSuccessDialog } from "@/features/enrollment/components/OneTimePinSuccessDialog";
 import {
   ENROLLMENT_SUB_MENU_DESCRIPTIONS,
   ENROLLMENT_SUB_MENU_OPTIONS,
@@ -82,6 +83,10 @@ interface Application {
   gradeLevelId: number;
   gradeLevel: { name: string };
   createdAt: string;
+  readingProfileLevel?: ReadingProfileLevel | null;
+  readingProfileNotes?: string | null;
+  readingProfileAssessedAt?: string | null;
+  readingProfileAssessedById?: number | null;
   enrollmentRecord?: {
     sectionId: number;
     section?: { id: number; name: string } | null;
@@ -98,8 +103,21 @@ interface SectionOption {
   isFull: boolean;
 }
 
+interface PortalPinDialogData {
+  learnerName: string;
+  trackingNumber: string;
+  sectionName: string;
+  gradeLevelLabel: string;
+  portalPin: string;
+}
+
 type PendingQueueFilter = "ALL" | "INCOMING_G7" | "CONTINUING_JHS";
 type WalkInRouteType = "new-learner" | "transferee" | "pept" | "balik-aral";
+type ReadingProfileLevel =
+  | "INDEPENDENT"
+  | "INSTRUCTIONAL"
+  | "FRUSTRATION"
+  | "NON_READER";
 
 const PENDING_QUEUE_FILTER_OPTIONS: Array<{
   value: PendingQueueFilter;
@@ -118,6 +136,36 @@ const UNENROLL_REASONS = [
   "Other registrar correction",
 ] as const;
 
+const READING_PROFILE_LEVEL_OPTIONS: Array<{
+  value: ReadingProfileLevel;
+  label: string;
+}> = [
+  { value: "INDEPENDENT", label: "Independent" },
+  { value: "INSTRUCTIONAL", label: "Instructional" },
+  { value: "FRUSTRATION", label: "Frustration" },
+  { value: "NON_READER", label: "Non-reader" },
+];
+
+const READING_PROFILE_LABELS: Record<ReadingProfileLevel, string> =
+  Object.fromEntries(
+    READING_PROFILE_LEVEL_OPTIONS.map((option) => [option.value, option.label]),
+  ) as Record<ReadingProfileLevel, string>;
+
+function resolveReadingProfileLabel(level?: string | null): string {
+  if (!level) {
+    return "Not Set";
+  }
+
+  return (
+    READING_PROFILE_LABELS[level as ReadingProfileLevel] ??
+    level
+      .toLowerCase()
+      .split("_")
+      .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
+      .join(" ")
+  );
+}
+
 function extractGradeLevelNumber(rawGradeLevel: string): number | null {
   const match = rawGradeLevel.match(/\d+/);
   if (!match) return null;
@@ -131,6 +179,10 @@ function formatGradeLevelLabel(gradeLevelName: string): string {
     return gradeLevelName;
   }
   return `Grade ${gradeLevelName}`;
+}
+
+function formatLearnerDisplayName(lastName: string, firstName: string): string {
+  return `${lastName}, ${firstName}`;
 }
 
 function resolveApplicationSectionName(
@@ -213,6 +265,8 @@ export default function Enrollment() {
   ] = useState<Record<number, boolean>>({});
   const [savingSectionByApplicationId, setSavingSectionByApplicationId] =
     useState<Record<number, boolean>>({});
+  const [portalPinDialogData, setPortalPinDialogData] =
+    useState<PortalPinDialogData | null>(null);
 
   // Detail/Action state
   const [selectedApp, setSelectedApp] = useState<
@@ -232,6 +286,20 @@ export default function Enrollment() {
     application: null,
     reason: "",
     note: "",
+  });
+
+  const [readingProfileDialog, setReadingProfileDialog] = useState<{
+    open: boolean;
+    application: Application | null;
+    level: ReadingProfileLevel | "";
+    notes: string;
+    saving: boolean;
+  }>({
+    open: false,
+    application: null,
+    level: "",
+    notes: "",
+    saving: false,
   });
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -281,13 +349,13 @@ export default function Enrollment() {
     [visibleApplicationIds, selectedBatchIds],
   );
 
-  const toggleBatchSelect = (id: number) => {
+  const toggleBatchSelect = useCallback((id: number) => {
     setSelectedBatchIds((prev) =>
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
     );
-  };
+  }, []);
 
-  const selectAllVisible = () => {
+  const selectAllVisible = useCallback(() => {
     if (visibleApplicationIds.length === 0) return;
 
     if (isAllVisibleSelected) {
@@ -300,7 +368,7 @@ export default function Enrollment() {
     setSelectedBatchIds((prev) =>
       Array.from(new Set([...prev, ...visibleApplicationIds])),
     );
-  };
+  }, [isAllVisibleSelected, visibleApplicationIds]);
 
   const openWalkInEncoder = useCallback(
     (type: WalkInRouteType) => {
@@ -309,11 +377,36 @@ export default function Enrollment() {
     [navigate],
   );
 
+  const handlePortalPinAcknowledge = useCallback(() => {
+    setPortalPinDialogData(null);
+    setSelectedId(null);
+    setWorkflowView("PENDING_VERIFICATION");
+    setPendingQueueFilter("ALL");
+    setPage(1);
+    navigate("/monitoring/enrollment?workflow=PENDING_VERIFICATION");
+  }, [navigate]);
+
   const openBatchAssignModal = useCallback(async () => {
     if (selectedBatchIds.length === 0) {
       sileo.error({
         title: "No Learners Selected",
         description: "Select at least one learner before opening batch action.",
+      });
+      return;
+    }
+
+    const selectedApplications = applications.filter((application) =>
+      selectedBatchIds.includes(application.id),
+    );
+    const missingReadingProfile = selectedApplications.filter(
+      (application) => !application.readingProfileLevel,
+    );
+
+    if (missingReadingProfile.length > 0) {
+      sileo.error({
+        title: "Reading Profile Required",
+        description:
+          "Encode Reading Profile first for all selected learners before batch section assignment.",
       });
       return;
     }
@@ -333,7 +426,83 @@ export default function Enrollment() {
     } finally {
       setBatchSectionOptionsLoading(false);
     }
-  }, [selectedBatchIds]);
+  }, [applications, selectedBatchIds]);
+
+  const openReadingProfileDialog = useCallback((application: Application) => {
+    const isKnownReadingProfile = READING_PROFILE_LEVEL_OPTIONS.some(
+      (option) => option.value === application.readingProfileLevel,
+    );
+
+    setReadingProfileDialog({
+      open: true,
+      application,
+      level: isKnownReadingProfile
+        ? (application.readingProfileLevel as ReadingProfileLevel)
+        : "",
+      notes: application.readingProfileNotes ?? "",
+      saving: false,
+    });
+  }, []);
+
+  const closeReadingProfileDialog = useCallback(() => {
+    setReadingProfileDialog({
+      open: false,
+      application: null,
+      level: "",
+      notes: "",
+      saving: false,
+    });
+  }, []);
+
+  const handleSaveReadingProfile = useCallback(async () => {
+    if (!readingProfileDialog.application) {
+      return;
+    }
+
+    if (!readingProfileDialog.level) {
+      sileo.error({
+        title: "Reading Profile Required",
+        description: "Select a Reading Profile level before saving.",
+      });
+      return;
+    }
+
+    const applicationId = readingProfileDialog.application.id;
+    const readingProfileLevel: ReadingProfileLevel = readingProfileDialog.level;
+    const readingProfileNotes = readingProfileDialog.notes.trim() || null;
+
+    setReadingProfileDialog((prev) => ({ ...prev, saving: true }));
+
+    try {
+      await api.patch(`/applications/${applicationId}/reading-profile`, {
+        readingProfileLevel,
+        readingProfileNotes,
+      });
+
+      setApplications((prev) =>
+        prev.map((application) =>
+          application.id === applicationId
+            ? {
+                ...application,
+                readingProfileLevel,
+                readingProfileNotes,
+              }
+            : application,
+        ),
+      );
+
+      sileo.success({
+        title: "Reading Profile Saved",
+        description:
+          "Reading Profile was encoded successfully. You can now proceed to section assignment.",
+      });
+
+      closeReadingProfileDialog();
+    } catch (err) {
+      toastApiError(err as never);
+      setReadingProfileDialog((prev) => ({ ...prev, saving: false }));
+    }
+  }, [closeReadingProfileDialog, readingProfileDialog]);
 
   const fetchData = useCallback(async () => {
     if (!ayId) {
@@ -444,6 +613,16 @@ export default function Enrollment() {
 
   const handleAssignAndEnroll = useCallback(
     async (application: Application) => {
+      if (!application.readingProfileLevel) {
+        sileo.error({
+          title: "Reading Profile Required",
+          description:
+            "Encode Reading Profile before assigning this learner to a section.",
+        });
+        openReadingProfileDialog(application);
+        return;
+      }
+
       const selectedSectionId = sectionSelectionByApplicationId[application.id];
       if (!selectedSectionId) {
         sileo.error({
@@ -481,15 +660,31 @@ export default function Enrollment() {
           return next;
         });
 
-        sileo.success({
-          title: "Assigned & Enrolled",
-          description: `${application.lastName}, ${application.firstName} is now officially enrolled.`,
-        });
+        const generatedPortalPin = enrollResponse.data?.rawPortalPin;
 
-        if (enrollResponse.data?.rawPortalPin) {
-          alert(
-            `SUCCESS: Official enrollment confirmed.\n\nIMPORTANT: The Learner Portal PIN is ${enrollResponse.data.rawPortalPin}\n\nPlease write this down on the enrollment slip. This PIN will only be shown once.`,
-          );
+        if (generatedPortalPin) {
+          const selectedSectionName =
+            sectionOptionsByApplicationId[application.id]?.find(
+              (section) => section.id === Number(selectedSectionId),
+            )?.name ??
+            resolveApplicationSectionName(application) ??
+            "Not Assigned";
+
+          setPortalPinDialogData({
+            learnerName: formatLearnerDisplayName(
+              application.lastName,
+              application.firstName,
+            ),
+            trackingNumber: application.trackingNumber,
+            sectionName: selectedSectionName,
+            gradeLevelLabel: formatGradeLevelLabel(application.gradeLevel.name),
+            portalPin: String(generatedPortalPin),
+          });
+        } else {
+          sileo.success({
+            title: "Assigned & Enrolled",
+            description: `${application.lastName}, ${application.firstName} is now officially enrolled.`,
+          });
         }
 
         await fetchData();
@@ -502,7 +697,12 @@ export default function Enrollment() {
         }));
       }
     },
-    [sectionSelectionByApplicationId, fetchData],
+    [
+      sectionSelectionByApplicationId,
+      sectionOptionsByApplicationId,
+      fetchData,
+      openReadingProfileDialog,
+    ],
   );
 
   const openUnenrollDialog = useCallback((app: Application) => {
@@ -613,6 +813,44 @@ export default function Enrollment() {
           </span>
         ),
       },
+      ...(workflowView === "SECTION_ASSIGNMENT"
+        ? [
+            {
+              id: "readingProfile",
+              header: "READING PROFILE",
+              cell: ({ row }: CellContext<Application, unknown>) => {
+                const app = row.original;
+
+                if (!app.readingProfileLevel) {
+                  return (
+                    <div
+                      className="flex justify-center"
+                      onClick={(event) => event.stopPropagation()}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs font-bold"
+                        onClick={() => openReadingProfileDialog(app)}>
+                        <FileCheck2 className="h-3 w-3 mr-1" />
+                        Set Profile
+                      </Button>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="flex justify-center">
+                    <Badge
+                      variant="outline"
+                      className="font-bold px-2 py-0.5 h-auto border-emerald-300 text-emerald-700 text-xs leading-tight text-center">
+                      {resolveReadingProfileLabel(app.readingProfileLevel)}
+                    </Badge>
+                  </div>
+                );
+              },
+            },
+          ]
+        : []),
       {
         id: "context",
         header: workflowView === "PENDING_VERIFICATION" ? "PROGRAM" : "SECTION",
@@ -726,6 +964,7 @@ export default function Enrollment() {
           const app = row.original;
           const isPendingVerification = workflowView === "PENDING_VERIFICATION";
           const isSectionAssignment = workflowView === "SECTION_ASSIGNMENT";
+          const hasReadingProfile = Boolean(app.readingProfileLevel);
           const selectedSectionId =
             sectionSelectionByApplicationId[app.id] ?? "";
           const isSavingSection = savingSectionByApplicationId[app.id] === true;
@@ -775,13 +1014,18 @@ export default function Enrollment() {
                 onClick={(e) => {
                   e.stopPropagation();
                   if (isSectionAssignment) {
+                    if (!hasReadingProfile) {
+                      openReadingProfileDialog(app);
+                      return;
+                    }
                     void handleAssignAndEnroll(app);
                     return;
                   }
                   setSelectedId(app.id);
                 }}
                 disabled={
-                  isSectionAssignment && (!selectedSectionId || isSavingSection)
+                  isSectionAssignment &&
+                  (isSavingSection || (hasReadingProfile && !selectedSectionId))
                 }>
                 {isPendingVerification ? (
                   <>
@@ -789,7 +1033,12 @@ export default function Enrollment() {
                     Verify Docs
                   </>
                 ) : isSectionAssignment ? (
-                  isSavingSection ? (
+                  !hasReadingProfile ? (
+                    <>
+                      <FileCheck2 className="h-3.5 w-3.5 mr-1" />
+                      Encode Reading
+                    </>
+                  ) : isSavingSection ? (
                     "Assigning..."
                   ) : (
                     <>
@@ -822,6 +1071,7 @@ export default function Enrollment() {
     toggleBatchSelect,
     ensureSectionOptionsLoaded,
     handleAssignAndEnroll,
+    openReadingProfileDialog,
     openUnenrollDialog,
     setSelectedId,
   ]);
@@ -842,6 +1092,20 @@ export default function Enrollment() {
       sileo.error({
         title: "Section Required",
         description: "Please select a section for batch assignment.",
+      });
+      return;
+    }
+
+    const hasMissingReadingProfile = selectedBatchIds.some((id) => {
+      const application = applications.find((entry) => entry.id === id);
+      return !application?.readingProfileLevel;
+    });
+
+    if (hasMissingReadingProfile) {
+      sileo.error({
+        title: "Reading Profile Required",
+        description:
+          "Encode Reading Profile first for all selected learners before batch section assignment.",
       });
       return;
     }
@@ -968,16 +1232,31 @@ export default function Enrollment() {
 
   const handleEnroll = async () => {
     if (!selectedApp) return;
+
+    const learnerName = formatLearnerDisplayName(
+      selectedApp.lastName,
+      selectedApp.firstName,
+    );
+    const sectionName =
+      resolveSelectedApplicationSectionName(selectedApp) ?? "Not Assigned";
+    const gradeLevelLabel = selectedApp.gradeLevel?.name
+      ? formatGradeLevelLabel(selectedApp.gradeLevel.name)
+      : "N/A";
+
     try {
       const res = await api.patch(`/applications/${selectedApp.id}/enroll`);
 
       setIsEnrollModalOpen(false);
-      fetchData();
+      await fetchData();
 
       if (res.data.rawPortalPin) {
-        alert(
-          `SUCCESS: Official enrollment confirmed.\n\nIMPORTANT: The Learner Portal PIN is ${res.data.rawPortalPin}\n\nPlease write this down on the enrollment slip. This PIN will only be shown once.`,
-        );
+        setPortalPinDialogData({
+          learnerName,
+          trackingNumber: selectedApp.trackingNumber,
+          sectionName,
+          gradeLevelLabel,
+          portalPin: String(res.data.rawPortalPin),
+        });
       } else {
         sileo.success({
           title: "Enrolled",
@@ -1021,25 +1300,25 @@ export default function Enrollment() {
                   onClick={() => openWalkInEncoder("new-learner")}
                   className="cursor-pointer">
                   <UserPlus className="mr-2 h-4 w-4" />
-                  Enrol New Learner (No existing LRN)
+                  Enroll New Learner (No existing LRN)
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => openWalkInEncoder("transferee")}
                   className="cursor-pointer">
                   <School className="mr-2 h-4 w-4" />
-                  Enrol Transferee (From another school)
+                  Enroll Transferee (From another school)
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => openWalkInEncoder("pept")}
                   className="cursor-pointer">
                   <Zap className="mr-2 h-4 w-4 text-amber-500" />
-                  Enrol Accelerated / PEPT Passer
+                  Enroll Accelerated / PEPT Passer
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => openWalkInEncoder("balik-aral")}
                   className="cursor-pointer">
                   <UserCheck className="mr-2 h-4 w-4" />
-                  Enrol Balik-Aral
+                  Enroll Balik-Aral
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -1551,6 +1830,17 @@ export default function Enrollment() {
         </DialogContent>
       </Dialog>
 
+      {portalPinDialogData && (
+        <OneTimePinSuccessDialog
+          learnerName={portalPinDialogData.learnerName}
+          trackingNumber={portalPinDialogData.trackingNumber}
+          sectionName={portalPinDialogData.sectionName}
+          gradeLevelLabel={portalPinDialogData.gradeLevelLabel}
+          portalPin={portalPinDialogData.portalPin}
+          onAcknowledge={handlePortalPinAcknowledge}
+        />
+      )}
+
       <ScheduleExamDialog
         open={isScheduleDialogOpen}
         onOpenChange={isScheduleDialogOpen ? setIsScheduleDialogOpen : () => {}}
@@ -1559,6 +1849,111 @@ export default function Enrollment() {
         onSuccess={fetchData}
         onCloseSheet={() => setSelectedId(null)}
       />
+
+      <Dialog
+        open={readingProfileDialog.open}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeReadingProfileDialog();
+          }
+        }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-xs font-bold uppercase tracking-wider">
+              Encode Reading Profile
+            </DialogTitle>
+            <DialogDescription className="text-xs font-semibold">
+              Reading Profile is required before section assignment and official
+              enrollment.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider">
+                Learner
+              </Label>
+              <p className="text-xs font-semibold">
+                {readingProfileDialog.application
+                  ? `${readingProfileDialog.application.lastName}, ${readingProfileDialog.application.firstName}`
+                  : "N/A"}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="readingProfileLevel"
+                className="text-xs font-bold uppercase tracking-wider">
+                Reading Profile Level
+              </Label>
+              <Select
+                value={readingProfileDialog.level}
+                onValueChange={(value) => {
+                  setReadingProfileDialog((prev) => ({
+                    ...prev,
+                    level: value as ReadingProfileLevel,
+                  }));
+                }}>
+                <SelectTrigger
+                  id="readingProfileLevel"
+                  className="h-10 text-xs font-bold">
+                  <SelectValue placeholder="Select reading profile" />
+                </SelectTrigger>
+                <SelectContent>
+                  {READING_PROFILE_LEVEL_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="readingProfileNotes"
+                className="text-xs font-bold uppercase tracking-wider">
+                Notes (Optional)
+              </Label>
+              <Textarea
+                id="readingProfileNotes"
+                value={readingProfileDialog.notes}
+                onChange={(event) => {
+                  setReadingProfileDialog((prev) => ({
+                    ...prev,
+                    notes: event.target.value,
+                  }));
+                }}
+                placeholder="Record assessment notes or remarks"
+                className="min-h-24 text-xs font-semibold"
+                maxLength={500}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              className="text-xs font-bold"
+              onClick={closeReadingProfileDialog}
+              disabled={readingProfileDialog.saving}>
+              Cancel
+            </Button>
+            <Button
+              className="text-xs font-bold"
+              disabled={
+                readingProfileDialog.saving || !readingProfileDialog.level
+              }
+              onClick={() => {
+                void handleSaveReadingProfile();
+              }}>
+              {readingProfileDialog.saving
+                ? "Saving..."
+                : "Save Reading Profile"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={unenrollDialog.open}
