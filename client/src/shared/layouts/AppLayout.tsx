@@ -5,7 +5,6 @@ import { Toaster } from "sileo";
 import {
   LayoutDashboard,
   ClipboardList,
-  FileText,
   CheckCircle,
   Users,
   School,
@@ -285,7 +284,6 @@ function AppSidebar() {
   const { user, clearAuth } = useAuthStore();
   const { schoolName, logoUrl, activeSchoolYearId } = useSettingsStore();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [pendingCount, setPendingCount] = useState<number>(0);
   const [activeYearLabel, setActiveYearLabel] = useState<string | null>(null);
 
   const isAdmin = user?.role === "SYSTEM_ADMIN";
@@ -293,12 +291,6 @@ function AppSidebar() {
   const pathname = location.pathname;
 
   useEffect(() => {
-    api
-      .get("/dashboard/stats")
-      .then((r) =>
-        setPendingCount(r.data?.stats?.earlyRegistration?.submitted ?? 0),
-      )
-      .catch(() => {});
     api
       .get("/school-years")
       .then((r) => {
@@ -388,24 +380,12 @@ function AppSidebar() {
                       pathname={pathname}
                     />
 
-                    <NavItemParent
+                    <NavItem
+                      to="/monitoring/early-registration"
                       icon={ClipboardList}
                       label="Early Registration"
-                      isActive={false}>
-                      <NavItemChild
-                        to="/monitoring/early-registration"
-                        icon={FileText}
-                        label="Application Monitoring"
-                        pathname={pathname}
-                        badgeCount={pendingCount}
-                      />
-                      <NavItemChild
-                        to="/monitoring/early-registration/pipelines"
-                        icon={ClipboardList}
-                        label="Registration Pipelines"
-                        pathname={pathname}
-                      />
-                    </NavItemParent>
+                      pathname={pathname}
+                    />
 
                     <NavItemParent
                       icon={CheckCircle}

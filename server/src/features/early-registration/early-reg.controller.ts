@@ -872,6 +872,7 @@ async function createRegistration(
     const learnerPayload = {
       lrn,
       isPendingLrnCreation,
+      status: "SUBMITTED" as ApplicationStatus,
       psaBirthCertNumber: body.psaBirthCertNumber?.trim().toUpperCase() || null,
       firstName: body.firstName,
       lastName: body.lastName,
@@ -1231,6 +1232,65 @@ export async function index(req: Request, res: Response, next: NextFunction) {
         totalPages: Math.ceil(total / limit),
       },
     });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/** GET /:id/requirements — Resolve dynamic documentary requirements for one applicant */
+export async function getRequirements(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const id = parseInt(String(req.params.id));
+    const registration = await findEarlyRegOrThrow(id);
+
+    let documentRequirements: Array<{
+      docId: string;
+      policy: "REQUIRED" | "OPTIONAL" | "HIDDEN";
+      phase?: "EARLY_REGISTRATION" | "ENROLLMENT" | null;
+      notes?: string | null;
+    }> | null = null;
+
+    if (registration.applicantType !== "REGULAR") {
+      const scpConfig = await prisma.scpProgramConfig.findUnique({
+        where: {
+          uq_scp_program_configs_type: {
+            schoolYearId: registration.schoolYearId,
+            scpType: registration.applicantType,
+          },
+        },
+        select: { gradeRequirements: true },
+      });
+
+      if (scpConfig?.gradeRequirements) {
+        const payload = scpConfig.gradeRequirements as {
+          documentRequirements?: Array<{
+            docId: string;
+            policy: "REQUIRED" | "OPTIONAL" | "HIDDEN";
+            phase?: "EARLY_REGISTRATION" | "ENROLLMENT" | null;
+            notes?: string | null;
+          }>;
+        };
+
+        if (Array.isArray(payload.documentRequirements)) {
+          documentRequirements = payload.documentRequirements;
+        }
+      }
+    }
+
+    const requirements = getRequiredDocuments({
+      learnerType: registration.learnerType,
+      gradeLevel: registration.gradeLevel.name,
+      applicantType: registration.applicantType,
+      isLwd: registration.learner.isLearnerWithDisability,
+      isPeptAePasser: false,
+      documentRequirements,
+    });
+
+    res.json({ requirements });
   } catch (err) {
     next(err);
   }

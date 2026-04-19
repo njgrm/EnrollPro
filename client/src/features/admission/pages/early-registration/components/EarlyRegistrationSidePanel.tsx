@@ -51,6 +51,7 @@ export function EarlyRegistrationSidePanel({
   };
 
   const pipelineParams = new URLSearchParams({
+    view: "batch",
     tab: resolvePipelineTab(selectedApplication?.applicantType),
     source: "early-registration-monitoring",
   });
@@ -59,7 +60,7 @@ export function EarlyRegistrationSidePanel({
     pipelineParams.set("tracking", selectedApplication.trackingNumber);
   }
 
-  const pipelineProcessHref = `/monitoring/early-registration/pipelines?${pipelineParams.toString()}`;
+  const pipelineProcessHref = `/monitoring/early-registration?${pipelineParams.toString()}`;
 
   return (
     <Sheet

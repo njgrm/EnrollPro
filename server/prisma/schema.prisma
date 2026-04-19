@@ -173,6 +173,7 @@ model Learner {
   externalId              String    @unique(map: "uq_learners_external_id") @default(dbgenerated("gen_random_uuid()")) @db.Uuid @map("external_id")
   lrn                     String?   @unique(map: "uq_learners_lrn") @db.VarChar(12)
   isPendingLrnCreation    Boolean   @default(false) @map("is_pending_lrn_creation")
+  status                  ApplicationStatus @default(SUBMITTED)
   psaBirthCertNumber      String?   @map("psa_birth_cert_number")
   firstName               String    @map("first_name")
   lastName                String    @map("last_name")

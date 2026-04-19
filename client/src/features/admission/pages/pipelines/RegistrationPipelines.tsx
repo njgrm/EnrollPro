@@ -108,12 +108,26 @@ export default function RegistrationPipelines() {
   }, [fetchActiveCount, tabs]);
 
   const handleTabChange = (value: string) => {
-    setSearchParams({ tab: value }, { replace: true });
+    setSearchParams(
+      (previousParams) => {
+        const nextParams = new URLSearchParams(previousParams);
+        nextParams.set("tab", value);
+        return nextParams;
+      },
+      { replace: true },
+    );
   };
 
   useEffect(() => {
     if (!tabs.some((tab) => tab.key === activeTab)) {
-      setSearchParams({ tab: "REGULAR" }, { replace: true });
+      setSearchParams(
+        (previousParams) => {
+          const nextParams = new URLSearchParams(previousParams);
+          nextParams.set("tab", "REGULAR");
+          return nextParams;
+        },
+        { replace: true },
+      );
     }
   }, [activeTab, tabs, setSearchParams]);
 

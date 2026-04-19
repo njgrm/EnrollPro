@@ -8,9 +8,8 @@ import ProtectedRoute from "@/shared/components/ProtectedRoute";
 import Login from "@/features/auth/pages/Login";
 import ChangePassword from "@/features/auth/pages/ChangePassword";
 import Dashboard from "@/features/dashboard/pages/Index";
-import EarlyRegistration from "@/features/admission/pages/early-registration/EarlyRegistrationList";
+import EarlyRegistrationWorkspace from "@/features/admission/pages/early-registration/EarlyRegistrationWorkspace";
 import EarlyRegistrationDetail from "@/features/admission/pages/early-registration/EarlyRegistrationDetail";
-import RegistrationPipelines from "@/features/admission/pages/pipelines/RegistrationPipelines";
 import Enrollment from "@/features/enrollment/pages/Index";
 import EosyUpdating from "@/features/enrollment/pages/EosyIndex";
 import WalkInEncoder from "@/features/enrollment/pages/WalkInEncoder";
@@ -120,16 +119,17 @@ export const router = createBrowserRouter([
             path: "/monitoring/early-registration",
             element: (
               <AppLayout>
-                <EarlyRegistration />
+                <EarlyRegistrationWorkspace />
               </AppLayout>
             ),
           },
           {
             path: "/monitoring/early-registration/pipelines",
             element: (
-              <AppLayout>
-                <RegistrationPipelines />
-              </AppLayout>
+              <Navigate
+                to="/monitoring/early-registration?view=batch"
+                replace
+              />
             ),
           },
           {

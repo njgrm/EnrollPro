@@ -177,6 +177,13 @@ router.get(
   ctrl.showDetailed,
 );
 
+router.get(
+  "/:id/requirements",
+  authenticate,
+  authorize("REGISTRAR", "SYSTEM_ADMIN", "TEACHER"),
+  ctrl.getRequirements,
+);
+
 router.patch(
   "/:id/reject",
   authenticate,
