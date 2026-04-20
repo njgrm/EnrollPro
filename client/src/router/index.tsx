@@ -8,30 +8,32 @@ import ProtectedRoute from "@/shared/components/ProtectedRoute";
 import Login from "@/features/auth/pages/Login";
 import ChangePassword from "@/features/auth/pages/ChangePassword";
 import Dashboard from "@/features/dashboard/pages/Index";
-import EarlyRegistration from "@/features/admission/pages/early-registration/EarlyRegistrationList";
+import EarlyRegistrationWorkspace from "@/features/admission/pages/early-registration/EarlyRegistrationWorkspace";
 import EarlyRegistrationDetail from "@/features/admission/pages/early-registration/EarlyRegistrationDetail";
-import RegistrationPipelines from "@/features/admission/pages/pipelines/RegistrationPipelines";
 import Enrollment from "@/features/enrollment/pages/Index";
+import EosyUpdating from "@/features/enrollment/pages/EosyIndex";
+import WalkInEncoder from "@/features/enrollment/pages/WalkInEncoder";
 import Students from "@/features/students/pages/Index";
 import Profile from "@/features/students/pages/Profile";
 import LearnerPortal from "@/features/learner/pages/LearnerPortal";
 import Sections from "@/features/sections/pages/Index";
 import AuditLogs from "@/features/audit-logs/pages/Index";
 import Settings from "@/features/settings/pages/Index";
-import DocumentaryRequirements from "@/features/enrollment/pages/DocumentaryRequirements";
 import NotFound from "@/shared/components/NotFound";
 
 // Admin Pages
 import AdminUsers from "@/features/admin/pages/Users";
 import EmailLogs from "@/features/admin/pages/EmailLogs";
 import SystemHealth from "@/features/admin/pages/SystemHealth";
+import AtlasIntegration from "@/features/admin/pages/AtlasIntegration";
 import Teachers from "@/features/teachers/pages/Index";
 
-// F2F BASIC EDUCATION EARLY REGISTRATION FORM Page
+// F2F Basic Education Early Registration Form Page
 import F2FEarlyRegistration from "@/features/admission/pages/f2f/Index";
 
-import Apply from "@/features/admission/pages/apply/Index";
-import Monitor from "@/features/admission/pages/apply/Monitor";
+import Apply from "@/features/admission/pages/online-enrollment/Index";
+import Monitor from "@/features/admission/pages/online-enrollment/Monitor";
+import SampleIntegrationPage from "@/features/sample-integration/pages/Index";
 
 // DO 017 s.2025 — Standalone Early Registration Module (Grades 7–10)
 import EarlyRegistrationApply from "@/features/early-registration/pages/apply/Index";
@@ -52,6 +54,10 @@ export const router = createBrowserRouter([
       {
         path: "/monitor",
         element: <Monitor />,
+      },
+      {
+        path: "/sample-integration",
+        element: <SampleIntegrationPage />,
       },
       {
         path: "/learner",
@@ -113,16 +119,17 @@ export const router = createBrowserRouter([
             path: "/monitoring/early-registration",
             element: (
               <AppLayout>
-                <EarlyRegistration />
+                <EarlyRegistrationWorkspace />
               </AppLayout>
             ),
           },
           {
             path: "/monitoring/early-registration/pipelines",
             element: (
-              <AppLayout>
-                <RegistrationPipelines />
-              </AppLayout>
+              <Navigate
+                to="/monitoring/early-registration?view=batch"
+                replace
+              />
             ),
           },
           {
@@ -138,6 +145,22 @@ export const router = createBrowserRouter([
             element: (
               <AppLayout>
                 <Enrollment />
+              </AppLayout>
+            ),
+          },
+          {
+            path: "/monitoring/enrollment/walk-in",
+            element: (
+              <AppLayout>
+                <WalkInEncoder />
+              </AppLayout>
+            ),
+          },
+          {
+            path: "/monitoring/enrollment/eosy",
+            element: (
+              <AppLayout>
+                <EosyUpdating />
               </AppLayout>
             ),
           },
@@ -167,11 +190,11 @@ export const router = createBrowserRouter([
           },
           {
             path: "/monitoring/enrollment/requirements",
-            element: (
-              <AppLayout>
-                <DocumentaryRequirements />
-              </AppLayout>
-            ),
+            element: <Navigate to="/settings?tab=requirements" replace />,
+          },
+          {
+            path: "/enrollment/requirements",
+            element: <Navigate to="/settings?tab=requirements" replace />,
           },
           {
             path: "/audit-logs",
@@ -217,6 +240,14 @@ export const router = createBrowserRouter([
             element: (
               <AppLayout>
                 <EmailLogs />
+              </AppLayout>
+            ),
+          },
+          {
+            path: "/admin/atlas",
+            element: (
+              <AppLayout>
+                <AtlasIntegration />
               </AppLayout>
             ),
           },

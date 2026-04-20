@@ -5,6 +5,10 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+export const googleLoginSchema = z.object({
+  credential: z.string().min(1, "Google credential is required"),
+});
+
 export const changePasswordSchema = z.object({
   newPassword: z.string().min(8, "Password must be at least 8 characters"),
 });

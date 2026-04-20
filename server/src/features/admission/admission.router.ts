@@ -6,6 +6,7 @@ import {
   applicationSubmitSchema,
   approveSchema,
   rejectSchema,
+  unenrollSchema,
   scheduleExamSchema,
   recordResultSchema,
   rescheduleExamSchema,
@@ -17,6 +18,8 @@ import {
   recordStepResultSchema,
   rescheduleAssessmentStepSchema,
   batchProcessSchema,
+  specialEnrollmentSchema,
+  readingProfileUpdateSchema,
 } from "@enrollpro/shared";
 import * as ctrl from "./early-registration.controller.js";
 import * as docCtrl from "./document.controller.js";
@@ -71,7 +74,14 @@ router.post(
 );
 
 // Batch processing — must be before /:id routes
-router.patch(
+router.post(
+  "/batch-assign-section",
+  authenticate,
+  authorize("REGISTRAR", "SYSTEM_ADMIN"),
+  ctrl.batchAssignSection,
+);
+
+router.post(
   "/batch-process",
   authenticate,
   authorize("REGISTRAR", "SYSTEM_ADMIN"),
@@ -179,10 +189,31 @@ router.patch(
   ctrl.verify,
 );
 router.patch(
+  "/:id/reading-profile",
+  authenticate,
+  authorize("REGISTRAR", "SYSTEM_ADMIN"),
+  validate(readingProfileUpdateSchema),
+  ctrl.updateReadingProfile,
+);
+router.patch(
   "/:id/enroll",
   authenticate,
   authorize("REGISTRAR", "SYSTEM_ADMIN"),
   ctrl.enroll,
+);
+router.patch(
+  "/:id/unenroll",
+  authenticate,
+  authorize("REGISTRAR", "SYSTEM_ADMIN"),
+  validate(unenrollSchema),
+  ctrl.unenroll,
+);
+router.post(
+  "/special-enrollment",
+  authenticate,
+  authorize("REGISTRAR", "SYSTEM_ADMIN"),
+  validate(specialEnrollmentSchema),
+  ctrl.specialEnrollment,
 );
 router.patch(
   "/:id/temporarily-enroll",

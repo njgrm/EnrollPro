@@ -6,22 +6,219 @@ export const SexEnum = z.enum(["MALE", "FEMALE"]);
 
 export const ComplianceStatusEnum = z.enum(["PENDING", "COMPLIED", "OVERDUE"]);
 
-export const ApplicationStatusEnum = z.enum([
+export const APPLICATION_STATUS_VALUES = [
+  "EARLY_REG_SUBMITTED",
+  "PRE_REGISTERED",
+  "PENDING_VERIFICATION",
+  "READY_FOR_SECTIONING",
+  "OFFICIALLY_ENROLLED",
   "SUBMITTED",
+  "VERIFIED",
   "UNDER_REVIEW",
   "FOR_REVISION",
   "ELIGIBLE",
-  "ASSESSMENT_SCHEDULED",
+  "EXAM_SCHEDULED",
   "ASSESSMENT_TAKEN",
   "PASSED",
   "INTERVIEW_SCHEDULED",
-  "PRE_REGISTERED",
+  "READY_FOR_ENROLLMENT",
   "TEMPORARILY_ENROLLED",
-  "NOT_QUALIFIED",
+  "FAILED_ASSESSMENT",
   "ENROLLED",
   "REJECTED",
   "WITHDRAWN",
+] as const;
+
+export const ApplicationStatusEnum = z.enum(APPLICATION_STATUS_VALUES);
+
+export const ReadingProfileLevelEnum = z.enum([
+  "INDEPENDENT",
+  "INSTRUCTIONAL",
+  "FRUSTRATION",
+  "NON_READER",
 ]);
+
+export const TrackingProgramTypeEnum = z.enum(["REGULAR", "SCP"]);
+
+export const TrackingStatusEnum = z.enum([
+  "SUBMITTED",
+  "IN_REVIEW",
+  "ASSESSMENT_IN_PROGRESS",
+  "QUALIFIED_FOR_ENROLLMENT",
+  "ENROLLED",
+  "NOT_QUALIFIED",
+  "REJECTED",
+  "WITHDRAWN",
+]);
+
+export const TrackingCurrentStepEnum = z.enum([
+  "APPLICATION_SUBMITTED",
+  "REGISTRAR_REVIEW",
+  "ASSESSMENT_PHASE",
+  "ENROLLMENT_QUALIFICATION",
+  "ENROLLED",
+]);
+
+export const APPLICATION_STATUS_TO_TRACKING_STATUS: Record<
+  z.infer<typeof ApplicationStatusEnum>,
+  z.infer<typeof TrackingStatusEnum>
+> = {
+  EARLY_REG_SUBMITTED: "SUBMITTED",
+  PRE_REGISTERED: "QUALIFIED_FOR_ENROLLMENT",
+  PENDING_VERIFICATION: "IN_REVIEW",
+  READY_FOR_SECTIONING: "QUALIFIED_FOR_ENROLLMENT",
+  OFFICIALLY_ENROLLED: "ENROLLED",
+  SUBMITTED: "SUBMITTED",
+  VERIFIED: "IN_REVIEW",
+  UNDER_REVIEW: "IN_REVIEW",
+  FOR_REVISION: "IN_REVIEW",
+  ELIGIBLE: "IN_REVIEW",
+  EXAM_SCHEDULED: "ASSESSMENT_IN_PROGRESS",
+  ASSESSMENT_TAKEN: "ASSESSMENT_IN_PROGRESS",
+  PASSED: "QUALIFIED_FOR_ENROLLMENT",
+  INTERVIEW_SCHEDULED: "ASSESSMENT_IN_PROGRESS",
+  READY_FOR_ENROLLMENT: "QUALIFIED_FOR_ENROLLMENT",
+  TEMPORARILY_ENROLLED: "QUALIFIED_FOR_ENROLLMENT",
+  FAILED_ASSESSMENT: "NOT_QUALIFIED",
+  ENROLLED: "ENROLLED",
+  REJECTED: "REJECTED",
+  WITHDRAWN: "WITHDRAWN",
+};
+
+export const APPLICATION_VALID_TRANSITIONS: Record<
+  z.infer<typeof ApplicationStatusEnum>,
+  z.infer<typeof ApplicationStatusEnum>[]
+> = {
+  EARLY_REG_SUBMITTED: [
+    "UNDER_REVIEW",
+    "PRE_REGISTERED",
+    "PENDING_VERIFICATION",
+    "REJECTED",
+    "WITHDRAWN",
+  ],
+  PRE_REGISTERED: [
+    "PENDING_VERIFICATION",
+    "READY_FOR_SECTIONING",
+    "TEMPORARILY_ENROLLED",
+    "REJECTED",
+    "WITHDRAWN",
+  ],
+  PENDING_VERIFICATION: [
+    "UNDER_REVIEW",
+    "READY_FOR_SECTIONING",
+    "TEMPORARILY_ENROLLED",
+    "REJECTED",
+    "WITHDRAWN",
+  ],
+  READY_FOR_SECTIONING: [
+    "OFFICIALLY_ENROLLED",
+    "TEMPORARILY_ENROLLED",
+    "PENDING_VERIFICATION",
+    "REJECTED",
+    "WITHDRAWN",
+  ],
+  OFFICIALLY_ENROLLED: ["READY_FOR_SECTIONING", "WITHDRAWN"],
+  SUBMITTED: [
+    "VERIFIED",
+    "UNDER_REVIEW",
+    "EXAM_SCHEDULED",
+    "PENDING_VERIFICATION",
+    "EARLY_REG_SUBMITTED",
+    "REJECTED",
+    "WITHDRAWN",
+  ],
+  VERIFIED: [
+    "UNDER_REVIEW",
+    "ELIGIBLE",
+    "EXAM_SCHEDULED",
+    "READY_FOR_ENROLLMENT",
+    "PRE_REGISTERED",
+    "READY_FOR_SECTIONING",
+    "REJECTED",
+    "WITHDRAWN",
+  ],
+  UNDER_REVIEW: [
+    "VERIFIED",
+    "FOR_REVISION",
+    "ELIGIBLE",
+    "EXAM_SCHEDULED",
+    "TEMPORARILY_ENROLLED",
+    "PRE_REGISTERED",
+    "READY_FOR_SECTIONING",
+    "REJECTED",
+    "WITHDRAWN",
+  ],
+  FOR_REVISION: ["UNDER_REVIEW", "WITHDRAWN"],
+  ELIGIBLE: [
+    "EXAM_SCHEDULED",
+    "READY_FOR_ENROLLMENT",
+    "PRE_REGISTERED",
+    "READY_FOR_SECTIONING",
+    "WITHDRAWN",
+  ],
+  EXAM_SCHEDULED: [
+    "ASSESSMENT_TAKEN",
+    "EXAM_SCHEDULED",
+    "INTERVIEW_SCHEDULED",
+    "WITHDRAWN",
+  ],
+  ASSESSMENT_TAKEN: [
+    "PASSED",
+    "SUBMITTED",
+    "EARLY_REG_SUBMITTED",
+    "PENDING_VERIFICATION",
+    "FAILED_ASSESSMENT",
+    "ASSESSMENT_TAKEN",
+    "EXAM_SCHEDULED",
+    "WITHDRAWN",
+  ],
+  PASSED: [
+    "READY_FOR_ENROLLMENT",
+    "PRE_REGISTERED",
+    "READY_FOR_SECTIONING",
+    "INTERVIEW_SCHEDULED",
+    "EXAM_SCHEDULED",
+    "WITHDRAWN",
+  ],
+  INTERVIEW_SCHEDULED: [
+    "READY_FOR_ENROLLMENT",
+    "PRE_REGISTERED",
+    "READY_FOR_SECTIONING",
+    "SUBMITTED",
+    "EARLY_REG_SUBMITTED",
+    "PENDING_VERIFICATION",
+    "WITHDRAWN",
+  ],
+  READY_FOR_ENROLLMENT: [
+    "ENROLLED",
+    "OFFICIALLY_ENROLLED",
+    "TEMPORARILY_ENROLLED",
+    "READY_FOR_SECTIONING",
+    "REJECTED",
+    "WITHDRAWN",
+  ],
+  TEMPORARILY_ENROLLED: [
+    "ENROLLED",
+    "OFFICIALLY_ENROLLED",
+    "READY_FOR_SECTIONING",
+    "WITHDRAWN",
+  ],
+  FAILED_ASSESSMENT: [
+    "UNDER_REVIEW",
+    "EARLY_REG_SUBMITTED",
+    "PENDING_VERIFICATION",
+    "WITHDRAWN",
+    "REJECTED",
+  ],
+  ENROLLED: ["OFFICIALLY_ENROLLED", "READY_FOR_SECTIONING", "WITHDRAWN"],
+  REJECTED: [
+    "UNDER_REVIEW",
+    "PENDING_VERIFICATION",
+    "EARLY_REG_SUBMITTED",
+    "WITHDRAWN",
+  ],
+  WITHDRAWN: [],
+};
 
 export const SchoolYearStatusEnum = z.enum([
   "DRAFT",
@@ -103,7 +300,74 @@ export const LastSchoolTypeEnum = z.enum([
   "INTERNATIONAL",
   "ALS",
 ]);
-export const GradeLevelEnum = z.enum(["7"]);
+export const GradeLevelEnum = z.enum(["7", "8", "9", "10"]);
+
+// ─── Teacher Reference Catalogs ─────────────────────────
+export const DEPED_TEACHER_SUBJECT_VALUES = [
+  "ENGLISH",
+  "FILIPINO",
+  "MATHEMATICS",
+  "SCIENCE",
+  "ARALING PANLIPUNAN",
+  "ESP",
+  "VALUES EDUCATION",
+  "MAPEH",
+  "TLE",
+  "ICT",
+  "FOREIGN LANGUAGE",
+  "JOURNALISM",
+  "ARTS",
+  "SPORTS",
+] as const;
+
+export type DepedTeacherSubject = (typeof DEPED_TEACHER_SUBJECT_VALUES)[number];
+
+export const DEPED_TEACHER_SUBJECT_OPTIONS: ReadonlyArray<{
+  value: DepedTeacherSubject;
+  label: string;
+}> = [
+  { value: "ENGLISH", label: "English" },
+  { value: "FILIPINO", label: "Filipino" },
+  { value: "MATHEMATICS", label: "Mathematics" },
+  { value: "SCIENCE", label: "Science" },
+  { value: "ARALING PANLIPUNAN", label: "Araling Panlipunan" },
+  { value: "ESP", label: "Edukasyon sa Pagpapakatao (ESP)" },
+  { value: "VALUES EDUCATION", label: "Values Education" },
+  { value: "MAPEH", label: "MAPEH" },
+  { value: "TLE", label: "Technology and Livelihood Education (TLE)" },
+  { value: "ICT", label: "Information and Communications Technology (ICT)" },
+  { value: "FOREIGN LANGUAGE", label: "Foreign Language" },
+  { value: "JOURNALISM", label: "Journalism" },
+  { value: "ARTS", label: "Arts" },
+  { value: "SPORTS", label: "Sports" },
+];
+
+export const DEPED_TEACHER_PLANTILLA_POSITION_VALUES = [
+  "TEACHER I",
+  "TEACHER II",
+  "TEACHER III",
+  "MASTER TEACHER I",
+  "MASTER TEACHER II",
+  "MASTER TEACHER III",
+  "MASTER TEACHER IV",
+  "HEAD TEACHER I",
+  "HEAD TEACHER II",
+  "HEAD TEACHER III",
+  "HEAD TEACHER IV",
+  "HEAD TEACHER V",
+  "HEAD TEACHER VI",
+] as const;
+
+export type DepedTeacherPlantillaPosition =
+  (typeof DEPED_TEACHER_PLANTILLA_POSITION_VALUES)[number];
+
+export const DEPED_TEACHER_PLANTILLA_POSITION_OPTIONS: ReadonlyArray<{
+  value: DepedTeacherPlantillaPosition;
+  label: string;
+}> = DEPED_TEACHER_PLANTILLA_POSITION_VALUES.map((value) => ({
+  value,
+  label: value,
+}));
 
 // ─── DO 017 s.2025 Early Registration Enums ─────────────
 export const EarlyRegGradeLevelEnum = z.enum(["7", "8", "9", "10"]);
@@ -138,11 +402,16 @@ export const ScpTypeEnum = z.enum([
 // ─── Types derived from enums ───────────────────────────
 export type AssessmentKind = z.infer<typeof AssessmentKindEnum>;
 export type ScpType = z.infer<typeof ScpTypeEnum>;
+export type ApplicationStatus = z.infer<typeof ApplicationStatusEnum>;
 export type DisabilityType = z.infer<typeof DisabilityTypeEnum>;
 export type EarlyRegGradeLevel = z.infer<typeof EarlyRegGradeLevelEnum>;
 export type EarlyRegistrationStatus = z.infer<
   typeof EarlyRegistrationStatusEnum
 >;
+export type ReadingProfileLevel = z.infer<typeof ReadingProfileLevelEnum>;
+export type TrackingProgramType = z.infer<typeof TrackingProgramTypeEnum>;
+export type TrackingStatus = z.infer<typeof TrackingStatusEnum>;
+export type TrackingCurrentStep = z.infer<typeof TrackingCurrentStepEnum>;
 
 // ─── Assessment Kind Labels ─────────────────────────────
 export const ASSESSMENT_KIND_LABELS: Record<AssessmentKind, string> = {

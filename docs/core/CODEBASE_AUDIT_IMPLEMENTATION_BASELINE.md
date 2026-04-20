@@ -100,7 +100,7 @@ Implementation currently has two parallel early-registration surfaces:
 
 Frontend duplicates multi-step form behavior in:
 
-- [client/src/features/admission/pages/apply/EarlyRegistrationForm.tsx](../../client/src/features/admission/pages/apply/EarlyRegistrationForm.tsx)
+- [client/src/features/admission/pages/online-enrollment/EarlyRegistrationForm.tsx](../../client/src/features/admission/pages/online-enrollment/EarlyRegistrationForm.tsx)
 - [client/src/features/admission/pages/f2f/Index.tsx](../../client/src/features/admission/pages/f2f/Index.tsx)
 - [client/src/features/early-registration/pages/apply/EarlyRegistrationForm.tsx](../../client/src/features/early-registration/pages/apply/EarlyRegistrationForm.tsx)
 

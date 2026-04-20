@@ -1,12 +1,18 @@
 import type { z } from "zod";
 import type {
   loginSchema,
+  googleLoginSchema,
   changePasswordSchema,
   userResponseSchema,
   loginResponseSchema,
 } from "../schemas/auth.schema.js";
 import type {
   applicationSubmitSchema,
+  applicationTrackingStateSchema,
+  applicationSubmitResponseSchema,
+  applicationTrackResponseSchema,
+  assessmentTrackerStepSchema,
+  trackingAssessmentDataSchema,
   approveSchema,
   rejectSchema,
   scheduleExamSchema,
@@ -28,6 +34,7 @@ import type {
 import type {
   teacherSchema,
   updateTeacherSchema,
+  teacherDesignationSchema,
 } from "../schemas/teacher.schema.js";
 import type {
   updateIdentitySchema,
@@ -41,6 +48,7 @@ import type {
 import type {
   createSchoolYearSchema,
   updateSchoolYearSchema,
+  updateRolloverDraftSchema,
   transitionSchoolYearSchema,
   toggleOverrideSchema,
 } from "../schemas/school-year.schema.js";
@@ -61,6 +69,7 @@ import type {
 
 // ─── Auth Types ────────────────────────────────────────
 export type LoginInput = z.infer<typeof loginSchema>;
+export type GoogleLoginInput = z.infer<typeof googleLoginSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export type UserResponse = z.infer<typeof userResponseSchema>;
 export type LoginResponse = z.infer<typeof loginResponseSchema>;
@@ -76,6 +85,21 @@ export type RejectInput = z.infer<typeof rejectSchema>;
 export type ScheduleExamInput = z.infer<typeof scheduleExamSchema>;
 export type RecordResultInput = z.infer<typeof recordResultSchema>;
 export type RescheduleExamInput = z.infer<typeof rescheduleExamSchema>;
+export type TrackingAssessmentStep = z.infer<
+  typeof assessmentTrackerStepSchema
+>;
+export type TrackingAssessmentData = z.infer<
+  typeof trackingAssessmentDataSchema
+>;
+export type ApplicationTrackingState = z.infer<
+  typeof applicationTrackingStateSchema
+>;
+export type ApplicationSubmitResponse = z.infer<
+  typeof applicationSubmitResponseSchema
+>;
+export type ApplicationTrackResponse = z.infer<
+  typeof applicationTrackResponseSchema
+>;
 export type UpdateChecklistInput = z.infer<typeof updateChecklistSchema>;
 export type RequestRevisionInput = z.infer<typeof requestRevisionSchema>;
 export type ScheduleInterviewInput = z.infer<typeof scheduleInterviewSchema>;
@@ -96,6 +120,7 @@ export type UpdateScpProgramConfigsInput = z.infer<
 // ─── Teacher Types ─────────────────────────────────────
 export type TeacherInput = z.infer<typeof teacherSchema>;
 export type UpdateTeacherInput = z.infer<typeof updateTeacherSchema>;
+export type TeacherDesignationInput = z.infer<typeof teacherDesignationSchema>;
 
 // ─── Settings Types ────────────────────────────────────
 export type UpdateIdentityInput = z.infer<typeof updateIdentitySchema>;
@@ -109,6 +134,9 @@ export type UpdateSectionInput = z.infer<typeof updateSectionSchema>;
 // ─── School Year Types ─────────────────────────────────
 export type CreateSchoolYearInput = z.infer<typeof createSchoolYearSchema>;
 export type UpdateSchoolYearInput = z.infer<typeof updateSchoolYearSchema>;
+export type UpdateRolloverDraftInput = z.infer<
+  typeof updateRolloverDraftSchema
+>;
 export type TransitionSchoolYearInput = z.infer<
   typeof transitionSchoolYearSchema
 >;

@@ -76,7 +76,7 @@ Current status rendering baseline should follow:
 
 - client/src/features/enrollment/constants.ts
 - client/src/features/enrollment/components/StatusBadge.tsx
-- client/src/features/admission/pages/apply/Track.tsx
+- client/src/features/admission/pages/online-enrollment/Track.tsx
 
 Action:
 

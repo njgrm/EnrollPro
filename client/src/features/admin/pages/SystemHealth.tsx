@@ -23,14 +23,8 @@ import { useDelayedLoading } from "@/shared/hooks/useDelayedLoading";
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
 import { Skeleton } from "@/shared/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/shared/ui/table";
+import type { ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/shared/ui/data-table";
 
 interface HealthResponse {
   database: {
@@ -149,6 +143,37 @@ export default function SystemHealth() {
     );
   }, [stats]);
 
+  const countData = useMemo(() => {
+    if (!health) return [];
+    return Object.entries(health.counts).map(([key, value]) => ({
+      metric:
+        key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1"),
+      value,
+    }));
+  }, [health]);
+
+  const countColumns = useMemo<ColumnDef<any>[]>(
+    () => [
+      {
+        accessorKey: "metric",
+        header: "Metric",
+        cell: ({ row }) => (
+          <span className="font-medium text-left block">
+            {row.original.metric}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "value",
+        header: "Value",
+        cell: ({ row }) => (
+          <span className="text-left block">{row.original.value}</span>
+        ),
+      },
+    ],
+    [],
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -196,8 +221,7 @@ export default function SystemHealth() {
               <>
                 <Badge
                   variant="outline"
-                  className={statusClass(health?.database.status || "DOWN")}
-                >
+                  className={statusClass(health?.database.status || "DOWN")}>
                   {health?.database.status || "DOWN"}
                 </Badge>
                 <p className="text-muted-foreground">
@@ -229,8 +253,7 @@ export default function SystemHealth() {
               <>
                 <Badge
                   variant="outline"
-                  className={statusClass(health?.email.status || "DEGRADED")}
-                >
+                  className={statusClass(health?.email.status || "DEGRADED")}>
                   {health?.email.status || "DEGRADED"}
                 </Badge>
                 <p className="text-muted-foreground">
@@ -263,8 +286,7 @@ export default function SystemHealth() {
               <>
                 <Badge
                   variant="outline"
-                  className={statusClass(stats?.systemStatus || "DOWN")}
-                >
+                  className={statusClass(stats?.systemStatus || "DOWN")}>
                   System: {stats?.systemStatus || "DOWN"}
                 </Badge>
                 <p className="text-muted-foreground">
@@ -321,27 +343,11 @@ export default function SystemHealth() {
                 ))}
               </div>
             ) : (
-              <div className="rounded-lg border overflow-hidden">
-                <Table>
-                  <TableHeader className="bg-muted/40">
-                    <TableRow>
-                      <TableHead className="text-left">Metric</TableHead>
-                      <TableHead className="text-left">Value</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {health &&
-                      Object.entries(health.counts).map(([key, value]) => (
-                        <TableRow key={key}>
-                          <TableCell className="text-left font-medium">
-                            {key}
-                          </TableCell>
-                          <TableCell className="text-left">{value}</TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </div>
+              <DataTable
+                columns={countColumns}
+                data={countData}
+                loading={showSkeleton}
+              />
             )}
           </CardContent>
         </Card>

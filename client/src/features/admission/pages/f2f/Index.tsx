@@ -37,8 +37,8 @@ export default function F2FEarlyRegistration() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            WALK-IN BASIC EDUCATION EARLY REGISTRATION FORM
+          <h1 className="text-3xl font-bold tracking-tight">
+            Walk-in Basic Education Early Registration Form
           </h1>
           <p className="text-sm text-foreground font-bold">
             Use the same public early registration flow for face-to-face
@@ -47,7 +47,7 @@ export default function F2FEarlyRegistration() {
         </div>
         <Button asChild variant="outline" className="gap-2 font-semibold">
           <Link
-            to="/enrollment/requirements"
+            to="/settings?tab=requirements"
             target="_blank"
             rel="noopener noreferrer">
             <BookOpen className="w-4 h-4" />

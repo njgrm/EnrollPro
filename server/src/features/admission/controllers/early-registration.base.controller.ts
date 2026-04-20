@@ -1,16 +1,20 @@
 import type { Request, Response, NextFunction } from "express";
 import { AppError } from "../../../lib/AppError.js";
-import type {
-  ApplicationStatus,
-  ApplicantType,
+import {
   Prisma,
-  LearnerType,
-  FamilyRelationship,
-  AdmissionChannel,
+  type ApplicationStatus,
+  type ApplicantType,
+  type LearnerType,
+  type FamilyRelationship,
+  type AdmissionChannel,
 } from "../../../generated/prisma/index.js";
 import type { AdmissionControllerDeps } from "../services/admission-controller.deps.js";
 import { createAdmissionControllerDeps } from "../services/admission-controller.deps.js";
-import { createEarlyRegistrationSharedService } from "../services/early-registration-shared.service.js";
+import {
+  createEarlyRegistrationSharedService,
+  createInitialTrackingPayload,
+  normalizeTrackingStatus,
+} from "../services/early-registration-shared.service.js";
 import { getSCPRankings } from "../services/scp-ranking.service.js";
 
 export function createEarlyRegistrationBaseController(
@@ -29,6 +33,7 @@ export function createEarlyRegistrationBaseController(
     queueEmail,
     toUpperCaseRecursive,
     findApplicantOrThrow,
+    resolveLinkedEarlyRegistration,
   } = createEarlyRegistrationSharedService(deps);
 
   const LRN_REGEX = /^\d{12}$/;
@@ -124,80 +129,204 @@ export function createEarlyRegistrationBaseController(
         limit = "15",
       } = req.query;
       const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+      const take = parseInt(limit as string);
 
-      const where: Prisma.EnrollmentApplicationWhereInput = {};
-
-      // Scope to specified or active School Year
+      // 1. Resolve School Year ID
+      let syId: number | undefined;
       if (schoolYearId) {
-        where.schoolYearId = parseInt(String(schoolYearId));
+        syId = parseInt(String(schoolYearId));
       } else {
         const settings = await prisma.schoolSetting.findFirst({
           select: { activeSchoolYearId: true },
         });
-        if (settings?.activeSchoolYearId) {
-          where.schoolYearId = settings.activeSchoolYearId;
-        }
+        syId = settings?.activeSchoolYearId || undefined;
       }
 
-      if (search) {
-        const s = String(search);
-        where.OR = [
-          { learner: { lrn: { contains: s, mode: "insensitive" } } },
-          { learner: { firstName: { contains: s, mode: "insensitive" } } },
-          { learner: { lastName: { contains: s, mode: "insensitive" } } },
-          { trackingNumber: { contains: s, mode: "insensitive" } },
-        ];
-      }
-      if (gradeLevelId) where.gradeLevelId = parseInt(String(gradeLevelId));
-      if (status && status !== "ALL")
-        where.status = status as ApplicationStatus;
+      // 2. Build Status Filters for Raw SQL
+      const statusFilters = (Array.isArray(status) ? status : [status])
+        .flatMap((value) => String(value ?? "").split(","))
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0 && value !== "ALL")
+        .filter((value): value is ApplicationStatus => Boolean(value));
 
-      if (isTruthyQuery(withoutSection)) {
-        where.enrollmentRecord = { is: null };
-      } else if (isTruthyQuery(withSection) || status === "ENROLLED") {
-        where.enrollmentRecord = { isNot: null };
-      }
+      // 3. Execution: Unified Raw Query for ID and Metadata
+      // We use raw SQL to handle UNION ALL + cross-table pagination + complex filters efficiently.
+      // This ensures READY_FOR_ENROLLMENT Phase 1 apps are visible in Phase 2 queue.
 
-      if (applicantType && applicantType !== "ALL")
-        where.applicantType = applicantType as Prisma.EnumApplicantTypeFilter;
+      const searchPattern = search ? `%${String(search)}%` : null;
+      const gradeId = gradeLevelId ? parseInt(String(gradeLevelId)) : null;
 
-      if (isTruthyQuery(withoutLrn)) {
-        where.AND = [
-          ...(Array.isArray(where.AND)
-            ? where.AND
-            : where.AND
-              ? [where.AND]
-              : []),
-          { learner: { isPendingLrnCreation: true } },
-        ];
-      }
+      const results = await prisma.$queryRaw<
+        { id: number; source: "ENROLLMENT" | "EARLY_REGISTRATION" }[]
+      >`
+        WITH base_queue AS (
+          -- Phase 2: Official Enrollment Applications
+          SELECT 
+            id, 
+            created_at, 
+            'ENROLLMENT'::text as source,
+            status,
+            applicant_type,
+            grade_level_id,
+            school_year_id,
+            tracking_number,
+            learner_id
+          FROM enrollment_applications
+          WHERE 1=1
+            ${syId ? Prisma.sql`AND school_year_id = ${syId}` : Prisma.empty}
+            ${gradeId ? Prisma.sql`AND grade_level_id = ${gradeId}` : Prisma.empty}
+            ${statusFilters.length > 0 ? Prisma.sql`AND status::text IN (${Prisma.join(statusFilters)})` : Prisma.empty}
+            ${applicantType && applicantType !== "ALL" ? Prisma.sql`AND applicant_type::text = ${applicantType}` : Prisma.empty}
+            ${isTruthyQuery(withoutSection) ? Prisma.sql`AND NOT EXISTS (SELECT 1 FROM enrollment_records WHERE enrollment_application_id = enrollment_applications.id)` : Prisma.empty}
+            ${isTruthyQuery(withSection) || status === "ENROLLED" || status === "OFFICIALLY_ENROLLED" ? Prisma.sql`AND EXISTS (SELECT 1 FROM enrollment_records WHERE enrollment_application_id = enrollment_applications.id)` : Prisma.empty}
 
-      const [applications, total] = await Promise.all([
+          UNION ALL
+
+          -- Phase 1: Early Registration Applications (Queued for Phase 2)
+          -- ONLY include if NOT yet migrated to an enrollment_application record.
+          SELECT 
+            id, 
+            created_at, 
+            'EARLY_REGISTRATION'::text as source,
+            status,
+            applicant_type,
+            grade_level_id,
+            school_year_id,
+            tracking_number,
+            learner_id
+          FROM early_registration_applications e
+          WHERE 1=1
+            AND NOT EXISTS (SELECT 1 FROM enrollment_applications WHERE early_registration_id = e.id)
+            ${syId ? Prisma.sql`AND school_year_id = ${syId}` : Prisma.empty}
+            ${gradeId ? Prisma.sql`AND grade_level_id = ${gradeId}` : Prisma.empty}
+            ${statusFilters.length > 0 ? Prisma.sql`AND status::text IN (${Prisma.join(statusFilters)})` : Prisma.empty}
+            ${applicantType && applicantType !== "ALL" ? Prisma.sql`AND applicant_type::text = ${applicantType}` : Prisma.empty}
+            -- Early reg apps NEVER have enrollment records (Phase 2 only)
+            ${isTruthyQuery(withSection) || status === "ENROLLED" || status === "OFFICIALLY_ENROLLED" ? Prisma.sql`AND 1=0` : Prisma.empty}
+        ),
+        filtered_queue AS (
+          SELECT q.* FROM base_queue q
+          JOIN learners l ON q.learner_id = l.id
+          WHERE 1=1
+            ${
+              searchPattern
+                ? Prisma.sql`AND (
+                l.lrn ILIKE ${searchPattern} OR 
+                l.first_name ILIKE ${searchPattern} OR 
+                l.last_name ILIKE ${searchPattern} OR 
+                q.tracking_number ILIKE ${searchPattern}
+              )`
+                : Prisma.empty
+            }
+            ${
+              isTruthyQuery(withoutLrn)
+                ? Prisma.sql`AND l.is_pending_lrn_creation = true`
+                : Prisma.empty
+            }
+        )
+        SELECT id, source::text as source
+        FROM filtered_queue
+        ORDER BY created_at DESC
+        LIMIT ${take} OFFSET ${skip}
+      `;
+
+      const [{ count: totalCount }] = await prisma.$queryRaw<
+        { count: bigint }[]
+      >`
+        WITH base_queue AS (
+          SELECT id, learner_id, tracking_number FROM enrollment_applications
+          WHERE 1=1
+            ${syId ? Prisma.sql`AND school_year_id = ${syId}` : Prisma.empty}
+            ${gradeId ? Prisma.sql`AND grade_level_id = ${gradeId}` : Prisma.empty}
+            ${statusFilters.length > 0 ? Prisma.sql`AND status::text IN (${Prisma.join(statusFilters)})` : Prisma.empty}
+            ${applicantType && applicantType !== "ALL" ? Prisma.sql`AND applicant_type::text = ${applicantType}` : Prisma.empty}
+            ${isTruthyQuery(withoutSection) ? Prisma.sql`AND NOT EXISTS (SELECT 1 FROM enrollment_records WHERE enrollment_application_id = enrollment_applications.id)` : Prisma.empty}
+            ${isTruthyQuery(withSection) || status === "ENROLLED" || status === "OFFICIALLY_ENROLLED" ? Prisma.sql`AND EXISTS (SELECT 1 FROM enrollment_records WHERE enrollment_application_id = enrollment_applications.id)` : Prisma.empty}
+
+          UNION ALL
+
+          SELECT id, learner_id, tracking_number FROM early_registration_applications e
+          WHERE 1=1
+            AND NOT EXISTS (SELECT 1 FROM enrollment_applications WHERE early_registration_id = e.id)
+            ${syId ? Prisma.sql`AND school_year_id = ${syId}` : Prisma.empty}
+            ${gradeId ? Prisma.sql`AND grade_level_id = ${gradeId}` : Prisma.empty}
+            ${statusFilters.length > 0 ? Prisma.sql`AND status::text IN (${Prisma.join(statusFilters)})` : Prisma.empty}
+            ${applicantType && applicantType !== "ALL" ? Prisma.sql`AND applicant_type::text = ${applicantType}` : Prisma.empty}
+            ${isTruthyQuery(withSection) || status === "ENROLLED" || status === "OFFICIALLY_ENROLLED" ? Prisma.sql`AND 1=0` : Prisma.empty}
+        )
+        SELECT COUNT(*) as count FROM base_queue q
+        JOIN learners l ON q.learner_id = l.id
+        WHERE 1=1
+          ${
+            searchPattern
+              ? Prisma.sql`AND (
+              l.lrn ILIKE ${searchPattern} OR 
+              l.first_name ILIKE ${searchPattern} OR 
+              l.last_name ILIKE ${searchPattern} OR 
+              q.tracking_number ILIKE ${searchPattern}
+            )`
+              : Prisma.empty
+          }
+          ${
+            isTruthyQuery(withoutLrn)
+              ? Prisma.sql`AND l.is_pending_lrn_creation = true`
+              : Prisma.empty
+          }
+      `;
+
+      // 4. Hydrate Results with Prisma (to maintain include logic)
+      const enrollmentIds = results
+        .filter((r) => r.source === "ENROLLMENT")
+        .map((r) => r.id);
+      const earlyRegIds = results
+        .filter((r) => r.source === "EARLY_REGISTRATION")
+        .map((r) => r.id);
+
+      const [enrollmentApps, earlyRegApps] = await Promise.all([
         prisma.enrollmentApplication.findMany({
-          where,
+          where: { id: { in: enrollmentIds } },
           include: {
             learner: true,
             gradeLevel: true,
             enrollmentRecord: { include: { section: true } },
             programDetail: true,
-            // Enrollment applications might not have assessments directly anymore,
-            // they might link to early registration assessments.
-            // For now, let's keep it if they exist, but the new schema moved them to early registration.
+            earlyRegistration: {
+              include: { assessments: { orderBy: { createdAt: "desc" } } },
+            },
           },
-          orderBy: { createdAt: "desc" },
-          skip,
-          take: parseInt(limit as string),
         }),
-        prisma.enrollmentApplication.count({ where }),
+        prisma.earlyRegistrationApplication.findMany({
+          where: { id: { in: earlyRegIds } },
+          include: {
+            learner: true,
+            gradeLevel: true,
+            assessments: { orderBy: { createdAt: "desc" } },
+          },
+        }),
       ]);
+
+      // Combine and Restore Original Sort Order
+      const appsMap = new Map<string, any>();
+      enrollmentApps.forEach((a) => appsMap.set(`ENROLLMENT-${a.id}`, a));
+      earlyRegApps.forEach((a) => appsMap.set(`EARLY_REGISTRATION-${a.id}`, a));
+
+      const sortedApps = results
+        .map((r) => {
+          const app = appsMap.get(`${r.source}-${r.id}`);
+          if (app) {
+            app._sourceTable = r.source; // Add metadata for internal identification
+          }
+          return app;
+        })
+        .filter(Boolean);
 
       res.json({
         applications: await Promise.all(
-          applications.map((app) => flattenAssessmentData(app)),
+          sortedApps.map((app) => flattenAssessmentData(app)),
         ),
-        total,
+        total: Number(totalCount),
         page: parseInt(page as string),
-        limit: parseInt(limit as string),
+        limit: take,
       });
     } catch (error) {
       next(error);
@@ -291,7 +420,11 @@ export function createEarlyRegistrationBaseController(
         const canStartReview =
           req.user?.role === "REGISTRAR" || req.user?.role === "SYSTEM_ADMIN";
 
-        if (earlyReg.status === "SUBMITTED" && canStartReview) {
+        if (
+          (earlyReg.status === "SUBMITTED" ||
+            earlyReg.status === "EARLY_REG_SUBMITTED") &&
+          canStartReview
+        ) {
           await prisma.earlyRegistrationApplication.update({
             where: { id: earlyReg.id },
             data: { status: "UNDER_REVIEW" },
@@ -311,26 +444,6 @@ export function createEarlyRegistrationBaseController(
         return res.json(await flattenAssessmentData(earlyReg));
       }
 
-      // Automatically transition to UNDER_REVIEW when opened by registrar/admin
-      const canStartReview =
-        req.user?.role === "REGISTRAR" || req.user?.role === "SYSTEM_ADMIN";
-      if (application.status === "SUBMITTED" && canStartReview) {
-        await prisma.enrollmentApplication.update({
-          where: { id: application.id },
-          data: { status: "UNDER_REVIEW" },
-        });
-        application.status = "UNDER_REVIEW";
-
-        await auditLog({
-          userId: req.user!.userId,
-          actionType: "APPLICATION_REVIEWED",
-          description: `Started reviewing enrollment application for ${application.learner.firstName} ${application.learner.lastName}`,
-          subjectType: "EnrollmentApplication",
-          recordId: application.id,
-          req,
-        });
-      }
-
       res.json(await flattenAssessmentData(application!));
     } catch (error) {
       next(error);
@@ -348,7 +461,12 @@ export function createEarlyRegistrationBaseController(
   async function submitApplication(
     req: Request,
     options: SubmitOptions,
-  ): Promise<string> {
+  ): Promise<
+    {
+      trackingNumber: string;
+      applicantType: ApplicantType;
+    } & ReturnType<typeof createInitialTrackingPayload>
+  > {
     // 1. Find active School Year
     const settings = await prisma.schoolSetting.findFirst({
       include: { activeSchoolYear: true },
@@ -431,6 +549,26 @@ export function createEarlyRegistrationBaseController(
       throw new AppError(422, "LRN must be exactly 12 numeric digits.");
     }
 
+    // 5. Determine applicant type
+    let applicantType: ApplicantType = "REGULAR";
+    if (body.isScpApplication && body.scpType) {
+      applicantType = body.scpType;
+    }
+
+    const { linkedEarlyRegistrationId } = await resolveLinkedEarlyRegistration({
+      requestedEarlyRegistrationId: body.earlyRegistrationId,
+      activeSchoolYearId: activeYear.id,
+      submittedLrn: lrn,
+      expectedApplicantType: applicantType,
+    });
+
+    if (applicantType !== "REGULAR" && !linkedEarlyRegistrationId) {
+      throw new AppError(
+        422,
+        "SCP applicants must complete Early Registration and run LRN lookup before final enrollment.",
+      );
+    }
+
     if (lrn) {
       const [existingByLrn, existingEarlyRegByLrn] = await Promise.all([
         prisma.enrollmentApplication.findFirst({
@@ -438,6 +576,7 @@ export function createEarlyRegistrationBaseController(
         }),
         prisma.earlyRegistrationApplication.findFirst({
           where: { learner: { lrn }, schoolYearId: activeYear.id },
+          select: { id: true, trackingNumber: true },
         }),
       ]);
 
@@ -448,18 +587,15 @@ export function createEarlyRegistrationBaseController(
         );
       }
 
-      if (existingEarlyRegByLrn) {
+      if (
+        existingEarlyRegByLrn &&
+        existingEarlyRegByLrn.id !== linkedEarlyRegistrationId
+      ) {
         throw new AppError(
           409,
           `An early registration with LRN ${lrn} already exists for this School Year. Tracking number: ${existingEarlyRegByLrn.trackingNumber}.`,
         );
       }
-    }
-
-    // 5. Determine applicant type
-    let applicantType: ApplicantType = "REGULAR";
-    if (body.isScpApplication && body.scpType) {
-      applicantType = body.scpType;
     }
 
     // 5b. SCP grade-gate validation
@@ -480,13 +616,21 @@ export function createEarlyRegistrationBaseController(
         };
         const failures: string[] = [];
 
+        // Online enrollment no longer requires grade payload fields to be present.
+        // If grades are provided, they are still validated against configured thresholds.
+        const submittedGeneralAverage =
+          typeof body.generalAverage === "number" &&
+          Number.isFinite(body.generalAverage)
+            ? body.generalAverage
+            : null;
+
         if (
           reqs.minGeneralAverage != null &&
-          (body.generalAverage == null ||
-            body.generalAverage < reqs.minGeneralAverage)
+          submittedGeneralAverage != null &&
+          submittedGeneralAverage < reqs.minGeneralAverage
         ) {
           failures.push(
-            `General Average must be at least ${reqs.minGeneralAverage} (submitted: ${body.generalAverage ?? "none"})`,
+            `General Average must be at least ${reqs.minGeneralAverage} (submitted: ${submittedGeneralAverage})`,
           );
         }
 
@@ -498,9 +642,14 @@ export function createEarlyRegistrationBaseController(
           for (const sr of reqs.subjectRequirements) {
             const key = sr.subject.toUpperCase();
             const submitted = gradeMap[key];
-            if (submitted == null || submitted < sr.minGrade) {
+
+            if (submitted == null) {
+              continue;
+            }
+
+            if (submitted < sr.minGrade) {
               failures.push(
-                `${sr.subject} grade must be at least ${sr.minGrade} (submitted: ${submitted ?? "none"})`,
+                `${sr.subject} grade must be at least ${sr.minGrade} (submitted: ${submitted})`,
               );
             }
           }
@@ -543,14 +692,25 @@ export function createEarlyRegistrationBaseController(
       familyData.push({ relationship: "MOTHER", ...body.mother });
     if (body.father)
       familyData.push({ relationship: "FATHER", ...body.father });
-    if (body.guardian)
-      familyData.push({ relationship: "GUARDIAN", ...body.guardian });
+    const guardianFirstName = body.guardian?.firstName?.trim();
+    const guardianLastName = body.guardian?.lastName?.trim();
+    if (guardianFirstName && guardianLastName) {
+      familyData.push({
+        relationship: "GUARDIAN",
+        firstName: guardianFirstName,
+        lastName: guardianLastName,
+        middleName: body.guardian?.middleName?.trim() || null,
+        contactNumber: body.guardian?.contactNumber?.trim() || null,
+        email: body.guardian?.email?.trim() || null,
+        occupation: body.guardian?.occupation?.trim() || null,
+      });
+    }
 
     // Ensure learner exists or update
     const learnerPayload = {
       lrn,
       isPendingLrnCreation: hasNoLrnDeclared && !lrn,
-      psaBirthCertNumber: body.psaBirthCertNumber || null,
+      psaBirthCertNumber: body.psaBirthCertNumber?.trim().toUpperCase() || null,
       firstName: body.firstName,
       lastName: body.lastName,
       middleName: body.middleName || null,
@@ -593,7 +753,7 @@ export function createEarlyRegistrationBaseController(
       const createdApplication = await tx.enrollmentApplication.create({
         data: {
           learnerId: learner.id,
-          earlyRegistrationId: body.earlyRegistrationId || null,
+          earlyRegistrationId: linkedEarlyRegistrationId,
           studentPhoto: studentPhotoUrl,
           learningModalities: body.learningModalities || [],
 
@@ -657,16 +817,16 @@ export function createEarlyRegistrationBaseController(
                   },
                 }
               : undefined,
-          // Reuse existing checklist if earlyRegistrationId is provided
-          ...(body.earlyRegistrationId ? {} : { checklist: { create: {} } }),
+          // Reuse existing checklist if early registration is linked
+          ...(linkedEarlyRegistrationId ? {} : { checklist: { create: {} } }),
         },
         include: { learner: true },
       });
 
-      if (body.earlyRegistrationId) {
+      if (linkedEarlyRegistrationId) {
         // Link existing checklist to the new enrollment application
         const existingChecklist = await tx.applicationChecklist.findUnique({
-          where: { earlyRegistrationId: body.earlyRegistrationId },
+          where: { earlyRegistrationId: linkedEarlyRegistrationId },
         });
 
         if (existingChecklist) {
@@ -679,7 +839,7 @@ export function createEarlyRegistrationBaseController(
           await tx.applicationChecklist.create({
             data: {
               enrollmentId: createdApplication.id,
-              earlyRegistrationId: body.earlyRegistrationId,
+              earlyRegistrationId: linkedEarlyRegistrationId,
             },
           });
         }
@@ -740,24 +900,26 @@ export function createEarlyRegistrationBaseController(
     );
 
     // Link early registration if provided
-    if (body.earlyRegistrationId) {
-      const nextEarlyRegStatus: ApplicationStatus = hasNoLrnDeclared
-        ? "TEMPORARILY_ENROLLED"
-        : "ENROLLED";
+    if (linkedEarlyRegistrationId) {
+      const nextEarlyRegStatus: ApplicationStatus = "PRE_REGISTERED";
 
       await prisma.earlyRegistrationApplication.update({
-        where: { id: body.earlyRegistrationId },
+        where: { id: linkedEarlyRegistrationId },
         data: {
           status: nextEarlyRegStatus,
         },
       });
     }
 
-    return trackingNumber;
+    return {
+      trackingNumber,
+      applicantType: application.applicantType,
+      ...createInitialTrackingPayload(application.applicantType),
+    };
   }
 
-  /** Wrap Prisma P2002 unique-constraint errors into AppError(409). */
-  function rethrowPrismaUnique(error: unknown): never {
+  /** Wrap known Prisma constraint errors into user-safe AppError responses. */
+  function rethrowPrismaKnown(error: unknown): never {
     if (
       typeof error === "object" &&
       error !== null &&
@@ -776,21 +938,44 @@ export function createEarlyRegistrationBaseController(
         "A duplicate enrollment application was detected.",
       );
     }
+
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code: string }).code === "P2003"
+    ) {
+      const fieldName = String(
+        (error as { meta?: { field_name?: string } }).meta?.field_name ?? "",
+      );
+      if (fieldName.includes("early_registration_id")) {
+        throw new AppError(
+          422,
+          "The selected early registration record is invalid or outdated. Please run LRN lookup again.",
+        );
+      }
+
+      throw new AppError(
+        409,
+        "The request references related data that no longer exists.",
+      );
+    }
+
     throw error;
   }
 
   // ── Submit new application (public) ──
   async function store(req: Request, res: Response, next: NextFunction) {
     try {
-      const trackingNumber = await submitApplication(req, {
+      const submission = await submitApplication(req, {
         channel: "ONLINE",
         trackingPrefix: "ENR",
         encodedById: null,
       });
-      res.status(201).json({ trackingNumber });
+      res.status(201).json(submission);
     } catch (error) {
       try {
-        rethrowPrismaUnique(error);
+        rethrowPrismaKnown(error);
       } catch (mapped) {
         next(mapped);
       }
@@ -800,15 +985,15 @@ export function createEarlyRegistrationBaseController(
   // ── Submit F2F walk-in application (authenticated - REGISTRAR/SYSTEM_ADMIN) ──
   async function storeF2F(req: Request, res: Response, next: NextFunction) {
     try {
-      const trackingNumber = await submitApplication(req, {
+      const submission = await submitApplication(req, {
         channel: "F2F",
         trackingPrefix: "F2F-ENR",
         encodedById: req.user!.userId,
       });
-      res.status(201).json({ trackingNumber });
+      res.status(201).json(submission);
     } catch (error) {
       try {
-        rethrowPrismaUnique(error);
+        rethrowPrismaKnown(error);
       } catch (mapped) {
         next(mapped);
       }
@@ -866,7 +1051,22 @@ export function createEarlyRegistrationBaseController(
         application = earlyReg as any;
       }
 
-      res.json(await flattenAssessmentData(application!));
+      const flattened = (await flattenAssessmentData(application!)) as Record<
+        string,
+        any
+      >;
+      const rawStatus = String(
+        flattened.status ?? "PENDING_VERIFICATION",
+      ).toUpperCase();
+      const status = normalizeTrackingStatus(
+        flattened.trackingStatus ?? rawStatus,
+      );
+
+      res.json({
+        ...flattened,
+        status,
+        rawStatus,
+      });
     } catch (error) {
       next(error);
     }
@@ -894,10 +1094,31 @@ export function createEarlyRegistrationBaseController(
           earlyRegistrationApplications: {
             where: {
               schoolYearId: settings.activeSchoolYearId,
-              status: { in: ["PASSED", "PRE_REGISTERED"] },
+              status: {
+                in: [
+                  "EARLY_REG_SUBMITTED",
+                  "PRE_REGISTERED",
+                  "PENDING_VERIFICATION",
+                  "READY_FOR_SECTIONING",
+                  "SUBMITTED",
+                  "VERIFIED",
+                  "UNDER_REVIEW",
+                  "FOR_REVISION",
+                  "ELIGIBLE",
+                  "EXAM_SCHEDULED",
+                  "ASSESSMENT_TAKEN",
+                  "PASSED",
+                  "INTERVIEW_SCHEDULED",
+                  "READY_FOR_ENROLLMENT",
+                  "TEMPORARILY_ENROLLED",
+                  "FAILED_ASSESSMENT",
+                ],
+              },
             },
             include: {
               familyMembers: true,
+              addresses: true,
+              gradeLevel: { select: { name: true } },
             },
             orderBy: { createdAt: "desc" },
             take: 1,
@@ -920,6 +1141,15 @@ export function createEarlyRegistrationBaseController(
       const guardian = reg.familyMembers.find(
         (g) => g.relationship === "GUARDIAN",
       );
+      const currentAddress = reg.addresses.find(
+        (address) => address.addressType === "CURRENT",
+      );
+      const permanentAddress = reg.addresses.find(
+        (address) => address.addressType === "PERMANENT",
+      );
+      const normalizedGradeLevel =
+        normalizeGradeLevelToken(reg.gradeLevel?.name) ||
+        normalizeGradeLevelToken(reg.gradeLevelId);
 
       res.json({
         earlyRegistrationId: reg.id,
@@ -944,11 +1174,33 @@ export function createEarlyRegistrationBaseController(
         is4PsBeneficiary: learner.is4PsBeneficiary,
         householdId4Ps: learner.householdId4Ps,
         // Demographic fields from learner table
-        gradeLevel: reg.gradeLevelId, // Send ID or Name? Usually form needs something it can resolve
+        gradeLevel: normalizedGradeLevel,
         learnerType: reg.learnerType,
         applicantType: reg.applicantType,
         contactNumber: reg.contactNumber,
         email: reg.email,
+        primaryContact: reg.primaryContact,
+        guardianRelationship: reg.guardianRelationship,
+        hasNoMother: reg.hasNoMother,
+        hasNoFather: reg.hasNoFather,
+        currentAddress: currentAddress
+          ? {
+              houseNo: currentAddress.houseNoStreet,
+              street: currentAddress.sitio,
+              barangay: currentAddress.barangay,
+              cityMunicipality: currentAddress.cityMunicipality,
+              province: currentAddress.province,
+            }
+          : null,
+        permanentAddress: permanentAddress
+          ? {
+              houseNo: permanentAddress.houseNoStreet,
+              street: permanentAddress.sitio,
+              barangay: permanentAddress.barangay,
+              cityMunicipality: permanentAddress.cityMunicipality,
+              province: permanentAddress.province,
+            }
+          : null,
         father: father
           ? {
               lastName: father.lastName,

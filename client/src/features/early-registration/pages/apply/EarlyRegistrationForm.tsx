@@ -13,7 +13,7 @@ import LearnerProfileStep from "./steps/LearnerProfileStep";
 import AddressGuardianStep from "./steps/AddressGuardianStep";
 import LegalConsentStep from "./steps/LegalConsentStep";
 
-import StepProgressBar from "@/features/admission/pages/apply/components/StepProgressBar";
+import StepProgressBar from "@/features/admission/pages/online-enrollment/components/StepProgressBar";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { motion, AnimatePresence } from "motion/react";
@@ -21,14 +21,29 @@ import { ArrowLeft, ArrowRight, AlertCircle } from "lucide-react";
 import api from "@/shared/api/axiosInstance";
 import { toUpperCaseRecursive } from "@/shared/lib/utils";
 import { sileo } from "sileo";
+import type { ApplicationSubmitResponse } from "@enrollpro/shared";
+
+type EarlyRegSuccessPayload = Pick<
+  ApplicationSubmitResponse,
+  | "trackingNumber"
+  | "applicantType"
+  | "programType"
+  | "status"
+  | "currentStep"
+  | "assessmentData"
+> & {
+  id: number;
+  learnerName: string;
+};
+
+type EarlyRegSubmitResponse = ApplicationSubmitResponse & {
+  id: number;
+  learnerName: string;
+  message: string;
+};
 
 interface EarlyRegFormProps {
-  onSuccess?: (data: {
-    id: number;
-    trackingNumber: string;
-    learnerName: string;
-    applicantType: string;
-  }) => void;
+  onSuccess?: (data: EarlyRegSuccessPayload) => void;
   submitEndpoint?: string;
   storageKeyPrefix?: string;
   consentStorageKey?: string | null;
@@ -295,7 +310,10 @@ export default function EarlyRegistrationForm({
             : data.birthdate,
       };
 
-      const response = await api.post(submitEndpoint, payload);
+      const response = await api.post<EarlyRegSubmitResponse>(
+        submitEndpoint,
+        payload,
+      );
 
       sileo.success({
         title: "Success!",
@@ -306,7 +324,11 @@ export default function EarlyRegistrationForm({
         id: response.data.id,
         trackingNumber: response.data.trackingNumber,
         learnerName: response.data.learnerName,
-        applicantType: response.data.applicantType ?? "REGULAR",
+        applicantType: response.data.applicantType,
+        programType: response.data.programType,
+        status: response.data.status,
+        currentStep: response.data.currentStep,
+        assessmentData: response.data.assessmentData,
       });
 
       // Clear draft & reset

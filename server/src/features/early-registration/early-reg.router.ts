@@ -3,6 +3,12 @@ import { authenticate } from "../../middleware/authenticate.js";
 import { authorize } from "../../middleware/authorize.js";
 import { validate } from "../../middleware/validate.js";
 import {
+  batchAssignRegularSectionSchema,
+  batchFinalizeInterviewSchema,
+  batchSaveScoresSchema,
+  batchScheduleStepSchema,
+  batchVerifyDocumentsPreviewSchema,
+  batchVerifyDocumentsSchema,
   earlyRegistrationSubmitSchema,
   rejectSchema,
   scheduleAssessmentStepSchema,
@@ -116,11 +122,66 @@ router.patch(
   ctrl.batchProcess,
 );
 
+router.post(
+  "/batch/verify-documents/preview",
+  authenticate,
+  authorize("REGISTRAR", "SYSTEM_ADMIN"),
+  validate(batchVerifyDocumentsPreviewSchema),
+  ctrl.batchVerifyDocumentsPreview,
+);
+
+router.patch(
+  "/batch/verify-documents",
+  authenticate,
+  authorize("REGISTRAR", "SYSTEM_ADMIN"),
+  validate(batchVerifyDocumentsSchema),
+  ctrl.batchVerifyDocuments,
+);
+
+router.patch(
+  "/batch/assign-regular-section",
+  authenticate,
+  authorize("REGISTRAR", "SYSTEM_ADMIN"),
+  validate(batchAssignRegularSectionSchema),
+  ctrl.batchAssignRegularSection,
+);
+
+router.patch(
+  "/batch/schedule-step",
+  authenticate,
+  authorize("REGISTRAR", "SYSTEM_ADMIN"),
+  validate(batchScheduleStepSchema),
+  ctrl.batchScheduleStep,
+);
+
+router.patch(
+  "/batch/save-scores",
+  authenticate,
+  authorize("REGISTRAR", "SYSTEM_ADMIN"),
+  validate(batchSaveScoresSchema),
+  ctrl.batchSaveScores,
+);
+
+router.patch(
+  "/batch/finalize-interview",
+  authenticate,
+  authorize("REGISTRAR", "SYSTEM_ADMIN"),
+  validate(batchFinalizeInterviewSchema),
+  ctrl.batchFinalizeInterview,
+);
+
 router.get(
   "/:id/detailed",
   authenticate,
   authorize("REGISTRAR", "SYSTEM_ADMIN", "TEACHER"),
   ctrl.showDetailed,
+);
+
+router.get(
+  "/:id/requirements",
+  authenticate,
+  authorize("REGISTRAR", "SYSTEM_ADMIN", "TEACHER"),
+  ctrl.getRequirements,
 );
 
 router.patch(

@@ -1,583 +1,856 @@
-import { useState, useEffect, useCallback } from 'react';
-import { sileo } from 'sileo';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { sileo } from "sileo";
+import { Link } from "react-router";
 import {
-	GraduationCap,
-	Plus,
-	Edit2,
-	UserMinus,
-	UserCheck,
-	RefreshCw,
-	Check,
-} from 'lucide-react';
-import api from '@/shared/api/axiosInstance';
-import { toastApiError } from '@/shared/hooks/useApiToast';
-import { Button } from '@/shared/ui/button';
-import { Input } from '@/shared/ui/input';
-import { Label } from '@/shared/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
+  ChevronDown,
+  CloudUpload,
+  GraduationCap,
+  Plus,
+  Upload,
+} from "lucide-react";
+import api from "@/shared/api/axiosInstance";
+import { useSettingsStore } from "@/store/settings.slice";
+import { toastApiError } from "@/shared/hooks/useApiToast";
+import { useDelayedLoading } from "@/shared/hooks/useDelayedLoading";
+import { Button } from "@/shared/ui/button";
+import { ConfirmationModal } from "@/shared/ui/confirmation-modal";
 import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from '@/shared/ui/dialog';
-import { ConfirmationModal } from '@/shared/ui/confirmation-modal';
-import { Skeleton } from '@/shared/ui/skeleton';
-import { useDelayedLoading } from '@/shared/hooks/useDelayedLoading';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/shared/ui/dropdown-menu";
+import { TeacherDirectoryCard } from "../components/TeacherDirectoryCard";
+import { TeacherFormSheet } from "../components/TeacherFormSheet";
+import { TeacherDesignationSheet } from "../components/TeacherDesignationSheet";
+import type {
+  AdvisorySectionOption,
+  DesignationCollision,
+  DesignationFormState,
+  SectionsApiResponse,
+  Teacher,
+  TeacherDesignationFilter,
+  TeacherFormState,
+  TeacherStatusFilter,
+  TeacherSyncFilter,
+} from "../types";
+import {
+  MAX_TEACHER_PHOTO_BYTES,
+  convertImageToBase64,
+  createEmptyTeacherForm,
+  formatTeacherName,
+  getImageUrl,
+  getSyncFilterValue,
+  normalizeOptionalInput,
+} from "../utils";
 
-interface Teacher {
-	id: number;
-	employeeId: string | null;
-	firstName: string;
-	lastName: string;
-	middleName: string | null;
-	contactNumber: string | null;
-	specialization: string | null;
-	subjects: string[];
-	isActive: boolean;
-	createdAt: string;
+type TeacherFormField = Exclude<keyof TeacherFormState, "photo" | "subjects">;
+
+function normalizeTeacherFieldValue(
+  field: TeacherFormField,
+  value: string,
+): string {
+  if (field === "contactNumber") {
+    return value.replace(/\D/g, "").slice(0, 11);
+  }
+
+  if (field === "email") {
+    return value;
+  }
+
+  return value.toUpperCase();
+}
+
+function isValidContactNumber(value: string): boolean {
+  const normalized = value.trim();
+  return normalized.length === 0 || /^\d{11}$/.test(normalized);
+}
+
+function createEmptyDesignationForm(): DesignationFormState {
+  return {
+    isClassAdviser: false,
+    advisorySectionId: "",
+    advisoryEquivalentHoursPerWeek: "5",
+    isTic: false,
+    isTeachingExempt: false,
+    customTargetTeachingHoursPerWeek: "",
+    designationNotes: "",
+    effectiveFrom: "",
+    effectiveTo: "",
+    reason: "",
+  };
 }
 
 export default function Teachers() {
-	const [teachers, setTeachers] = useState<Teacher[]>([]);
-	const [loading, setLoading] = useState(true);
+  const { activeSchoolYearId, viewingSchoolYearId } = useSettingsStore();
+  const ayId = viewingSchoolYearId ?? activeSchoolYearId;
 
-	// Rule A & B: Delayed loading
-	const showSkeleton = useDelayedLoading(loading);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [loading, setLoading] = useState(true);
 
-	const [createOpen, setCreateOpen] = useState(false);
-	const [editingId, setEditingId] = useState<number | null>(null);
-	const [deactivateId, setDeactivateId] = useState<number | null>(null);
-	const [reactivateId, setReactivateId] = useState<number | null>(null);
-	const [submitting, setSubmitting] = useState(false);
+  const showSkeleton = useDelayedLoading(loading);
 
-	const [formData, setFormData] = useState({
-		firstName: '',
-		lastName: '',
-		middleName: '',
-		employeeId: '',
-		contactNumber: '',
-		specialization: '',
-	});
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
+  const [editPhotoChanged, setEditPhotoChanged] = useState(false);
+  const [deactivateId, setDeactivateId] = useState<number | null>(null);
+  const [reactivateId, setReactivateId] = useState<number | null>(null);
+  const [designationOpenFor, setDesignationOpenFor] = useState<Teacher | null>(
+    null,
+  );
+  const [submitting, setSubmitting] = useState(false);
+  const [forceSyncingTeacherId, setForceSyncingTeacherId] = useState<
+    number | null
+  >(null);
+  const [forceSyncingAll, setForceSyncingAll] = useState(false);
+  const [advisorySections, setAdvisorySections] = useState<
+    AdvisorySectionOption[]
+  >([]);
+  const [advisorySectionsLoading, setAdvisorySectionsLoading] = useState(false);
+  const [designationCollision, setDesignationCollision] =
+    useState<DesignationCollision | null>(null);
+  const [allowCollisionOverride, setAllowCollisionOverride] = useState(false);
+  const [designationDrawerTab, setDesignationDrawerTab] = useState<
+    "role-load" | "schedule-notes" | "review"
+  >("role-load");
 
-	const [editFormData, setEditFormData] = useState({
-		firstName: '',
-		lastName: '',
-		middleName: '',
-		employeeId: '',
-		contactNumber: '',
-		specialization: '',
-	});
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<TeacherStatusFilter>("all");
+  const [designationFilter, setDesignationFilter] =
+    useState<TeacherDesignationFilter>("all");
+  const [syncFilter, setSyncFilter] = useState<TeacherSyncFilter>("all");
 
-	const fetchTeachers = useCallback(async () => {
-		setLoading(true);
-		try {
-			const res = await api.get('/teachers');
-			setTeachers(res.data.teachers || []);
-		} catch (err) {
-			toastApiError(err as never);
-		} finally {
-			setLoading(false);
-		}
-	}, []);
+  const [formData, setFormData] = useState<TeacherFormState>(
+    createEmptyTeacherForm,
+  );
 
-	useEffect(() => {
-		fetchTeachers();
-	}, [fetchTeachers]);
+  const [editFormData, setEditFormData] = useState<TeacherFormState>(
+    createEmptyTeacherForm,
+  );
 
-	const handleCreate = async () => {
-		setSubmitting(true);
-		try {
-			await api.post('/teachers', formData);
-			sileo.success({
-				title: 'Teacher Created',
-				description: `${formData.lastName}, ${formData.firstName} has been added.`,
-			});
-			setCreateOpen(false);
-			setFormData({
-				firstName: '',
-				lastName: '',
-				middleName: '',
-				employeeId: '',
-				contactNumber: '',
-				specialization: '',
-			});
-			fetchTeachers();
-		} catch (err) {
-			toastApiError(err as never);
-		} finally {
-			setSubmitting(false);
-		}
-	};
+  const [designationForm, setDesignationForm] = useState<DesignationFormState>(
+    createEmptyDesignationForm,
+  );
 
-	const startEditing = (teacher: Teacher) => {
-		setEditingId(teacher.id);
-		setEditFormData({
-			firstName: teacher.firstName,
-			lastName: teacher.lastName,
-			middleName: teacher.middleName || '',
-			employeeId: teacher.employeeId || '',
-			contactNumber: teacher.contactNumber || '',
-			specialization: teacher.specialization || '',
-		});
-	};
+  const fetchTeachers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await api.get("/teachers", {
+        params: ayId ? { schoolYearId: ayId } : undefined,
+      });
+      setTeachers(res.data.teachers || []);
+    } catch (err) {
+      toastApiError(err as never);
+    } finally {
+      setLoading(false);
+    }
+  }, [ayId]);
 
-	const cancelEditing = () => {
-		setEditingId(null);
-	};
+  useEffect(() => {
+    fetchTeachers();
+  }, [fetchTeachers]);
 
-	const handleUpdate = async (id: number) => {
-		setSubmitting(true);
-		try {
-			await api.put(`/teachers/${id}`, editFormData);
-			sileo.success({
-				title: 'Teacher Updated',
-				description: 'Changes saved successfully.',
-			});
-			setEditingId(null);
-			fetchTeachers();
-		} catch (err) {
-			toastApiError(err as never);
-		} finally {
-			setSubmitting(false);
-		}
-	};
+  const fetchAdvisorySections = useCallback(async () => {
+    if (!ayId) {
+      setAdvisorySections([]);
+      return;
+    }
 
-	const handleToggleStatus = async (
-		id: number,
-		action: 'deactivate' | 'reactivate',
-	) => {
-		setSubmitting(true);
-		try {
-			await api.patch(`/teachers/${id}/${action}`);
-			sileo.success({
-				title:
-					action === 'deactivate'
-						? 'Teacher Deactivated'
-						: 'Teacher Reactivated',
-				description: 'Teacher status updated successfully.',
-			});
-			setDeactivateId(null);
-			setReactivateId(null);
-			fetchTeachers();
-		} catch (err) {
-			toastApiError(err as never);
-		} finally {
-			setSubmitting(false);
-		}
-	};
+    setAdvisorySectionsLoading(true);
+    try {
+      const res = await api.get(`/sections/${ayId}`);
+      const response = res.data as SectionsApiResponse;
+      const options: AdvisorySectionOption[] = (response.gradeLevels ?? [])
+        .flatMap((gradeLevel) =>
+          (gradeLevel.sections ?? []).map((section) => ({
+            id: section.id,
+            label: `${gradeLevel.gradeLevelName} - ${section.name}`,
+            gradeLevelName: gradeLevel.gradeLevelName,
+            sectionName: section.name,
+            currentAdviserId: section.advisingTeacher?.id ?? null,
+            currentAdviserName: section.advisingTeacher?.name ?? null,
+          })),
+        )
+        .sort((a, b) => a.label.localeCompare(b.label));
 
-	const formatName = (t: Teacher) =>
-		`${t.lastName}, ${t.firstName}${t.middleName ? ` ${t.middleName.charAt(0)}.` : ''}`;
+      setAdvisorySections(options);
+    } catch (err) {
+      toastApiError(err as never);
+      setAdvisorySections([]);
+    } finally {
+      setAdvisorySectionsLoading(false);
+    }
+  }, [ayId]);
 
-	return (
-		<div className='space-y-6 max-w-full overflow-x-hidden'>
-			<div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
-				<div className='space-y-1 text-left'>
-					<h1 className='text-2xl md:text-3xl font-bold flex items-center justify-start gap-2 text-balance'>
-						<GraduationCap className='h-7 w-7 md:h-8 md:w-8 text-primary' />
-						Teacher Management
-					</h1>
-					<p className='text-sm text-muted-foreground text-balance'>
-						Manage teacher profiles for section adviser assignment
-					</p>
-				</div>
-				<div className='flex justify-end'>
-					<Button
-						onClick={() => {
-							setFormData({
-								firstName: '',
-								lastName: '',
-								middleName: '',
-								employeeId: '',
-								contactNumber: '',
-								specialization: '',
-							});
-							setCreateOpen(true);
-						}}
-						className='w-fit shadow-sm'
-					>
-						<Plus className='h-4 w-4 mr-2' />
-						Add Teacher
-					</Button>
-				</div>
-			</div>
+  useEffect(() => {
+    fetchAdvisorySections();
+  }, [fetchAdvisorySections]);
 
-			<Card className='overflow-hidden max-w-full'>
-				<CardHeader className='pb-3 px-4 md:px-6 border-b bg-muted/10'>
-					<div className='flex flex-col lg:flex-row lg:items-center justify-between gap-4'>
-						<CardTitle className='text-lg font-semibold'>
-							Teacher Directory
-						</CardTitle>
-						<Button
-							variant='outline'
-							size='icon'
-							className='h-9 w-9 shrink-0'
-							onClick={fetchTeachers}
-						>
-							<RefreshCw
-								className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`}
-							/>
-						</Button>
-					</div>
-				</CardHeader>
-				<CardContent className='p-0'>
-					<div className='p-4 md:p-6'>
-						<div className='rounded-md border border-border bg-background overflow-hidden'>
-							<div className='w-full overflow-x-auto scrollbar-thin'>
-								<table className='w-full text-sm border-collapse table-fixed lg:table-auto min-w-200'>
-									<thead className='bg-muted/50 border-b'>
-										<tr>
-											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[0.625rem] w-24'>
-												Employee ID
-											</th>
-											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[0.625rem] w-48'>
-												Full Name
-											</th>
-											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[0.625rem] w-40'>
-												Specialization
-											</th>
-											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[0.625rem] w-32'>
-												Contact
-											</th>
-											<th className='px-4 py-3.5 text-center font-semibold border-r last:border-r-0 text-muted-foreground uppercase tracking-wider text-[0.625rem] w-24'>
-												Status
-											</th>
-											<th className='px-4 py-3.5 text-center font-semibold text-muted-foreground uppercase tracking-wider text-[0.625rem] w-48'>
-												Actions
-											</th>
-										</tr>
-									</thead>
-									<tbody className='divide-y'>
-										{showSkeleton ? (
-											Array.from({ length: 5 }).map((_, i) => (
-												<tr key={i}>
-													<td className='px-4 py-4'>
-														<Skeleton className='h-4 w-16 mx-auto' />
-													</td>
-													<td className='px-4 py-4'>
-														<Skeleton className='h-4 w-32 mx-auto' />
-													</td>
-													<td className='px-4 py-4'>
-														<Skeleton className='h-4 w-24 mx-auto' />
-													</td>
-													<td className='px-4 py-4'>
-														<Skeleton className='h-4 w-20 mx-auto' />
-													</td>
-													<td className='px-4 py-4'>
-														<Skeleton className='h-6 w-16 mx-auto rounded-full' />
-													</td>
-													<td className='px-4 py-4'>
-														<Skeleton className='h-8 w-24 mx-auto' />
-													</td>
-												</tr>
-											))
-										) : teachers.length === 0 ? (
-											<tr>
-												<td
-													colSpan={6}
-													className='px-4 py-12 text-center text-muted-foreground italic'
-												>
-													No teachers found. Click "Add Teacher" to create one.
-												</td>
-											</tr>
-										) : (
-											teachers.map((teacher) => (
-												<tr
-													key={teacher.id}
-													className={`hover:bg-muted/30 transition-colors ${!teacher.isActive ? 'opacity-60 bg-muted/10' : ''}`}
-												>
-													<td className='px-4 py-4 text-center  text-xs border-r last:border-r-0'>
-														{editingId === teacher.id ? (
-															<Input
-																value={editFormData.employeeId}
-																onChange={(e) =>
-																	setEditFormData({
-																		...editFormData,
-																		employeeId: e.target.value,
-																	})
-																}
-																className='h-8 text-xs'
-															/>
-														) : (
-															teacher.employeeId || '—'
-														)}
-													</td>
-													<td className='px-4 py-4 text-center font-medium border-r last:border-r-0'>
-														{editingId === teacher.id ? (
-															<div className='space-y-1'>
-																<Input
-																	placeholder='Last Name'
-																	value={editFormData.lastName}
-																	onChange={(e) =>
-																		setEditFormData({
-																			...editFormData,
-																			lastName: e.target.value,
-																		})
-																	}
-																	className='h-7 text-xs'
-																/>
-																<Input
-																	placeholder='First Name'
-																	value={editFormData.firstName}
-																	onChange={(e) =>
-																		setEditFormData({
-																			...editFormData,
-																			firstName: e.target.value,
-																		})
-																	}
-																	className='h-7 text-xs'
-																/>
-															</div>
-														) : (
-															formatName(teacher)
-														)}
-													</td>
-													<td className='px-4 py-4 text-center text-xs border-r last:border-r-0'>
-														{editingId === teacher.id ? (
-															<Input
-																value={editFormData.specialization}
-																onChange={(e) =>
-																	setEditFormData({
-																		...editFormData,
-																		specialization: e.target.value,
-																	})
-																}
-																className='h-8 text-xs'
-															/>
-														) : (
-															teacher.specialization || '—'
-														)}
-													</td>
-													<td className='px-4 py-4 text-center text-xs border-r last:border-r-0'>
-														{editingId === teacher.id ? (
-															<Input
-																value={editFormData.contactNumber}
-																onChange={(e) =>
-																	setEditFormData({
-																		...editFormData,
-																		contactNumber: e.target.value,
-																	})
-																}
-																className='h-8 text-xs'
-															/>
-														) : (
-															teacher.contactNumber || '—'
-														)}
-													</td>
-													<td className='px-4 py-4 text-center border-r last:border-r-0'>
-														<div className='flex items-center justify-center gap-1.5'>
-															<div
-																className={`h-2 w-2 rounded-full ring-2 ring-offset-1 ${teacher.isActive ? 'bg-green-500 ring-green-100' : 'bg-slate-400 ring-slate-100'}`}
-															/>
-															<span className='text-[0.6875rem] font-medium'>
-																{teacher.isActive ? 'Active' : 'Inactive'}
-															</span>
-														</div>
-													</td>
-													<td className='px-4 py-4 text-center'>
-														<div className='flex flex-wrap items-center justify-center gap-1.5'>
-															{editingId === teacher.id ? (
-																<>
-																	<Button
-																		variant='default'
-																		size='sm'
-																		className='h-7 px-2 text-[0.625rem] gap-1 bg-blue-600 hover:bg-blue-700'
-																		onClick={() => handleUpdate(teacher.id)}
-																		disabled={submitting}
-																	>
-																		<Check className='h-3 w-3' />
-																		Update
-																	</Button>
-																	<Button
-																		variant='outline'
-																		size='sm'
-																		className='h-7 px-2 text-[0.625rem] gap-1'
-																		onClick={cancelEditing}
-																		disabled={submitting}
-																	>
-																		Cancel
-																	</Button>
-																</>
-															) : (
-																<>
-																	<Button
-																		variant='outline'
-																		size='sm'
-																		className='h-7 px-2 text-[0.625rem] gap-1'
-																		onClick={() => startEditing(teacher)}
-																	>
-																		<Edit2 className='h-3 w-3' />
-																		Edit
-																	</Button>
-																	{teacher.isActive ? (
-																		<Button
-																			variant='outline'
-																			size='sm'
-																			className='h-7 px-2 text-[0.625rem] gap-1 text-destructive hover:bg-destructive hover:text-destructive-foreground'
-																			onClick={() =>
-																				setDeactivateId(teacher.id)
-																			}
-																		>
-																			<UserMinus className='h-3 w-3' />
-																			Deactivate
-																		</Button>
-																	) : (
-																		<Button
-																			variant='outline'
-																			size='sm'
-																			className='h-7 px-2 text-[0.625rem] gap-1 text-emerald-600 hover:bg-emerald-600 hover:text-white'
-																			onClick={() =>
-																				setReactivateId(teacher.id)
-																			}
-																		>
-																			<UserCheck className='h-3 w-3' />
-																			Reactivate
-																		</Button>
-																	)}
-																</>
-															)}
-														</div>
-													</td>
-												</tr>
-											))
-										)}
-									</tbody>
-								</table>
-							</div>
-						</div>
-					</div>
-				</CardContent>
-			</Card>
+  const handlePhotoFileSelection = async (
+    file: File | undefined,
+    mode: "create" | "edit",
+  ) => {
+    if (!file) {
+      return;
+    }
 
-			{/* Add Teacher Dialog */}
-			<Dialog
-				open={createOpen}
-				onOpenChange={setCreateOpen}
-			>
-				<DialogContent className='w-[95vw] max-w-lg sm:w-full overflow-y-auto max-h-[90vh]'>
-					<DialogHeader>
-						<DialogTitle>Add Teacher</DialogTitle>
-						<DialogDescription>
-							Add a new teacher to the directory. Teachers are not system users
-							— they have no login accounts.
-						</DialogDescription>
-					</DialogHeader>
-					<div className='space-y-4 py-2'>
-						<div className='grid gap-4 sm:grid-cols-2'>
-							<div className='space-y-2'>
-								<Label>Last Name *</Label>
-								<Input
-									placeholder='e.g. Santos'
-									value={formData.lastName}
-									onChange={(e) =>
-										setFormData({ ...formData, lastName: e.target.value })
-									}
-								/>
-							</div>
-							<div className='space-y-2'>
-								<Label>First Name *</Label>
-								<Input
-									placeholder='e.g. Maria'
-									value={formData.firstName}
-									onChange={(e) =>
-										setFormData({ ...formData, firstName: e.target.value })
-									}
-								/>
-							</div>
-						</div>
-						<div className='grid gap-4 sm:grid-cols-2'>
-							<div className='space-y-2'>
-								<Label>Middle Name</Label>
-								<Input
-									placeholder='e.g. Cruz'
-									value={formData.middleName}
-									onChange={(e) =>
-										setFormData({ ...formData, middleName: e.target.value })
-									}
-								/>
-							</div>
-							<div className='space-y-2'>
-								<Label>Employee ID</Label>
-								<Input
-									placeholder='e.g. EMP-001'
-									value={formData.employeeId}
-									onChange={(e) =>
-										setFormData({ ...formData, employeeId: e.target.value })
-									}
-								/>
-							</div>
-						</div>
-						<div className='grid gap-4 sm:grid-cols-2'>
-							<div className='space-y-2'>
-								<Label>Contact Number</Label>
-								<Input
-									placeholder='e.g. 09171234567'
-									value={formData.contactNumber}
-									onChange={(e) =>
-										setFormData({ ...formData, contactNumber: e.target.value })
-									}
-								/>
-							</div>
-							<div className='space-y-2'>
-								<Label>Specialization</Label>
-								<Input
-									placeholder='e.g. Mathematics'
-									value={formData.specialization}
-									onChange={(e) =>
-										setFormData({ ...formData, specialization: e.target.value })
-									}
-								/>
-							</div>
-						</div>
-					</div>
-					<DialogFooter className='gap-2 sm:gap-0'>
-						<Button
-							variant='outline'
-							onClick={() => setCreateOpen(false)}
-							disabled={submitting}
-							className='w-full sm:w-auto'
-						>
-							Cancel
-						</Button>
-						<Button
-							onClick={handleCreate}
-							disabled={submitting || !formData.firstName || !formData.lastName}
-							className='w-full sm:w-auto'
-						>
-							{submitting ? 'Creating...' : 'Create Teacher'}
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
+    if (!file.type.startsWith("image/")) {
+      sileo.warning({
+        title: "Invalid Photo",
+        description: "Only image files are allowed for teacher photos.",
+      });
+      return;
+    }
 
-			<ConfirmationModal
-				open={!!deactivateId}
-				onOpenChange={(open) => !open && setDeactivateId(null)}
-				title='Deactivate Teacher'
-				description="This teacher will be marked as inactive and won't appear in section adviser dropdowns."
-				confirmText='Yes, Deactivate'
-				onConfirm={() =>
-					deactivateId && handleToggleStatus(deactivateId, 'deactivate')
-				}
-				loading={submitting}
-				variant='warning'
-			/>
+    if (file.size > MAX_TEACHER_PHOTO_BYTES) {
+      sileo.warning({
+        title: "Photo Too Large",
+        description: "Use an image smaller than 5 MB.",
+      });
+      return;
+    }
 
-			<ConfirmationModal
-				open={!!reactivateId}
-				onOpenChange={(open) => !open && setReactivateId(null)}
-				title='Reactivate Teacher'
-				description='This teacher will be marked as active and will appear in section adviser dropdowns again.'
-				confirmText='Yes, Reactivate'
-				onConfirm={() =>
-					reactivateId && handleToggleStatus(reactivateId, 'reactivate')
-				}
-				loading={submitting}
-				variant='info'
-			/>
-		</div>
-	);
+    try {
+      const base64Image = await convertImageToBase64(file);
+      if (mode === "create") {
+        setFormData((prev) => ({ ...prev, photo: base64Image }));
+        return;
+      }
+
+      setEditFormData((prev) => ({ ...prev, photo: base64Image }));
+      setEditPhotoChanged(true);
+    } catch {
+      sileo.error({
+        title: "Photo Upload Failed",
+        description: "Unable to process the selected photo. Try another file.",
+      });
+    }
+  };
+
+  const handleCreate = async () => {
+    const subjects = Array.from(
+      new Set(
+        formData.subjects
+          .map((subject) => subject.trim())
+          .filter((subject) => subject.length > 0),
+      ),
+    );
+
+    const payload = {
+      firstName: formData.firstName.trim(),
+      lastName: formData.lastName.trim(),
+      middleName: normalizeOptionalInput(formData.middleName),
+      email: normalizeOptionalInput(formData.email),
+      employeeId: normalizeOptionalInput(formData.employeeId),
+      contactNumber: normalizeOptionalInput(formData.contactNumber),
+      specialization: normalizeOptionalInput(formData.specialization),
+      subjects,
+      photo: formData.photo,
+    };
+
+    if (!payload.firstName || !payload.lastName) {
+      sileo.warning({
+        title: "Missing Required Fields",
+        description: "First name and last name are required.",
+      });
+      return;
+    }
+
+    if (!isValidContactNumber(formData.contactNumber)) {
+      sileo.warning({
+        title: "Invalid Contact Number",
+        description: "Contact number must be exactly 11 digits.",
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await api.post("/teachers", payload);
+      sileo.success({
+        title: "Teacher Created",
+        description: `${payload.lastName}, ${payload.firstName} has been added.`,
+      });
+      setCreateOpen(false);
+      setFormData(createEmptyTeacherForm());
+      fetchTeachers();
+    } catch (err) {
+      toastApiError(err as never);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const startEditing = (teacher: Teacher) => {
+    setEditingTeacher(teacher);
+    setEditPhotoChanged(false);
+    setEditFormData({
+      firstName: teacher.firstName,
+      lastName: teacher.lastName,
+      middleName: teacher.middleName || "",
+      email: teacher.email || "",
+      employeeId: teacher.employeeId || "",
+      contactNumber: teacher.contactNumber || "",
+      specialization: teacher.specialization || "",
+      subjects: teacher.subjects,
+      photo: teacher.photoPath,
+    });
+    setEditOpen(true);
+  };
+
+  const closeEditSheet = () => {
+    setEditOpen(false);
+    setEditingTeacher(null);
+    setEditPhotoChanged(false);
+    setEditFormData(createEmptyTeacherForm());
+  };
+
+  const handleUpdate = async () => {
+    if (!editingTeacher) {
+      return;
+    }
+
+    const subjects = Array.from(
+      new Set(
+        editFormData.subjects
+          .map((subject) => subject.trim())
+          .filter((subject) => subject.length > 0),
+      ),
+    );
+
+    const payload: Record<string, unknown> = {
+      firstName: editFormData.firstName.trim(),
+      lastName: editFormData.lastName.trim(),
+      middleName: normalizeOptionalInput(editFormData.middleName),
+      email: normalizeOptionalInput(editFormData.email),
+      employeeId: normalizeOptionalInput(editFormData.employeeId),
+      contactNumber: normalizeOptionalInput(editFormData.contactNumber),
+      specialization: normalizeOptionalInput(editFormData.specialization),
+      subjects,
+    };
+
+    if (editPhotoChanged) {
+      payload.photo = editFormData.photo;
+    }
+
+    if (!payload.firstName || !payload.lastName) {
+      sileo.warning({
+        title: "Missing Required Fields",
+        description: "First name and last name are required.",
+      });
+      return;
+    }
+
+    if (!isValidContactNumber(editFormData.contactNumber)) {
+      sileo.warning({
+        title: "Invalid Contact Number",
+        description: "Contact number must be exactly 11 digits.",
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await api.put(`/teachers/${editingTeacher.id}`, payload);
+      sileo.success({
+        title: "Teacher Updated",
+        description: "Changes saved successfully.",
+      });
+      closeEditSheet();
+      fetchTeachers();
+    } catch (err) {
+      toastApiError(err as never);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleToggleStatus = async (
+    id: number,
+    action: "deactivate" | "reactivate",
+  ) => {
+    setSubmitting(true);
+    try {
+      await api.patch(`/teachers/${id}/${action}`);
+      sileo.success({
+        title:
+          action === "deactivate"
+            ? "Teacher Deactivated"
+            : "Teacher Reactivated",
+        description: "Teacher status updated successfully.",
+      });
+      setDeactivateId(null);
+      setReactivateId(null);
+      fetchTeachers();
+    } catch (err) {
+      toastApiError(err as never);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const filteredTeachers = useMemo(() => {
+    const normalizedSearch = searchQuery.trim().toLowerCase();
+
+    return teachers.filter((teacher) => {
+      const matchesSearch =
+        !normalizedSearch ||
+        [
+          `${teacher.lastName}, ${teacher.firstName} ${teacher.middleName ?? ""}`,
+          teacher.employeeId ?? "",
+          teacher.contactNumber ?? "",
+          teacher.specialization ?? "",
+          teacher.designation?.advisorySection?.name ?? "",
+          teacher.designation?.advisorySection?.gradeLevelName ?? "",
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedSearch);
+
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "active" ? teacher.isActive : !teacher.isActive);
+
+      const matchesDesignation =
+        designationFilter === "all" ||
+        (designationFilter === "adviser"
+          ? Boolean(teacher.designation?.isClassAdviser)
+          : designationFilter === "tic"
+            ? Boolean(teacher.designation?.isTic)
+            : designationFilter === "exempt"
+              ? Boolean(teacher.designation?.isTeachingExempt)
+              : !teacher.designation ||
+                (!teacher.designation.isClassAdviser &&
+                  !teacher.designation.isTic &&
+                  !teacher.designation.isTeachingExempt));
+
+      const matchesSync =
+        syncFilter === "all" || getSyncFilterValue(teacher) === syncFilter;
+
+      return (
+        matchesSearch && matchesStatus && matchesDesignation && matchesSync
+      );
+    });
+  }, [teachers, searchQuery, statusFilter, designationFilter, syncFilter]);
+
+  const hasActiveFilters =
+    searchQuery.trim().length > 0 ||
+    statusFilter !== "all" ||
+    designationFilter !== "all" ||
+    syncFilter !== "all";
+
+  const openDesignationEditor = (teacher: Teacher) => {
+    setDesignationOpenFor(teacher);
+    setDesignationDrawerTab("role-load");
+    setDesignationForm({
+      isClassAdviser: teacher.designation?.isClassAdviser ?? false,
+      advisorySectionId:
+        teacher.designation?.advisorySectionId?.toString() ?? "",
+      advisoryEquivalentHoursPerWeek: String(
+        teacher.designation?.advisoryEquivalentHoursPerWeek ?? 5,
+      ),
+      isTic: teacher.designation?.isTic ?? false,
+      isTeachingExempt: teacher.designation?.isTeachingExempt ?? false,
+      customTargetTeachingHoursPerWeek:
+        teacher.designation?.customTargetTeachingHoursPerWeek?.toString() ?? "",
+      designationNotes: teacher.designation?.designationNotes ?? "",
+      effectiveFrom: teacher.designation?.effectiveFrom ?? "",
+      effectiveTo: teacher.designation?.effectiveTo ?? "",
+      reason: "",
+    });
+    setDesignationCollision(null);
+    setAllowCollisionOverride(false);
+  };
+
+  const closeDesignationEditor = () => {
+    setDesignationOpenFor(null);
+    setDesignationCollision(null);
+    setAllowCollisionOverride(false);
+  };
+
+  const handleForceSyncTeacher = async (teacher: Teacher) => {
+    setForceSyncingTeacherId(teacher.id);
+    try {
+      const res = await api.post(`/teachers/${teacher.id}/atlas/push`, {
+        schoolYearId: ayId,
+      });
+
+      const status = res.data?.atlasSync?.status;
+      const statusDescription =
+        status === "SYNCED"
+          ? "Delivery was successful."
+          : status === "FAILED"
+            ? "Sync was attempted but failed."
+            : "Sync was queued for retry.";
+
+      sileo.success({
+        title: "ATLAS Sync Triggered",
+        description: `${formatTeacherName(teacher)}: ${statusDescription}`,
+      });
+      fetchTeachers();
+    } catch (err) {
+      toastApiError(err as never);
+    } finally {
+      setForceSyncingTeacherId(null);
+    }
+  };
+
+  const handleForceSyncAll = async () => {
+    const targetTeacherIds = filteredTeachers.map((teacher) => teacher.id);
+
+    if (targetTeacherIds.length === 0) {
+      sileo.warning({
+        title: "No Teachers To Sync",
+        description:
+          "Adjust your filters or add teachers before triggering a batch sync.",
+      });
+      return;
+    }
+
+    setForceSyncingAll(true);
+    try {
+      const res = await api.post("/teachers/atlas/push", {
+        schoolYearId: ayId,
+        teacherIds: targetTeacherIds,
+      });
+      const summary = res.data?.summary;
+      const total = summary?.total ?? targetTeacherIds.length;
+      const queued = summary?.queued ?? 0;
+      const synced = summary?.synced ?? 0;
+      const failed = summary?.failed ?? 0;
+      const skipped = summary?.skipped ?? 0;
+
+      sileo.success({
+        title: "Bulk Sync Requested",
+        description: `${total} teacher records processed (${queued} queued, ${synced} synced, ${failed} failed, ${skipped} skipped).`,
+      });
+      fetchTeachers();
+    } catch (err) {
+      toastApiError(err as never);
+    } finally {
+      setForceSyncingAll(false);
+    }
+  };
+
+  const handleSaveDesignation = async () => {
+    if (!designationOpenFor || !ayId) {
+      return;
+    }
+
+    if (designationForm.isClassAdviser && !designationForm.advisorySectionId) {
+      sileo.warning({
+        title: "Advisory Section Required",
+        description:
+          "Select an advisory section before saving class adviser designation.",
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const advisoryEquivalentHoursPerWeek = designationForm.isClassAdviser
+        ? Number(designationForm.advisoryEquivalentHoursPerWeek || "5")
+        : 0;
+
+      const customTargetRaw =
+        designationForm.customTargetTeachingHoursPerWeek.trim();
+      const customTargetTeachingHoursPerWeek = customTargetRaw
+        ? Number(customTargetRaw)
+        : null;
+
+      const advisorySectionId = designationForm.advisorySectionId
+        ? Number(designationForm.advisorySectionId)
+        : null;
+
+      const payload = {
+        schoolYearId: ayId,
+        isClassAdviser: designationForm.isClassAdviser,
+        advisorySectionId,
+        advisoryEquivalentHoursPerWeek,
+        isTic: designationForm.isTic,
+        isTeachingExempt: designationForm.isTeachingExempt,
+        customTargetTeachingHoursPerWeek,
+        designationNotes: designationForm.designationNotes.trim() || null,
+        effectiveFrom: designationForm.effectiveFrom || null,
+        effectiveTo: designationForm.effectiveTo || null,
+        reason: designationForm.reason.trim() || null,
+      };
+
+      const validationRes = await api.post(
+        `/teachers/${designationOpenFor.id}/designation/validate`,
+        payload,
+      );
+
+      if (validationRes.data?.hasCollision && !allowCollisionOverride) {
+        setDesignationCollision(validationRes.data.collision ?? null);
+        setDesignationDrawerTab("review");
+        sileo.warning({
+          title: "Section Adviser Conflict",
+          description:
+            "This section already has an adviser. Enable override to replace the current adviser.",
+        });
+        return;
+      }
+
+      await api.put(`/teachers/${designationOpenFor.id}/designation`, {
+        ...payload,
+        allowAdviserOverride: allowCollisionOverride,
+      });
+
+      sileo.success({
+        title: "Designation Updated",
+        description: `${formatTeacherName(designationOpenFor)} designation was saved.`,
+      });
+      closeDesignationEditor();
+      fetchTeachers();
+    } catch (err) {
+      toastApiError(err as never);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const selectedAdvisorySection = advisorySections.find(
+    (section) => section.id.toString() === designationForm.advisorySectionId,
+  );
+
+  const createPhotoPreviewUrl = getImageUrl(formData.photo);
+  const editPhotoPreviewUrl = getImageUrl(editFormData.photo);
+  const canSubmitCreate =
+    formData.firstName.trim().length > 0 &&
+    formData.lastName.trim().length > 0 &&
+    isValidContactNumber(formData.contactNumber);
+  const canSubmitEdit =
+    editFormData.firstName.trim().length > 0 &&
+    editFormData.lastName.trim().length > 0 &&
+    isValidContactNumber(editFormData.contactNumber);
+
+  const openCreateTeacherSheet = () => {
+    setFormData(createEmptyTeacherForm());
+    setCreateOpen(true);
+  };
+
+  const handleBulkImportPlaceholder = () => {
+    sileo.info({
+      title: "Bulk Import Coming Soon",
+      description:
+        "CSV bulk teacher import is queued for the next release. Use Add Teacher for now.",
+    });
+  };
+
+  return (
+    <div className="space-y-6 min-w-0 w-full max-w-full overflow-x-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1 text-left">
+          <h1 className="text-2xl md:text-3xl font-bold flex items-center justify-start gap-2 text-balance">
+            <GraduationCap className="h-7 w-7 md:h-8 md:w-8 text-primary" />
+            Teacher Management
+          </h1>
+          <p className="text-sm text-muted-foreground text-balance">
+            Manage teacher profiles, learning areas, and adviser assignments.
+          </p>
+        </div>
+        <div className="flex justify-end gap-2 flex-wrap">
+          <Button asChild variant="outline" className="w-fit shadow-sm">
+            <Link to="/admin/atlas">
+              <CloudUpload className="h-4 w-4 mr-2" />
+              ATLAS Sync Health
+            </Link>
+          </Button>
+          <div className="inline-flex shadow-sm rounded-lg overflow-hidden">
+            <Button onClick={openCreateTeacherSheet} className="rounded-r-none">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Teacher
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon-sm"
+                  className="rounded-l-none border-l border-primary-foreground/20"
+                  aria-label="Open add teacher options">
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem
+                  onClick={openCreateTeacherSheet}
+                  className="cursor-pointer">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Single Teacher
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleBulkImportPlaceholder}
+                  className="cursor-pointer">
+                  <Upload className="mr-2 h-4 w-4" />
+                  Bulk Import (CSV)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </div>
+
+      {!ayId ? (
+        <div className="rounded-md border border-dashed bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+          Set an active school year to edit ATLAS designation metadata.
+        </div>
+      ) : null}
+
+      <TeacherDirectoryCard
+        loading={loading}
+        showSkeleton={showSkeleton}
+        teachers={teachers}
+        filteredTeachers={filteredTeachers}
+        searchQuery={searchQuery}
+        statusFilter={statusFilter}
+        designationFilter={designationFilter}
+        syncFilter={syncFilter}
+        hasActiveFilters={hasActiveFilters}
+        ayId={ayId}
+        forceSyncingAll={forceSyncingAll}
+        forceSyncingTeacherId={forceSyncingTeacherId}
+        onSearchQueryChange={setSearchQuery}
+        onStatusFilterChange={setStatusFilter}
+        onDesignationFilterChange={setDesignationFilter}
+        onSyncFilterChange={setSyncFilter}
+        onClearFilters={() => {
+          setSearchQuery("");
+          setStatusFilter("all");
+          setDesignationFilter("all");
+          setSyncFilter("all");
+        }}
+        onRefresh={fetchTeachers}
+        onForceSyncAll={handleForceSyncAll}
+        onOpenDesignationEditor={openDesignationEditor}
+        onEditTeacher={startEditing}
+        onForceSyncTeacher={handleForceSyncTeacher}
+        onDeactivateTeacher={setDeactivateId}
+        onReactivateTeacher={setReactivateId}
+      />
+
+      <TeacherFormSheet
+        mode="create"
+        open={createOpen}
+        title="Add Teacher"
+        description="Create a teacher profile using full schema fields including photo, email, and teaching subjects."
+        formData={formData}
+        photoPreviewUrl={createPhotoPreviewUrl}
+        submitting={submitting}
+        canSubmit={canSubmitCreate}
+        onOpenChange={(open) => {
+          setCreateOpen(open);
+          if (!open) {
+            setFormData(createEmptyTeacherForm());
+          }
+        }}
+        onFieldChange={(field, value) =>
+          setFormData((prev) => ({
+            ...prev,
+            [field]: normalizeTeacherFieldValue(field, value),
+          }))
+        }
+        onSubjectsChange={(subjects) =>
+          setFormData((prev) => ({ ...prev, subjects }))
+        }
+        onPhotoSelect={(file) => {
+          void handlePhotoFileSelection(file, "create");
+        }}
+        onRemovePhoto={() => setFormData((prev) => ({ ...prev, photo: null }))}
+        onCancel={() => {
+          setCreateOpen(false);
+          setFormData(createEmptyTeacherForm());
+        }}
+        onSubmit={handleCreate}
+      />
+
+      <TeacherFormSheet
+        mode="edit"
+        open={editOpen}
+        title="Edit Teacher"
+        description={
+          editingTeacher
+            ? `Update ${formatTeacherName(editingTeacher)} profile fields and photo.`
+            : "Update teacher details."
+        }
+        formData={editFormData}
+        photoPreviewUrl={editPhotoPreviewUrl}
+        submitting={submitting}
+        canSubmit={canSubmitEdit && Boolean(editingTeacher)}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeEditSheet();
+            return;
+          }
+          setEditOpen(true);
+        }}
+        onFieldChange={(field, value) =>
+          setEditFormData((prev) => ({
+            ...prev,
+            [field]: normalizeTeacherFieldValue(field, value),
+          }))
+        }
+        onSubjectsChange={(subjects) =>
+          setEditFormData((prev) => ({ ...prev, subjects }))
+        }
+        onPhotoSelect={(file) => {
+          void handlePhotoFileSelection(file, "edit");
+        }}
+        onRemovePhoto={() => {
+          setEditFormData((prev) => ({ ...prev, photo: null }));
+          setEditPhotoChanged(true);
+        }}
+        onCancel={closeEditSheet}
+        onSubmit={handleUpdate}
+      />
+
+      <TeacherDesignationSheet
+        open={Boolean(designationOpenFor)}
+        ayId={ayId}
+        submitting={submitting}
+        designationOpenFor={designationOpenFor}
+        designationDrawerTab={designationDrawerTab}
+        setDesignationDrawerTab={setDesignationDrawerTab}
+        designationForm={designationForm}
+        setDesignationForm={setDesignationForm}
+        advisorySections={advisorySections}
+        advisorySectionsLoading={advisorySectionsLoading}
+        selectedAdvisorySection={selectedAdvisorySection}
+        designationCollision={designationCollision}
+        setDesignationCollision={setDesignationCollision}
+        allowCollisionOverride={allowCollisionOverride}
+        setAllowCollisionOverride={setAllowCollisionOverride}
+        forceSyncingTeacherId={forceSyncingTeacherId}
+        onClose={closeDesignationEditor}
+        onSave={handleSaveDesignation}
+        onForceSyncTeacher={handleForceSyncTeacher}
+      />
+
+      <ConfirmationModal
+        open={Boolean(deactivateId)}
+        onOpenChange={(open) => !open && setDeactivateId(null)}
+        title="Deactivate Teacher"
+        description="This teacher will be marked as inactive and won't appear in section adviser dropdowns."
+        confirmText="Yes, Deactivate"
+        onConfirm={() =>
+          deactivateId && handleToggleStatus(deactivateId, "deactivate")
+        }
+        loading={submitting}
+        variant="warning"
+      />
+
+      <ConfirmationModal
+        open={Boolean(reactivateId)}
+        onOpenChange={(open) => !open && setReactivateId(null)}
+        title="Reactivate Teacher"
+        description="This teacher will be marked as active and will appear in section adviser dropdowns again."
+        confirmText="Yes, Reactivate"
+        onConfirm={() =>
+          reactivateId && handleToggleStatus(reactivateId, "reactivate")
+        }
+        loading={submitting}
+        variant="info"
+      />
+    </div>
+  );
 }

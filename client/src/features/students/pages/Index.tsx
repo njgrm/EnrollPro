@@ -1,7 +1,18 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router";
 import {
   Search,
   Eye,
+  FileText,
+  MoreHorizontal,
+  ArrowRightLeft,
+  BadgeAlert,
+  FileBadge2,
+  FileCheck2,
+  UserRoundPen,
+  Fingerprint,
+  Mars,
+  Venus,
   Users,
   ArrowUpDown,
   ArrowUp,
@@ -12,8 +23,10 @@ import {
 import api from "@/shared/api/axiosInstance";
 import { useSettingsStore } from "@/store/settings.slice";
 import { toastApiError } from "@/shared/hooks/useApiToast";
+import { sileo } from "sileo";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
+import { Textarea } from "@/shared/ui/textarea";
 import {
   Card,
   CardContent,
@@ -21,16 +34,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/shared/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/shared/ui/table";
 import { Badge } from "@/shared/ui/badge";
-import { formatManilaDate } from "@/shared/lib/utils";
+import {
+  formatManilaDate,
+  formatScpType,
+  SCP_ACRONYMS,
+} from "@/shared/lib/utils";
 import {
   Select,
   SelectContent,
@@ -42,13 +51,24 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/shared/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/shared/ui/dropdown-menu";
 import { Label } from "@/shared/ui/label";
+import type { ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/shared/ui/data-table";
 
 interface Student {
   id: number;
+  learningProgram: string;
+  dateEnrolled: string;
   lrn: string;
   fullName: string;
   firstName: string;
@@ -63,6 +83,12 @@ interface Student {
   emailAddress: string;
   trackingNumber: string;
   status: string;
+  lifecycleOutcome: "TRANSFERRED_OUT" | "DROPPED_OUT" | null;
+  dropOutReason: string | null;
+  dropOutDate: string | null;
+  transferOutDate: string | null;
+  transferOutSchoolName: string | null;
+  transferOutReason: string | null;
   gradeLevel: string;
   gradeLevelId: number;
   section: string | null;
@@ -79,6 +105,12 @@ interface StudentDetail extends Student {
     id: number;
     section: string;
     sectionId: number;
+    eosyStatus: "TRANSFERRED_OUT" | "DROPPED_OUT" | null;
+    dropOutReason: string | null;
+    dropOutDate: string | null;
+    transferOutDate: string | null;
+    transferOutSchoolName: string | null;
+    transferOutReason: string | null;
     advisingTeacher: string | null;
     enrolledAt: string;
     enrolledBy: string;
@@ -94,11 +126,13 @@ interface Section {
   id: number;
   name: string;
   gradeLevelId: number;
+  programType: string;
 }
 
 interface ApiSection {
   id: number;
   name: string;
+  programType: string;
   maxCapacity: number;
   enrolledCount: number;
   fillPercent: number;
@@ -112,7 +146,102 @@ interface ApiGradeLevelGroup {
   sections: ApiSection[];
 }
 
+interface StudentsSummary {
+  totalEnrolled: number;
+  genderBreakdown: {
+    male: number;
+    female: number;
+    other: number;
+  };
+  programBreakdown: Record<string, number>;
+}
+
+const PROGRAM_FILTER_OPTIONS = [
+  { value: "REGULAR", label: "Regular" },
+  { value: "SCIENCE_TECHNOLOGY_AND_ENGINEERING", label: "STE" },
+  { value: "SPECIAL_PROGRAM_IN_THE_ARTS", label: "SPA" },
+  { value: "SPECIAL_PROGRAM_IN_SPORTS", label: "SPS" },
+  { value: "SPECIAL_PROGRAM_IN_JOURNALISM", label: "SPJ" },
+  { value: "SPECIAL_PROGRAM_IN_FOREIGN_LANGUAGE", label: "SPFL" },
+  {
+    value: "SPECIAL_PROGRAM_IN_TECHNICAL_VOCATIONAL_EDUCATION",
+    label: "SPTVE",
+  },
+];
+
+const SECTION_ACRONYMS = new Set(["STE", "SPA", "SPS", "SPJ", "SPFL", "SPTVE"]);
+
+const DROPOUT_REASON_OPTIONS = [
+  { value: "ARMED_CONFLICT", label: "Armed Conflict" },
+  { value: "ILLNESS", label: "Illness" },
+  { value: "FINANCIAL_DIFFICULTY", label: "Financial Difficulty" },
+  { value: "FAMILY_PROBLEM", label: "Family Problem" },
+  { value: "LACK_OF_INTEREST", label: "Lack of Interest" },
+  { value: "EMPLOYMENT", label: "Employment / Working" },
+  { value: "OTHER", label: "Other (Specify)" },
+] as const;
+
+type DropoutReasonCode = (typeof DROPOUT_REASON_OPTIONS)[number]["value"];
+
+const formatSectionLabel = (rawSection: string | null | undefined): string => {
+  if (!rawSection) return "—";
+
+  let sectionName = rawSection.trim();
+  if (!sectionName) return "—";
+
+  if (sectionName.includes("--")) {
+    const segments = sectionName.split("--").filter(Boolean);
+    sectionName = segments[segments.length - 1] || sectionName;
+  }
+
+  sectionName = sectionName
+    .replace(/^G(?:RADE)?\s*\d+\s*[-_ ]*/i, "")
+    .replace(/_/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!sectionName) return rawSection;
+
+  return sectionName
+    .split(/(\s|-)/)
+    .map((part) => {
+      if (part === " " || part === "-") return part;
+
+      const upperPart = part.toUpperCase();
+      if (SECTION_ACRONYMS.has(upperPart) || /^\d+[A-Z]*$/.test(upperPart)) {
+        return upperPart;
+      }
+
+      if (upperPart.length <= 1) return upperPart;
+      return `${upperPart.charAt(0)}${upperPart.slice(1).toLowerCase()}`;
+    })
+    .join("");
+};
+
+const formatLearningProgramLabel = (
+  learningProgram: string | null | undefined,
+): string => {
+  const normalizedProgram = String(learningProgram || "REGULAR")
+    .trim()
+    .toUpperCase();
+
+  if (normalizedProgram === "REGULAR") {
+    return "Regular Program";
+  }
+
+  const displayName = formatScpType(normalizedProgram).replace(
+    "Tech-Voc Education",
+    "Tech-Voc",
+  );
+  const acronym = SCP_ACRONYMS[normalizedProgram];
+
+  return acronym && acronym !== "Regular"
+    ? `${displayName} (${acronym})`
+    : displayName;
+};
+
 export default function Students() {
+  const navigate = useNavigate();
   const { activeSchoolYearId, viewingSchoolYearId } = useSettingsStore();
   const ayId = viewingSchoolYearId ?? activeSchoolYearId;
 
@@ -123,11 +252,12 @@ export default function Students() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [gradeLevelFilter, setGradeLevelFilter] = useState<string>("all");
+  const [programFilter, setProgramFilter] = useState<string>("all");
   const [sectionFilter, setSectionFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const [sortBy, setSortBy] = useState<string>("createdAt");
+  const [sortBy, setSortBy] = useState<string>("dateEnrolled");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const [gradeLevels, setGradeLevels] = useState<GradeLevel[]>([]);
@@ -139,6 +269,41 @@ export default function Students() {
   );
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [actionSubmitting, setActionSubmitting] = useState(false);
+
+  const [showTransferOutDialog, setShowTransferOutDialog] = useState(false);
+  const [showDropoutDialog, setShowDropoutDialog] = useState(false);
+  const [showShiftDialog, setShowShiftDialog] = useState(false);
+  const [showProfileDialog, setShowProfileDialog] = useState(false);
+  const [showLrnDialog, setShowLrnDialog] = useState(false);
+
+  const [actionStudent, setActionStudent] = useState<Student | null>(null);
+
+  const [transferOutDate, setTransferOutDate] = useState("");
+  const [transferOutSchoolName, setTransferOutSchoolName] = useState("");
+  const [transferOutReason, setTransferOutReason] = useState("");
+
+  const [dropoutReasonCode, setDropoutReasonCode] =
+    useState<DropoutReasonCode>("LACK_OF_INTEREST");
+  const [dropoutReasonDetails, setDropoutReasonDetails] = useState("");
+  const [dropoutDate, setDropoutDate] = useState("");
+
+  const [shiftTargetSectionId, setShiftTargetSectionId] = useState("");
+
+  const [profileForm, setProfileForm] = useState({
+    emailAddress: "",
+    contactNumber: "",
+    religion: "",
+    motherTongue: "",
+    currentAddress: "",
+  });
+
+  const [lrnForm, setLrnForm] = useState({
+    lrn: "",
+  });
+
+  const [summary, setSummary] = useState<StudentsSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
 
   // Debounce search input
   useEffect(() => {
@@ -179,38 +344,52 @@ export default function Students() {
   // Filter sections by grade level
   useEffect(() => {
     if (gradeLevelFilter === "all") {
-      setFilteredSections(sections);
+      setFilteredSections(
+        programFilter === "all"
+          ? sections
+          : sections.filter((s) => s.programType === programFilter),
+      );
     } else {
       setFilteredSections(
-        sections.filter(
-          (s) => s.gradeLevelId === parseInt(gradeLevelFilter, 10),
-        ),
+        sections.filter((s) => {
+          const isGradeMatch =
+            s.gradeLevelId === parseInt(gradeLevelFilter, 10);
+          const isProgramMatch =
+            programFilter === "all" || s.programType === programFilter;
+          return isGradeMatch && isProgramMatch;
+        }),
       );
     }
     setSectionFilter("all");
-  }, [gradeLevelFilter, sections]);
+  }, [gradeLevelFilter, programFilter, sections]);
 
   // Handle sorting
-  const handleSort = (field: string) => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-    } else {
-      setSortBy(field);
-      setSortOrder("asc");
-    }
-    setPage(1);
-  };
+  const handleSort = useCallback(
+    (field: string) => {
+      if (sortBy === field) {
+        setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+      } else {
+        setSortBy(field);
+        setSortOrder("asc");
+      }
+      setPage(1);
+    },
+    [sortBy, sortOrder],
+  );
 
-  const getSortIcon = (field: string) => {
-    if (sortBy !== field) {
-      return <ArrowUpDown className="h-4 w-4 ml-1 opacity-40" />;
-    }
-    return sortOrder === "asc" ? (
-      <ArrowUp className="h-4 w-4 ml-1" />
-    ) : (
-      <ArrowDown className="h-4 w-4 ml-1" />
-    );
-  };
+  const getSortIcon = useCallback(
+    (field: string) => {
+      if (sortBy !== field) {
+        return <ArrowUpDown className="h-4 w-4 ml-1 opacity-40" />;
+      }
+      return sortOrder === "asc" ? (
+        <ArrowUp className="h-4 w-4 ml-1" />
+      ) : (
+        <ArrowDown className="h-4 w-4 ml-1" />
+      );
+    },
+    [sortBy, sortOrder],
+  );
 
   // Fetch students
   const fetchStudents = useCallback(async () => {
@@ -219,7 +398,6 @@ export default function Students() {
     try {
       const params: Record<string, string | number> = {
         schoolYearId: ayId,
-        status: "ENROLLED",
         page,
         limit: 15,
         sortBy,
@@ -227,6 +405,7 @@ export default function Students() {
       };
       if (debouncedSearch) params.search = debouncedSearch;
       if (gradeLevelFilter !== "all") params.gradeLevelId = gradeLevelFilter;
+      if (programFilter !== "all") params.programType = programFilter;
       if (sectionFilter !== "all") params.sectionId = sectionFilter;
 
       const res = await api.get("/students", { params });
@@ -245,17 +424,40 @@ export default function Students() {
     page,
     debouncedSearch,
     gradeLevelFilter,
+    programFilter,
     sectionFilter,
     sortBy,
     sortOrder,
     initialLoad,
   ]);
 
+  const fetchSummary = useCallback(async () => {
+    if (!ayId) return;
+    setSummaryLoading(true);
+    try {
+      const res = await api.get<StudentsSummary>("/students/summary", {
+        params: {
+          schoolYearId: ayId,
+        },
+      });
+      setSummary(res.data);
+    } catch (err) {
+      toastApiError(err as never);
+      setSummary(null);
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, [ayId]);
+
   useEffect(() => {
     fetchStudents();
   }, [fetchStudents]);
 
-  const handleViewDetails = async (studentId: number) => {
+  useEffect(() => {
+    void fetchSummary();
+  }, [fetchSummary]);
+
+  const handleViewDetails = useCallback(async (studentId: number) => {
     setDetailLoading(true);
     setDetailDialogOpen(true);
     try {
@@ -267,7 +469,7 @@ export default function Students() {
     } finally {
       setDetailLoading(false);
     }
-  };
+  }, []);
 
   const getEnrolledBadge = () => (
     <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200">
@@ -297,13 +499,553 @@ export default function Students() {
     return age;
   };
 
-  const visibleSectionCount = useMemo(() => {
-    const unique = new Set<string>();
-    students.forEach((student) => {
-      if (student.section) unique.add(student.section);
+  const handleOpenPermanentRecord = useCallback(
+    (studentId: number) => {
+      navigate(`/students/${studentId}?tab=academic`);
+    },
+    [navigate],
+  );
+
+  const handleOpenProfilePage = useCallback(
+    (studentId: number) => {
+      navigate(`/students/${studentId}`);
+    },
+    [navigate],
+  );
+
+  const toDateInputValue = useCallback((value?: string | null): string => {
+    const sourceDate = value ? new Date(value) : new Date();
+    if (Number.isNaN(sourceDate.getTime())) {
+      return "";
+    }
+
+    const tzAdjusted = new Date(
+      sourceDate.getTime() - sourceDate.getTimezoneOffset() * 60_000,
+    );
+    return tzAdjusted.toISOString().slice(0, 10);
+  }, []);
+
+  const refreshTables = useCallback(async () => {
+    await Promise.all([fetchStudents(), fetchSummary()]);
+  }, [fetchStudents, fetchSummary]);
+
+  const refreshDetailIfOpen = useCallback(
+    async (studentId: number) => {
+      if (!detailDialogOpen || selectedStudent?.id !== studentId) {
+        return;
+      }
+
+      try {
+        const res = await api.get(`/students/${studentId}`);
+        setSelectedStudent(res.data.student);
+      } catch (err) {
+        toastApiError(err as never);
+      }
+    },
+    [detailDialogOpen, selectedStudent?.id],
+  );
+
+  const openTransferOutDialog = useCallback(
+    (student: Student) => {
+      setActionStudent(student);
+      setTransferOutDate(toDateInputValue());
+      setTransferOutSchoolName("");
+      setTransferOutReason("");
+      setShowTransferOutDialog(true);
+    },
+    [toDateInputValue],
+  );
+
+  const openDropoutDialog = useCallback(
+    (student: Student) => {
+      setActionStudent(student);
+      setDropoutDate(toDateInputValue());
+      setDropoutReasonCode("LACK_OF_INTEREST");
+      setDropoutReasonDetails("");
+      setShowDropoutDialog(true);
+    },
+    [toDateInputValue],
+  );
+
+  const openShiftDialog = useCallback((student: Student) => {
+    setActionStudent(student);
+    setShiftTargetSectionId("");
+    setShowShiftDialog(true);
+  }, []);
+
+  const openProfileQuickEditDialog = useCallback(async (student: Student) => {
+    setActionStudent(student);
+
+    try {
+      const res = await api.get(`/students/${student.id}`);
+      const detail = res.data.student as StudentDetail & {
+        religion?: string | null;
+        motherTongue?: string | null;
+        currentAddress?: {
+          barangay?: string | null;
+          cityMunicipality?: string | null;
+          province?: string | null;
+        } | null;
+      };
+
+      setProfileForm({
+        emailAddress: detail.emailAddress ?? student.emailAddress ?? "",
+        contactNumber:
+          detail.parentGuardianContact ?? student.parentGuardianContact ?? "",
+        religion: detail.religion ?? "",
+        motherTongue: detail.motherTongue ?? "",
+        currentAddress:
+          [
+            detail.currentAddress?.barangay,
+            detail.currentAddress?.cityMunicipality,
+            detail.currentAddress?.province,
+          ]
+            .filter(Boolean)
+            .join(", ") ||
+          student.address ||
+          "",
+      });
+    } catch {
+      setProfileForm({
+        emailAddress: student.emailAddress ?? "",
+        contactNumber: student.parentGuardianContact ?? "",
+        religion: "",
+        motherTongue: "",
+        currentAddress: student.address || "",
+      });
+    }
+
+    setShowProfileDialog(true);
+  }, []);
+
+  const openAssignLrnDialog = useCallback((student: Student) => {
+    setActionStudent(student);
+    setLrnForm({
+      lrn: /^\d{12}$/.test(student.lrn || "") ? student.lrn : "",
     });
-    return unique.size;
-  }, [students]);
+    setShowLrnDialog(true);
+  }, []);
+
+  const openGoodMoralPreview = useCallback(
+    (studentId: number) => {
+      navigate(`/students/${studentId}?tab=application`);
+      sileo.info({
+        title: "Good Moral Workflow",
+        description:
+          "Open the Application tab to review documentary status and process the request.",
+      });
+    },
+    [navigate],
+  );
+
+  const submitTransferOut = useCallback(async () => {
+    if (!actionStudent) return;
+    if (!transferOutDate || !transferOutSchoolName.trim()) {
+      sileo.warning({
+        title: "Missing transfer details",
+        description: "Transfer date and destination school are required.",
+      });
+      return;
+    }
+
+    setActionSubmitting(true);
+    try {
+      await api.post(`/students/${actionStudent.id}/lifecycle/transfer-out`, {
+        transferOutDate,
+        destinationSchool: transferOutSchoolName.trim(),
+        reason: transferOutReason.trim() || undefined,
+      });
+
+      sileo.success({
+        title: "Transferred out",
+        description: "Learner lifecycle was updated successfully.",
+      });
+      setShowTransferOutDialog(false);
+      await refreshTables();
+      await refreshDetailIfOpen(actionStudent.id);
+    } catch (err) {
+      toastApiError(err as never);
+    } finally {
+      setActionSubmitting(false);
+    }
+  }, [
+    actionStudent,
+    transferOutDate,
+    transferOutSchoolName,
+    transferOutReason,
+    refreshTables,
+    refreshDetailIfOpen,
+  ]);
+
+  const submitDropout = useCallback(async () => {
+    if (!actionStudent) return;
+    if (!dropoutDate) {
+      sileo.warning({
+        title: "Missing dropout date",
+        description: "Dropout date is required.",
+      });
+      return;
+    }
+    if (dropoutReasonCode === "OTHER" && !dropoutReasonDetails.trim()) {
+      sileo.warning({
+        title: "Missing reason details",
+        description: "Provide details when reason code is OTHER.",
+      });
+      return;
+    }
+
+    setActionSubmitting(true);
+    try {
+      await api.post(`/students/${actionStudent.id}/lifecycle/dropout`, {
+        dropOutDate: dropoutDate,
+        reasonCode: dropoutReasonCode,
+        reasonNote: dropoutReasonDetails.trim() || undefined,
+      });
+
+      sileo.success({
+        title: "Dropped out",
+        description: "Learner lifecycle was updated successfully.",
+      });
+      setShowDropoutDialog(false);
+      await refreshTables();
+      await refreshDetailIfOpen(actionStudent.id);
+    } catch (err) {
+      toastApiError(err as never);
+    } finally {
+      setActionSubmitting(false);
+    }
+  }, [
+    actionStudent,
+    dropoutDate,
+    dropoutReasonCode,
+    dropoutReasonDetails,
+    refreshTables,
+    refreshDetailIfOpen,
+  ]);
+
+  const submitShiftSection = useCallback(async () => {
+    if (!actionStudent) return;
+    if (!shiftTargetSectionId) {
+      sileo.warning({
+        title: "Target section required",
+        description: "Please select a target section.",
+      });
+      return;
+    }
+
+    setActionSubmitting(true);
+    try {
+      await api.post(`/students/${actionStudent.id}/lifecycle/shift-section`, {
+        sectionId: Number(shiftTargetSectionId),
+      });
+
+      sileo.success({
+        title: "Section assignment updated",
+        description: "Learner was moved to the selected section.",
+      });
+      setShowShiftDialog(false);
+      await refreshTables();
+      await refreshDetailIfOpen(actionStudent.id);
+    } catch (err) {
+      toastApiError(err as never);
+    } finally {
+      setActionSubmitting(false);
+    }
+  }, [actionStudent, shiftTargetSectionId, refreshTables, refreshDetailIfOpen]);
+
+  const submitQuickProfileUpdate = useCallback(async () => {
+    if (!actionStudent) return;
+
+    setActionSubmitting(true);
+    try {
+      const payload: Record<string, unknown> = {
+        emailAddress: profileForm.emailAddress.trim() || null,
+        contactNumber: profileForm.contactNumber.trim() || null,
+        religion: profileForm.religion.trim() || null,
+        motherTongue: profileForm.motherTongue.trim() || null,
+      };
+
+      if (profileForm.currentAddress.trim()) {
+        payload.currentAddress = {
+          barangay: profileForm.currentAddress.trim(),
+        };
+      }
+
+      await api.put(`/students/${actionStudent.id}`, payload);
+
+      sileo.success({
+        title: "Profile updated",
+        description: "Learner demographic details were saved.",
+      });
+      setShowProfileDialog(false);
+      await refreshTables();
+      await refreshDetailIfOpen(actionStudent.id);
+    } catch (err) {
+      toastApiError(err as never);
+    } finally {
+      setActionSubmitting(false);
+    }
+  }, [actionStudent, profileForm, refreshTables, refreshDetailIfOpen]);
+
+  const submitAssignLrn = useCallback(async () => {
+    if (!actionStudent) return;
+    const normalizedLrn = lrnForm.lrn.trim();
+    if (!/^\d{12}$/.test(normalizedLrn)) {
+      sileo.warning({
+        title: "Invalid LRN",
+        description: "LRN must be exactly 12 digits.",
+      });
+      return;
+    }
+
+    setActionSubmitting(true);
+    try {
+      await api.post(`/students/${actionStudent.id}/lrn`, {
+        lrn: normalizedLrn,
+      });
+
+      sileo.success({
+        title: "LRN saved",
+        description: "Learner reference number was assigned successfully.",
+      });
+      setShowLrnDialog(false);
+      await refreshTables();
+      await refreshDetailIfOpen(actionStudent.id);
+    } catch (err) {
+      toastApiError(err as never);
+    } finally {
+      setActionSubmitting(false);
+    }
+  }, [actionStudent, lrnForm.lrn, refreshTables, refreshDetailIfOpen]);
+
+  const availableShiftSections = useMemo(() => {
+    if (!actionStudent) return [];
+
+    return sections
+      .filter((section) => section.gradeLevelId === actionStudent.gradeLevelId)
+      .filter((section) => section.id !== actionStudent.sectionId)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [actionStudent, sections]);
+
+  const programBreakdownItems = useMemo(() => {
+    if (!summary) return [];
+
+    return PROGRAM_FILTER_OPTIONS.map((option) => ({
+      key: option.value,
+      label: option.label,
+      count: summary.programBreakdown[option.value] || 0,
+    }))
+      .filter((item) => item.count > 0)
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+  }, [summary]);
+
+  const topProgramBreakdownItems = useMemo(
+    () => programBreakdownItems.slice(0, 3),
+    [programBreakdownItems],
+  );
+
+  const otherProgramLearnerCount = useMemo(
+    () =>
+      programBreakdownItems
+        .slice(3)
+        .reduce((totalCount, item) => totalCount + item.count, 0),
+    [programBreakdownItems],
+  );
+
+  const columns = useMemo<ColumnDef<Student>[]>(
+    () => [
+      {
+        id: "student",
+        header: () => (
+          <button
+            onClick={() => handleSort("lastName")}
+            className="flex h-11 w-full items-center justify-center gap-1 px-3 text-xs font-bold uppercase tracking-wider text-primary-foreground/90 hover:bg-primary/90 transition-colors">
+            Learner
+            {getSortIcon("lastName")}
+          </button>
+        ),
+        cell: ({ row }) => (
+          <div className="flex flex-col text-left min-w-[200px] pl-2">
+            <span className="font-bold text-sm uppercase leading-tight">
+              {row.original.fullName}
+            </span>
+            <span className="text-xs font-semibold text-muted-foreground leading-snug">
+              {formatLearningProgramLabel(row.original.learningProgram)}
+            </span>
+          </div>
+        ),
+      },
+      {
+        id: "lrn",
+        header: () => (
+          <button
+            onClick={() => handleSort("lrn")}
+            className="flex h-11 w-full items-center justify-center gap-1 px-3 text-xs font-bold uppercase tracking-wider text-primary-foreground/90 hover:bg-primary/90 transition-colors">
+            LRN
+            {getSortIcon("lrn")}
+          </button>
+        ),
+        cell: ({ row }) => (
+          <span className="font-bold text-sm">{row.original.lrn}</span>
+        ),
+      },
+      {
+        id: "gender",
+        header: () => (
+          <div className="flex h-11 w-full items-center justify-center px-3 text-xs font-bold uppercase tracking-wider text-primary-foreground/90">
+            Gender
+          </div>
+        ),
+        cell: ({ row }) => {
+          const normalized = row.original.sex?.trim().toUpperCase();
+          const display =
+            normalized === "MALE" || normalized === "M"
+              ? "M"
+              : normalized === "FEMALE" || normalized === "F"
+                ? "F"
+                : row.original.sex || "—";
+
+          return <span className="font-bold text-sm uppercase">{display}</span>;
+        },
+      },
+      {
+        id: "gradeLevel",
+        header: () => (
+          <button
+            onClick={() => handleSort("gradeLevel")}
+            className="flex h-11 w-full items-center justify-center gap-1 px-3 text-xs font-bold uppercase tracking-wider text-primary-foreground/90 hover:bg-primary/90 transition-colors">
+            Grade Level
+            {getSortIcon("gradeLevel")}
+          </button>
+        ),
+        cell: ({ row }) => (
+          <span className="font-bold text-sm">{row.original.gradeLevel}</span>
+        ),
+      },
+      {
+        id: "section",
+        header: () => (
+          <button
+            onClick={() => handleSort("section")}
+            className="flex h-11 w-full items-center justify-center gap-1 px-3 text-xs font-bold uppercase tracking-wider text-primary-foreground/90 hover:bg-primary/90 transition-colors">
+            Section
+            {getSortIcon("section")}
+          </button>
+        ),
+        cell: ({ row }) => (
+          <span className="font-bold text-sm">
+            {formatSectionLabel(row.original.section)}
+          </span>
+        ),
+      },
+      {
+        id: "enrolled",
+        header: () => (
+          <button
+            onClick={() => handleSort("dateEnrolled")}
+            className="flex h-11 w-full items-center justify-center gap-1 px-3 text-xs font-bold uppercase tracking-wider text-primary-foreground/90 hover:bg-primary/90 transition-colors">
+            Date Enrolled
+            {getSortIcon("dateEnrolled")}
+          </button>
+        ),
+        cell: ({ row }) => (
+          <span className="text-sm font-bold block text-center">
+            {formatDate(row.original.dateEnrolled || row.original.createdAt)}
+          </span>
+        ),
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => (
+          <div className="flex items-center justify-center gap-2 min-w-[180px]">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="h-8 px-3 text-xs font-bold bg-primary/10 hover:bg-primary border-2 border-primary/20 hover:text-primary-foreground"
+              onClick={() => handleViewDetails(row.original.id)}>
+              <Eye className="h-3.5 w-3.5 mr-1.5" />
+              View
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="h-8 w-8 px-0 text-xs font-bold bg-primary/10 hover:bg-primary border-2 border-primary/20 hover:text-primary-foreground"
+                  aria-label={`Open actions for ${row.original.fullName}`}>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 font-semibold">
+                <DropdownMenuItem
+                  onClick={() => handleOpenProfilePage(row.original.id)}
+                  className="cursor-pointer">
+                  <Eye className="mr-2 h-4 w-4" />
+                  Open Full Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleOpenPermanentRecord(row.original.id)}
+                  className="cursor-pointer">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Generate SF10 / Permanent Record
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => openGoodMoralPreview(row.original.id)}
+                  className="cursor-pointer">
+                  <FileCheck2 className="mr-2 h-4 w-4" />
+                  Open Good Moral Workflow
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => void openProfileQuickEditDialog(row.original)}
+                  className="cursor-pointer">
+                  <UserRoundPen className="mr-2 h-4 w-4" />
+                  Quick Update Demographics
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => openAssignLrnDialog(row.original)}
+                  className="cursor-pointer">
+                  <Fingerprint className="mr-2 h-4 w-4" />
+                  Assign or Correct LRN
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => openShiftDialog(row.original)}
+                  className="cursor-pointer">
+                  <ArrowRightLeft className="mr-2 h-4 w-4" />
+                  Shift Section or Program
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => openTransferOutDialog(row.original)}
+                  className="cursor-pointer text-amber-700 focus:text-amber-700">
+                  <FileBadge2 className="mr-2 h-4 w-4" />
+                  Mark as Transferred Out
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => openDropoutDialog(row.original)}
+                  className="cursor-pointer text-rose-700 focus:text-rose-700">
+                  <BadgeAlert className="mr-2 h-4 w-4" />
+                  Mark as Dropped Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        ),
+      },
+    ],
+    [
+      handleSort,
+      getSortIcon,
+      handleViewDetails,
+      handleOpenProfilePage,
+      handleOpenPermanentRecord,
+      openGoodMoralPreview,
+      openProfileQuickEditDialog,
+      openAssignLrnDialog,
+      openShiftDialog,
+      openTransferOutDialog,
+      openDropoutDialog,
+    ],
+  );
 
   if (!ayId) {
     return (
@@ -334,7 +1076,7 @@ export default function Students() {
       <div className="space-y-1">
         <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
           <Users className="h-8 w-8" />
-          Enrolled Students
+          Learner Directory
         </h1>
         <p className="text-sm font-medium text-[hsl(var(--muted-foreground))]">
           Manage officially enrolled learner records for the selected school
@@ -349,28 +1091,98 @@ export default function Students() {
             <CardDescription className="text-xs uppercase tracking-wider font-bold">
               Total Enrolled
             </CardDescription>
-            <CardTitle className="text-2xl font-extrabold">{total}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card className="border-none shadow-sm bg-[hsl(var(--card))]">
-          <CardHeader className="pb-2">
-            <CardDescription className="text-xs uppercase tracking-wider font-bold">
-              Showing On Current Page
-            </CardDescription>
-            <CardTitle className="text-2xl font-extrabold text-green-600">
-              {students.length}
+            <CardTitle className="text-2xl font-extrabold">
+              {summaryLoading ? "..." : (summary?.totalEnrolled ?? 0)}
             </CardTitle>
           </CardHeader>
         </Card>
         <Card className="border-none shadow-sm bg-[hsl(var(--card))]">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-1">
             <CardDescription className="text-xs uppercase tracking-wider font-bold">
-              Sections On Current Page
+              Gender Breakdown
             </CardDescription>
-            <CardTitle className="text-2xl font-extrabold text-blue-600">
-              {visibleSectionCount}
-            </CardTitle>
           </CardHeader>
+          <CardContent className="pt-0">
+            {summaryLoading ? (
+              <div className="text-sm font-bold text-muted-foreground">...</div>
+            ) : !summary ? (
+              <p className="text-xs font-semibold text-muted-foreground">
+                No enrolled learners yet.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-md border bg-muted/40 px-2 py-1 flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-bold uppercase inline-flex items-center gap-1">
+                    <Mars className="h-3.5 w-3.5 text-sky-700" />
+                    Male
+                  </span>
+                  <span className="text-xs font-extrabold text-sky-700">
+                    {summary.genderBreakdown.male}
+                  </span>
+                </div>
+                <div className="rounded-md border bg-muted/40 px-2 py-1 flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-bold uppercase inline-flex items-center gap-1">
+                    <Venus className="h-3.5 w-3.5 text-rose-700" />
+                    Female
+                  </span>
+                  <span className="text-xs font-extrabold text-rose-700">
+                    {summary.genderBreakdown.female}
+                  </span>
+                </div>
+                {summary.genderBreakdown.other > 0 && (
+                  <div className="rounded-md border border-dashed bg-muted/30 px-2 py-1 flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold uppercase text-muted-foreground">
+                      Others
+                    </span>
+                    <span className="text-xs font-extrabold text-muted-foreground">
+                      {summary.genderBreakdown.other}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        <Card className="border-none shadow-sm bg-[hsl(var(--card))]">
+          <CardHeader className="pb-1">
+            <CardDescription className="text-xs uppercase tracking-wider font-bold">
+              Program Breakdown
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {summaryLoading ? (
+              <div className="text-sm font-bold text-muted-foreground">...</div>
+            ) : programBreakdownItems.length === 0 ? (
+              <p className="text-xs font-semibold text-muted-foreground">
+                No enrolled learners yet.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {topProgramBreakdownItems.map((item) => (
+                  <div
+                    key={item.key}
+                    className="rounded-md border bg-muted/40 px-2 py-1 flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold uppercase">
+                      {item.label}
+                    </span>
+                    <span className="text-xs font-extrabold text-blue-700">
+                      {item.count}
+                    </span>
+                  </div>
+                ))}
+                {otherProgramLearnerCount > 0 && (
+                  <div className="rounded-md border border-dashed bg-muted/30 px-2 py-1 flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold uppercase text-muted-foreground">
+                      Others
+                    </span>
+                    <span className="text-xs font-extrabold text-muted-foreground">
+                      {otherProgramLearnerCount}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
         </Card>
       </div>
 
@@ -380,7 +1192,7 @@ export default function Students() {
           <div className="flex flex-col md:flex-row gap-3 md:gap-4 items-stretch md:items-end">
             <div className="flex-1 space-y-2 w-full">
               <Label className="text-xs sm:text-sm uppercase tracking-wider font-bold">
-                Search Student
+                Search Learner
               </Label>
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4" />
@@ -426,6 +1238,34 @@ export default function Students() {
               </div>
               <div className="space-y-2">
                 <Label className="text-xs sm:text-sm uppercase tracking-wider font-bold">
+                  Program
+                </Label>
+                <Select
+                  value={programFilter}
+                  onValueChange={(value) => {
+                    setProgramFilter(value);
+                    setPage(1);
+                  }}>
+                  <SelectTrigger className="h-10 w-full md:w-52 text-sm font-bold">
+                    <SelectValue placeholder="All Programs" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className="text-sm font-bold">
+                      All Programs
+                    </SelectItem>
+                    {PROGRAM_FILTER_OPTIONS.map((option) => (
+                      <SelectItem
+                        key={option.value}
+                        value={option.value}
+                        className="text-sm font-bold">
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs sm:text-sm uppercase tracking-wider font-bold">
                   Section
                 </Label>
                 <Select
@@ -446,7 +1286,7 @@ export default function Students() {
                         key={sec.id}
                         value={sec.id.toString()}
                         className="text-sm font-bold">
-                        {sec.name}
+                        {formatSectionLabel(sec.name)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -458,7 +1298,7 @@ export default function Students() {
                 variant="outline"
                 className="h-10 px-3 text-sm font-bold w-full md:w-auto"
                 onClick={() => {
-                  void fetchStudents();
+                  void Promise.all([fetchStudents(), fetchSummary()]);
                 }}
                 disabled={loading || !ayId}>
                 <RefreshCw
@@ -473,8 +1313,9 @@ export default function Students() {
                 onClick={() => {
                   setSearch("");
                   setGradeLevelFilter("all");
+                  setProgramFilter("all");
                   setSectionFilter("all");
-                  setSortBy("createdAt");
+                  setSortBy("dateEnrolled");
                   setSortOrder("desc");
                   setPage(1);
                 }}>
@@ -489,10 +1330,10 @@ export default function Students() {
       <Card className="border-none shadow-sm bg-[hsl(var(--card))]">
         <CardHeader className="px-3 sm:px-6 pb-2">
           <CardTitle className="text-base sm:text-lg font-extrabold">
-            Enrolled Student Records
+            Enrolled Learner Records
           </CardTitle>
           <CardDescription className="text-xs sm:text-sm font-semibold">
-            Showing {students.length} of {total} enrolled students
+            Showing {students.length} of {total} enrolled learners
           </CardDescription>
         </CardHeader>
         <CardContent className="px-3 sm:px-6 pb-4">
@@ -509,7 +1350,7 @@ export default function Students() {
               ))
             ) : students.length === 0 ? (
               <div className="rounded-xl border p-6 text-center text-sm font-bold">
-                No enrolled students found for the selected filters.
+                No enrolled learners found for the selected filters.
               </div>
             ) : (
               students.map((student) => (
@@ -521,8 +1362,8 @@ export default function Students() {
                       <p className="font-bold text-sm uppercase leading-tight break-words">
                         {student.fullName}
                       </p>
-                      <p className="text-xs font-bold text-muted-foreground truncate">
-                        {student.trackingNumber}
+                      <p className="text-xs font-semibold text-muted-foreground leading-snug">
+                        {formatLearningProgramLabel(student.learningProgram)}
                       </p>
                     </div>
                     {getEnrolledBadge()}
@@ -537,6 +1378,18 @@ export default function Students() {
                     </div>
                     <div>
                       <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
+                        Gender
+                      </p>
+                      <p className="font-bold uppercase">
+                        {student.sex === "MALE" || student.sex === "M"
+                          ? "M"
+                          : student.sex === "FEMALE" || student.sex === "F"
+                            ? "F"
+                            : student.sex || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
                         Grade Level
                       </p>
                       <p className="font-bold">{student.gradeLevel}</p>
@@ -545,140 +1398,109 @@ export default function Students() {
                       <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
                         Section
                       </p>
-                      <p className="font-bold">{student.section || "—"}</p>
+                      <p className="font-bold">
+                        {formatSectionLabel(student.section)}
+                      </p>
                     </div>
                   </div>
 
                   <p className="mt-2 text-[11px] font-bold text-muted-foreground">
-                    Enrolled {formatDate(student.createdAt)}
+                    Enrolled{" "}
+                    {formatDate(student.dateEnrolled || student.createdAt)}
                   </p>
 
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="mt-3 h-9 w-full text-xs font-bold bg-primary/10 hover:bg-primary border-2 border-primary/20 hover:text-primary-foreground"
-                    onClick={() => handleViewDetails(student.id)}>
-                    <Eye className="h-3.5 w-3.5 mr-1.5" />
-                    View Student
-                  </Button>
+                  <div className="mt-3 flex items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="h-9 flex-1 text-xs font-bold bg-primary/10 hover:bg-primary border-2 border-primary/20 hover:text-primary-foreground"
+                      onClick={() => handleViewDetails(student.id)}>
+                      <Eye className="h-3.5 w-3.5 mr-1.5" />
+                      View
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="h-9 w-10 px-0 text-xs font-bold bg-primary/10 hover:bg-primary border-2 border-primary/20 hover:text-primary-foreground"
+                          aria-label={`Open actions for ${student.fullName}`}>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        align="end"
+                        className="w-56 font-semibold">
+                        <DropdownMenuItem
+                          onClick={() => handleOpenProfilePage(student.id)}
+                          className="cursor-pointer">
+                          <Eye className="mr-2 h-4 w-4" />
+                          Open Full Profile
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleOpenPermanentRecord(student.id)}
+                          className="cursor-pointer">
+                          <FileText className="mr-2 h-4 w-4" />
+                          Generate SF10 / Permanent Record
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => openGoodMoralPreview(student.id)}
+                          className="cursor-pointer">
+                          <FileCheck2 className="mr-2 h-4 w-4" />
+                          Open Good Moral Workflow
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() =>
+                            void openProfileQuickEditDialog(student)
+                          }
+                          className="cursor-pointer">
+                          <UserRoundPen className="mr-2 h-4 w-4" />
+                          Quick Update Demographics
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => openAssignLrnDialog(student)}
+                          className="cursor-pointer">
+                          <Fingerprint className="mr-2 h-4 w-4" />
+                          Assign or Correct LRN
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => openShiftDialog(student)}
+                          className="cursor-pointer">
+                          <ArrowRightLeft className="mr-2 h-4 w-4" />
+                          Shift Section or Program
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => openTransferOutDialog(student)}
+                          className="cursor-pointer text-amber-700 focus:text-amber-700">
+                          <FileBadge2 className="mr-2 h-4 w-4" />
+                          Mark as Transferred Out
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => openDropoutDialog(student)}
+                          className="cursor-pointer text-rose-700 focus:text-rose-700">
+                          <BadgeAlert className="mr-2 h-4 w-4" />
+                          Mark as Dropped Out
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
               ))
             )}
           </div>
 
-          <div className="hidden md:block rounded-xl border overflow-hidden">
-            <Table className="border-collapse">
-              <TableHeader className="bg-[hsl(var(--primary))]">
-                <TableRow>
-                  <TableHead className="p-0">
-                    <button
-                      onClick={() => handleSort("lastName")}
-                      className="flex h-11 w-full items-center justify-center gap-1 px-3 text-xs font-bold uppercase tracking-wider text-primary-foreground/90 hover:bg-primary/90 transition-colors">
-                      Student
-                      {getSortIcon("lastName")}
-                    </button>
-                  </TableHead>
-                  <TableHead className="p-0">
-                    <button
-                      onClick={() => handleSort("lrn")}
-                      className="flex h-11 w-full items-center justify-center gap-1 px-3 text-xs font-bold uppercase tracking-wider text-primary-foreground/90 hover:bg-primary/90 transition-colors">
-                      LRN
-                      {getSortIcon("lrn")}
-                    </button>
-                  </TableHead>
-                  <TableHead className="p-0">
-                    <button
-                      onClick={() => handleSort("gradeLevel")}
-                      className="flex h-11 w-full items-center justify-center gap-1 px-3 text-xs font-bold uppercase tracking-wider text-primary-foreground/90 hover:bg-primary/90 transition-colors">
-                      Grade Level
-                      {getSortIcon("gradeLevel")}
-                    </button>
-                  </TableHead>
-                  <TableHead className="p-0 hidden lg:table-cell">
-                    <button
-                      onClick={() => handleSort("section")}
-                      className="flex h-11 w-full items-center justify-center gap-1 px-3 text-xs font-bold uppercase tracking-wider text-primary-foreground/90 hover:bg-primary/90 transition-colors">
-                      Section
-                      {getSortIcon("section")}
-                    </button>
-                  </TableHead>
-                  <TableHead className="p-0 hidden lg:table-cell">
-                    <button
-                      onClick={() => handleSort("createdAt")}
-                      className="flex h-11 w-full items-center justify-center gap-1 px-3 text-xs font-bold uppercase tracking-wider text-primary-foreground/90 hover:bg-primary/90 transition-colors">
-                      Enrolled
-                      {getSortIcon("createdAt")}
-                    </button>
-                  </TableHead>
-                  <TableHead className="text-center font-bold text-primary-foreground text-xs uppercase tracking-wider">
-                    Actions
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={7}
-                      className="h-20 text-center text-sm font-bold text-muted-foreground">
-                      Loading enrolled students...
-                    </TableCell>
-                  </TableRow>
-                ) : students.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={7}
-                      className="h-20 text-center text-sm font-bold text-muted-foreground">
-                      No enrolled students found for the selected filters.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  students.map((student) => (
-                    <TableRow
-                      key={student.id}
-                      className="hover:bg-[hsl(var(--muted))] transition-colors text-center text-sm">
-                      <TableCell>
-                        <div className="flex flex-col text-left">
-                          <span className="font-bold text-sm uppercase leading-tight">
-                            {student.fullName}
-                          </span>
-                          <span className="text-xs font-bold text-muted-foreground">
-                            {student.trackingNumber}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-bold text-sm">
-                        {student.lrn}
-                      </TableCell>
-                      <TableCell className="font-bold text-sm">
-                        {student.gradeLevel}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell font-bold text-sm">
-                        {student.section || "—"}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell text-sm font-bold">
-                        {formatDate(student.createdAt)}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          className="h-8 text-xs font-bold bg-primary/10 hover:bg-primary border-2 border-primary/20 hover:text-primary-foreground"
-                          onClick={() => handleViewDetails(student.id)}>
-                          <Eye className="h-3.5 w-3.5 mr-1.5" />
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+          <div className="hidden md:block">
+            <DataTable
+              columns={columns}
+              data={students}
+              loading={loading}
+              noResultsMessage="No enrolled learners found for the selected filters."
+            />
           </div>
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-2">
               <p className="text-sm font-semibold text-[hsl(var(--muted-foreground))]">
                 Page {page} of {totalPages}
               </p>
@@ -711,7 +1533,7 @@ export default function Students() {
           <div className="p-4 sm:p-6 space-y-6">
             <DialogHeader className="space-y-2">
               <DialogTitle className="text-lg sm:text-xl font-extrabold">
-                Enrolled Student Details
+                Enrolled Learner Details
               </DialogTitle>
               <DialogDescription className="text-sm font-medium">
                 Complete profile and enrollment details for{" "}
@@ -872,6 +1694,59 @@ export default function Students() {
                             {selectedStudent.enrollment.enrolledBy}
                           </p>
                         </div>
+                        {selectedStudent.enrollment.eosyStatus && (
+                          <div className="sm:col-span-2 rounded-lg border border-dashed p-3 space-y-1">
+                            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              Lifecycle Outcome
+                            </p>
+                            <p className="text-sm font-semibold">
+                              {selectedStudent.enrollment.eosyStatus
+                                .replaceAll("_", " ")
+                                .toLowerCase()
+                                .replace(/\b\w/g, (letter) =>
+                                  letter.toUpperCase(),
+                                )}
+                            </p>
+                            {selectedStudent.enrollment.transferOutDate && (
+                              <p className="text-xs font-medium text-muted-foreground">
+                                Transfer Date:{" "}
+                                {formatDate(
+                                  selectedStudent.enrollment.transferOutDate,
+                                )}
+                              </p>
+                            )}
+                            {selectedStudent.enrollment
+                              .transferOutSchoolName && (
+                              <p className="text-xs font-medium text-muted-foreground">
+                                Destination School:{" "}
+                                {
+                                  selectedStudent.enrollment
+                                    .transferOutSchoolName
+                                }
+                              </p>
+                            )}
+                            {selectedStudent.enrollment.transferOutReason && (
+                              <p className="text-xs font-medium text-muted-foreground">
+                                Transfer Reason:{" "}
+                                {selectedStudent.enrollment.transferOutReason}
+                              </p>
+                            )}
+                            {selectedStudent.enrollment.dropOutDate && (
+                              <p className="text-xs font-medium text-muted-foreground">
+                                Dropout Date:{" "}
+                                {formatDate(
+                                  selectedStudent.enrollment.dropOutDate,
+                                )}
+                              </p>
+                            )}
+                            {selectedStudent.enrollment.dropOutReason && (
+                              <p className="text-xs font-medium text-muted-foreground">
+                                Dropout Reason:{" "}
+                                {selectedStudent.enrollment.dropOutReason}
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </>
                     ) : (
                       <div className="sm:col-span-2 rounded-lg border border-dashed p-3">
@@ -895,6 +1770,344 @@ export default function Students() {
               </div>
             ) : null}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showTransferOutDialog}
+        onOpenChange={setShowTransferOutDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Mark Learner as Transferred Out</DialogTitle>
+            <DialogDescription>
+              Update transfer-out details for {actionStudent?.fullName}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="transferOutDate">Transfer Date</Label>
+              <Input
+                id="transferOutDate"
+                type="date"
+                value={transferOutDate}
+                onChange={(event) => setTransferOutDate(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="transferOutSchool">Destination School</Label>
+              <Input
+                id="transferOutSchool"
+                value={transferOutSchoolName}
+                onChange={(event) =>
+                  setTransferOutSchoolName(event.target.value)
+                }
+                placeholder="Enter receiving school"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="transferOutReason">Reason (Optional)</Label>
+              <Textarea
+                id="transferOutReason"
+                value={transferOutReason}
+                onChange={(event) => setTransferOutReason(event.target.value)}
+                placeholder="State reason for transfer"
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowTransferOutDialog(false)}
+              disabled={actionSubmitting}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void submitTransferOut()}
+              disabled={actionSubmitting}>
+              {actionSubmitting ? "Saving..." : "Confirm Transfer Out"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDropoutDialog} onOpenChange={setShowDropoutDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Mark Learner as Dropped Out</DialogTitle>
+            <DialogDescription>
+              Update dropout details for {actionStudent?.fullName}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="dropOutDate">Dropout Date</Label>
+              <Input
+                id="dropOutDate"
+                type="date"
+                value={dropoutDate}
+                onChange={(event) => setDropoutDate(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Dropout Reason</Label>
+              <Select
+                value={dropoutReasonCode}
+                onValueChange={(value) =>
+                  setDropoutReasonCode(value as DropoutReasonCode)
+                }>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select reason" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DROPOUT_REASON_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dropOutNote">Reason Details</Label>
+              <Textarea
+                id="dropOutNote"
+                value={dropoutReasonDetails}
+                onChange={(event) =>
+                  setDropoutReasonDetails(event.target.value)
+                }
+                placeholder={
+                  dropoutReasonCode === "OTHER"
+                    ? "Required for OTHER reason"
+                    : "Additional context (optional)"
+                }
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDropoutDialog(false)}
+              disabled={actionSubmitting}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void submitDropout()}
+              disabled={actionSubmitting}>
+              {actionSubmitting ? "Saving..." : "Confirm Dropout"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showShiftDialog} onOpenChange={setShowShiftDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Shift Section or Program</DialogTitle>
+            <DialogDescription>
+              Reassign section for {actionStudent?.fullName}. Program changes
+              are inferred from the selected target section.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Target Section</Label>
+              <Select
+                value={shiftTargetSectionId}
+                onValueChange={setShiftTargetSectionId}
+                disabled={availableShiftSections.length === 0}>
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      availableShiftSections.length === 0
+                        ? "No other eligible sections"
+                        : "Select target section"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableShiftSections.map((section) => (
+                    <SelectItem key={section.id} value={String(section.id)}>
+                      {formatSectionLabel(section.name)} (
+                      {formatScpType(section.programType)})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {availableShiftSections.length === 0 && (
+              <p className="text-xs text-muted-foreground font-medium">
+                No alternate section is currently available for this learner's
+                grade level.
+              </p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowShiftDialog(false)}
+              disabled={actionSubmitting}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void submitShiftSection()}
+              disabled={
+                actionSubmitting || availableShiftSections.length === 0
+              }>
+              {actionSubmitting ? "Saving..." : "Confirm Shift"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Quick Update Demographics</DialogTitle>
+            <DialogDescription>
+              Apply quick demographic updates for {actionStudent?.fullName}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="profileEmail">Email Address</Label>
+              <Input
+                id="profileEmail"
+                type="email"
+                value={profileForm.emailAddress}
+                onChange={(event) =>
+                  setProfileForm((prev) => ({
+                    ...prev,
+                    emailAddress: event.target.value,
+                  }))
+                }
+                placeholder="learner@email.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="profileContact">Guardian Contact Number</Label>
+              <Input
+                id="profileContact"
+                value={profileForm.contactNumber}
+                onChange={(event) =>
+                  setProfileForm((prev) => ({
+                    ...prev,
+                    contactNumber: event.target.value,
+                  }))
+                }
+                placeholder="09XXXXXXXXX"
+              />
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="profileReligion">Religion</Label>
+                <Input
+                  id="profileReligion"
+                  value={profileForm.religion}
+                  onChange={(event) =>
+                    setProfileForm((prev) => ({
+                      ...prev,
+                      religion: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="profileMotherTongue">Mother Tongue</Label>
+                <Input
+                  id="profileMotherTongue"
+                  value={profileForm.motherTongue}
+                  onChange={(event) =>
+                    setProfileForm((prev) => ({
+                      ...prev,
+                      motherTongue: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="profileAddress">
+                Current Address (Quick Entry)
+              </Label>
+              <Textarea
+                id="profileAddress"
+                value={profileForm.currentAddress}
+                onChange={(event) =>
+                  setProfileForm((prev) => ({
+                    ...prev,
+                    currentAddress: event.target.value,
+                  }))
+                }
+                placeholder="Barangay or location note"
+                rows={2}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowProfileDialog(false)}
+              disabled={actionSubmitting}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void submitQuickProfileUpdate()}
+              disabled={actionSubmitting}>
+              {actionSubmitting ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showLrnDialog} onOpenChange={setShowLrnDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Assign or Correct LRN</DialogTitle>
+            <DialogDescription>
+              Enter a valid 12-digit LRN for {actionStudent?.fullName}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <Label htmlFor="assignLrn">Learner Reference Number</Label>
+            <Input
+              id="assignLrn"
+              value={lrnForm.lrn}
+              onChange={(event) =>
+                setLrnForm({
+                  lrn: event.target.value.replace(/[^0-9]/g, "").slice(0, 12),
+                })
+              }
+              placeholder="12-digit LRN"
+              inputMode="numeric"
+              maxLength={12}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowLrnDialog(false)}
+              disabled={actionSubmitting}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void submitAssignLrn()}
+              disabled={actionSubmitting}>
+              {actionSubmitting ? "Saving..." : "Save LRN"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

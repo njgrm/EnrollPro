@@ -8,26 +8,38 @@ const APP_NAME = "EnrollPro";
  * Maps a pathname to a human-readable page title.
  * Returns null for paths that should use the bare app name (e.g. root redirect).
  */
-function resolvePageTitle(pathname: string): string | null {
+function resolvePageTitle(pathname: string, search: string): string | null {
+  if (pathname === "/settings") {
+    const tab = new URLSearchParams(search).get("tab");
+    if (tab === "requirements") {
+      return "Enrollment Requirements";
+    }
+  }
+
+  if (pathname === "/monitoring/early-registration") {
+    const view = new URLSearchParams(search).get("view");
+    return view === "batch"
+      ? "Registration Pipelines"
+      : "Basic Education Early Registration Form — Monitoring";
+  }
+
   // Exact matches first
   const exact: Record<string, string> = {
     "/": "Dashboard",
     "/dashboard": "Dashboard",
     "/login": "Sign In",
-    "/early-registration": "BASIC EDUCATION EARLY REGISTRATION FORM",
+    "/early-registration": "Basic Education Early Registration Form",
     "/change-password": "Change Password",
     "/enrollment": "BASIC EDUCATION ENROLLMENT FORM",
     "/monitoring/f2f-early-registration":
-      "Walk-in BASIC EDUCATION EARLY REGISTRATION FORM",
-    "/applications": "BASIC EDUCATION EARLY REGISTRATION FORM",
+      "Walk-in Basic Education Early Registration Form",
+    "/applications": "Basic Education Early Registration Form",
     "/applications/early-registration":
-      "BASIC EDUCATION EARLY REGISTRATION FORM",
+      "Basic Education Early Registration Form",
     "/applications/enrollment": "Enrollment",
-    "/monitoring/early-registration":
-      "BASIC EDUCATION EARLY REGISTRATION FORM — Monitoring",
     "/monitoring/early-registration/pipelines": "Registration Pipelines",
     "/monitoring/enrollment": "Enrollment Monitoring",
-    "/students": "Students",
+    "/students": "Learner Directory",
     "/sections": "Sections",
     "/audit-logs": "Audit Logs",
     "/settings": "Settings",
@@ -41,7 +53,7 @@ function resolvePageTitle(pathname: string): string | null {
   if (exact[pathname]) return exact[pathname];
 
   // Prefix matches for dynamic segments
-  if (pathname.startsWith("/students/")) return "Student Profile";
+  if (pathname.startsWith("/students/")) return "Learner Profile";
   if (pathname.startsWith("/teachers/")) return "Teacher Profile";
   if (pathname.startsWith("/applications/")) return "Application Detail";
   if (pathname.startsWith("/settings/")) return "Settings";
@@ -57,11 +69,11 @@ function resolvePageTitle(pathname: string): string | null {
  *         or "EnrollPro" for unknown routes.
  */
 export function usePageTitle() {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const schoolName = useSettingsStore((s) => s.schoolName);
 
   useEffect(() => {
-    const page = resolvePageTitle(pathname);
+    const page = resolvePageTitle(pathname, search);
 
     let title: string;
     if (page) {
@@ -73,5 +85,5 @@ export function usePageTitle() {
     }
 
     document.title = title;
-  }, [pathname, schoolName]);
+  }, [pathname, search, schoolName]);
 }

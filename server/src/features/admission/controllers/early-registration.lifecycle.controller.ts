@@ -15,11 +15,12 @@ export function createEarlyRegistrationLifecycleController(
     queueEmail,
     toUpperCaseRecursive,
     updateApplicationStatus,
+    migrateEarlyRegToEnrollment,
   } = createEarlyRegistrationSharedService(deps);
 
   const LRN_REGEX = /^\d{12}$/;
   const FINALIZE_ALLOWED_STATUSES = new Set([
-    "PRE_REGISTERED",
+    "READY_FOR_SECTIONING",
     "TEMPORARILY_ENROLLED",
   ]);
   const resolveExpectedSectionProgramType = (applicantType: string): string =>
@@ -155,17 +156,52 @@ export function createEarlyRegistrationLifecycleController(
     return missingMandatory;
   }
 
+  function assertReadingProfileCompleted(
+    applicant: { readingProfileLevel?: string | null },
+    contextMessage: string,
+  ): void {
+    if (!applicant.readingProfileLevel) {
+      throw new AppError(422, contextMessage);
+    }
+  }
+
   async function approve(req: Request, res: Response, next: NextFunction) {
     try {
       const { sectionId } = req.body;
-      const applicantId = parseInt(String(req.params.id));
-      const { data: applicant, type: appType } =
+      const { id } = req.params;
+      let applicantId = parseInt(String(id));
+      let { data: applicant, type: appType } =
         await findApplicantOrThrow(applicantId);
 
-      assertTransition(
+      // ── Auto-Migration: Phase 1 -> Phase 2 ──
+      if (appType === "EARLY_REGISTRATION") {
+        const migratedApp = await deps.prisma.$transaction(async (tx) => {
+          return await migrateEarlyRegToEnrollment(
+            applicantId,
+            req.user!.userId,
+            tx,
+          );
+        });
+
+        applicantId = migratedApp.id;
+        applicant = migratedApp;
+        appType = "ENROLLMENT";
+      }
+
+      const isAlreadySectioningReady =
+        applicant.status === "READY_FOR_SECTIONING";
+
+      if (!isAlreadySectioningReady) {
+        assertTransition(
+          applicant,
+          "READY_FOR_SECTIONING",
+          `Cannot approve an application with status "${applicant.status}". Only verification-complete applications can move to READY_FOR_SECTIONING.`,
+        );
+      }
+
+      assertReadingProfileCompleted(
         applicant,
-        "PRE_REGISTERED",
-        `Cannot approve an application with status "${applicant.status}". Only VERIFIED, ELIGIBLE, or PASSED applications can be approved (moved to PRE_REGISTERED).`,
+        "Reading Profile is required before section assignment. Encode a reading profile first.",
       );
 
       const result = await prisma.$transaction(async (tx) => {
@@ -213,8 +249,14 @@ export function createEarlyRegistrationLifecycleController(
           throw new AppError(422, "This section has reached maximum capacity");
         }
 
-        const enrollment = await tx.enrollmentRecord.create({
-          data: {
+        const enrollment = await tx.enrollmentRecord.upsert({
+          where: { enrollmentApplicationId: applicantId },
+          update: {
+            sectionId,
+            schoolYearId: applicant.schoolYearId,
+            enrolledById: req.user!.userId,
+          },
+          create: {
             enrollmentApplicationId: applicantId,
             sectionId,
             schoolYearId: applicant.schoolYearId,
@@ -222,7 +264,9 @@ export function createEarlyRegistrationLifecycleController(
           },
         });
 
-        await updateApplicationStatus(applicantId, "PRE_REGISTERED");
+        if (!isAlreadySectioningReady) {
+          await updateApplicationStatus(applicantId, "READY_FOR_SECTIONING");
+        }
 
         return enrollment;
       });
@@ -254,21 +298,45 @@ export function createEarlyRegistrationLifecycleController(
 
   async function verify(req: Request, res: Response, next: NextFunction) {
     try {
-      const applicantId = parseInt(String(req.params.id));
-      const { data: applicant, type: appType } =
+      const { id } = req.params;
+      let applicantId = parseInt(String(id));
+      let { data: applicant, type: appType } =
         await findApplicantOrThrow(applicantId);
 
-      if (appType !== "ENROLLMENT") {
-        throw new AppError(
-          422,
-          "Verification is only available for enrollment applications.",
-        );
+      // ── Auto-Migration: Phase 1 -> Phase 2 ──
+      // If we are verifying an early registration record, we must first promote it to enrollment.
+      if (appType === "EARLY_REGISTRATION") {
+        const migratedApp = await deps.prisma.$transaction(async (tx) => {
+          const newApp = await migrateEarlyRegToEnrollment(
+            applicantId,
+            req.user!.userId,
+            tx,
+          );
+
+          // We also need to carry over any "UNDER_REVIEW" intent if applicable,
+          // though usually migration happens exactly at verification time.
+          return newApp;
+        });
+
+        applicantId = migratedApp.id;
+        applicant = migratedApp;
+        appType = "ENROLLMENT";
       }
 
-      if (applicant.status !== "UNDER_REVIEW") {
+      const verificationEligibleStatuses = new Set([
+        "EARLY_REG_SUBMITTED",
+        "PRE_REGISTERED",
+        "PENDING_VERIFICATION",
+        "READY_FOR_SECTIONING",
+        "SUBMITTED",
+        "UNDER_REVIEW",
+        "READY_FOR_ENROLLMENT",
+      ]);
+
+      if (!verificationEligibleStatuses.has(applicant.status)) {
         throw new AppError(
           422,
-          `Cannot verify application with status "${applicant.status}". Only UNDER_REVIEW applications can be verified.`,
+          `Cannot verify application with status "${applicant.status}". Only pending verification records can be verified.`,
         );
       }
 
@@ -283,6 +351,13 @@ export function createEarlyRegistrationLifecycleController(
 
       if (!fullApplicant) {
         throw new AppError(404, "Enrollment application not found.");
+      }
+
+      if (fullApplicant.checklist?.academicStatus === "RETAINED") {
+        throw new AppError(
+          422,
+          "Retained learners cannot proceed to verification. Route this applicant to advising/rejection.",
+        );
       }
 
       const missingMandatory = await collectMissingMandatoryRequirements({
@@ -332,18 +407,88 @@ export function createEarlyRegistrationLifecycleController(
         );
       }
 
-      assertTransition(
-        applicant,
-        "VERIFIED",
-        `Cannot verify an application with status "${applicant.status}".`,
+      const updated = await updateApplicationStatus(
+        applicantId,
+        "READY_FOR_SECTIONING",
       );
-
-      const updated = await updateApplicationStatus(applicantId, "VERIFIED");
 
       await auditLog({
         userId: req.user!.userId,
         actionType: "APPLICATION_VERIFIED",
         description: `Verified physical documents for ${applicant.learner.firstName} ${applicant.learner.lastName} (#${applicantId})`,
+        subjectType: "EnrollmentApplication",
+        recordId: applicantId,
+        req,
+      });
+
+      res.json(updated);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async function updateReadingProfile(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const { readingProfileLevel, readingProfileNotes } = req.body as {
+        readingProfileLevel: string;
+        readingProfileNotes?: string | null;
+      };
+
+      let applicantId = parseInt(String(req.params.id));
+      let { data: applicant, type: appType } =
+        await findApplicantOrThrow(applicantId);
+
+      if (appType === "EARLY_REGISTRATION") {
+        const migratedApp = await deps.prisma.$transaction(async (tx) => {
+          return await migrateEarlyRegToEnrollment(
+            applicantId,
+            req.user!.userId,
+            tx,
+          );
+        });
+
+        applicantId = migratedApp.id;
+        applicant = migratedApp;
+        appType = "ENROLLMENT";
+      }
+
+      if (appType !== "ENROLLMENT") {
+        throw new AppError(
+          422,
+          "Reading Profile can only be encoded on enrollment applications.",
+        );
+      }
+
+      if (applicant.status === "REJECTED" || applicant.status === "WITHDRAWN") {
+        throw new AppError(
+          422,
+          `Cannot encode Reading Profile while application is "${applicant.status}".`,
+        );
+      }
+
+      const normalizedNotes =
+        typeof readingProfileNotes === "string"
+          ? readingProfileNotes.trim() || null
+          : null;
+
+      const updated = await prisma.enrollmentApplication.update({
+        where: { id: applicantId },
+        data: {
+          readingProfileLevel: readingProfileLevel as any,
+          readingProfileNotes: normalizedNotes,
+          readingProfileAssessedAt: new Date(),
+          readingProfileAssessedById: req.user!.userId,
+        },
+      });
+
+      await auditLog({
+        userId: req.user!.userId,
+        actionType: "READING_PROFILE_UPDATED",
+        description: `Updated Reading Profile (${readingProfileLevel}) for application #${applicantId}`,
         subjectType: "EnrollmentApplication",
         recordId: applicantId,
         req,
@@ -379,6 +524,13 @@ export function createEarlyRegistrationLifecycleController(
           "Official enrollment can only be finalized for enrollment applications.",
         );
 
+      if (fullApplicant.checklist?.academicStatus === "RETAINED") {
+        throw new AppError(
+          422,
+          "Retained learners cannot proceed to enrollment finalization. Route this applicant to advising/rejection.",
+        );
+      }
+
       const learnerPendingLrn =
         (
           fullApplicant.learner as {
@@ -396,9 +548,14 @@ export function createEarlyRegistrationLifecycleController(
       if (!FINALIZE_ALLOWED_STATUSES.has(fullApplicant.status)) {
         throw new AppError(
           422,
-          `Cannot finalize enrollment. Current status: "${fullApplicant.status}". Only PRE_REGISTERED or TEMPORARILY_ENROLLED applications can be enrolled.`,
+          `Cannot finalize enrollment. Current status: "${fullApplicant.status}". Only READY_FOR_SECTIONING or TEMPORARILY_ENROLLED applications can be enrolled.`,
         );
       }
+
+      assertReadingProfileCompleted(
+        fullApplicant,
+        "Reading Profile is required before finalizing enrollment. Encode a reading profile first.",
+      );
 
       if (!fullApplicant.enrollmentRecord) {
         throw new AppError(
@@ -462,7 +619,7 @@ export function createEarlyRegistrationLifecycleController(
         const enrollment = await tx.enrollmentApplication.update({
           where: { id: applicantId },
           data: {
-            status: "ENROLLED",
+            status: "OFFICIALLY_ENROLLED",
             isTemporarilyEnrolled: false,
             portalPin: pinHash,
             portalPinChangedAt: new Date(),
@@ -491,6 +648,177 @@ export function createEarlyRegistrationLifecycleController(
 
       res.json({ ...updated, rawPortalPin: rawPin });
     } catch (error) {
+      console.error("[DEBUG_ERROR] controller method error:", error);
+      next(error);
+    }
+  }
+
+  async function unenroll(req: Request, res: Response, next: NextFunction) {
+    try {
+      const applicantId = parseInt(String(req.params.id));
+      const reason = String(req.body.reason ?? "").trim();
+      const note =
+        typeof req.body.note === "string" ? req.body.note.trim() : undefined;
+
+      const { data: applicant } = await findApplicantOrThrow(applicantId);
+
+      if (
+        applicant.status !== "OFFICIALLY_ENROLLED" &&
+        applicant.status !== "ENROLLED"
+      ) {
+        throw new AppError(
+          422,
+          "Only enrolled applications can be unenrolled.",
+        );
+      }
+
+      const updated = await deps.prisma.$transaction(async (tx: any) => {
+        // 1. Delete EnrollmentRecord (frees up capacity)
+        await tx.enrollmentRecord.deleteMany({
+          where: { enrollmentApplicationId: applicantId },
+        });
+
+        // 2. Revert status to sectioning-ready queue
+        return await tx.enrollmentApplication.update({
+          where: { id: applicantId },
+          data: {
+            status: "READY_FOR_SECTIONING",
+            isProfileLocked: false,
+            profileLockedAt: null,
+            profileLockedById: null,
+          },
+          include: { learner: true },
+        });
+      });
+
+      await auditLog({
+        userId: req.user!.userId,
+        actionType: "APPLICATION_UNENROLLED",
+        description: `Unenrolled learner ${updated.learner.firstName} ${updated.learner.lastName} (#${applicantId}). Reason: ${reason}.${note ? ` Note: ${note}` : ""}`,
+        subjectType: "EnrollmentApplication",
+        recordId: applicantId,
+        req,
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("[DEBUG_ERROR] controller method error:", error);
+      next(error);
+    }
+  }
+
+  async function specialEnrollment(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const data = req.body;
+      const {
+        lrn,
+        firstName,
+        lastName,
+        learnerType,
+        applicantType = "REGULAR",
+        gradeLevelId,
+      } = data;
+
+      // 1. Create or Find Learner
+      let learner = await prisma.learner.findFirst({
+        where: lrn
+          ? { lrn }
+          : { firstName, lastName, birthdate: new Date(data.birthdate) },
+      });
+
+      if (!learner) {
+        learner = await prisma.learner.create({
+          data: {
+            lrn,
+            firstName,
+            lastName,
+            middleName: data.middleName,
+            extensionName: data.extensionName,
+            birthdate: new Date(data.birthdate),
+            sex: data.sex,
+            isPendingLrnCreation: !lrn,
+          },
+        });
+      }
+
+      // 2. Get active school year
+      const settings = await prisma.schoolSetting.findFirst({
+        select: { activeSchoolYearId: true },
+      });
+      if (!settings?.activeSchoolYearId) {
+        throw new AppError(422, "No active school year found.");
+      }
+
+      const existingEnrollment = await prisma.enrollmentApplication.findFirst({
+        where: {
+          learnerId: learner.id,
+          schoolYearId: settings.activeSchoolYearId,
+          status: { notIn: ["REJECTED", "WITHDRAWN"] },
+        },
+        select: {
+          id: true,
+          status: true,
+          trackingNumber: true,
+        },
+      });
+
+      if (existingEnrollment) {
+        throw new AppError(
+          409,
+          `An active enrollment already exists for this learner (Tracking: ${existingEnrollment.trackingNumber ?? `#${existingEnrollment.id}`}, Status: ${existingEnrollment.status}).`,
+        );
+      }
+
+      // 3. Create Enrollment Application
+      const application = await prisma.enrollmentApplication.create({
+        data: {
+          learnerId: learner.id,
+          schoolYearId: settings.activeSchoolYearId,
+          gradeLevelId: parseInt(String(gradeLevelId)),
+          applicantType: applicantType as any,
+          learnerType: learnerType as any,
+          status: "READY_FOR_SECTIONING",
+          admissionChannel: "F2F",
+          encodedById: req.user!.userId,
+          isPrivacyConsentGiven: true,
+        },
+        include: { learner: true },
+      });
+
+      // 4. Create Tracking Number
+      const year = new Date().getFullYear();
+      const trackingNumber = `F2F-ENR-${year}-${String(application.id).padStart(5, "0")}`;
+
+      const updated = await prisma.enrollmentApplication.update({
+        where: { id: application.id },
+        data: { trackingNumber },
+        include: { learner: true, gradeLevel: true },
+      });
+
+      // 5. Create initial checklist
+      await prisma.applicationChecklist.create({
+        data: {
+          enrollmentId: updated.id,
+          academicStatus: data.academicStatus || "PROMOTED",
+        },
+      });
+
+      await auditLog({
+        userId: req.user!.userId,
+        actionType: "APPLICATION_SUBMITTED",
+        description: `Walk-in special enrollment created and auto-verified for ${updated.learner.firstName} ${updated.learner.lastName} (#${updated.id})`,
+        subjectType: "EnrollmentApplication",
+        recordId: updated.id,
+        req,
+      });
+
+      res.status(201).json(updated);
+    } catch (error) {
+      console.error("[DEBUG_ERROR] specialEnrollment error:", error);
       next(error);
     }
   }
@@ -502,9 +830,25 @@ export function createEarlyRegistrationLifecycleController(
     next: NextFunction,
   ) {
     try {
-      const applicantId = parseInt(String(req.params.id));
-      const { data: applicant, type: appType } =
+      const { id } = req.params;
+      let applicantId = parseInt(String(id));
+      let { data: applicant, type: appType } =
         await findApplicantOrThrow(applicantId);
+
+      // ── Auto-Migration: Phase 1 -> Phase 2 ──
+      if (appType === "EARLY_REGISTRATION") {
+        const migratedApp = await deps.prisma.$transaction(async (tx) => {
+          return await migrateEarlyRegToEnrollment(
+            applicantId,
+            req.user!.userId,
+            tx,
+          );
+        });
+
+        applicantId = migratedApp.id;
+        applicant = migratedApp;
+        appType = "ENROLLMENT";
+      }
 
       assertTransition(
         applicant,
@@ -512,16 +856,20 @@ export function createEarlyRegistrationLifecycleController(
         `Cannot mark as temporarily enrolled. Current status: "${applicant.status}".`,
       );
 
-      const checklist =
-        appType === "ENROLLMENT"
-          ? await prisma.applicationChecklist.findUnique({
-              where: { enrollmentId: applicantId },
-              select: { isPsaBirthCertPresented: true },
-            })
-          : await prisma.applicationChecklist.findUnique({
-              where: { earlyRegistrationId: applicantId },
-              select: { isPsaBirthCertPresented: true },
-            });
+      const checklist = await prisma.applicationChecklist.findUnique({
+        where: { enrollmentId: applicantId },
+        select: {
+          isPsaBirthCertPresented: true,
+          academicStatus: true,
+        },
+      });
+
+      if (checklist?.academicStatus === "RETAINED") {
+        throw new AppError(
+          422,
+          "Retained learners cannot proceed to temporary enrollment.",
+        );
+      }
 
       if (
         applicant.learner.isPendingLrnCreation &&
@@ -631,20 +979,59 @@ export function createEarlyRegistrationLifecycleController(
         "isCertOfRecognitionPresented",
         "isUndertakingSigned",
         "isConfirmationSlipReceived",
+        "academicStatus",
       ] as const;
 
       const filteredData: Partial<
-        Record<(typeof allowedFields)[number], boolean>
+        Record<
+          Exclude<(typeof allowedFields)[number], "academicStatus">,
+          boolean
+        > & {
+          academicStatus: "PROMOTED" | "RETAINED";
+        }
       > = {};
       for (const key of allowedFields) {
         if (data[key] !== undefined) {
-          filteredData[key] = data[key];
+          if (key === "academicStatus") {
+            const normalizedAcademicStatus = String(data[key])
+              .trim()
+              .toUpperCase();
+            if (
+              normalizedAcademicStatus !== "PROMOTED" &&
+              normalizedAcademicStatus !== "RETAINED"
+            ) {
+              throw new AppError(
+                422,
+                "academicStatus must be PROMOTED or RETAINED.",
+              );
+            }
+            filteredData.academicStatus = normalizedAcademicStatus as
+              | "PROMOTED"
+              | "RETAINED";
+            continue;
+          }
+
+          filteredData[key] = Boolean(data[key]);
         }
       }
 
       // Determine if it's Early Registration or Enrollment
       const { data: applicant, type: appType } =
         await findApplicantOrThrow(applicantId);
+
+      if (
+        appType === "ENROLLMENT" &&
+        filteredData.academicStatus === "RETAINED" &&
+        (applicant.status === "OFFICIALLY_ENROLLED" ||
+          applicant.status === "ENROLLED") &&
+        applicant.status !== "WITHDRAWN"
+      ) {
+        throw new AppError(
+          422,
+          `Cannot mark applicant as RETAINED while status is "${applicant.status}".`,
+        );
+      }
+
       const idField =
         appType === "ENROLLMENT" ? "enrollmentId" : "earlyRegistrationId";
 
@@ -669,9 +1056,32 @@ export function createEarlyRegistrationLifecycleController(
         },
       });
 
+      if (
+        appType === "ENROLLMENT" &&
+        filteredData.academicStatus === "RETAINED" &&
+        applicant.status !== "REJECTED"
+      ) {
+        await updateApplicationStatus(applicantId, "REJECTED", {
+          rejectionReason:
+            "ACADEMIC STATUS: RETAINED - route to advising and regular planning.",
+        });
+
+        await auditLog({
+          userId: req.user!.userId,
+          actionType: "APPLICATION_REJECTED",
+          description: `Auto-rejected enrollment application #${applicantId} after checklist academicStatus was set to RETAINED.`,
+          subjectType: "EnrollmentApplication",
+          recordId: applicantId,
+          req,
+        });
+      }
+
       // Record individual audit entries for each changed requirement
       const fieldsToLabel: Partial<
-        Record<(typeof allowedFields)[number], string>
+        Record<
+          Exclude<(typeof allowedFields)[number], "academicStatus">,
+          string
+        >
       > = {
         isPsaBirthCertPresented: "PSA Birth Certificate",
         isSf9Submitted: "SF9 / Report Card",
@@ -701,6 +1111,23 @@ export function createEarlyRegistrationLifecycleController(
             req,
           });
         }
+      }
+
+      if (
+        filteredData.academicStatus !== undefined &&
+        filteredData.academicStatus !== currentChecklist?.academicStatus
+      ) {
+        await auditLog({
+          userId: req.user!.userId,
+          actionType: "CHECKLIST_UPDATED",
+          description: `Set academic status to ${filteredData.academicStatus} for applicant #${applicantId}`,
+          subjectType:
+            appType === "ENROLLMENT"
+              ? "EnrollmentApplication"
+              : "EarlyRegistrationApplication",
+          recordId: applicantId,
+          req,
+        });
       }
 
       await auditLog({
@@ -812,8 +1239,8 @@ export function createEarlyRegistrationLifecycleController(
         `Cannot reject an application with status "${applicant.status}".`,
       );
 
-      // Require reason when rejecting from FAILED/NOT_QUALIFIED state per UX spec
-      if (applicant.status === "NOT_QUALIFIED" && !rejectionReason) {
+      // Require reason when rejecting from FAILED/FAILED_ASSESSMENT state per UX spec
+      if (applicant.status === "FAILED_ASSESSMENT" && !rejectionReason) {
         throw new AppError(
           400,
           "A rejection reason is required when the applicant is not qualified.",
@@ -849,10 +1276,193 @@ export function createEarlyRegistrationLifecycleController(
     }
   }
 
-  // â"€â"€ Mark as eligible (cleared for assessment or regular approval) â"€â"€
+  async function markEligible(req: Request, res: Response, next: NextFunction) {
+    try {
+      const applicantId = parseInt(String(req.params.id));
+      const result = await updateApplicationStatus(applicantId, "ELIGIBLE");
+
+      await auditLog({
+        userId: req.user!.userId,
+        actionType: "APPLICATION_MARKED_ELIGIBLE",
+        description: `Marked application #${applicantId} as eligible for program assessment`,
+        subjectType: "EarlyRegistrationApplication",
+        recordId: applicantId,
+        req,
+      });
+
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async function offerRegular(req: Request, res: Response, next: NextFunction) {
+    try {
+      const applicantId = parseInt(String(req.params.id));
+      const { data: applicant } = await findApplicantOrThrow(applicantId);
+
+      // Downgrade to REGULAR
+      const updated = await deps.prisma.earlyRegistrationApplication.update({
+        where: { id: applicantId },
+        data: {
+          applicantType: "REGULAR",
+          status: "EARLY_REG_SUBMITTED",
+        },
+      });
+
+      await auditLog({
+        userId: req.user!.userId,
+        actionType: "APPLICATION_TYPE_CHANGED",
+        description: `Changed application type to REGULAR for #${applicantId}`,
+        subjectType: "EarlyRegistrationApplication",
+        recordId: applicantId,
+        req,
+      });
+
+      res.json(updated);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async function batchAssignSection(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      const { applicationIds, sectionId } = req.body;
+      const targetSectionId = parseInt(String(sectionId));
+
+      if (!Array.isArray(applicationIds) || applicationIds.length === 0) {
+        throw new AppError(400, "At least one application ID is required.");
+      }
+
+      if (!targetSectionId) {
+        throw new AppError(400, "Section ID is required.");
+      }
+
+      const results = await prisma.$transaction(async (tx) => {
+        // 1. Lock and check section
+        const [section] = await tx.$queryRaw<
+          {
+            id: number;
+            maxCapacity: number;
+            gradeLevelId: number;
+            programType: string;
+          }[]
+        >`
+          SELECT 
+            id, 
+            "max_capacity" as "maxCapacity", 
+            "grade_level_id" as "gradeLevelId",
+            "program_type" as "programType"
+          FROM "sections" 
+          WHERE id = ${targetSectionId} 
+          FOR UPDATE
+        `;
+
+        if (!section) throw new AppError(404, "Section not found");
+
+        const enrolledCount = await tx.enrollmentRecord.count({
+          where: { sectionId: targetSectionId },
+        });
+
+        if (enrolledCount + applicationIds.length > section.maxCapacity) {
+          throw new AppError(
+            422,
+            `Section capacity exceeded. Only ${section.maxCapacity - enrolledCount} seats remaining.`,
+          );
+        }
+
+        const batchResults = [];
+        const { generatePortalPin } =
+          await import("../../learner/portal-pin.service.js");
+
+        for (const id of applicationIds) {
+          const applicantId = parseInt(String(id));
+          const applicant = await tx.enrollmentApplication.findUnique({
+            where: { id: applicantId },
+            include: { learner: true },
+          });
+
+          if (!applicant) continue;
+
+          // Simple validation: applicant must be sectioning-ready.
+          if (
+            applicant.status !== "READY_FOR_SECTIONING" &&
+            applicant.status !== "VERIFIED"
+          ) {
+            continue;
+          }
+
+          assertReadingProfileCompleted(
+            applicant,
+            `Reading Profile is required before section assignment (application #${applicantId}).`,
+          );
+
+          // Check Grade Level
+          if (section.gradeLevelId !== applicant.gradeLevelId) continue;
+
+          // Create Enrollment Record
+          await tx.enrollmentRecord.create({
+            data: {
+              enrollmentApplicationId: applicantId,
+              sectionId: targetSectionId,
+              schoolYearId: applicant.schoolYearId,
+              enrolledById: req.user!.userId,
+            },
+          });
+
+          // Enroll
+          const { hash: pinHash } = generatePortalPin();
+
+          await tx.enrollmentApplication.update({
+            where: { id: applicantId },
+            data: {
+              status: "OFFICIALLY_ENROLLED",
+              portalPin: pinHash,
+              portalPinChangedAt: new Date(),
+              isProfileLocked: true,
+              profileLockedAt: new Date(),
+              profileLockedById: req.user!.userId,
+            },
+          });
+
+          await tx.learner.update({
+            where: { id: applicant.learnerId },
+            data: { isPendingLrnCreation: false },
+          });
+
+          batchResults.push(applicantId);
+        }
+
+        return batchResults;
+      });
+
+      await auditLog({
+        userId: req.user!.userId,
+        actionType: "BATCH_SECTION_ASSIGNMENT",
+        description: `Batch assigned and enrolled ${results.length} students to section #${targetSectionId}`,
+        subjectType: "Section",
+        recordId: targetSectionId,
+        req,
+      });
+
+      res.json({
+        success: true,
+        count: results.length,
+        applicationIds: results,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   return {
     approve,
     verify,
+    updateReadingProfile,
     enroll,
     markTemporarilyEnrolled,
     assignLrn,
@@ -860,6 +1470,9 @@ export function createEarlyRegistrationLifecycleController(
     requestRevision,
     withdraw,
     reject,
+    unenroll,
+    specialEnrollment,
+    batchAssignSection,
   };
 }
 
@@ -867,7 +1480,11 @@ const lifecycleController = createEarlyRegistrationLifecycleController();
 
 export const approve = lifecycleController.approve;
 export const verify = lifecycleController.verify;
+export const updateReadingProfile = lifecycleController.updateReadingProfile;
 export const enroll = lifecycleController.enroll;
+export const unenroll = lifecycleController.unenroll;
+export const specialEnrollment = lifecycleController.specialEnrollment;
+export const batchAssignSection = lifecycleController.batchAssignSection;
 export const markTemporarilyEnrolled =
   lifecycleController.markTemporarilyEnrolled;
 export const assignLrn = lifecycleController.assignLrn;

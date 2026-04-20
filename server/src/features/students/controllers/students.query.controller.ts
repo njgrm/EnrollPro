@@ -62,11 +62,21 @@ const buildAddress = (addresses: AddressLike[] = []): string | null => {
     .join(", ");
 };
 
+const parsePositiveInt = (value: unknown): number | null => {
+  const parsed = Number.parseInt(String(value ?? ""), 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
 export const createStudentsQueryController = (
   deps: StudentsControllerDeps = createStudentsControllerDeps(),
 ) => {
   const getStudents = async (req: Request, res: Response) => {
     try {
+      const schoolYearId = parsePositiveInt(req.query.schoolYearId);
+      if (!schoolYearId) {
+        return res.status(400).json({ message: "schoolYearId is required" });
+      }
+
       const {
         applications,
         total,
@@ -80,6 +90,12 @@ export const createStudentsQueryController = (
         );
 
         return {
+          learningProgram:
+            applicant.enrollmentRecord?.section.programType ||
+            applicant.programDetail?.scpType ||
+            "REGULAR",
+          dateEnrolled:
+            applicant.enrollmentRecord?.enrolledAt || applicant.createdAt,
           id: applicant.id,
           lrn: applicant.learner?.lrn,
           fullName: applicant.learner ? buildFullName(applicant.learner) : "",
@@ -95,6 +111,14 @@ export const createStudentsQueryController = (
           emailAddress: applicant.earlyRegistration?.email ?? null,
           trackingNumber: applicant.trackingNumber,
           status: applicant.status,
+          lifecycleOutcome: applicant.enrollmentRecord?.eosyStatus || null,
+          dropOutReason: applicant.enrollmentRecord?.dropOutReason || null,
+          dropOutDate: applicant.enrollmentRecord?.dropOutDate || null,
+          transferOutDate: applicant.enrollmentRecord?.transferOutDate || null,
+          transferOutSchoolName:
+            applicant.enrollmentRecord?.transferOutSchoolName || null,
+          transferOutReason:
+            applicant.enrollmentRecord?.transferOutReason || null,
           gradeLevel: applicant.gradeLevel.name,
           gradeLevelId: applicant.gradeLevelId,
           section: applicant.enrollmentRecord?.section.name || null,
@@ -116,6 +140,25 @@ export const createStudentsQueryController = (
     } catch (error) {
       console.error("Error fetching students:", error);
       res.status(500).json({ message: "Failed to fetch students" });
+    }
+  };
+
+  const getStudentsSummary = async (req: Request, res: Response) => {
+    try {
+      const schoolYearId = parsePositiveInt(req.query.schoolYearId);
+      if (!schoolYearId) {
+        return res.status(400).json({ message: "schoolYearId is required" });
+      }
+
+      const summary = await deps.fetchStudentsSummary({
+        schoolYearId,
+        status: req.query.status as string | undefined,
+      });
+
+      res.json(summary);
+    } catch (error) {
+      console.error("Error fetching students summary:", error);
+      res.status(500).json({ message: "Failed to fetch students summary" });
     }
   };
 
@@ -209,6 +252,13 @@ export const createStudentsQueryController = (
               id: applicant.enrollmentRecord.id,
               section: applicant.enrollmentRecord.section.name,
               sectionId: applicant.enrollmentRecord.sectionId,
+              eosyStatus: applicant.enrollmentRecord.eosyStatus,
+              dropOutReason: applicant.enrollmentRecord.dropOutReason,
+              dropOutDate: applicant.enrollmentRecord.dropOutDate,
+              transferOutDate: applicant.enrollmentRecord.transferOutDate,
+              transferOutSchoolName:
+                applicant.enrollmentRecord.transferOutSchoolName,
+              transferOutReason: applicant.enrollmentRecord.transferOutReason,
               advisingTeacher: applicant.enrollmentRecord.section
                 .advisingTeacher
                 ? buildFullName(
@@ -232,10 +282,12 @@ export const createStudentsQueryController = (
 
   return {
     getStudents,
+    getStudentsSummary,
     getStudentById,
   };
 };
 
 const studentsQueryController = createStudentsQueryController();
 
-export const { getStudents, getStudentById } = studentsQueryController;
+export const { getStudents, getStudentsSummary, getStudentById } =
+  studentsQueryController;

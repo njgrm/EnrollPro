@@ -20,14 +20,12 @@ interface Props {
   onAssignLrn?: () => void | Promise<void>;
   onEnroll?: () => void | Promise<void>;
   onScheduleInterview?: () => void;
-  onMarkInterviewPassed?: () => void | Promise<void>;
   /** New: schedule a specific pipeline step */
   onScheduleStep?: (step: AssessmentStep) => void;
   /** New: record result for a specific pipeline step */
   onRecordStepResult?: (step: AssessmentStep) => void;
   onMarkVerified?: () => void | Promise<void>;
   onSetProfileLock?: (lock: boolean) => void | Promise<void>;
-  interviewPassChecked?: boolean;
   isMandatoryDocumentsMet?: boolean;
 }
 
@@ -80,7 +78,6 @@ function getAssessmentDecisionAction(
 
 export function ActionButtons({
   applicant,
-  interviewPassChecked,
   isMandatoryDocumentsMet = false,
   ...handlers
 }: Props) {
@@ -92,7 +89,7 @@ export function ActionButtons({
   const isSCP = !isRegular;
   const isEnrollmentVerificationMode = Boolean(handlers.onMarkVerified);
   const canToggleProfileLock =
-    status === "ENROLLED" &&
+    (status === "OFFICIALLY_ENROLLED" || status === "ENROLLED") &&
     userRole === "SYSTEM_ADMIN" &&
     Boolean(handlers.onSetProfileLock);
 
@@ -104,9 +101,17 @@ export function ActionButtons({
     : null;
 
   if (isEnrollmentVerificationMode) {
+    const canMarkAsVerified = [
+      "EARLY_REG_SUBMITTED",
+      "PENDING_VERIFICATION",
+      "SUBMITTED",
+      "UNDER_REVIEW",
+      "READY_FOR_ENROLLMENT",
+    ].includes(status);
+
     return (
       <div className="flex flex-col gap-2 p-4 border-t bg-background mt-auto">
-        {status === "UNDER_REVIEW" ? (
+        {canMarkAsVerified ? (
           <>
             <Button
               className="w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90 font-bold"
@@ -147,7 +152,8 @@ export function ActionButtons({
           </>
         )}
 
-        {((status === "ENROLLED" && !canToggleProfileLock) ||
+        {(((status === "OFFICIALLY_ENROLLED" || status === "ENROLLED") &&
+          !canToggleProfileLock) ||
           status === "REJECTED" ||
           status === "WITHDRAWN") && (
           <p className="text-sm text-muted-foreground text-center py-2">
@@ -162,7 +168,13 @@ export function ActionButtons({
     <div className="flex flex-col gap-2 p-4 border-t bg-background mt-auto">
       {/* Existing action for regular applicants */}
       {isRegular &&
-        ["SUBMITTED", "UNDER_REVIEW", "ELIGIBLE"].includes(status) && (
+        [
+          "EARLY_REG_SUBMITTED",
+          "PENDING_VERIFICATION",
+          "SUBMITTED",
+          "UNDER_REVIEW",
+          "ELIGIBLE",
+        ].includes(status) && (
           <>
             <Button
               className="w-full bg-emerald-600 text-white hover:bg-emerald-700"
@@ -181,8 +193,10 @@ export function ActionButtons({
 
       {/* Temporary Enrollment - Per DepEd Order No. 3, s. 2018 */}
       {(status === "UNDER_REVIEW" ||
+        status === "PENDING_VERIFICATION" ||
+        status === "READY_FOR_SECTIONING" ||
         status === "ELIGIBLE" ||
-        status === "PRE_REGISTERED") && (
+        status === "READY_FOR_ENROLLMENT") && (
         <Button
           variant="secondary"
           className="w-full border-blue-300 text-blue-800 bg-blue-50 hover:bg-blue-100 font-bold"
@@ -192,45 +206,28 @@ export function ActionButtons({
       )}
 
       {/* SCP: Verify & Schedule first step (pipeline-aware) */}
-      {isSCP && ["SUBMITTED", "UNDER_REVIEW", "ELIGIBLE"].includes(status) && (
-        <>
-          {hasSteps && nextPending && handlers.onScheduleStep ? (
-            <Button
-              className="w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90 font-bold"
-              onClick={() => handlers.onScheduleStep!(nextPending)}
-              disabled={!isMandatoryDocumentsMet}>
-              Verify &amp; Schedule: {getStepLabel(nextPending)}
-            </Button>
-          ) : (
-            <Button
-              className="w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90 font-bold"
-              onClick={handlers.onScheduleExam}
-              disabled={!isMandatoryDocumentsMet}>
-              Verify &amp; Schedule Exam
-            </Button>
-          )}
-          <Button
-            variant="outline"
-            className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground font-bold"
-            onClick={handlers.onReject}>
-            Reject Application
-          </Button>
-        </>
-      )}
-
-      {/* SCP: Assessment Scheduled — schedule next step */}
       {isSCP &&
-        status === "ASSESSMENT_SCHEDULED" &&
-        !assessmentDecisionAction && (
+        [
+          "EARLY_REG_SUBMITTED",
+          "PENDING_VERIFICATION",
+          "SUBMITTED",
+          "UNDER_REVIEW",
+          "ELIGIBLE",
+        ].includes(status) && (
           <>
-            {/* If there are more pending steps, allow scheduling the next one */}
-            {hasSteps && nextPending && handlers.onScheduleStep && (
+            {hasSteps && nextPending && handlers.onScheduleStep ? (
               <Button
-                variant="outline"
-                className="w-full bg-primary text-primary-foreground font-bold"
+                className="w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90 font-bold"
                 onClick={() => handlers.onScheduleStep!(nextPending)}
                 disabled={!isMandatoryDocumentsMet}>
-                Schedule Next: {getStepLabel(nextPending)}
+                Verify &amp; Schedule: {getStepLabel(nextPending)}
+              </Button>
+            ) : (
+              <Button
+                className="w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90 font-bold"
+                onClick={handlers.onScheduleExam}
+                disabled={!isMandatoryDocumentsMet}>
+                Verify &amp; Schedule Exam
               </Button>
             )}
             <Button
@@ -242,8 +239,30 @@ export function ActionButtons({
           </>
         )}
 
+      {/* SCP: Assessment Scheduled — schedule next step */}
+      {isSCP && status === "EXAM_SCHEDULED" && !assessmentDecisionAction && (
+        <>
+          {/* If there are more pending steps, allow scheduling the next one */}
+          {hasSteps && nextPending && handlers.onScheduleStep && (
+            <Button
+              variant="outline"
+              className="w-full bg-primary text-primary-foreground font-bold"
+              onClick={() => handlers.onScheduleStep!(nextPending)}
+              disabled={!isMandatoryDocumentsMet}>
+              Schedule Next: {getStepLabel(nextPending)}
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground font-bold"
+            onClick={handlers.onReject}>
+            Reject Application
+          </Button>
+        </>
+      )}
+
       {isSCP &&
-        (status === "ASSESSMENT_SCHEDULED" || status === "ASSESSMENT_TAKEN") &&
+        (status === "EXAM_SCHEDULED" || status === "ASSESSMENT_TAKEN") &&
         assessmentDecisionAction && (
           <Button
             className={`w-full font-bold ${
@@ -274,53 +293,18 @@ export function ActionButtons({
         </>
       )}
 
-      {isSCP && status === "INTERVIEW_SCHEDULED" && (
-        <>
-          {interviewPassChecked && handlers.onMarkInterviewPassed ? (
-            <Button
-              className="w-full bg-emerald-600 text-white hover:bg-emerald-700 font-bold"
-              onClick={handlers.onMarkInterviewPassed}>
-              Ready for Enrollment
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground font-bold"
-              onClick={handlers.onReject}>
-              Reject Application
-            </Button>
-          )}
-        </>
-      )}
-
       {(status === "PASSED" || status === "UNDER_REVIEW") &&
-        handlers.onEnroll && (
-          <>
-            {isPendingLrnCreation && handlers.onAssignLrn && (
-              <Button
-                variant="outline"
-                className="w-full border-amber-500 text-amber-700 hover:bg-amber-50 font-bold"
-                onClick={handlers.onAssignLrn}>
-                Assign LRN
-              </Button>
-            )}
-            <Button
-              className="w-full bg-emerald-600 text-white hover:bg-emerald-700 font-bold"
-              onClick={handlers.onEnroll}
-              disabled={isPendingLrnCreation}
-              title={
-                isPendingLrnCreation
-                  ? "Assign an LRN first before finalizing enrollment."
-                  : undefined
-              }>
-              {isPendingLrnCreation
-                ? "Assign LRN Before Final Enrollment"
-                : "Finalize Enrollment"}
-            </Button>
-          </>
+        isPendingLrnCreation &&
+        handlers.onAssignLrn && (
+          <Button
+            variant="outline"
+            className="w-full border-amber-500 text-amber-700 hover:bg-amber-50 font-bold"
+            onClick={handlers.onAssignLrn}>
+            Assign LRN
+          </Button>
         )}
 
-      {isSCP && status === "NOT_QUALIFIED" && (
+      {isSCP && status === "FAILED_ASSESSMENT" && (
         <>
           <Button
             className="w-full bg-[hsl(var(--primary))] text-primary-foreground hover:opacity-90 font-bold"
@@ -356,7 +340,8 @@ export function ActionButtons({
         </>
       )}
 
-      {((status === "ENROLLED" && !canToggleProfileLock) ||
+      {(((status === "OFFICIALLY_ENROLLED" || status === "ENROLLED") &&
+        !canToggleProfileLock) ||
         status === "REJECTED" ||
         status === "WITHDRAWN") && (
         <p className="text-sm text-muted-foreground text-center py-2">

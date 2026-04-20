@@ -1,11 +1,17 @@
 import { z } from "zod";
 import {
+  ApplicantTypeEnum,
+  ApplicationStatusEnum,
+  ReadingProfileLevelEnum,
   SexEnum,
   GradeLevelEnum,
   ScpTypeEnum,
   LastSchoolTypeEnum,
   LearnerTypeEnum,
   AssessmentKindEnum,
+  TrackingCurrentStepEnum,
+  TrackingProgramTypeEnum,
+  TrackingStatusEnum,
 } from "../constants/index.js";
 
 // ─── Shared sub-schemas ────────────────────────────────
@@ -61,9 +67,9 @@ export const applicationSubmitSchema = z
       .regex(/^\d{12}$/, "LRN must be exactly 12 numeric digits")
       .optional()
       .nullable(),
-    psaBirthCertNumber: z.string().optional().nullable(),
+    psaBirthCertNumber: z.string().trim().toUpperCase().optional().nullable(),
 
-    earlyRegistrationId: z.number().int().positive().optional(),
+    earlyRegistrationId: z.number().int().positive().optional().nullable(),
 
     gradeLevel: GradeLevelEnum,
     isScpApplication: z.boolean().default(false),
@@ -176,7 +182,70 @@ export const applicationSubmitSchema = z
         message: "Select an SCP track to continue.",
       });
     }
+
+    if (data.isScpApplication && !data.earlyRegistrationId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["earlyRegistrationId"],
+        message:
+          "SCP applicants must complete Early Registration and run LRN lookup before final enrollment.",
+      });
+    }
   });
+
+export const assessmentTrackerStepSchema = z.object({
+  stepOrder: z.number().int().min(1),
+  kind: z.string(),
+  label: z.string(),
+  status: z.enum(["PENDING", "SCHEDULED", "COMPLETED"]),
+  scheduledDate: z.string().nullable(),
+  scheduledTime: z.string().nullable(),
+  venue: z.string().nullable(),
+  result: z.string().nullable(),
+  score: z.number().nullable(),
+  notes: z.string().nullable(),
+  conductedAt: z.string().nullable(),
+});
+
+export const trackingAssessmentDataSchema = z
+  .object({
+    phaseStatus: z.enum(["NOT_STARTED", "IN_PROGRESS", "COMPLETED"]),
+    latestSchedule: z
+      .object({
+        stepOrder: z.number().int().min(1),
+        label: z.string(),
+        kind: z.string(),
+        scheduledDate: z.string().nullable(),
+        scheduledTime: z.string().nullable(),
+        venue: z.string().nullable(),
+      })
+      .nullable(),
+    steps: z.array(assessmentTrackerStepSchema),
+  })
+  .nullable();
+
+export const applicationTrackingStateSchema = z.object({
+  programType: TrackingProgramTypeEnum,
+  status: TrackingStatusEnum,
+  rawStatus: ApplicationStatusEnum,
+  currentStep: TrackingCurrentStepEnum,
+  assessmentData: trackingAssessmentDataSchema,
+});
+
+export const applicationSubmitResponseSchema = z
+  .object({
+    trackingNumber: z.string().min(1),
+    applicantType: ApplicantTypeEnum,
+  })
+  .merge(applicationTrackingStateSchema);
+
+export const applicationTrackResponseSchema = z
+  .object({
+    trackingNumber: z.string().min(1),
+    applicantType: ApplicantTypeEnum,
+  })
+  .merge(applicationTrackingStateSchema)
+  .passthrough();
 
 // ─── Application Action Schemas ────────────────────────
 export const approveSchema = z.object({
@@ -186,6 +255,86 @@ export const approveSchema = z.object({
 export const rejectSchema = z.object({
   rejectionReason: z.string().optional(),
 });
+
+export const unenrollSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(1, "Reason is required")
+    .max(200, "Reason must not exceed 200 characters"),
+  note: z
+    .string()
+    .trim()
+    .max(500, "Note must not exceed 500 characters")
+    .optional()
+    .nullable(),
+});
+
+export const readingProfileUpdateSchema = z.object({
+  readingProfileLevel: ReadingProfileLevelEnum,
+  readingProfileNotes: z
+    .string()
+    .trim()
+    .max(500, "Reading profile notes must not exceed 500 characters")
+    .optional()
+    .nullable(),
+});
+
+export const specialEnrollmentSchema = z
+  .object({
+    lrn: z
+      .string()
+      .trim()
+      .regex(/^\d{12}$/, "LRN must be exactly 12 numeric digits")
+      .optional()
+      .nullable(),
+    firstName: z.string().trim().min(1, "First name is required"),
+    lastName: z.string().trim().min(1, "Last name is required"),
+    middleName: z.string().trim().optional().nullable(),
+    extensionName: z.string().trim().optional().nullable(),
+    birthdate: z.string().or(z.date()),
+    sex: SexEnum,
+    learnerType: z.enum(["NEW_ENROLLEE", "TRANSFEREE", "RETURNING", "ALS"]),
+    applicantType: ApplicantTypeEnum.default("REGULAR"),
+    gradeLevelId: z.number().int().positive("Grade level is required"),
+    academicStatus: z.enum(["PROMOTED", "RETAINED"]).default("PROMOTED"),
+    originSchoolName: z.string().trim().optional().nullable(),
+    peptCertificateNumber: z.string().trim().optional().nullable(),
+    peptPassingDate: z.string().or(z.date()).optional().nullable(),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      data.learnerType === "TRANSFEREE" &&
+      (!data.originSchoolName || data.originSchoolName.trim().length === 0)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["originSchoolName"],
+        message: "Origin school name is required for transferees.",
+      });
+    }
+
+    if (data.learnerType === "ALS") {
+      if (
+        !data.peptCertificateNumber ||
+        data.peptCertificateNumber.length === 0
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["peptCertificateNumber"],
+          message: "PEPT certificate number is required for ALS/PEPT passers.",
+        });
+      }
+
+      if (!data.peptPassingDate) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["peptPassingDate"],
+          message: "PEPT passing date is required for ALS/PEPT passers.",
+        });
+      }
+    }
+  });
 
 export const scheduleExamSchema = z.object({
   examDate: z.string().or(z.date()),
@@ -249,6 +398,7 @@ export const updateChecklistSchema = z.object({
   isCertOfRecognitionPresented: z.boolean().optional(),
   isUndertakingSigned: z.boolean().optional(),
   isConfirmationSlipReceived: z.boolean().optional(),
+  academicStatus: z.enum(["PROMOTED", "RETAINED"]).optional(),
 });
 
 export const requestRevisionSchema = z.object({
@@ -381,6 +531,7 @@ export const scpProgramConfigUpdateSchema = z.object({
   scpType: ScpTypeEnum,
   isOffered: z.boolean().default(false),
   isTwoPhase: z.boolean().optional().default(false),
+  maxSlots: z.number().int().positive().optional().nullable(),
   cutoffScore: z.number().min(0).max(100).optional().nullable(),
   notes: z.string().optional().nullable(),
   gradeRequirements: z.array(scpGradeRequirementSchema).optional().nullable(),
@@ -397,15 +548,20 @@ export const updateScpProgramConfigsSchema = z.object({
 
 // ─── Batch Processing Schema ───────────────────────────
 const BATCH_TARGET_STATUSES = [
+  "EARLY_REG_SUBMITTED",
+  "PRE_REGISTERED",
+  "PENDING_VERIFICATION",
+  "READY_FOR_SECTIONING",
+  "OFFICIALLY_ENROLLED",
+  "SUBMITTED",
   "VERIFIED",
   "UNDER_REVIEW",
   "ELIGIBLE",
-  "ASSESSMENT_SCHEDULED",
+  "EXAM_SCHEDULED",
   "ASSESSMENT_TAKEN",
   "PASSED",
   "INTERVIEW_SCHEDULED",
-  "PRE_REGISTERED",
-  "NOT_QUALIFIED",
+  "READY_FOR_ENROLLMENT",
   "REJECTED",
   "WITHDRAWN",
 ] as const;
@@ -418,4 +574,124 @@ export const batchProcessSchema = z.object({
     .min(1, "At least one applicant ID is required")
     .max(500, "Cannot process more than 500 applicants at once"),
   targetStatus: batchTargetStatusSchema,
+});
+
+const CHECKLIST_FIELD_KEYS = [
+  "isPsaBirthCertPresented",
+  "isOriginalPsaBcCollected",
+  "isSf9Submitted",
+  "isSf10Requested",
+  "isGoodMoralPresented",
+  "isMedicalEvalSubmitted",
+  "isCertOfRecognitionPresented",
+  "isUndertakingSigned",
+  "isConfirmationSlipReceived",
+] as const;
+
+const ACADEMIC_STATUS_VALUES = ["PROMOTED", "RETAINED"] as const;
+
+export const checklistFieldKeySchema = z.enum(CHECKLIST_FIELD_KEYS);
+export const academicStatusSchema = z.enum(ACADEMIC_STATUS_VALUES);
+
+const checklistUpdateInputSchema = z.object({
+  isPsaBirthCertPresented: z.boolean().optional(),
+  isOriginalPsaBcCollected: z.boolean().optional(),
+  isSf9Submitted: z.boolean().optional(),
+  isSf10Requested: z.boolean().optional(),
+  isGoodMoralPresented: z.boolean().optional(),
+  isMedicalEvalSubmitted: z.boolean().optional(),
+  isCertOfRecognitionPresented: z.boolean().optional(),
+  isUndertakingSigned: z.boolean().optional(),
+  isConfirmationSlipReceived: z.boolean().optional(),
+  academicStatus: academicStatusSchema.optional(),
+});
+
+export const batchVerifyDocumentsPreviewSchema = z.object({
+  ids: z
+    .array(z.number().int().positive())
+    .min(1, "Select at least one applicant")
+    .max(500, "Cannot preview more than 500 applicants at once"),
+});
+
+export const batchVerifyDocumentsSchema = z.object({
+  applicants: z
+    .array(
+      z.object({
+        id: z.number().int().positive(),
+        checklist: checklistUpdateInputSchema.default({}),
+        academicStatus: academicStatusSchema.optional(),
+      }),
+    )
+    .min(1, "Select at least one applicant")
+    .max(500, "Cannot process more than 500 applicants at once"),
+  expectedStatuses: z.record(z.string(), z.string().min(1)).optional(),
+});
+
+export const batchAssignRegularSectionSchema = z.object({
+  ids: z
+    .array(z.number().int().positive())
+    .min(1, "Select at least one applicant")
+    .max(500, "Cannot process more than 500 applicants at once"),
+  sectionId: z.number().int().positive("Target section is required"),
+  expectedStatuses: z.record(z.string(), z.string().min(1)).optional(),
+});
+
+export const batchScheduleStepSchema = z.object({
+  ids: z
+    .array(z.number().int().positive())
+    .min(1, "Select at least one applicant")
+    .max(500, "Cannot process more than 500 applicants at once"),
+  expectedStatuses: z.record(z.string(), z.string().min(1)).optional(),
+  mode: z.enum(["EXAM", "INTERVIEW"]),
+  scheduledDate: z.string().or(z.date()),
+  scheduledTime: z.string().min(1, "Scheduled time is required"),
+  venue: z.string().min(1, "Venue is required"),
+  notes: z.string().optional().nullable(),
+  sendEmail: z.boolean().default(true),
+});
+
+export const batchSaveScoresSchema = z.object({
+  rows: z
+    .array(
+      z.object({
+        id: z.number().int().positive(),
+        componentScores: z
+          .record(z.string(), z.number().min(0).max(100))
+          .default({}),
+        totalScore: z.number().min(0).max(100).optional(),
+        absentNoShow: z.boolean().optional().default(false),
+        remarks: z.string().max(500).optional().nullable(),
+      }),
+    )
+    .min(1, "At least one score row is required")
+    .max(500, "Cannot process more than 500 applicants at once"),
+  expectedStatuses: z.record(z.string(), z.string().min(1)).optional(),
+});
+
+export const batchFinalizeInterviewSchema = z.object({
+  rows: z
+    .array(
+      z
+        .object({
+          id: z.number().int().positive(),
+          decision: z.enum(["PASS", "REJECT"]),
+          interviewScore: z.number().min(0).max(100).optional().nullable(),
+          remarks: z.string().max(500).optional().nullable(),
+          rejectOutcome: z
+            .enum(["EARLY_REG_SUBMITTED", "PENDING_VERIFICATION", "REJECTED"])
+            .optional(),
+        })
+        .superRefine((value, ctx) => {
+          if (value.decision === "REJECT" && !value.rejectOutcome) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "rejectOutcome is required when decision is REJECT",
+              path: ["rejectOutcome"],
+            });
+          }
+        }),
+    )
+    .min(1, "At least one interview result is required")
+    .max(500, "Cannot process more than 500 applicants at once"),
+  expectedStatuses: z.record(z.string(), z.string().min(1)).optional(),
 });

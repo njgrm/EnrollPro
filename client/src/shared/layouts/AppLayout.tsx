@@ -5,7 +5,6 @@ import { Toaster } from "sileo";
 import {
   LayoutDashboard,
   ClipboardList,
-  FileText,
   CheckCircle,
   Users,
   School,
@@ -15,12 +14,13 @@ import {
   ChevronsUpDown,
   ChevronDown,
   Calendar,
-  UserPlus,
   GraduationCap,
   Shield,
   Activity,
   Mail,
   AlertTriangle,
+  CloudUpload,
+  TrendingUp,
 } from "lucide-react";
 
 import {
@@ -59,6 +59,7 @@ import {
 } from "@/shared/ui/tooltip";
 import { AccessibilityMenu } from "@/shared/components/AccessibilityMenu";
 import { useAccessibility } from "@/shared/hooks/useAccessibility";
+import { NoSchoolYearState } from "@/features/settings/pages/curriculum/components/NoSchoolYearState";
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace("/api", "") || "";
 
@@ -166,16 +167,9 @@ function NavItem({
   label: string;
   pathname: string;
 }) {
-  let isActive =
+  const isActive =
     pathname === to || (to !== "/" && pathname.startsWith(to + "/"));
 
-  const isEnrollmentRequirementsRoute =
-    pathname === "/enrollment/requirements" ||
-    pathname.startsWith("/enrollment/requirements/");
-
-  if (isEnrollmentRequirementsRoute && to !== "/enrollment/requirements") {
-    isActive = false;
-  }
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild isActive={isActive} tooltip={label}>
@@ -243,11 +237,28 @@ function NavItemChild({
     isActive = false;
   }
 
-  // BASIC EDUCATION EARLY REGISTRATION FORM detail pages (/monitoring/early-registration/:id) should highlight Monitoring
+  // Basic Education Early Registration Form detail pages (/monitoring/early-registration/:id) should highlight Monitoring
   if (
     to === "/monitoring/early-registration" &&
     pathname.startsWith("/monitoring/early-registration/") &&
     !pathname.startsWith("/monitoring/early-registration/pipelines")
+  ) {
+    isActive = true;
+  }
+
+  // Enrollment BOSY (/monitoring/enrollment) should NOT highlight when EOSY is active
+  if (
+    to === "/monitoring/enrollment" &&
+    pathname.startsWith("/monitoring/enrollment/eosy")
+  ) {
+    isActive = false;
+  }
+
+  // Enrollment detail routes (/monitoring/enrollment/* except EOSY) should highlight BOSY Registration
+  if (
+    to === "/monitoring/enrollment" &&
+    pathname.startsWith("/monitoring/enrollment/") &&
+    !pathname.startsWith("/monitoring/enrollment/eosy")
   ) {
     isActive = true;
   }
@@ -274,7 +285,6 @@ function AppSidebar() {
   const { user, clearAuth } = useAuthStore();
   const { schoolName, logoUrl, activeSchoolYearId } = useSettingsStore();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [pendingCount, setPendingCount] = useState<number>(0);
   const [activeYearLabel, setActiveYearLabel] = useState<string | null>(null);
 
   const isAdmin = user?.role === "SYSTEM_ADMIN";
@@ -282,12 +292,6 @@ function AppSidebar() {
   const pathname = location.pathname;
 
   useEffect(() => {
-    api
-      .get("/dashboard/stats")
-      .then((r) =>
-        setPendingCount(r.data?.stats?.earlyRegistration?.submitted ?? 0),
-      )
-      .catch(() => {});
     api
       .get("/school-years")
       .then((r) => {
@@ -377,65 +381,46 @@ function AppSidebar() {
                       pathname={pathname}
                     />
 
-                    <NavItemParent
+                    <NavItem
+                      to="/monitoring/early-registration"
                       icon={ClipboardList}
                       label="Early Registration"
+                      pathname={pathname}
+                    />
+
+                    <NavItemParent
+                      icon={CheckCircle}
+                      label="Enrollment Operations"
                       isActive={false}>
                       <NavItemChild
-                        to="/monitoring/early-registration"
-                        icon={FileText}
-                        label="Application Monitoring"
-                        pathname={pathname}
-                        badgeCount={pendingCount}
-                      />
-                      <NavItemChild
-                        to="/monitoring/early-registration/pipelines"
+                        to="/monitoring/enrollment"
                         icon={ClipboardList}
-                        label="Registration Pipelines"
+                        label="BOSY Registration"
                         pathname={pathname}
                       />
                       <NavItemChild
-                        to="/monitoring/f2f-early-registration"
-                        icon={UserPlus}
-                        label="Walk-In Registration"
+                        to="/monitoring/enrollment/eosy"
+                        icon={TrendingUp}
+                        label="EOSY Updating"
                         pathname={pathname}
                       />
                     </NavItemParent>
 
-                    <NavItem
-                      to="/monitoring/enrollment"
-                      icon={CheckCircle}
-                      label="Enrollment"
-                      pathname={pathname}
-                    />
-
-                    <NavDivider label="Records" />
+                    <NavDivider label="Management" />
                     <NavItem
                       to="/students"
                       icon={Users}
-                      label="Students"
+                      label="Learner Directory"
                       pathname={pathname}
                     />
-                    <NavItem
-                      to="/monitoring/enrollment/requirements"
-                      icon={FileText}
-                      label="Enrollment Requirements"
-                      pathname={pathname}
-                    />
-                    <NavItem
-                      to="/audit-logs"
-                      icon={ScrollText}
-                      label="Audit Logs"
-                      pathname={pathname}
-                    />
-
-                    <NavDivider label="Management" />
-                    <NavItem
-                      to="/teachers"
-                      icon={GraduationCap}
-                      label="Teachers"
-                      pathname={pathname}
-                    />
+                    {isAdmin && (
+                      <NavItem
+                        to="/teachers"
+                        icon={GraduationCap}
+                        label="Teachers"
+                        pathname={pathname}
+                      />
+                    )}
                     <NavItem
                       to="/sections"
                       icon={School}
@@ -445,28 +430,47 @@ function AppSidebar() {
                   </>
                 )}
 
-                {/* SYSTEM_ADMIN exclusive */}
-                {isAdmin && (
+                {(isRegistrar || isAdmin) && (
                   <>
                     <NavDivider label="System" />
+                    {isAdmin && (
+                      <NavItem
+                        to="/admin/users"
+                        icon={Shield}
+                        label="User Management"
+                        pathname={pathname}
+                      />
+                    )}
+                    {isAdmin && (
+                      <NavItem
+                        to="/admin/email-logs"
+                        icon={Mail}
+                        label="Email Logs"
+                        pathname={pathname}
+                      />
+                    )}
                     <NavItem
-                      to="/admin/users"
-                      icon={Shield}
-                      label="User Management"
+                      to="/audit-logs"
+                      icon={ScrollText}
+                      label="Audit Logs"
                       pathname={pathname}
                     />
-                    <NavItem
-                      to="/admin/email-logs"
-                      icon={Mail}
-                      label="Email Logs"
-                      pathname={pathname}
-                    />
-                    <NavItem
-                      to="/admin/system"
-                      icon={Activity}
-                      label="System Health"
-                      pathname={pathname}
-                    />
+                    {isAdmin && (
+                      <NavItem
+                        to="/admin/atlas"
+                        icon={CloudUpload}
+                        label="ATLAS Sync"
+                        pathname={pathname}
+                      />
+                    )}
+                    {isAdmin && (
+                      <NavItem
+                        to="/admin/system"
+                        icon={Activity}
+                        label="System Health"
+                        pathname={pathname}
+                      />
+                    )}
                     <NavItem
                       to="/settings"
                       icon={Settings}
@@ -546,13 +550,32 @@ function AppSidebar() {
 }
 
 export default function AppLayout({ children }: { children: ReactNode }) {
-  const { selectedAccentHsl, colorScheme, accentForeground } =
-    useSettingsStore();
+  const {
+    selectedAccentHsl,
+    colorScheme,
+    accentForeground,
+    activeSchoolYearId,
+    viewingSchoolYearId,
+  } = useSettingsStore();
   const { width } = useWindowSize();
   const accentHsl =
     selectedAccentHsl ??
     (colorScheme as { accent_hsl?: string } | null)?.accent_hsl;
   const location = useLocation();
+
+  const isHistoricalReadOnly =
+    viewingSchoolYearId !== null &&
+    activeSchoolYearId !== null &&
+    viewingSchoolYearId !== activeSchoolYearId;
+
+  const selectedSchoolYearId = viewingSchoolYearId ?? activeSchoolYearId;
+  const isSchoolYearBypassRoute =
+    location.pathname === "/dashboard" ||
+    location.pathname.startsWith("/admin/users") ||
+    location.pathname.startsWith("/admin/system") ||
+    location.pathname.startsWith("/settings");
+  const shouldShowNoSchoolYearState =
+    !isSchoolYearBypassRoute && !selectedSchoolYearId;
 
   const toastTheme = accentForeground === "0 0% 100%" ? "light" : "dark";
   const toastPosition = width < 768 ? "top-center" : "top-right";
@@ -639,6 +662,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4!" />
           <span className="text-sm font-medium text-muted-foreground"></span>
+          {isHistoricalReadOnly ? (
+            <Badge variant="danger" className="uppercase tracking-wide">
+              Historical View: Read Only
+            </Badge>
+          ) : null}
           <div className="ml-auto flex items-center gap-2">
             <AccessibilityMenu />
             <SYSwitcher />
@@ -654,7 +682,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
             className="flex-1 overflow-auto py-3 px-6 scrollbar-thin">
-            {children}
+            {shouldShowNoSchoolYearState ? <NoSchoolYearState /> : children}
           </motion.main>
         </AnimatePresence>
       </SidebarInset>

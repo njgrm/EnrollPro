@@ -1,10 +1,13 @@
 export {
+  listGradeLevels,
   listSchoolYears,
   getNextDefaults,
   getSchoolYear,
 } from "./controllers/school-year.query.controller.js";
 export {
   createSchoolYear,
+  rolloverSchoolYear,
+  updateRolloverDraft,
   toggleOverride,
   updateDates,
   updateSchoolYear,

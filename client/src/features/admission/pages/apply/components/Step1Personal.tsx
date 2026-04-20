@@ -1,11 +1,13 @@
-import { useFormContext } from "react-hook-form";
+import { Controller, useFormContext } from "react-hook-form";
 import { isAxiosError } from "axios";
-import type { EnrollmentFormData } from "../types";
+import type { EnrollmentFormData } from "../../online-enrollment/types";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group";
-import { DatePicker } from "@/shared/ui/date-picker";
+import { Calendar } from "@/shared/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
+import { Button } from "@/shared/ui/button";
 import {
   AlertCircle,
   Camera,
@@ -13,8 +15,16 @@ import {
   Loader2,
   CheckCircle2,
   Search,
+  Calendar as CalendarIcon,
 } from "lucide-react";
-import { differenceInYears } from "date-fns";
+import {
+  differenceInYears,
+  format,
+  isAfter,
+  isBefore,
+  isValid,
+  parse,
+} from "date-fns";
 import { cn } from "@/shared/lib/utils";
 import {
   Select,
@@ -31,6 +41,7 @@ export default function Step1Personal() {
   const {
     register,
     watch,
+    control,
     setValue,
     setError,
     clearErrors,
@@ -51,6 +62,21 @@ export default function Step1Personal() {
   const [lastLookedUpLrn, setLastLookedUpLrn] = useState<string | null>(null);
   const [hasFilledEarlyRegistrationForm, setHasFilledEarlyRegistrationForm] =
     useState(false);
+  const [dateInput, setDateInput] = useState(() => {
+    if (!birthdate) return "";
+    const parsedBirthdate =
+      birthdate instanceof Date ? birthdate : new Date(birthdate);
+    return isValid(parsedBirthdate)
+      ? format(parsedBirthdate, "MM/dd/yyyy")
+      : "";
+  });
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState<Date>(() => {
+    if (!birthdate) return new Date();
+    const parsedBirthdate =
+      birthdate instanceof Date ? birthdate : new Date(birthdate);
+    return isValid(parsedBirthdate) ? parsedBirthdate : new Date();
+  });
 
   useEffect(() => {
     if (!canDeclareNoLrn && hasNoLrn) {
@@ -67,6 +93,24 @@ export default function Step1Personal() {
     setLookupSuccess(false);
     setLastLookedUpLrn(null);
   }, [hasNoLrn, lrn, setValue, clearErrors]);
+
+  useEffect(() => {
+    if (!birthdate) {
+      setDateInput("");
+      return;
+    }
+    const parsedBirthdate =
+      birthdate instanceof Date ? birthdate : new Date(birthdate);
+    if (!isValid(parsedBirthdate)) {
+      setDateInput("");
+      return;
+    }
+
+    setDateInput(format(parsedBirthdate, "MM/dd/yyyy"));
+    setCalendarMonth(parsedBirthdate);
+    const age = differenceInYears(new Date(), parsedBirthdate);
+    setValue("age", age >= 0 ? age : 0);
+  }, [birthdate, setValue]);
 
   // Auto-lookup only when LRN is exactly 12 digits (debounced by 1 second).
   useEffect(() => {
@@ -238,11 +282,46 @@ export default function Step1Personal() {
     watch,
   ]);
 
-  const onBirthdateChange = (date: Date | undefined) => {
-    if (date) {
-      setValue("birthdate", date);
-      const age = differenceInYears(new Date(), date);
-      setValue("age", age);
+  const handleDateTyping = (
+    value: string,
+    onChange: (value: Date | undefined) => void,
+  ) => {
+    const isDeleting = value.length < dateInput.length;
+    const cleaned = value.replace(/\D/g, "").slice(0, 8);
+
+    let masked = "";
+    if (cleaned.length > 0) {
+      masked = cleaned.slice(0, 2);
+      if (cleaned.length > 2 || (cleaned.length === 2 && !isDeleting)) {
+        masked += "/";
+      }
+      if (cleaned.length > 2) {
+        masked += cleaned.slice(2, 4);
+        if (cleaned.length > 4 || (cleaned.length === 4 && !isDeleting)) {
+          masked += "/";
+        }
+      }
+      if (cleaned.length > 4) {
+        masked += cleaned.slice(4, 8);
+      }
+    }
+
+    setDateInput(masked);
+
+    if (masked.length === 10) {
+      const parsedDate = parse(masked, "MM/dd/yyyy", new Date());
+      if (
+        isValid(parsedDate) &&
+        !isAfter(parsedDate, new Date()) &&
+        !isBefore(parsedDate, new Date(1900, 0, 1))
+      ) {
+        onChange(parsedDate);
+        setCalendarMonth(parsedDate);
+      } else {
+        onChange(undefined);
+      }
+    } else {
+      onChange(undefined);
     }
   };
 
@@ -557,20 +636,79 @@ export default function Step1Personal() {
           <Label className="text-sm font-semibold">
             Date of Birth <span className="text-destructive">*</span>
           </Label>
-          <DatePicker
-            date={birthdate}
-            setDate={onBirthdateChange}
-            minDate={new Date("2000-01-01")}
-            maxDate={new Date()}
-            placeholder="Select Birthdate"
-            className={cn(
-              "h-11 font-bold border-input uppercase",
-              errors.birthdate && "border-destructive",
+          <Controller
+            control={control}
+            name="birthdate"
+            render={({ field }) => (
+              <div className="relative">
+                <Input
+                  placeholder="MM/DD/YYYY"
+                  maxLength={10}
+                  inputMode="numeric"
+                  value={dateInput}
+                  onChange={(e) =>
+                    handleDateTyping(e.target.value, field.onChange)
+                  }
+                  className={cn(
+                    "h-11 font-bold pr-12",
+                    errors.birthdate &&
+                      "border-destructive focus-visible:ring-destructive",
+                  )}
+                />
+                <Popover
+                  open={isCalendarOpen}
+                  onOpenChange={(open) => {
+                    if (open && field.value) {
+                      const d = new Date(field.value);
+                      if (isValid(d)) setCalendarMonth(d);
+                    }
+                    setIsCalendarOpen(open);
+                  }}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full w-10 hover:bg-transparent">
+                      <CalendarIcon
+                        className={cn(
+                          "w-5 h-5 transition-colors",
+                          isCalendarOpen
+                            ? "text-primary"
+                            : "text-muted-foreground",
+                        )}
+                      />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                      mode="single"
+                      captionLayout="dropdown"
+                      selected={field.value ? new Date(field.value) : undefined}
+                      month={calendarMonth}
+                      onMonthChange={setCalendarMonth}
+                      onSelect={(date) => {
+                        if (date) {
+                          field.onChange(date);
+                          setDateInput(format(date, "MM/dd/yyyy"));
+                          setCalendarMonth(date);
+                          setIsCalendarOpen(false);
+                        }
+                      }}
+                      disabled={(date) =>
+                        date > new Date() || date < new Date(1950, 0, 1)
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             )}
           />
           {errors.birthdate && (
             <p className="text-xs text-destructive font-medium flex items-center gap-1">
-              <AlertCircle className="w-3 h-3" /> {errors.birthdate.message}
+              <AlertCircle className="w-3 h-3" />
+              {errors.birthdate.message}
             </p>
           )}
         </div>
@@ -661,7 +799,7 @@ export default function Step1Personal() {
       </div>
 
       <div className="pt-6 border-t border-border/40">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
+        <div className="grid grid-cols-1 gap-x-8 gap-y-6">
           <div className="space-y-2">
             <Label
               htmlFor="psaBirthCertNumber"
@@ -670,10 +808,18 @@ export default function Step1Personal() {
             </Label>
             <Input
               id="psaBirthCertNumber"
-              {...register("psaBirthCertNumber")}
+              {...register("psaBirthCertNumber", {
+                setValueAs: (value) =>
+                  typeof value === "string"
+                    ? value.trim().toUpperCase()
+                    : value,
+              })}
+              onInput={(e) => {
+                e.currentTarget.value = e.currentTarget.value.toUpperCase();
+              }}
               autoComplete="off"
               placeholder="PSA BC Number"
-              className="h-11 font-bold"
+              className="h-11 font-bold uppercase"
             />
           </div>
         </div>

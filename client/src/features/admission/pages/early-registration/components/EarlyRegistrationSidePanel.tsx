@@ -21,13 +21,6 @@ interface SidePanelProps {
   fetchSections: (glId: number) => void;
   setIsScheduleDialogOpen: (open: boolean) => void;
   setScheduleStep: (step: AssessmentStep | null) => void;
-  handleInlineSaveStepResult: (
-    id: number | null,
-    stepOrder: number,
-    kind: string,
-    score: number,
-    cutoffScore: number | null,
-  ) => Promise<void>;
 }
 
 export function EarlyRegistrationSidePanel({
@@ -43,8 +36,32 @@ export function EarlyRegistrationSidePanel({
   fetchSections,
   setIsScheduleDialogOpen,
   setScheduleStep,
-  handleInlineSaveStepResult,
 }: SidePanelProps) {
+  const selectedApplication = selectedId
+    ? (applications.find((application) => application.id === selectedId) ??
+      null)
+    : null;
+
+  const resolvePipelineTab = (applicantType?: string) => {
+    const normalized = String(applicantType ?? "")
+      .trim()
+      .toUpperCase();
+
+    return normalized.length > 0 ? normalized : "REGULAR";
+  };
+
+  const pipelineParams = new URLSearchParams({
+    view: "batch",
+    tab: resolvePipelineTab(selectedApplication?.applicantType),
+    source: "early-registration-monitoring",
+  });
+
+  if (selectedApplication?.trackingNumber) {
+    pipelineParams.set("tracking", selectedApplication.trackingNumber);
+  }
+
+  const pipelineProcessHref = `/monitoring/early-registration?${pipelineParams.toString()}`;
+
   return (
     <Sheet
       open={selectedId !== null}
@@ -109,15 +126,6 @@ export function EarlyRegistrationSidePanel({
                   toastApiError(err as never);
                 }
               }}
-              onSaveStepResult={(stepOrder, kind, score, cutoffScore) =>
-                handleInlineSaveStepResult(
-                  selectedId,
-                  stepOrder,
-                  kind,
-                  score,
-                  cutoffScore,
-                )
-              }
               onRecordResult={() => {}}
               onPass={async () => {
                 try {
@@ -233,21 +241,9 @@ export function EarlyRegistrationSidePanel({
                   toastApiError(err as never);
                 }
               }}
-              onMarkInterviewPassed={async () => {
-                try {
-                  await api.patch(
-                    `/early-registrations/${selectedId}/mark-interview-passed`,
-                  );
-                  sileo.success({
-                    title: "Ready for Enrollment",
-                    description:
-                      "Learner moved to Ready for Enrollment status.",
-                  });
-                  fetchData();
-                } catch (e) {
-                  toastApiError(e as never);
-                }
-              }}
+              showActions={false}
+              showRawJson
+              pipelineProcessHref={pipelineProcessHref}
             />
           </div>
         )}
