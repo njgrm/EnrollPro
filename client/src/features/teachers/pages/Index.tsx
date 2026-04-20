@@ -42,10 +42,9 @@ import {
   getImageUrl,
   getSyncFilterValue,
   normalizeOptionalInput,
-  parseSubjectsInput,
 } from "../utils";
 
-type TeacherFormField = Exclude<keyof TeacherFormState, "photo">;
+type TeacherFormField = Exclude<keyof TeacherFormState, "photo" | "subjects">;
 
 function normalizeTeacherFieldValue(
   field: TeacherFormField,
@@ -230,6 +229,14 @@ export default function Teachers() {
   };
 
   const handleCreate = async () => {
+    const subjects = Array.from(
+      new Set(
+        formData.subjects
+          .map((subject) => subject.trim())
+          .filter((subject) => subject.length > 0),
+      ),
+    );
+
     const payload = {
       firstName: formData.firstName.trim(),
       lastName: formData.lastName.trim(),
@@ -238,7 +245,7 @@ export default function Teachers() {
       employeeId: normalizeOptionalInput(formData.employeeId),
       contactNumber: normalizeOptionalInput(formData.contactNumber),
       specialization: normalizeOptionalInput(formData.specialization),
-      subjects: parseSubjectsInput(formData.subjectsText),
+      subjects,
       photo: formData.photo,
     };
 
@@ -286,7 +293,7 @@ export default function Teachers() {
       employeeId: teacher.employeeId || "",
       contactNumber: teacher.contactNumber || "",
       specialization: teacher.specialization || "",
-      subjectsText: teacher.subjects.join(", "),
+      subjects: teacher.subjects,
       photo: teacher.photoPath,
     });
     setEditOpen(true);
@@ -304,6 +311,14 @@ export default function Teachers() {
       return;
     }
 
+    const subjects = Array.from(
+      new Set(
+        editFormData.subjects
+          .map((subject) => subject.trim())
+          .filter((subject) => subject.length > 0),
+      ),
+    );
+
     const payload: Record<string, unknown> = {
       firstName: editFormData.firstName.trim(),
       lastName: editFormData.lastName.trim(),
@@ -312,7 +327,7 @@ export default function Teachers() {
       employeeId: normalizeOptionalInput(editFormData.employeeId),
       contactNumber: normalizeOptionalInput(editFormData.contactNumber),
       specialization: normalizeOptionalInput(editFormData.specialization),
-      subjects: parseSubjectsInput(editFormData.subjectsText),
+      subjects,
     };
 
     if (editPhotoChanged) {
@@ -735,6 +750,9 @@ export default function Teachers() {
             [field]: normalizeTeacherFieldValue(field, value),
           }))
         }
+        onSubjectsChange={(subjects) =>
+          setFormData((prev) => ({ ...prev, subjects }))
+        }
         onPhotoSelect={(file) => {
           void handlePhotoFileSelection(file, "create");
         }}
@@ -771,6 +789,9 @@ export default function Teachers() {
             ...prev,
             [field]: normalizeTeacherFieldValue(field, value),
           }))
+        }
+        onSubjectsChange={(subjects) =>
+          setEditFormData((prev) => ({ ...prev, subjects }))
         }
         onPhotoSelect={(file) => {
           void handlePhotoFileSelection(file, "edit");
