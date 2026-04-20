@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
-import type { EarlyRegistrationFormData } from '../types';
+import type { EnrollmentFormData } from '../types';
 import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import { Checkbox } from '@/shared/ui/checkbox';
@@ -16,7 +16,7 @@ export default function Step2Family() {
 		watch,
 		setValue,
 		formState: { errors },
-	} = useFormContext<EarlyRegistrationFormData>();
+	} = useFormContext<EnrollmentFormData>();
 
 	const isPermanentSameAsCurrent = watch('isPermanentSameAsCurrent');
 	const [showGuardian, setShowGuardian] = useState(

@@ -1,55 +1,63 @@
-import type { z } from 'zod';
+import type { z } from "zod";
 import type {
-	loginSchema,
-	changePasswordSchema,
-	userResponseSchema,
-	loginResponseSchema,
-} from '../schemas/auth.schema.js';
+  loginSchema,
+  changePasswordSchema,
+  userResponseSchema,
+  loginResponseSchema,
+} from "../schemas/auth.schema.js";
 import type {
-	applicationSubmitSchema,
-	approveSchema,
-	rejectSchema,
-	scheduleExamSchema,
-	recordResultSchema,
-	rescheduleExamSchema,
-	addressSchema,
-	optionalAddressSchema,
-	familyMemberSchema,
-	previousSchoolSchema,
-	updateChecklistSchema,
-	requestRevisionSchema,
-	scheduleInterviewSchema,
-	recordInterviewResultSchema,
-} from '../schemas/application.schema.js';
+  applicationSubmitSchema,
+  approveSchema,
+  rejectSchema,
+  scheduleExamSchema,
+  recordResultSchema,
+  rescheduleExamSchema,
+  addressSchema,
+  optionalAddressSchema,
+  familyMemberSchema,
+  previousSchoolSchema,
+  updateChecklistSchema,
+  requestRevisionSchema,
+  scheduleInterviewSchema,
+  recordInterviewResultSchema,
+  scpGradeRequirementSchema,
+  scpRankingFormulaSchema,
+  scpProgramConfigUpdateSchema,
+  updateScpProgramConfigsSchema,
+} from "../schemas/application.schema.js";
 import type {
-	teacherSchema,
-	updateTeacherSchema,
-} from '../schemas/teacher.schema.js';
+  teacherSchema,
+  updateTeacherSchema,
+} from "../schemas/teacher.schema.js";
 import type {
-	updateIdentitySchema,
-	selectAccentSchema,
-	toggleEnrollmentSchema,
-} from '../schemas/settings.schema.js';
+  updateIdentitySchema,
+  selectAccentSchema,
+  toggleEnrollmentSchema,
+} from "../schemas/settings.schema.js";
 import type {
-	createSectionSchema,
-	updateSectionSchema,
-} from '../schemas/section.schema.js';
+  createSectionSchema,
+  updateSectionSchema,
+} from "../schemas/section.schema.js";
 import type {
-	createSchoolYearSchema,
-	updateSchoolYearSchema,
-	transitionSchoolYearSchema,
-	toggleOverrideSchema,
-} from '../schemas/school-year.schema.js';
+  createSchoolYearSchema,
+  updateSchoolYearSchema,
+  transitionSchoolYearSchema,
+  toggleOverrideSchema,
+} from "../schemas/school-year.schema.js";
 import type {
-	healthRecordSchema,
-	updateStudentSchema,
-} from '../schemas/student.schema.js';
+  healthRecordSchema,
+  updateStudentSchema,
+} from "../schemas/student.schema.js";
 import type {
-	createUserSchema,
-	updateUserSchema,
-	adminResetPasswordSchema,
-} from '../schemas/admin.schema.js';
-import type { learnerLookupSchema } from '../schemas/learner.schema.js';
+  createUserSchema,
+  updateUserSchema,
+  adminResetPasswordSchema,
+} from "../schemas/admin.schema.js";
+import type { learnerLookupSchema } from "../schemas/learner.schema.js";
+import type {
+  earlyRegistrationSubmitSchema,
+  earlyRegGuardianSchema,
+} from "../schemas/early-registration.schema.js";
 
 // ─── Auth Types ────────────────────────────────────────
 export type LoginInput = z.infer<typeof loginSchema>;
@@ -72,7 +80,17 @@ export type UpdateChecklistInput = z.infer<typeof updateChecklistSchema>;
 export type RequestRevisionInput = z.infer<typeof requestRevisionSchema>;
 export type ScheduleInterviewInput = z.infer<typeof scheduleInterviewSchema>;
 export type RecordInterviewResultInput = z.infer<
-	typeof recordInterviewResultSchema
+  typeof recordInterviewResultSchema
+>;
+export type ScpGradeRequirementInput = z.infer<
+  typeof scpGradeRequirementSchema
+>;
+export type ScpRankingFormulaInput = z.infer<typeof scpRankingFormulaSchema>;
+export type ScpProgramConfigUpdateInput = z.infer<
+  typeof scpProgramConfigUpdateSchema
+>;
+export type UpdateScpProgramConfigsInput = z.infer<
+  typeof updateScpProgramConfigsSchema
 >;
 
 // ─── Teacher Types ─────────────────────────────────────
@@ -92,7 +110,7 @@ export type UpdateSectionInput = z.infer<typeof updateSectionSchema>;
 export type CreateSchoolYearInput = z.infer<typeof createSchoolYearSchema>;
 export type UpdateSchoolYearInput = z.infer<typeof updateSchoolYearSchema>;
 export type TransitionSchoolYearInput = z.infer<
-	typeof transitionSchoolYearSchema
+  typeof transitionSchoolYearSchema
 >;
 export type ToggleOverrideInput = z.infer<typeof toggleOverrideSchema>;
 
@@ -107,3 +125,9 @@ export type AdminResetPasswordInput = z.infer<typeof adminResetPasswordSchema>;
 
 // ─── Learner Types ─────────────────────────────────────
 export type LearnerLookupInput = z.infer<typeof learnerLookupSchema>;
+
+// ─── Early Registration Types (DO 017 s.2025) ─────────
+export type EarlyRegistrationSubmitInput = z.infer<
+  typeof earlyRegistrationSubmitSchema
+>;
+export type EarlyRegGuardianInput = z.infer<typeof earlyRegGuardianSchema>;

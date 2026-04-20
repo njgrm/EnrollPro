@@ -1,76 +1,95 @@
-import 'dotenv/config';
-import { PrismaClient } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
+import "dotenv/config";
+import { PrismaClient } from "../src/generated/prisma/index.js";
+import { PrismaPg } from "@prisma/adapter-pg";
+import * as pg from "pg";
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-	console.log(
-		'âš ï¸ Starting data wipe (preserving Users and SchoolSettings)...',
-	);
+  console.log("⚠️  Starting learner/application data wipe...");
 
-	try {
-		// 1. Delete logs and transient data
-		await prisma.emailLog.deleteMany({});
-		console.log('âœ… Email logs cleared.');
+  try {
+    const [gradeLevelsBefore, schoolYearsBefore, sectionsBefore] =
+      await Promise.all([
+        prisma.gradeLevel.count(),
+        prisma.schoolYear.count(),
+        prisma.section.count(),
+      ]);
 
-		await prisma.auditLog.deleteMany({});
-		console.log('âœ… Audit logs cleared.');
+    // 1. Clear records that reference EnrollmentApplication without DB-level cascade.
+    const emailLogsResult = await prisma.emailLog.deleteMany({
+      where: { applicationId: { not: null } },
+    });
+    console.log(
+      `✅ Enrollment-linked email logs cleared (${emailLogsResult.count}).`,
+    );
 
-		// 2. Delete student-related data (Children tables first)
-		await prisma.healthRecord.deleteMany({});
-		console.log('âœ… Health records cleared.');
+    // 2. Delete phase 2 applications first (required before deleting early registration apps).
+    // Child records are removed via onDelete: Cascade in schema.prisma.
+    const enrollmentAppsResult = await prisma.enrollmentApplication.deleteMany(
+      {},
+    );
+    console.log(
+      `✅ Enrollment applications cleared (${enrollmentAppsResult.count}).`,
+    );
 
-		await prisma.enrollment.deleteMany({});
-		console.log('âœ… Enrollments cleared.');
+    // 3. Delete phase 1 applications and their dependent records.
+    const earlyRegAppsResult =
+      await prisma.earlyRegistrationApplication.deleteMany({});
+    console.log(
+      `✅ Early registration applications cleared (${earlyRegAppsResult.count}).`,
+    );
 
-		await prisma.document.deleteMany({});
-		console.log('âœ… Documents cleared.');
+    // 4. Clear health records, then learners.
+    const healthRecordsResult = await prisma.healthRecord.deleteMany({});
+    console.log(`✅ Health records cleared (${healthRecordsResult.count}).`);
 
-		await prisma.requirementChecklist.deleteMany({});
-		console.log('âœ… Requirement checklists cleared.');
+    const learnersResult = await prisma.learner.deleteMany({});
+    console.log(`✅ Learners cleared (${learnersResult.count}).`);
 
-		// 3. Delete Applicants
-		await prisma.applicant.deleteMany({});
-		console.log('âœ… Applicants cleared.');
+    const [gradeLevelsAfter, schoolYearsAfter, sectionsAfter] =
+      await Promise.all([
+        prisma.gradeLevel.count(),
+        prisma.schoolYear.count(),
+        prisma.section.count(),
+      ]);
 
-		// 4. Delete Section data
-		await prisma.section.deleteMany({});
-		console.log('âœ… Sections cleared.');
+    if (
+      gradeLevelsAfter !== gradeLevelsBefore ||
+      schoolYearsAfter !== schoolYearsBefore ||
+      sectionsAfter !== sectionsBefore
+    ) {
+      throw new Error(
+        "Master data changed during wipe " +
+          `(gradeLevels: ${gradeLevelsBefore} -> ${gradeLevelsAfter}, ` +
+          `schoolYears: ${schoolYearsBefore} -> ${schoolYearsAfter}, ` +
+          `sections: ${sectionsBefore} -> ${sectionsAfter}). ` +
+          "Wipe aborted to protect baseline records.",
+      );
+    }
 
-		// 5. Delete Curriculum/Setup data (preserving SchoolYear if referenced might be tricky, but we'll try)
-		// Note: ScpConfig, Strand, GradeLevel have onDelete: Cascade or foreign keys to SchoolYear.
-		await prisma.scpConfig.deleteMany({});
-		await prisma.strand.deleteMany({});
-		await prisma.gradeLevel.deleteMany({});
-		await prisma.department.deleteMany({});
-		await prisma.teacher.deleteMany({}); // Clearing teachers as they are student-related records
-		console.log('âœ… Curriculum and Teacher data cleared.');
+    console.log(`✅ GradeLevels preserved: ${gradeLevelsAfter}`);
+    console.log(`✅ SchoolYears preserved: ${schoolYearsAfter}`);
+    console.log(`✅ Sections preserved: ${sectionsAfter}`);
 
-		// 6. Optionally clear SchoolYears?
-		// If we keep SchoolSettings, we should probably keep the SchoolYears too,
-		// otherwise the activeSchoolYearId will point to nothing.
-		// However, if the user wants a "fresh migration" feel, they usually want to clear SYs.
-		// Let's check if any SchoolYear is currently set as active.
-		const settings = await prisma.schoolSettings.findFirst();
-		if (settings?.activeSchoolYearId) {
-			console.log(
-				'â„¹ï¸ Preserving SchoolYears to maintain SchoolSettings integrity.',
-			);
-		} else {
-			await prisma.schoolYear.deleteMany({});
-			console.log('âœ… School years cleared.');
-		}
-
-		console.log('\nâœ¨ Database data reset successful!');
-		console.log('   Preserved: Users, SchoolSettings.');
-	} catch (error) {
-		console.error('â Œ Error during wipe:', error);
-		process.exit(1);
-	}
+    console.log("\n✨ Learner/application data reset successful!");
+    console.log(
+      "   Preserved: Users, Teachers, SchoolYears, Sections, GradeLevels, SchoolSettings, and SCP configuration.",
+    );
+  } catch (error) {
+    console.error("❌ Error during wipe:", error);
+    process.exit(1);
+  }
 }
 
-main().finally(async () => {
-	await prisma.$disconnect();
-});
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+    await pool.end();
+  });

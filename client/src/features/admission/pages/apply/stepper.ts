@@ -6,7 +6,7 @@ const stepper = defineStepper(
 	{
 		id: 'personal',
 		title: 'Personal Information',
-		description: 'Basic details & reference numbers',
+		description: 'Basic details & tracking numbers',
 	},
 	{
 		id: 'family',

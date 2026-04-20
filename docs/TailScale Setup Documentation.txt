@@ -1,0 +1,185 @@
+=====================================================
+SCHOOLAUTOMATE TEAM INSTRUCTION MANUAL
+TAILSCALE BACKEND + DATABASE SHARED DEVELOPMENT SETUP
+=====================================================
+Audience: Entire development team (all roles)
+Scope: Development only (trusted teammates on Tailscale)
+Default API Port: 5000
+Default DB Port: 5432
+=====================================================
+
+OVERVIEW (READ THIS FIRST)
+- This team uses Tailscale as a secure Mesh VPN.
+- Use stable Tailscale hostnames (for example: teammate-device.ts.net).
+- Do not rely on changing Wi-Fi IPs.
+- At any time, one teammate acts as SERVER HOST (API + DB owner).
+- Everyone else acts as CLIENT TEAMMATE (connects to current host).
+
+REPO CONTEXT (SOURCE OF TRUTH)
+- Frontend API env key: VITE_API_URL
+- Backend DB env key: DATABASE_URL
+- API base path: /api
+- Health endpoint: /api/health
+- Backend bind host: 0.0.0.0 (server/src/server.ts)
+
+-----------------------------------------------------
+PART A: ONE-TIME SETUP FOR EVERY TEAM MEMBER
+-----------------------------------------------------
+
+1) Install and Join Tailscale
+1. Download Tailscale: https://tailscale.com/download
+2. Sign in using your team account.
+3. Confirm status is Connected.
+4. Find your Tailscale hostname (example: your-device.ts.net).
+5. Keep your Tailscale IPv4 (100.x.x.x) as fallback reference.
+
+2) Confirm Local Project Basics
+1. Ensure backend default port is 5000 in server/.env.
+2. Ensure frontend uses VITE_API_URL in client env files.
+3. Ensure dependencies are installed from repo root:
+     pnpm install
+
+-----------------------------------------------------
+PART B: SERVER HOST RUNBOOK (API + DB OWNER)
+-----------------------------------------------------
+
+Use this runbook if you are the active team host.
+
+Step B1: Open Windows Firewall (Run PowerShell as Administrator)
+
+# Allow API traffic on port 5000
+New-NetFirewallRule -DisplayName "Tailscale_Node_5000" -Direction Inbound -LocalPort 5000 -Protocol TCP -Action Allow -Profile Any
+
+# Allow PostgreSQL traffic on port 5432
+New-NetFirewallRule -DisplayName "Tailscale_Postgres_5432" -Direction Inbound -LocalPort 5432 -Protocol TCP -Action Allow -Profile Any
+
+Step B2: Confirm Backend Listener
+Backend must listen on all interfaces:
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT as number, "0.0.0.0", () => {
+    console.log(`[Server] Running on http://localhost:${PORT}`);
+});
+
+Step B3: Configure Host Backend Env (server/.env)
+Minimum host values:
+
+PORT=5000
+CLIENT_URL="http://localhost:5173"
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/enrollpro"
+
+Optional for expanded origins:
+CLIENT_URLS=""
+
+Step B4: Configure PostgreSQL for Tailscale Access
+1. Open PostgreSQL data directory (example: C:\Program Files\PostgreSQL\<version>\data).
+2. In postgresql.conf set:
+     listen_addresses = '*'
+3. In pg_hba.conf add at bottom:
+     host    all             all             100.64.0.0/10            md5
+4. Restart PostgreSQL service in Windows Services.
+
+Step B5: Start Host Services
+From repo root, run either:
+
+pnpm --filter server dev
+
+or full stack:
+
+pnpm run dev
+
+Step B6: Publish Host Connection Card to Team Chat
+Copy and send:
+
+ACTIVE HOST: <YOUR_NAME>
+HOSTNAME: <your-device.ts.net>
+API_URL: http://<your-device.ts.net>:5000/api
+DB_HOST: <your-device.ts.net>:5432
+STARTED_AT: <YYYY-MM-DD HH:MM>
+
+-----------------------------------------------------
+PART C: CLIENT TEAMMATE RUNBOOK (CONNECT TO HOST)
+-----------------------------------------------------
+
+Use this runbook if you are connecting to the active host.
+
+Step C1: Frontend to Host API (required)
+Create or update client/.env.local:
+
+VITE_API_URL="http://<ACTIVE_HOST>.ts.net:5000/api"
+
+Step C2: Backend to Host DB (only if needed)
+Create or update server/.env:
+
+DATABASE_URL="postgresql://user:pass@<ACTIVE_HOST>.ts.net:5432/enrollpro"
+
+Step C3: Optional proxy mode
+If frontend should use /api proxy:
+
+VITE_PROXY_TARGET="http://<ACTIVE_HOST>.ts.net:5000"
+
+Step C4: Restart local dev processes
+After env updates, restart frontend/backend processes.
+
+Notes:
+- Prefer hostname (.ts.net) first.
+- Use 100.x.x.x only as fallback if DNS resolution fails.
+
+-----------------------------------------------------
+PART D: DAILY TEAM WORKFLOW
+-----------------------------------------------------
+
+1) Start of day
+1. Assign one active SERVER HOST.
+2. Host sends Host Connection Card.
+3. All CLIENT TEAMMATES sync their env values.
+
+2) Host rotation
+1. New host starts services and validates ports.
+2. New host sends updated Host Connection Card.
+3. Team updates env files and restarts dev servers.
+
+3) End of day
+1. Host notifies team if services are going offline.
+2. Remove temporary access rules if machine will no longer host.
+
+-----------------------------------------------------
+PART E: TEAM VALIDATION CHECKLIST
+-----------------------------------------------------
+
+From client machine (PowerShell):
+
+Test-NetConnection <ACTIVE_HOST>.ts.net -Port 5000
+Test-NetConnection <ACTIVE_HOST>.ts.net -Port 5432
+Invoke-RestMethod http://<ACTIVE_HOST>.ts.net:5000/api/health
+
+Expected API response:
+{"ok":true}
+
+-----------------------------------------------------
+PART F: TROUBLESHOOTING
+-----------------------------------------------------
+
+- API unreachable on 5000:
+    Check host firewall rules and backend process state.
+
+- DB unreachable on 5432:
+    Check PostgreSQL service, listen_addresses='*', and pg_hba.conf CIDR line.
+
+- Frontend still using localhost API:
+    Check client/.env.local VITE_API_URL, then restart Vite.
+
+- CORS errors:
+    Check CLIENT_URL and optionally CLIENT_URLS in server/.env, then restart backend.
+
+- Hostname does not resolve:
+    Confirm both devices are connected to Tailscale and MagicDNS is enabled.
+
+-----------------------------------------------------
+PART G: SECURITY RULES (MANDATORY)
+-----------------------------------------------------
+
+- This setup is for trusted team development only.
+- Never expose API or PostgreSQL to the public internet.
+- Do not post DB credentials in public channels.
+- Remove temporary firewall rules if hosting is no longer required.

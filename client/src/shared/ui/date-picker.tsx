@@ -16,6 +16,7 @@ interface DatePickerProps {
 	minDate?: Date;
 	/** Dates after this are disabled and calendar navigation is restricted to end here */
 	maxDate?: Date;
+	showYearSelect?: boolean;
 }
 
 function formatPickerDate(date: Date, timeZone: string) {
@@ -35,6 +36,7 @@ export function DatePicker({
 	timeZone = 'Asia/Manila',
 	minDate,
 	maxDate,
+	showYearSelect = true,
 }: DatePickerProps) {
 	const [open, setOpen] = React.useState(false);
 
@@ -79,7 +81,6 @@ export function DatePicker({
 							setOpen(false);
 						}
 					}}
-					hideNavigation
 					// Restrict navigation to only the allowed year range
 					startMonth={minDate}
 					endMonth={maxDate}
@@ -87,8 +88,10 @@ export function DatePicker({
 					disabled={disabled}
 					// Open to selected date, falling back to minDate
 					defaultMonth={date ?? minDate}
-					// Show month + year dropdowns for fast navigation within the allowed range
+					// Always use dropdown for Month (as requested)
 					captionLayout='dropdown'
+					showYearSelect={showYearSelect}
+					hideNavigation
 					autoFocus
 				/>
 			</PopoverContent>

@@ -31,9 +31,11 @@ function Calendar({
 	locale,
 	formatters,
 	components,
+	showYearSelect = true,
 	...props
 }: React.ComponentProps<typeof DayPicker> & {
 	buttonVariant?: React.ComponentProps<typeof Button>['variant'];
+	showYearSelect?: boolean;
 }) {
 	const defaultClassNames = getDefaultClassNames();
 
@@ -135,6 +137,7 @@ function Calendar({
 					'text-muted-foreground aria-selected:text-muted-foreground',
 					defaultClassNames.outside,
 				),
+				dropdown_year: cn('text-sm font-bold px-2 cursor-default'),
 				disabled: cn(
 					'text-muted-foreground opacity-50',
 					defaultClassNames.disabled,
@@ -180,9 +183,22 @@ function Calendar({
 					);
 				},
 				Dropdown: ({ value, onChange, options, className }) => {
+					const firstOptionValue = options?.[0]?.value;
+					const parsedFirstValue = Number(firstOptionValue);
+					const isYear =
+						Number.isFinite(parsedFirstValue) && parsedFirstValue > 12;
 					const selectedOption = options?.find(
 						(option) => option.value === value,
 					);
+
+					if (isYear && !showYearSelect) {
+						return (
+							<span className='px-2 text-sm font-bold text-foreground'>
+								{selectedOption?.label || value}
+							</span>
+						);
+					}
+
 					const handleChange = (value: string) => {
 						const changeEvent = {
 							target: { value },

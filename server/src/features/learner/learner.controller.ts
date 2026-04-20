@@ -1,138 +1,142 @@
-import { Request, Response } from 'express';
-import { prisma } from '../../lib/prisma.js';
-import { verifyPin } from './portal-pin.service.js';
-import { normalizeDateToUtcNoon } from '../school-year/school-year.service.js';
+import { Request, Response } from "express";
+import { prisma } from "../../lib/prisma.js";
+import { normalizeDateToUtcNoon } from "../school-year/school-year.service.js";
+import { verifyPin } from "./portal-pin.service.js";
+
+const PORTAL_LOOKUP_ERROR = "Invalid learner credentials.";
+
+const toDateOnly = (date: Date): string => date.toISOString().slice(0, 10);
 
 /**
  * Lookup learner records using LRN, Birthdate, and PIN.
  * POST /api/learner/lookup
  */
 export const lookupLearner = async (req: Request, res: Response) => {
-	try {
-		const { lrn, birthDate, pin } = req.body;
+  try {
+    const { lrn, birthDate, pin } = req.body as {
+      lrn: string;
+      birthDate: string;
+      pin: string;
+    };
 
-		if (!lrn || !birthDate || !pin) {
-			return res.status(400).json({
-				message:
-					'The information you entered did not match our records. Please check your LRN, Date of Birth, and PIN.',
-			});
-		}
+    const normalizedBirthDate = normalizeDateToUtcNoon(new Date(birthDate));
+    if (Number.isNaN(normalizedBirthDate.getTime())) {
+      return res.status(401).json({ message: PORTAL_LOOKUP_ERROR });
+    }
 
-		// 1. Find the applicant by LRN and Birth Date
-		const applicant = await prisma.applicant.findFirst({
-			where: {
-				lrn: lrn,
-				birthDate: normalizeDateToUtcNoon(new Date(birthDate)),
-			},
-			include: {
-				gradeLevel: true,
-				strand: true,
-				schoolYear: true,
-				addresses: true,
-				familyMembers: true,
-				enrollment: {
-					include: {
-						section: {
-							include: {
-								advisingTeacher: {
-									select: {
-										firstName: true,
-										lastName: true,
-										middleName: true,
-									},
-								},
-							},
-						},
-					},
-				},
-				healthRecords: {
-					include: {
-						schoolYear: {
-							select: { yearLabel: true },
-						},
-					},
-					orderBy: { assessmentDate: 'desc' },
-				},
-			},
-		});
+    const application = await prisma.enrollmentApplication.findFirst({
+      where: {
+        status: "ENROLLED",
+        portalPin: { not: null },
+        learner: { lrn },
+      },
+      orderBy: { updatedAt: "desc" },
+      include: {
+        learner: true,
+        addresses: true,
+        gradeLevel: { select: { name: true } },
+        schoolYear: { select: { yearLabel: true } },
+        enrollmentRecord: {
+          include: {
+            section: {
+              include: {
+                advisingTeacher: {
+                  select: { firstName: true, lastName: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
 
-		// 2. Generic error if not found (don't reveal which factor failed)
-		if (!applicant) {
-			return res.status(404).json({
-				message:
-					'The information you entered did not match our records. Please check your LRN, Date of Birth, and PIN.',
-			});
-		}
+    if (!application || !application.portalPin) {
+      return res.status(401).json({ message: PORTAL_LOOKUP_ERROR });
+    }
 
-		// 3. Check status - only ENROLLED can access
-		if (applicant.status !== 'ENROLLED') {
-			return res.status(403).json({
-				message:
-					'Your enrollment is not yet finalized. The portal will be available once your enrollment is confirmed.',
-			});
-		}
+    const inputBirthDate = toDateOnly(normalizedBirthDate);
+    const learnerBirthDate = toDateOnly(application.learner.birthdate);
+    if (learnerBirthDate !== inputBirthDate) {
+      return res.status(401).json({ message: PORTAL_LOOKUP_ERROR });
+    }
 
-		// 4. Verify PIN
-		if (!applicant.portalPin) {
-			// Should not happen if status is ENROLLED, but safety first
-			return res.status(403).json({
-				message:
-					'Your enrollment is not yet finalized. The portal will be available once your enrollment is confirmed.',
-			});
-		}
+    const pinMatch = await verifyPin(pin, application.portalPin);
+    if (!pinMatch) {
+      return res.status(401).json({ message: PORTAL_LOOKUP_ERROR });
+    }
 
-		const isPinValid = await verifyPin(pin, applicant.portalPin);
-		if (!isPinValid) {
-			return res.status(401).json({
-				message:
-					'The information you entered did not match our records. Please check your LRN, Date of Birth, and PIN.',
-			});
-		}
+    const currentAddress =
+      application.addresses.find(
+        (address) => address.addressType === "CURRENT",
+      ) ?? null;
 
-		// 5. Success! Filter out SPI and internal fields
-		const {
-			portalPin,
-			portalPinChangedAt,
-			isIpCommunity,
-			ipGroupName,
-			is4PsBeneficiary,
-			householdId4Ps,
-			isLearnerWithDisability,
-			disabilityTypes,
-			trackingNumber,
-			admissionChannel,
-			rejectionReason,
-			encodedById,
-			isPrivacyConsentGiven,
-			familyMembers,
-			...allowedData
-		} = applicant;
+    const healthRecords = await prisma.healthRecord.findMany({
+      where: { learnerId: application.learnerId },
+      include: {
+        schoolYear: { select: { yearLabel: true } },
+      },
+      orderBy: [{ assessmentDate: "desc" }, { assessmentPeriod: "asc" }],
+    });
 
-		// Filter guardian contact numbers from family members
-		const filteredFamilyMembers =
-			familyMembers?.map(({ contactNumber, ...rest }) => rest) || [];
-
-		const learner = {
-			...allowedData,
-			familyMembers: filteredFamilyMembers,
-			// Map health records to match the expected format
-			healthRecords: applicant.healthRecords.map((hr) => ({
-				id: hr.id,
-				schoolYear: hr.schoolYear.yearLabel,
-				assessmentPeriod: hr.assessmentPeriod,
-				assessmentDate: hr.assessmentDate,
-				weightKg: hr.weightKg,
-				heightCm: hr.heightCm,
-				notes: hr.notes,
-				createdAt: hr.createdAt,
-			})),
-		};
-
-		res.json({ learner });
-	} catch (error) {
-		console.error('Error in learner portal lookup:', error);
-		res.status(500).json({
-			message: 'An unexpected error occurred. Please try again later.',
-		});
-	}
+    return res.json({
+      learner: {
+        id: application.learner.id,
+        lrn: application.learner.lrn,
+        firstName: application.learner.firstName,
+        lastName: application.learner.lastName,
+        middleName: application.learner.middleName,
+        suffix: application.learner.extensionName,
+        birthDate: application.learner.birthdate,
+        sex: application.learner.sex === "MALE" ? "Male" : "Female",
+        motherTongue: application.learner.motherTongue,
+        religion: application.learner.religion,
+        status: application.status,
+        currentAddress: currentAddress
+          ? {
+              houseNumber: currentAddress.houseNoStreet,
+              street: currentAddress.street,
+              barangay: currentAddress.barangay,
+              municipality: currentAddress.cityMunicipality,
+              province: currentAddress.province,
+            }
+          : null,
+        enrollment: application.enrollmentRecord
+          ? {
+              section: application.enrollmentRecord.section
+                ? {
+                    name: application.enrollmentRecord.section.name,
+                    advisingTeacher: application.enrollmentRecord.section
+                      .advisingTeacher
+                      ? {
+                          firstName:
+                            application.enrollmentRecord.section.advisingTeacher
+                              .firstName,
+                          lastName:
+                            application.enrollmentRecord.section.advisingTeacher
+                              .lastName,
+                        }
+                      : null,
+                  }
+                : null,
+            }
+          : null,
+        schoolYear: application.schoolYear,
+        gradeLevel: application.gradeLevel,
+        healthRecords: healthRecords.map((record) => ({
+          id: record.id,
+          schoolYear: record.schoolYear.yearLabel,
+          assessmentPeriod: record.assessmentPeriod,
+          assessmentDate: record.assessmentDate,
+          weightKg: record.weightKg,
+          heightCm: record.heightCm,
+          notes: record.notes,
+        })),
+      },
+    });
+  } catch (error) {
+    console.error("Learner portal lookup failed:", error);
+    return res
+      .status(500)
+      .json({ message: "Unable to process learner lookup right now." });
+  }
 };
