@@ -257,7 +257,7 @@ export async function getSectioningPool(req: Request, res: Response) {
       programType: app.assignedProgram || app.applicantType,
       academicStatus: app.academicStatus,
       status: app.status,
-      draftSectionId: app.enrollmentRecord ? app.enrollmentRecord.sectionId : undefined,
+      draftSectionId: app.enrollmentRecord?.isDraft ? app.enrollmentRecord.sectionId : undefined,
     }));
 
     return res.json(pool);
@@ -821,8 +821,7 @@ export async function commitDraft(req: Request, res: Response) {
 
           if (
             !freshApplication ||
-            !["READY_FOR_SECTIONING", "PENDING_CONFIRMATION", "OFFICIALLY_ENROLLED"].includes(freshApplication.status) ||
-            (freshApplication.enrollmentRecord && !freshApplication.enrollmentRecord.isDraft)
+            !["READY_FOR_SECTIONING", "PENDING_CONFIRMATION", "OFFICIALLY_ENROLLED"].includes(freshApplication.status)
           ) {
             throw new DraftCommitConflictError();
           }
@@ -874,6 +873,47 @@ export async function commitDraft(req: Request, res: Response) {
           applicationId: candidate.applicationId,
           reason: "This learner was changed by another user during draft review.",
         });
+      }
+    }
+
+    if (sections.length > 0) {
+      const gradeLevelId = sections[0].gradeLevelId;
+      const allSections = await prisma.section.findMany({
+        where: { gradeLevelId, schoolYearId: req.schoolYearId! },
+        include: {
+          enrollmentRecords: {
+            where: { isDraft: false, ...activeSectionEnrollmentFilter },
+          }
+        }
+      });
+
+      const sectionsByProgram = new Map<string, typeof allSections>();
+      for (const s of allSections) {
+        if (!sectionsByProgram.has(s.programType)) sectionsByProgram.set(s.programType, []);
+        sectionsByProgram.get(s.programType)!.push(s);
+      }
+
+      const updates = [];
+      for (const [programType, programSections] of sectionsByProgram.entries()) {
+        const totalLearners = programSections.reduce((sum, s) => sum + s.enrollmentRecords.length, 0);
+        const sectionCount = programSections.length;
+        if (sectionCount > 0) {
+          const balancedAverage = Math.ceil(totalLearners / sectionCount);
+          for (const s of programSections) {
+            const actualLearners = s.enrollmentRecords.length;
+            const newMaxCapacity = Math.max(balancedAverage, actualLearners);
+            if (s.maxCapacity !== newMaxCapacity) {
+              updates.push(prisma.section.update({
+                where: { id: s.id },
+                data: { maxCapacity: newMaxCapacity }
+              }));
+            }
+          }
+        }
+      }
+
+      if (updates.length > 0) {
+        await prisma.$transaction(updates);
       }
     }
 

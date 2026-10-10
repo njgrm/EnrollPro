@@ -247,7 +247,7 @@ function InlineSectionTable({ sectionId, onMoveLearner, onRemoveLearner, onForfe
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end" className="z-[100]">
                       {onMoveLearner && (
                         <DropdownMenuItem onClick={() => onMoveLearner(l.enrollmentApplicationId, sectionId)}>
                           <MoveRight className="mr-2 h-4 w-4" />
@@ -365,13 +365,12 @@ const calculateGenderCounts = (
   section: SectionSummary,
   learners: DraftLearnerPlacement[],
 ): DraftGenderCounts => {
-  const draftedLearners = learners.filter(l => l.status !== "OFFICIALLY_ENROLLED");
   return {
     boys:
-      section.boys + draftedLearners.filter((learner) => learner.sex === "MALE").length,
+      section.boys + learners.filter((learner) => learner.sex === "MALE").length,
     girls:
       section.girls +
-      draftedLearners.filter((learner) => learner.sex === "FEMALE").length,
+      learners.filter((learner) => learner.sex === "FEMALE").length,
   };
 };
 
@@ -380,8 +379,7 @@ const buildRoster = (
   learners: DraftLearnerPlacement[],
 ): DraftSectionRoster => {
   const sortedLearners = [...learners].sort(sortLearnersByAverage);
-  const draftedLearners = sortedLearners.filter(l => l.status !== "OFFICIALLY_ENROLLED");
-  const totalCount = section.currentCount + draftedLearners.length;
+  const totalCount = section.currentCount + sortedLearners.length;
   return {
     section,
     learners: sortedLearners,
@@ -680,6 +678,7 @@ export function SectioningWorkspace() {
   const [autoAssignConfirmOpen, setAutoAssignConfirmOpen] = useState(false);
   const [isAnimationVisible, setIsAnimationVisible] = useState(true);
   const [animationScene, setAnimationScene] = useState(0);
+  const [isAnimationPaused, setIsAnimationPaused] = useState(false);
   const [commitDialogOpen, setCommitDialogOpen] = useState(false);
   const [allowCapacityOverride, setAllowCapacityOverride] = useState(false);
   const [commitProcessing, setCommitProcessing] = useState(false);
@@ -698,8 +697,11 @@ export function SectioningWorkspace() {
   useEffect(() => {
     if (!isAnimationVisible || !autoAssignConfirmOpen) {
       setAnimationScene(0);
+      setIsAnimationPaused(false);
       return;
     }
+    if (isAnimationPaused) return;
+
     const timer = setInterval(() => {
       setAnimationScene((prev) => {
         let next = (prev + 1) % 4;
@@ -710,7 +712,23 @@ export function SectioningWorkspace() {
       });
     }, 4000);
     return () => clearInterval(timer);
-  }, [isAnimationVisible, autoAssignConfirmOpen, enableHomogeneousSections]);
+  }, [isAnimationVisible, autoAssignConfirmOpen, enableHomogeneousSections, isAnimationPaused]);
+
+  const handleNextScene = () => {
+    setAnimationScene((prev) => {
+      let next = (prev + 1) % 4;
+      if (!enableHomogeneousSections && next === 2) next = 3;
+      return next;
+    });
+  };
+
+  const handlePrevScene = () => {
+    setAnimationScene((prev) => {
+      let next = (prev - 1 + 4) % 4;
+      if (!enableHomogeneousSections && next === 2) next = 1;
+      return next;
+    });
+  };
 
   const activeGradeLevelId = useSettingsStore((s) => s.uiPreferences.sectioningGradeId);
   const setActiveGradeLevelId = useCallback((id: string) => {
@@ -1914,40 +1932,6 @@ export function SectioningWorkspace() {
         </TabsList>
       </Tabs>
 
-      <AnimatePresence>
-        {draftPlacement && (
-          <motion.div
-            initial={{ opacity: 0, y: -20, height: 0, marginBottom: 0 }}
-            animate={{ opacity: 1, y: 0, height: "auto", marginBottom: "1rem" }}
-            exit={{ opacity: 0, y: -20, height: 0, marginBottom: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="bg-white rounded-md shadow-sm"
-          >
-            <div className="overflow-hidden rounded-md border-2 border-primary bg-primary/5 px-4 py-3 text-primary">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-base font-bold uppercase">
-                    TEMPORARY SECTIONS PENDING REVIEW
-                  </p>
-                  <p className="text-sm text-primary">
-                    {draftLearnerCount} learner(s) are currently assigned across{" "}
-                    {
-                      draftPlacement.rosters.filter(
-                        (roster) => roster.learners.length > 0,
-                      ).length
-                    }{" "}
-                    section(s) pending final approval
-                  </p>
-                </div>
-                <Badge className="w-fit bg-primary text-primary-foreground hover:bg-primary/90">
-                  Reviewing Temporary List
-                </Badge>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* ── Workspace ── */}
       <PageTransition key={activeGradeLevelId} className="flex-1 flex flex-col min-h-0 w-full overflow-hidden">
         <Card className="flex flex-col flex-1 min-h-0 h-full shadow-sm border-none bg-card overflow-hidden">
@@ -2589,7 +2573,7 @@ export function SectioningWorkspace() {
                                       animate={{ opacity: 1, scale: 1 }}
                                       transition={{ type: "spring", stiffness: 380, damping: 18, delay: 0.15 }}>
                                       <Badge className="border border-amber-400 bg-amber-100 text-amber-900 hover:bg-amber-100">
-                                        DRAFT: {roster.learners.length}
+                                        DRAFT: {roster.totalCount}
                                       </Badge>
                                     </motion.span>
                                   )}
@@ -2686,7 +2670,7 @@ export function SectioningWorkspace() {
                                                     <MoreHorizontal className="h-4 w-4" />
                                                   </Button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
+                                                <DropdownMenuContent align="end" className="z-[100]">
                                                   <DropdownMenuItem
                                                     onClick={() =>
                                                       openMoveDialog(
@@ -3041,7 +3025,7 @@ export function SectioningWorkspace() {
 
             {/* Right Column: Animation container */}
             {isAnimationVisible && !prefersReducedMotion && (
-              <div className="h-[400px]">
+              <div className="h-[450px]">
                 {(() => {
                   const isMock = filteredAndSortedPool.length < 10;
                   
@@ -3096,7 +3080,14 @@ export function SectioningWorkspace() {
                     regularBec: { count: becTotal - topBecCount, sections: regularSections.length, sectionNames: regularSections.map(s => s.name) }
                   };
                   
-                  return <AutoAssignVisualizer scene={animationScene} poolStats={stats} />;
+                  return <AutoAssignVisualizer 
+                    scene={animationScene} 
+                    poolStats={stats} 
+                    isPaused={isAnimationPaused}
+                    onTogglePause={() => setIsAnimationPaused(!isAnimationPaused)}
+                    onNext={handleNextScene}
+                    onPrev={handlePrevScene}
+                  />;
                 })()}
               </div>
             )}

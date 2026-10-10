@@ -94,21 +94,60 @@ export async function executeAutoSectioningBatch(
       if (topSections.length > 0) {
         const totalSections = topSections.length + regularSections.length;
         const targetPerSection = Math.ceil(remainingLearners.length / totalSections);
-        const maxAvailableTopCapacity = topSections.reduce((acc, sec) => acc + Math.max(0, sec.maxCapacity - sec.enrollmentRecords.length), 0);
-        const balancedTopCapacity = targetPerSection * topSections.length;
-        const totalTopCapacity = Math.min(balancedTopCapacity, maxAvailableTopCapacity);
-
+        
         const eligibleForTop = remainingLearners.filter(l => l.academicStatus !== "CONDITIONALLY_PROMOTED");
-        const topLearners = eligibleForTop.slice(0, totalTopCapacity);
+        const eligibleMales = eligibleForTop.filter(l => l.learner.sex === "MALE");
+        const eligibleFemales = eligibleForTop.filter(l => l.learner.sex === "FEMALE");
+        
+        let malesIndex = 0;
+        let femalesIndex = 0;
+        
+        const totalMalesCount = remainingLearners.filter(l => l.learner.sex === "MALE").length;
+        const maleRatio = remainingLearners.length > 0 ? totalMalesCount / remainingLearners.length : 0.5;
 
-        const topRemainingCapacity = new Map(topSections.map(s => [s.id, Math.max(0, s.maxCapacity - s.enrollmentRecords.length)]));
-        const topMales = topLearners.filter(l => l.learner.sex === "MALE");
-        const topFemales = topLearners.filter(l => l.learner.sex === "FEMALE");
-
-        snakeDraftLearners(topSections, topMales, topFemales, rostersBySectionId, topRemainingCapacity);
-
-        const assignedIds = new Set(topLearners.map(l => l.id));
-        remainingLearners = remainingLearners.filter(l => !assignedIds.has(l.id));
+        for (const section of topSections) {
+          const availableCapacity = Math.max(0, section.maxCapacity - section.enrollmentRecords.length);
+          const limitForThisSection = Math.min(targetPerSection, availableCapacity);
+          
+          let targetBoys = Math.round(limitForThisSection * maleRatio);
+          let targetGirls = limitForThisSection - targetBoys;
+          
+          const sectionLearners: typeof sortedLearners = [];
+          
+          while (targetBoys > 0 && malesIndex < eligibleMales.length) {
+            sectionLearners.push(eligibleMales[malesIndex]);
+            malesIndex++;
+            targetBoys--;
+          }
+          
+          while (targetGirls > 0 && femalesIndex < eligibleFemales.length) {
+            sectionLearners.push(eligibleFemales[femalesIndex]);
+            femalesIndex++;
+            targetGirls--;
+          }
+          
+          let remainingSlots = limitForThisSection - sectionLearners.length;
+          while (remainingSlots > 0 && malesIndex < eligibleMales.length) {
+             sectionLearners.push(eligibleMales[malesIndex]);
+             malesIndex++;
+             remainingSlots--;
+          }
+          while (remainingSlots > 0 && femalesIndex < eligibleFemales.length) {
+             sectionLearners.push(eligibleFemales[femalesIndex]);
+             femalesIndex++;
+             remainingSlots--;
+          }
+          
+          if (sectionLearners.length > 0) {
+            if (!rostersBySectionId.has(section.id)) {
+              rostersBySectionId.set(section.id, []);
+            }
+            rostersBySectionId.get(section.id)!.push(...sectionLearners);
+            
+            const assignedIds = new Set(sectionLearners.map(l => l.id));
+            remainingLearners = remainingLearners.filter(l => !assignedIds.has(l.id));
+          }
+        }
       }
 
       if (remainingLearners.length > 0 && regularSections.length > 0) {

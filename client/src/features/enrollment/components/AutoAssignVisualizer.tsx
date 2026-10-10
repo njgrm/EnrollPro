@@ -25,7 +25,14 @@ export interface PoolStats {
 interface Props {
   scene: number;
   poolStats: PoolStats;
+  isPaused?: boolean;
+  onTogglePause?: () => void;
+  onNext?: () => void;
+  onPrev?: () => void;
 }
+
+import { Play, Pause, ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/shared/ui/button";
 
 function Ticker({ value, duration = 0.8, className }: { value: number, duration?: number, className?: string }) {
   const count = useMotionValue(value);
@@ -39,7 +46,7 @@ function Ticker({ value, duration = 0.8, className }: { value: number, duration?
   return <motion.span className={className}>{rounded}</motion.span>;
 }
 
-export function AutoAssignVisualizer({ scene, poolStats }: Props) {
+export function AutoAssignVisualizer({ scene, poolStats, isPaused, onTogglePause, onNext, onPrev }: Props) {
   const { steEnabled, spaEnabled, spsEnabled, heterogeneousRoundRobin, enableHomogeneousSections } = useSettingsStore();
   const [animationReady, setAnimationReady] = useState(false);
   const [prevScene, setPrevScene] = useState(scene);
@@ -235,9 +242,6 @@ export function AutoAssignVisualizer({ scene, poolStats }: Props) {
                   );
                 }
 
-                // Show up to 4 sections
-                const displayNames = names.slice(0, 4);
-                const hasMore = names.length > 4;
 
                 const mPerSection = Math.floor(totalM / names.length);
                 let remainingM = totalM - (mPerSection * names.length);
@@ -248,8 +252,8 @@ export function AutoAssignVisualizer({ scene, poolStats }: Props) {
                 return (
                   <div className="w-full flex flex-col items-center gap-2 relative">
                     <span className="font-bold uppercase bg-muted text-foreground px-3 py-1 rounded-full z-10">Top BEC Sections</span>
-                    <div className="flex gap-2 w-full justify-center flex-wrap">
-                      {displayNames.map((name) => {
+                    <div className="flex gap-2 w-max max-w-[460px] justify-start overflow-x-auto mx-auto pb-2 px-1 snap-x">
+                      {names.map((name) => {
                         const m = mPerSection + (remainingM > 0 ? 1 : 0);
                         if (remainingM > 0) remainingM--;
 
@@ -257,7 +261,7 @@ export function AutoAssignVisualizer({ scene, poolStats }: Props) {
                         if (remainingF > 0) remainingF--;
 
                         return (
-                          <div key={name} className="flex-1 min-w-[100px] max-w-[140px] bg-background border-2 border-dashed border-primary/40 rounded-lg p-2 flex flex-col items-center justify-center h-20 shadow-sm overflow-hidden">
+                          <div key={name} className="flex-1 min-w-[100px] max-w-[140px] shrink-0 snap-start bg-background border-2 border-dashed border-primary/40 rounded-lg p-2 flex flex-col items-center justify-center h-20 shadow-sm overflow-hidden">
                             <span className="font-bold uppercase truncate w-full text-center text-foreground" title={name}>{name}</span>
                             <div className="flex gap-2 mt-1 ">
                               <span className="text-blue-600 font-bold">M: <Ticker value={animationReady ? m : 0} /></span>
@@ -266,12 +270,6 @@ export function AutoAssignVisualizer({ scene, poolStats }: Props) {
                           </div>
                         );
                       })}
-                      {hasMore && (
-                        <div className="flex-1 min-w-[80px] max-w-[100px] bg-muted/50 border-2 border-dashed border-border rounded-lg p-2 flex flex-col items-center justify-center h-20 shadow-sm opacity-70">
-                          <span className="font-bold uppercase text-foreground">+{names.length - 4} More</span>
-                          <span className="text-center mt-1 text-foreground">Balanced evenly</span>
-                        </div>
-                      )}
                     </div>
                   </div>
                 );
@@ -289,9 +287,6 @@ export function AutoAssignVisualizer({ scene, poolStats }: Props) {
                   );
                 }
 
-                // Show up to 4 sections in the UI to prevent overflow
-                const displayNames = names.slice(0, 4);
-                const hasMore = names.length > 4;
 
                 const mPerSection = Math.floor(totalM / names.length);
                 let remainingM = totalM - (mPerSection * names.length);
@@ -302,8 +297,8 @@ export function AutoAssignVisualizer({ scene, poolStats }: Props) {
                 return (
                   <div className="w-full flex flex-col items-center gap-2 relative">
                     <span className="font-bold uppercase bg-muted text-foreground px-3 py-1 rounded-full z-10">Regular BEC Sections</span>
-                    <div className="flex gap-2 w-full justify-center flex-wrap">
-                    {displayNames.map((name) => {
+                    <div className="flex gap-2 w-max max-w-[460px] justify-start overflow-x-auto mx-auto pb-2 px-1 snap-x">
+                    {names.map((name) => {
                       const m = mPerSection + (remainingM > 0 ? 1 : 0);
                       if (remainingM > 0) remainingM--;
 
@@ -311,7 +306,7 @@ export function AutoAssignVisualizer({ scene, poolStats }: Props) {
                       if (remainingF > 0) remainingF--;
 
                       return (
-                        <div key={name} className="flex-1 min-w-[100px] max-w-[140px] bg-background border-2 border-dashed border-primary/40 rounded-lg p-2 flex flex-col items-center justify-center h-20 shadow-sm overflow-hidden">
+                        <div key={name} className="flex-1 min-w-[100px] max-w-[140px] shrink-0 snap-start bg-background border-2 border-dashed border-primary/40 rounded-lg p-2 flex flex-col items-center justify-center h-20 shadow-sm overflow-hidden">
                           <span className="font-bold uppercase truncate w-full text-center text-foreground" title={name}>{name}</span>
                           <div className="flex gap-2 mt-1 ">
                             <span className="text-blue-600 font-bold">M: <Ticker value={animationReady ? m : 0} /></span>
@@ -320,12 +315,6 @@ export function AutoAssignVisualizer({ scene, poolStats }: Props) {
                         </div>
                       );
                     })}
-                    {hasMore && (
-                      <div className="flex-1 min-w-[80px] max-w-[100px] bg-muted/50 border-2 border-dashed border-border rounded-lg p-2 flex flex-col items-center justify-center h-20 shadow-sm opacity-70">
-                        <span className="font-bold uppercase text-foreground">+{names.length - 4} More</span>
-                        <span className="text-center mt-1 text-foreground">{heterogeneousRoundRobin ? "Balanced evenly" : "Ranked strictly"}</span>
-                      </div>
-                    )}
                     </div>
                   </div>
                 );
@@ -428,7 +417,7 @@ export function AutoAssignVisualizer({ scene, poolStats }: Props) {
                   opacity = 0;
                 } else if (node.track === "TOP_BEC" && scene === 2) {
                   const names = poolStats.topBec.sectionNames || [];
-                  const numSections = Math.max(1, Math.min(4, names.length));
+                  const numSections = Math.min(3, names.length);
                   const colIdx = node.trackIdx % numSections;
                   x = (colIdx - (numSections - 1) / 2) * 148;
                   y = 156;
@@ -437,7 +426,7 @@ export function AutoAssignVisualizer({ scene, poolStats }: Props) {
                   opacity = 0;
                 } else if (node.track === "REGULAR_BEC" && scene === 3) {
                   const names = poolStats.regularBec.sectionNames || [];
-                  const numSections = Math.max(1, Math.min(4, names.length));
+                  const numSections = Math.min(3, names.length);
                   const colIdx = node.trackIdx % numSections;
                   x = (colIdx - (numSections - 1) / 2) * 148;
                   y = 156;
@@ -480,6 +469,18 @@ export function AutoAssignVisualizer({ scene, poolStats }: Props) {
             });
           })()}
         </div>
+      </div>
+      
+      <div className="bg-muted p-2 border-t border-border flex items-center justify-center gap-2 text-primary">
+        <Button variant="ghost" size="icon" onClick={onPrev} className="h-8 w-8 hover:bg-primary/10">
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" onClick={onTogglePause} className="h-8 w-8 hover:bg-primary/10">
+          {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+        </Button>
+        <Button variant="ghost" size="icon" onClick={onNext} className="h-8 w-8 hover:bg-primary/10">
+          <ChevronRight className="h-4 w-4" />
+        </Button>
       </div>
     </div>
   );

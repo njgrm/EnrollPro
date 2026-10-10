@@ -532,6 +532,8 @@ function SectionCard({
 export default function Homerooms() {
   const { confirmOrRun } = useUnsavedChangesPrompt();
   const navigate = useNavigate();
+  const { activeSchoolYearId, viewingSchoolYearId, systemPhase, enableHomogeneousSections, homogeneousSectionCount, steEnabled, spaEnabled, spsEnabled } = useSettingsStore();
+
   const renderSectionGroup = (
     category: SectionCategory,
     sections: SectionItem[],
@@ -544,13 +546,18 @@ export default function Homerooms() {
       canMutate &&
       (category !== "SCP" ||
         programOptions.some((option) => isScpProgram(option.value)));
+    
+    const isAtTopBecLimit = category === "BEC_TOP_5" && sections.length >= homogeneousSectionCount;
+    const shouldShowAddButton = canMutate && !isAtTopBecLimit;
+
+    const dynamicTitle = category === "BEC_TOP_5" ? `Basic Education Curriculum (BEC) — Top ${homogeneousSectionCount}` : categoryConfig.title;
 
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between border-b pb-2">
           <h3 className="text-lg font-extrabold uppercase text-foreground tracking-tight flex items-center gap-2">
             <div className="h-2 w-2 rounded-full bg-primary" />
-            {categoryConfig.title}
+            {dynamicTitle}
           </h3>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 auto-rows-fr pb-4">
@@ -576,7 +583,7 @@ export default function Homerooms() {
               isEosyClosing={systemPhase === "EOSY_CLOSING"}
             />
           ))}
-          {canMutate && (
+          {shouldShowAddButton && (
             <button
               type="button"
               onClick={() =>
@@ -607,8 +614,6 @@ export default function Homerooms() {
     );
   };
 
-
-  const { activeSchoolYearId, viewingSchoolYearId, systemPhase, enableHomogeneousSections, steEnabled, spaEnabled, spsEnabled } = useSettingsStore();
   const ayId = viewingSchoolYearId ?? activeSchoolYearId;
   const { isHistoricalReadOnly, hasOverride } = useHistoricalReadOnly();
   const canMutate =

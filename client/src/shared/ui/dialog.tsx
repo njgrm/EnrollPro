@@ -91,7 +91,7 @@ const DialogOverlay = React.forwardRef<
       transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
       style={{ willChange: "opacity" }}
       className={cn(
-        "fixed inset-0 z-50 bg-black/80",
+        "fixed inset-0 z-[100] bg-black/80",
         className,
       )}
       {...props}
@@ -129,7 +129,7 @@ const DialogContent = React.forwardRef<
             transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
             style={{ willChange: "transform, opacity" }}
             className={cn(
-              "fixed inset-0 m-auto z-50 grid w-full max-w-3xl h-fit max-h-[95vh] overflow-y-auto gap-4 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6 shadow-lg",
+              "fixed inset-0 m-auto z-[100] grid w-full max-w-3xl h-fit max-h-[95vh] overflow-y-auto gap-4 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6 shadow-lg",
               className,
             )}
             {...props}

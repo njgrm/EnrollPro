@@ -57,6 +57,7 @@ interface PendingVerification {
   trackingNumber: string | null;
   status: string;
   createdAt: string;
+  admissionChannel: "ONLINE" | "F2F";
   isTemporarilyEnrolled?: boolean;
   learner: {
     id: number;
@@ -95,7 +96,6 @@ interface PendingVerification {
   checklistVerified: boolean;
   isMissingSf9: boolean;
   isMissingPsa: boolean;
-  admissionChannel?: string;
   enrollmentRecord?: {
     id: number;
     sectionId: number | null;
@@ -300,12 +300,16 @@ export function VerificationWorkspace() {
   );
   const [programFilter, setProgramFilter] = useState<string>("ALL");
   const [trackingNumberFilter, setTrackingNumberFilter] = useState("");
+  const [showOnline, setShowOnline] = useState(true);
+  const [showWalkIn, setShowWalkIn] = useState(true);
 
   const [localIntakeCategoryFilter, setLocalIntakeCategoryFilter] = useState<string>(
     isTransfereeOnlyCoordinator ? "TRANSFEREE" : "ALL",
   );
   const [localProgramFilter, setLocalProgramFilter] = useState<string>("ALL");
   const [localTrackingNumberFilter, setLocalTrackingNumberFilter] = useState("");
+  const [localShowOnline, setLocalShowOnline] = useState(true);
+  const [localShowWalkIn, setLocalShowWalkIn] = useState(true);
   const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
 
   useEffect(() => {
@@ -313,16 +317,19 @@ export function VerificationWorkspace() {
       setLocalIntakeCategoryFilter(intakeCategoryFilter);
       setLocalProgramFilter(programFilter);
       setLocalTrackingNumberFilter(trackingNumberFilter);
+      setLocalShowOnline(showOnline);
+      setLocalShowWalkIn(showWalkIn);
     }
-  }, [isFilterPopoverOpen, intakeCategoryFilter, programFilter, trackingNumberFilter]);
+  }, [isFilterPopoverOpen, intakeCategoryFilter, programFilter, trackingNumberFilter, showOnline, showWalkIn]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (!isTransfereeOnlyCoordinator && intakeCategoryFilter !== "ALL") count++;
     if (programFilter !== "ALL") count++;
     if (trackingNumberFilter.trim() !== "") count++;
+    if (!showOnline || !showWalkIn) count++;
     return count;
-  }, [intakeCategoryFilter, programFilter, trackingNumberFilter, isTransfereeOnlyCoordinator]);
+  }, [intakeCategoryFilter, programFilter, trackingNumberFilter, showOnline, showWalkIn, isTransfereeOnlyCoordinator]);
   type VerificationTab = "PENDING" | "READY" | "INCOMPLETE" | "CANCELLED";
   const activeTabRaw = useSettingsStore((s) => s.uiPreferences.verificationTab);
   const activeTab = (["PENDING", "READY", "INCOMPLETE", "CANCELLED"].includes(activeTabRaw) ? activeTabRaw : "PENDING") as VerificationTab;
@@ -416,7 +423,16 @@ export function VerificationWorkspace() {
         const tracking = app.trackingNumber?.toLowerCase() || "";
         const lrn = app.learner.lrn?.toLowerCase() || "";
         const fullName = `${app.learner.lastName} ${app.learner.firstName}`.toLowerCase();
-        return tracking.includes(q) || lrn.includes(q) || fullName.includes(q);
+        const admissionChannelStr = app.admissionChannel === "ONLINE" ? "online" : "walk-in";
+        return tracking.includes(q) || lrn.includes(q) || fullName.includes(q) || admissionChannelStr.includes(q);
+      });
+    }
+
+    if (!showOnline || !showWalkIn) {
+      result = result.filter((app) => {
+        if (app.admissionChannel === "ONLINE") return showOnline;
+        if (app.admissionChannel === "F2F") return showWalkIn;
+        return true;
       });
     }
 
@@ -447,7 +463,7 @@ export function VerificationWorkspace() {
     }
 
     return result;
-  }, [pendingVerifications, activeSearchQuery, intakeCategoryFilter, programFilter, activeTab, isTransfereeOnlyCoordinator, trackingNumberFilter]);
+  }, [pendingVerifications, activeSearchQuery, intakeCategoryFilter, programFilter, activeTab, isTransfereeOnlyCoordinator, trackingNumberFilter, showOnline, showWalkIn]);
 
 
   const atlasSubjectsQuery = useQuery({
@@ -819,6 +835,28 @@ export function VerificationWorkspace() {
                       className="h-10 font-bold uppercase"
                     />
                   </div>
+
+                  <div className="space-y-2 pt-2 border-t">
+                    <Label className="text-sm text-muted-foreground uppercase">Admission Channel</Label>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="filter-online"
+                          checked={localShowOnline}
+                          onCheckedChange={(c) => setLocalShowOnline(c as boolean)}
+                        />
+                        <label htmlFor="filter-online" className="text-sm font-bold cursor-pointer select-none">Show Online</label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="filter-walkin"
+                          checked={localShowWalkIn}
+                          onCheckedChange={(c) => setLocalShowWalkIn(c as boolean)}
+                        />
+                        <label htmlFor="filter-walkin" className="text-sm font-bold cursor-pointer select-none">Show Walk-in</label>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="p-3 border-t bg-gray-50 flex items-center justify-end gap-2 rounded-b-md">
@@ -828,9 +866,13 @@ export function VerificationWorkspace() {
                       setLocalIntakeCategoryFilter(isTransfereeOnlyCoordinator ? "TRANSFEREE" : "ALL");
                       setLocalProgramFilter("ALL");
                       setLocalTrackingNumberFilter("");
+                      setLocalShowOnline(true);
+                      setLocalShowWalkIn(true);
                       setIntakeCategoryFilter(isTransfereeOnlyCoordinator ? "TRANSFEREE" : "ALL");
                       setProgramFilter("ALL");
                       setTrackingNumberFilter("");
+                      setShowOnline(true);
+                      setShowWalkIn(true);
                       setIsFilterPopoverOpen(false);
                     }}
                     className="font-bold uppercase"
@@ -842,6 +884,8 @@ export function VerificationWorkspace() {
                       setIntakeCategoryFilter(localIntakeCategoryFilter);
                       setProgramFilter(localProgramFilter);
                       setTrackingNumberFilter(localTrackingNumberFilter);
+                      setShowOnline(localShowOnline);
+                      setShowWalkIn(localShowWalkIn);
                       setIsFilterPopoverOpen(false);
 
                       if (localTrackingNumberFilter.trim() !== "") {
@@ -1100,9 +1144,22 @@ export function VerificationWorkspace() {
                             CANCELLED
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className={cn("text-sm uppercase font-bold w-fit px-2.5 py-0.5", getGradeLevelBadgeStyles(app.gradeLevel.name))}>
-                            {formatGradeLevel(app.gradeLevel.name)}
-                          </Badge>
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant="outline" className={cn("text-sm uppercase font-bold w-fit px-2.5 py-0.5", getGradeLevelBadgeStyles(app.gradeLevel.name))}>
+                              {formatGradeLevel(app.gradeLevel.name)}
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-sm uppercase font-bold w-fit px-2.5 py-0.5",
+                                app.admissionChannel === "ONLINE"
+                                  ? "bg-blue-100/50 text-blue-800 border-blue-200"
+                                  : "bg-amber-100/50 text-amber-800 border-amber-200"
+                              )}
+                            >
+                              {app.admissionChannel === "ONLINE" ? "ONLINE" : "WALK-IN"}
+                            </Badge>
+                          </div>
                         )}
                         <div className="flex items-center text-sm text-foreground font-bold whitespace-nowrap text-foreground">
                           <Clock className="w-3 h-3 mr-1 shrink-0" />
@@ -1209,6 +1266,17 @@ export function VerificationWorkspace() {
                         ) : ( 
                           <Badge variant="outline" className="border-pink-600 border text-pink-600 bg-pink-600/5 font-bold px-1.5 py-0">F</Badge>
                         )}
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-sm uppercase font-bold w-fit px-2.5 py-0.5",
+                            selectedApp.admissionChannel === "ONLINE"
+                              ? "bg-blue-100/50 text-blue-800 border-blue-200"
+                              : "bg-amber-100/50 text-amber-800 border-amber-200"
+                          )}
+                        >
+                          {selectedApp.admissionChannel === "ONLINE" ? "ONLINE" : "WALK-IN"}
+                        </Badge>
                       </div>
                     </div>
                   </div>
@@ -1250,6 +1318,10 @@ export function VerificationWorkspace() {
                         Application Summary
                       </h3>
                       <div className="w-full bg-white border border-border/50 rounded-sm overflow-hidden shadow-sm flex flex-col">
+                        {/* Logistical Admission Data */}
+                        <VerificationRow label="Admission Channel">
+                          {selectedApp.admissionChannel === "ONLINE" ? "Online Application" : "Manual Walk-in Encoding"}
+                        </VerificationRow>
                         {/* Contact Information */}
                         {(() => {
                           const primaryContact = selectedApp.familyMembers?.find(
@@ -1311,6 +1383,10 @@ export function VerificationWorkspace() {
                     </div>
                   ) : (
                     <div className="w-full bg-white border border-border/50 rounded-sm overflow-hidden shadow-sm mb-2 flex flex-col">
+                      {/* Logistical Admission Data */}
+                      <VerificationRow label="Admission Channel">
+                        {selectedApp.admissionChannel === "ONLINE" ? "Online Application" : "Manual Walk-in Encoding"}
+                      </VerificationRow>
                       {/* Section 1: Contact Information */}
                       {(() => {
                         const primaryContact = selectedApp.familyMembers?.find(
