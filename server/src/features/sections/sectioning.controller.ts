@@ -739,13 +739,7 @@ export async function commitDraft(req: Request, res: Response) {
       }
 
       const learnerName = `${application.learner.lastName}, ${application.learner.firstName}`;
-      if (application.enrollmentRecord && !application.enrollmentRecord.isDraft) {
-        skippedApplications.push({
-          applicationId: candidate.applicationId,
-          reason: `${learnerName} has already been assigned to a section.`,
-        });
-        continue;
-      }
+      // Removed check that skipped learners if they were already finalized (not draft) so that re-assignment is allowed.
 
       if (!["READY_FOR_SECTIONING", "PENDING_CONFIRMATION", "OFFICIALLY_ENROLLED"].includes(application.status)) {
         skippedApplications.push({
@@ -876,46 +870,7 @@ export async function commitDraft(req: Request, res: Response) {
       }
     }
 
-    if (sections.length > 0) {
-      const gradeLevelId = sections[0].gradeLevelId;
-      const allSections = await prisma.section.findMany({
-        where: { gradeLevelId, schoolYearId: req.schoolYearId! },
-        include: {
-          enrollmentRecords: {
-            where: { isDraft: false, ...activeSectionEnrollmentFilter },
-          }
-        }
-      });
-
-      const sectionsByProgram = new Map<string, typeof allSections>();
-      for (const s of allSections) {
-        if (!sectionsByProgram.has(s.programType)) sectionsByProgram.set(s.programType, []);
-        sectionsByProgram.get(s.programType)!.push(s);
-      }
-
-      const updates = [];
-      for (const [programType, programSections] of sectionsByProgram.entries()) {
-        const totalLearners = programSections.reduce((sum, s) => sum + s.enrollmentRecords.length, 0);
-        const sectionCount = programSections.length;
-        if (sectionCount > 0) {
-          const balancedAverage = Math.ceil(totalLearners / sectionCount);
-          for (const s of programSections) {
-            const actualLearners = s.enrollmentRecords.length;
-            const newMaxCapacity = Math.max(balancedAverage, actualLearners);
-            if (s.maxCapacity !== newMaxCapacity) {
-              updates.push(prisma.section.update({
-                where: { id: s.id },
-                data: { maxCapacity: newMaxCapacity }
-              }));
-            }
-          }
-        }
-      }
-
-      if (updates.length > 0) {
-        await prisma.$transaction(updates);
-      }
-    }
+    // Removed maxCapacity updates as requested by user.
 
     await auditLog({
       userId,

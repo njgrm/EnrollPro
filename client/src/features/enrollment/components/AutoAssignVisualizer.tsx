@@ -250,9 +250,9 @@ export function AutoAssignVisualizer({ scene, poolStats, isPaused, onTogglePause
                 let remainingF = totalF - (fPerSection * names.length);
 
                 return (
-                  <div className="w-full flex flex-col items-center gap-2 relative">
-                    <span className="font-bold uppercase bg-muted text-foreground px-3 py-1 rounded-full z-10">Top BEC Sections</span>
-                    <div className="flex gap-2 w-max max-w-[460px] justify-start overflow-x-auto mx-auto pb-2 px-1 snap-x">
+                  <div className="w-full flex flex-col items-start gap-2 relative pl-4">
+                    <span className="font-bold uppercase bg-muted text-foreground px-3 py-1 rounded-full z-10 self-center">Top BEC Sections</span>
+                    <div className="flex gap-2 w-full overflow-x-auto pb-2 px-1 snap-x">
                       {names.map((name) => {
                         const m = mPerSection + (remainingM > 0 ? 1 : 0);
                         if (remainingM > 0) remainingM--;
@@ -261,7 +261,7 @@ export function AutoAssignVisualizer({ scene, poolStats, isPaused, onTogglePause
                         if (remainingF > 0) remainingF--;
 
                         return (
-                          <div key={name} className="flex-1 min-w-[100px] max-w-[140px] shrink-0 snap-start bg-background border-2 border-dashed border-primary/40 rounded-lg p-2 flex flex-col items-center justify-center h-20 shadow-sm overflow-hidden">
+                          <div key={name} className="flex-1 min-w-[140px] max-w-[140px] shrink-0 snap-start bg-background border-2 border-dashed border-primary/40 rounded-lg p-2 flex flex-col items-center justify-center h-20 shadow-sm overflow-hidden">
                             <span className="font-bold uppercase truncate w-full text-center text-foreground" title={name}>{name}</span>
                             <div className="flex gap-2 mt-1 ">
                               <span className="text-blue-600 font-bold">M: <Ticker value={animationReady ? m : 0} /></span>
@@ -295,9 +295,9 @@ export function AutoAssignVisualizer({ scene, poolStats, isPaused, onTogglePause
                 let remainingF = totalF - (fPerSection * names.length);
 
                 return (
-                  <div className="w-full flex flex-col items-center gap-2 relative">
-                    <span className="font-bold uppercase bg-muted text-foreground px-3 py-1 rounded-full z-10">Regular BEC Sections</span>
-                    <div className="flex gap-2 w-max max-w-[460px] justify-start overflow-x-auto mx-auto pb-2 px-1 snap-x">
+                  <div className="w-full flex flex-col items-start gap-2 relative pl-4">
+                    <span className="font-bold uppercase bg-muted text-foreground px-3 py-1 rounded-full z-10 self-center">Regular BEC Sections</span>
+                    <div className="flex gap-2 w-full overflow-x-auto pb-2 px-1 snap-x">
                     {names.map((name) => {
                       const m = mPerSection + (remainingM > 0 ? 1 : 0);
                       if (remainingM > 0) remainingM--;
@@ -306,7 +306,7 @@ export function AutoAssignVisualizer({ scene, poolStats, isPaused, onTogglePause
                       if (remainingF > 0) remainingF--;
 
                       return (
-                        <div key={name} className="flex-1 min-w-[100px] max-w-[140px] shrink-0 snap-start bg-background border-2 border-dashed border-primary/40 rounded-lg p-2 flex flex-col items-center justify-center h-20 shadow-sm overflow-hidden">
+                        <div key={name} className="flex-1 min-w-[140px] max-w-[140px] shrink-0 snap-start bg-background border-2 border-dashed border-primary/40 rounded-lg p-2 flex flex-col items-center justify-center h-20 shadow-sm overflow-hidden">
                           <span className="font-bold uppercase truncate w-full text-center text-foreground" title={name}>{name}</span>
                           <div className="flex gap-2 mt-1 ">
                             <span className="text-blue-600 font-bold">M: <Ticker value={animationReady ? m : 0} /></span>

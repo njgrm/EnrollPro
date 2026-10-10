@@ -202,7 +202,7 @@ function InlineSectionTable({ sectionId, onMoveLearner, onRemoveLearner, onForfe
             <th className="p-3 text-center font-bold">Sex</th>
             <th className="p-3 text-center font-bold">Status</th>
             <th className="p-3 text-center font-bold">Gen Ave</th>
-            <th className="p-3 text-right font-bold">Action</th>
+            <th className="p-3 text-center font-bold">Action</th>
           </tr>
         </thead>
         <tbody className="divide-y">
@@ -229,9 +229,9 @@ function InlineSectionTable({ sectionId, onMoveLearner, onRemoveLearner, onForfe
               <td className="p-2 text-center">
                 <Badge className={cn(
                   "px-2 uppercase",
-                  l.status === "OFFICIALLY_ENROLLED" ? "bg-green-600 text-white hover:bg-green-600 border-green-600" 
-                  : l.status === "PENDING_CONFIRMATION" ? "bg-amber-500 text-white hover:bg-amber-500 border-amber-500" 
-                  : "bg-muted text-foreground border-muted hover:bg-muted"
+                  l.status === "OFFICIALLY_ENROLLED" ? "bg-green-600 text-white hover:bg-green-600 border-green-600"
+                    : l.status === "PENDING_CONFIRMATION" ? "bg-amber-500 text-white hover:bg-amber-500 border-amber-500"
+                      : "bg-muted text-foreground border-muted hover:bg-muted"
                 )}>
                   {l.status === "OFFICIALLY_ENROLLED" ? "Enrolled" : l.status === "PENDING_CONFIRMATION" ? "Pending Confirmation" : "Pre-Registered"}
                 </Badge>
@@ -403,6 +403,10 @@ const snakeDraftLearners = (
   rostersBySectionId: Map<number, DraftLearnerPlacement[]>,
   remainingCapacity: Map<number, number>
 ): PoolLearner[] => {
+  console.log("=== snakeDraftLearners called ===");
+  console.log("Sections:", sections.map(s => ({ id: s.id, name: s.name, maxCapacity: s.maxCapacity, currentCount: s.currentCount })));
+  console.log("remainingCapacity before:", Array.from(remainingCapacity.entries()));
+  console.log("males count:", males.length, "females count:", females.length);
   const unplaced: PoolLearner[] = [];
   let sectionIndex = 0;
   let forward = true;
@@ -410,14 +414,14 @@ const snakeDraftLearners = (
   const getNextValidSection = () => {
     const totalRemaining = Array.from(remainingCapacity.values()).reduce((sum, c) => sum + c, 0);
     if (totalRemaining <= 0) return null;
-    
+
     const startState = { idx: sectionIndex, fwd: forward };
     let looped = false;
-    
+
     while (true) {
       const current = sectionIndex;
       const section = sections[current];
-      
+
       if (forward) {
         if (sectionIndex >= sections.length - 1) forward = false;
         else sectionIndex++;
@@ -427,7 +431,7 @@ const snakeDraftLearners = (
       }
 
       if (remainingCapacity.get(section.id)! > 0) return section;
-      
+
       if (sectionIndex === startState.idx && forward === startState.fwd) {
         if (looped) return null;
         looped = true;
@@ -459,6 +463,8 @@ const snakeDraftLearners = (
     }
   }
 
+  console.log("remainingCapacity after:", Array.from(remainingCapacity.entries()));
+  console.log("unplaced length:", unplaced.length);
   return unplaced;
 }
 
@@ -503,6 +509,7 @@ const createDraftPlacement = (
   sections: SectionSummary[],
   enableHomogeneousSections: boolean,
   homogeneousSectionCount: number,
+  heterogeneousRoundRobin: boolean,
 ): DraftPlacement => {
   const rostersBySectionId = new Map<number, DraftLearnerPlacement[]>(
     sections.map((section) => [section.id, []])
@@ -533,7 +540,7 @@ const createDraftPlacement = (
       const aAve = a.genAve ?? -1;
       const bAve = b.genAve ?? -1;
       if (aAve !== bAve) return bAve - aAve;
-      
+
       const nameA = `${a.lastName}, ${a.firstName}`;
       const nameB = `${b.lastName}, ${b.firstName}`;
       return nameA.localeCompare(nameB);
@@ -567,7 +574,7 @@ const createDraftPlacement = (
       // Calculate Balanced Total Top Capacity
       const totalSections = topSections.length + regularSections.length;
       const targetPerSection = Math.ceil(remainingLearners.length / totalSections);
-      const maxAvailableTopCapacity = topSections.reduce((acc, sec) => acc + Math.max(0, sec.maxCapacity - sec.currentCount), 0);
+      const maxAvailableTopCapacity = topSections.reduce((acc, sec) => acc + (sec.maxCapacity || 40), 0);
       const balancedTopCapacity = targetPerSection * topSections.length;
       const totalTopCapacity = Math.min(balancedTopCapacity, maxAvailableTopCapacity);
 
@@ -579,32 +586,49 @@ const createDraftPlacement = (
       // The Slice: Extract top N learners
       const topLearners = eligibleForTop.slice(0, totalTopCapacity);
 
-      // Apply snake draft balancing to Top Sections as well
       const topRemainingCapacity = new Map(
-        topSections.map(s => [s.id, Math.max(0, s.maxCapacity - s.currentCount)])
+        topSections.map(s => [s.id, s.maxCapacity || 40])
       );
-      
+
       const topMales = topLearners.filter(l => l.sex === "MALE");
       const topFemales = topLearners.filter(l => l.sex === "FEMALE");
-      
+
       snakeDraftLearners(topSections, topMales, topFemales, rostersBySectionId, topRemainingCapacity);
 
       // Remove assigned top learners from the master pool
       const assignedIds = new Set(topLearners.map((l) => l.applicationId));
       remainingLearners = remainingLearners.filter((l) => !assignedIds.has(l.applicationId));
+
     }
 
-    // Phase 3: Heterogeneous Allocation (Regular Sections - Snake Draft)
+    // Phase 3: Allocation (Regular Sections)
     if (remainingLearners.length > 0 && regularSections.length > 0) {
-      const remainingCapacity = new Map(
-        regularSections.map(s => [s.id, Math.max(0, s.maxCapacity - s.currentCount)])
-      );
+      if (heterogeneousRoundRobin) {
+        const remainingCapacity = new Map(
+          regularSections.map(s => [s.id, s.maxCapacity || 40])
+        );
 
-      const males = remainingLearners.filter(l => l.sex === "MALE");
-      const females = remainingLearners.filter(l => l.sex === "FEMALE");
-      
-      const unplaced = snakeDraftLearners(regularSections, males, females, rostersBySectionId, remainingCapacity);
-      remainingLearners = unplaced;
+        const males = remainingLearners.filter(l => l.sex === "MALE");
+        const females = remainingLearners.filter(l => l.sex === "FEMALE");
+
+        const unplaced = snakeDraftLearners(regularSections, males, females, rostersBySectionId, remainingCapacity);
+        remainingLearners = unplaced;
+      } else {
+        // STRICT HOMOGENEOUS: Fill each section up to target capacity sequentially.
+        const totalSections = regularSections.length;
+        const targetPerSection = Math.ceil(remainingLearners.length / totalSections);
+        for (const section of regularSections) {
+          const maxAvail = section.maxCapacity || 40;
+          const capacity = Math.min(targetPerSection, maxAvail);
+          const assigned = remainingLearners.slice(0, capacity);
+          remainingLearners = remainingLearners.slice(capacity);
+
+          const roster = rostersBySectionId.get(section.id);
+          if (roster) {
+            assigned.forEach(l => roster.push({ ...l, sectionId: section.id, draftSectionId: section.id, isOverridden: false }));
+          }
+        }
+      }
     }
 
     // Any leftovers become unplaced
@@ -765,10 +789,10 @@ export function SectioningWorkspace() {
   }, [activeGradeLevelId]);
 
   const homogeneousSectionCount = useSettingsStore((s) => s.homogeneousSectionCount);
-    const { spaEnabled, spsEnabled, steEnabled } = useSettingsStore();
+  const { spaEnabled, spsEnabled, steEnabled } = useSettingsStore();
   const ancillaryRolesRaw = useAuthStore((s) => s.user?.ancillaryRoles);
   const ancillaryRoles = useMemo(() => ancillaryRolesRaw ?? [], [ancillaryRolesRaw]);
-  
+
   const { data: activeSchoolYear } = useQuery({
     queryKey: ["school-years", "active", "grade-levels"],
     queryFn: async () => {
@@ -991,14 +1015,14 @@ export function SectioningWorkspace() {
     let jhs = raw.filter((gradeLevel) =>
       ["Grade 7", "Grade 8", "Grade 9", "Grade 10"].includes(gradeLevel.name),
     );
-    
+
     if (!isAdminOrRegistrar) {
       const allowedNames: string[] = [];
       if (ancillaryRoles.includes("GRADE 7 COORDINATOR")) allowedNames.push("Grade 7");
       if (ancillaryRoles.includes("GRADE 8 COORDINATOR")) allowedNames.push("Grade 8");
       if (ancillaryRoles.includes("GRADE 9 COORDINATOR")) allowedNames.push("Grade 9");
       if (ancillaryRoles.includes("GRADE 10 COORDINATOR")) allowedNames.push("Grade 10");
-      
+
       if (allowedNames.length > 0) {
         jhs = jhs.filter((g) => allowedNames.includes(g.name));
       }
@@ -1029,14 +1053,14 @@ export function SectioningWorkspace() {
 
   useEffect(() => {
     if (!draftPlacement || isHistoricalReadOnly) return;
-    
+
     const handler = setTimeout(async () => {
       try {
         const assignments = draftPlacement.rosters.map(r => ({
           sectionId: r.section.id,
           applicationIds: r.learners.map(l => l.applicationId)
         }));
-        
+
         await api.post("/sectioning/save-draft", {
           gradeLevelId: draftPlacement.gradeLevelId,
           assignments
@@ -1087,7 +1111,7 @@ export function SectioningWorkspace() {
   const selectedAllowedPrograms = useMemo(() => {
     const selectedLearners = currentGradePool.filter((learner) => selectedAppIds.includes(learner.applicationId));
     if (selectedLearners.length === 0) return new Set<ApplicantType>();
-    
+
     let commonAllowed: ApplicantType[] | null = null;
     for (const learner of selectedLearners) {
       const allowed = getAllowedSectionProgramsForPlacement(learner);
@@ -1109,12 +1133,12 @@ export function SectioningWorkspace() {
         const firstName = l.firstName.toLowerCase();
         const lastName = l.lastName.toLowerCase();
         const middleName = (l.middleName || "").toLowerCase();
-        
+
         // Match all terms against any part of the name or LRN
-        const matchesAll = queryTerms.every(term => 
-          lrn.includes(term) || 
-          firstName.includes(term) || 
-          lastName.includes(term) || 
+        const matchesAll = queryTerms.every(term =>
+          lrn.includes(term) ||
+          firstName.includes(term) ||
+          lastName.includes(term) ||
           middleName.includes(term)
         );
 
@@ -1129,8 +1153,8 @@ export function SectioningWorkspace() {
   const filteredAndSortedPool = useMemo(() => {
     const visiblePool = draftPlacement && autoAssignPhase === "idle"
       ? filteredPool.filter((learner) =>
-          draftPlacement.unplacedLearners.some((unplaced) => unplaced.applicationId === learner.applicationId)
-        )
+        draftPlacement.unplacedLearners.some((unplaced) => unplaced.applicationId === learner.applicationId)
+      )
       : filteredPool;
     const result = [...visiblePool];
     if (sortConfig !== null) {
@@ -1231,13 +1255,7 @@ export function SectioningWorkspace() {
       };
     });
 
-    const roster = draftPlacement.rosters.find(r => r.section.id === sectionId);
-    if (roster && roster.totalCount + selectedAppIds.length > s.maxCapacity) {
-      sileo.warning({
-        title: "Capacity Warning",
-        description: `Assigned learners to ${s.name} which now exceeds max capacity.`,
-      });
-    }
+    // Capacity warning removed as requested.
 
     setSelectedAppIds([]);
     setTargetSectionId(null);
@@ -1268,7 +1286,7 @@ export function SectioningWorkspace() {
     if (!activeGradeLevelId || autoAssignPhase !== "idle" || processing) return;
 
     setAutoAssignPhase("loading");
-    
+
     try {
       const res = await api.get<PoolLearner[]>("/sectioning/pool", {
         params: { gradeLevelId: activeGradeLevelId, includeAssigned: "true" }
@@ -1283,6 +1301,7 @@ export function SectioningWorkspace() {
             currentGradeSections,
             enableHomogeneousSections,
             homogeneousSectionCount,
+            heterogeneousRoundRobin,
           );
 
           setDraftPlacement(newDraft);
@@ -1820,7 +1839,7 @@ export function SectioningWorkspace() {
       if (existingRoster) {
         return {
           ...existingRoster,
-          section, 
+          section,
         };
       }
     }
@@ -1848,27 +1867,27 @@ export function SectioningWorkspace() {
     : [];
   const groupedCompatibleSwapLearners = selectedDraftLearner
     ? (draftPlacement?.rosters
-        .filter((roster) =>
-          getAllowedSectionProgramsForPlacement(selectedDraftLearner).includes(
-            roster.section.programType,
-          )
+      .filter((roster) =>
+        getAllowedSectionProgramsForPlacement(selectedDraftLearner).includes(
+          roster.section.programType,
         )
-        .map((roster) => ({
-          sectionName: roster.section.name,
-          programType: roster.section.programType,
-          learners: roster.learners
-            .filter(
-              (learner) =>
-                learner.applicationId !== selectedDraftLearner.applicationId
-            )
-            .sort((a, b) => {
-              const nameA = `${a.lastName}, ${a.firstName}`;
-              const nameB = `${b.lastName}, ${b.firstName}`;
-              return nameA.localeCompare(nameB);
-            }),
-        }))
-        .filter((group) => group.learners.length > 0)
-        .sort((a, b) => a.sectionName.localeCompare(b.sectionName)) ?? [])
+      )
+      .map((roster) => ({
+        sectionName: roster.section.name,
+        programType: roster.section.programType,
+        learners: roster.learners
+          .filter(
+            (learner) =>
+              learner.applicationId !== selectedDraftLearner.applicationId
+          )
+          .sort((a, b) => {
+            const nameA = `${a.lastName}, ${a.firstName}`;
+            const nameB = `${b.lastName}, ${b.firstName}`;
+            return nameA.localeCompare(nameB);
+          }),
+      }))
+      .filter((group) => group.learners.length > 0)
+      .sort((a, b) => a.sectionName.localeCompare(b.sectionName)) ?? [])
     : [];
   const draftSectionByApplicationId = new Map<number, string>(
     draftPlacement?.rosters.flatMap((roster) =>
@@ -2176,8 +2195,8 @@ export function SectioningWorkspace() {
                                 className={cn(
                                   "group transition-[opacity,transform,background-color] duration-500",
                                   autoAssignPhase === "resolving" &&
-                                    draftSectionByApplicationId.has(l.applicationId) &&
-                                    "translate-x-8 opacity-0",
+                                  draftSectionByApplicationId.has(l.applicationId) &&
+                                  "translate-x-8 opacity-0",
                                   isDisabled
                                     ? "cursor-not-allowed"
                                     : "cursor-pointer",
@@ -2236,9 +2255,9 @@ export function SectioningWorkspace() {
                                         </Badge>
                                         <Badge className={cn(
                                           "px-2 uppercase",
-                                          l.status === "OFFICIALLY_ENROLLED" ? "bg-green-600 text-white hover:bg-green-600 border-green-600" 
-                                          : l.status === "PENDING_CONFIRMATION" ? "bg-amber-500 text-white hover:bg-amber-500 border-amber-500"
-                                          : "bg-muted text-muted-foreground border-muted hover:bg-muted"
+                                          l.status === "OFFICIALLY_ENROLLED" ? "bg-green-600 text-white hover:bg-green-600 border-green-600"
+                                            : l.status === "PENDING_CONFIRMATION" ? "bg-amber-500 text-white hover:bg-amber-500 border-amber-500"
+                                              : "bg-muted text-muted-foreground border-muted hover:bg-muted"
                                         )}>
                                           {l.status === "OFFICIALLY_ENROLLED" ? "Enrolled" : l.status === "PENDING_CONFIRMATION" ? "Pending Confirmation" : "Pre-Registered"}
                                         </Badge>
@@ -2308,10 +2327,10 @@ export function SectioningWorkspace() {
               style={
                 isDesktopViewport
                   ? {
-                      left: isRightPaneFullscreen
-                        ? "0"
-                        : `calc(${panelPercentage}vw + 1px)`,
-                    }
+                    left: isRightPaneFullscreen
+                      ? "0"
+                      : `calc(${panelPercentage}vw + 1px)`,
+                  }
                   : undefined
               }>
               <CardHeader className="border-b border-border bg-muted/20">
@@ -2364,39 +2383,39 @@ export function SectioningWorkspace() {
                   )}
                 </div>
 
-                  {currentGradePool.length > 0 && (
-                    <div className="flex flex-col items-center gap-1">
-                      <Button
-                        size="sm"
-                        variant="default"
-                        disabled={
-                          processing ||
-                          autoAssignPhase !== "idle" ||
-                          isHistoricalReadOnly
+                {currentGradePool.length > 0 && (
+                  <div className="flex flex-col items-center gap-1">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      disabled={
+                        processing ||
+                        autoAssignPhase !== "idle" ||
+                        isHistoricalReadOnly
+                      }
+                      onClick={() => {
+                        if (sections.some(s => s.currentCount > 0)) {
+                          setReRunWarningOpen(true);
+                        } else {
+                          generateDraftPlacement();
                         }
-                        onClick={() => {
-                          if (sections.some(s => s.currentCount > 0)) {
-                            setReRunWarningOpen(true);
-                          } else {
-                            generateDraftPlacement();
-                          }
-                        }}
-                        className="w-full font-bold text-base uppercase tracking-normal gap-2 rounded-md">
-                        {autoAssignPhase !== "idle" && <Loader2 className="h-4 w-4 animate-spin" />}
-                        {autoAssignPhase !== "idle" ? "Running Sectioning Algorithm..." : "RE-RUN SECTIONING ALGORITHM"}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        disabled={autoAssignPhase !== "idle"}
-                        onClick={() => setAutoAssignConfirmOpen(true)}
-                        className="h-auto px-2 text-sm font-bold text-primary hover:text-primary">
-                        <Info className="h-3.5 w-3.5" />
-                        How does the system place learners?
-                      </Button>
-                    </div>
-                  )}
+                      }}
+                      className="w-full font-bold text-base uppercase tracking-normal gap-2 rounded-md">
+                      {autoAssignPhase !== "idle" && <Loader2 className="h-4 w-4 animate-spin" />}
+                      {autoAssignPhase !== "idle" ? "Running Sectioning Algorithm..." : "RE-RUN SECTIONING ALGORITHM"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={autoAssignPhase !== "idle"}
+                      onClick={() => setAutoAssignConfirmOpen(true)}
+                      className="h-auto px-2 text-sm font-bold text-primary hover:text-primary">
+                      <Info className="h-3.5 w-3.5" />
+                      How does the system place learners?
+                    </Button>
+                  </div>
+                )}
               </CardHeader>
               <div className="p-4 space-y-3 relative flex-1 overflow-y-auto">
                 {displayedRosters.length === 0 ? (
@@ -2416,7 +2435,7 @@ export function SectioningWorkspace() {
                           selectedAllowedPrograms?.size === 0 ||
                           selectedAllowedPrograms?.has(r.section.programType)
                       );
-                      
+
                     const scpRostersByProgram = new Map<string, typeof scpRosters>();
                     scpRosters.forEach(r => {
                       if (!scpRostersByProgram.has(r.section.programType)) scpRostersByProgram.set(r.section.programType, []);
@@ -2448,75 +2467,73 @@ export function SectioningWorkspace() {
                           .filter((r) => r.section.programType === "REGULAR")
                           .filter(
                             (r) =>
-                            draftPlacement ||
-                            selectedAllowedPrograms?.size === 0 ||
-                            selectedAllowedPrograms?.has(r.section.programType)
-                        )
-                        .sort((a, b) => {
-                          if (selectedAllowedPrograms?.has("REGULAR") || selectedAllowedPrograms?.size === 0) {
-                            if (a.section.isHomogeneous && !b.section.isHomogeneous) return -1;
-                            if (!a.section.isHomogeneous && b.section.isHomogeneous) return 1;
-                          }
-                          return a.section.name.localeCompare(b.section.name);
-                        }),
-                    },
-                  ]
-                    .filter((group) => group.rosters.length > 0)
-                    .map((group, groupIdx) => (
-                      <div
-                        key={group.title}
-                        className={cn("space-y-3", groupIdx > 0 && "mt-6")}>
-                        <h3 className="text-center font-extrabold text-foreground uppercase">
-                          {group.title}
-                        </h3>
-                        {group.rosters.map((roster) => {
-                          const s = roster.section;
-                          const isOverCapacity =
-                            roster.isOverCapacity || roster.totalCount >= s.maxCapacity;
-                          const isSelected =
-                            !draftPlacement && targetSectionId === s.id;
-                          const isExpanded = expandedSectionIds.has(s.id);
-                          const isProgramCompatible =
-                            selectedAllowedPrograms?.size === 0 ||
-                            (selectedAllowedPrograms?.size === 1 &&
-                              selectedAllowedPrograms?.has(s.programType));
+                              draftPlacement ||
+                              selectedAllowedPrograms?.size === 0 ||
+                              selectedAllowedPrograms?.has(r.section.programType)
+                          )
+                          .sort((a, b) => {
+                            if (selectedAllowedPrograms?.has("REGULAR") || selectedAllowedPrograms?.size === 0) {
+                              if (a.section.isHomogeneous && !b.section.isHomogeneous) return -1;
+                              if (!a.section.isHomogeneous && b.section.isHomogeneous) return 1;
+                            }
+                            return a.section.name.localeCompare(b.section.name);
+                          }),
+                      },
+                    ]
+                      .filter((group) => group.rosters.length > 0)
+                      .map((group, groupIdx) => (
+                        <div
+                          key={group.title}
+                          className={cn("space-y-3", groupIdx > 0 && "mt-6")}>
+                          <h3 className="text-center font-extrabold text-foreground uppercase">
+                            {group.title}
+                          </h3>
+                          {group.rosters.map((roster) => {
+                            const s = roster.section;
+                            const isSelected =
+                              !draftPlacement && targetSectionId === s.id;
+                            const isExpanded = expandedSectionIds.has(s.id);
+                            const isProgramCompatible =
+                              selectedAllowedPrograms?.size === 0 ||
+                              (selectedAllowedPrograms?.size === 1 &&
+                                selectedAllowedPrograms?.has(s.programType));
 
-                          return (
-                            <div
-                              key={s.id}
-                              onClick={() => {
-                                if (autoAssignPhase !== "idle") return;
-                                if (draftPlacement) {
-                                  toggleExpandedSection(s.id);
-                                  return;
-                                }
+                            return (
+                              <div
+                                key={s.id}
+                                onClick={() => {
+                                  if (autoAssignPhase !== "idle") return;
+                                  if (draftPlacement) {
+                                    toggleExpandedSection(s.id);
+                                    return;
+                                  }
 
-                                if (selectedAppIds.length > 0) {
-                                  if (isProgramCompatible) {
-                                    setTargetSectionId(s.id);
+                                  if (selectedAppIds.length > 0) {
+                                    if (isProgramCompatible) {
+                                      setTargetSectionId(s.id);
+                                    }
+                                  } else {
+                                    if (s.currentCount > 0) {
+                                      setMasterlistModalSectionId(s.id);
+                                    } else if (isProgramCompatible) {
+                                      setTargetSectionId(s.id);
+                                    }
                                   }
-                                } else {
-                                  if (s.currentCount > 0) {
-                                    setMasterlistModalSectionId(s.id);
-                                  } else if (isProgramCompatible) {
-                                    setTargetSectionId(s.id);
-                                  }
-                                }
-                              }}
-                              className={cn(
-                                "group cursor-pointer rounded-xl border p-4 transition-all relative overflow-hidden",
-                                autoAssignPhase === "loading" && roster.learners.length === 0 && "animate-pulse bg-muted/50",
-                                autoAssignPhase !== "idle" && "pointer-events-none",
-                                !isProgramCompatible && "cursor-not-allowed opacity-45",
-                                isSelected
-                                  ? "bg-primary/5 border-primary shadow-sm"
-                                  : "bg-background hover:bg-muted/50 border-border",
-                                draftPlacement &&
-                                isExpanded &&
-                                "border-primary/50 bg-primary/5",
-                              )}>
-                              <div className="flex items-start justify-between gap-3 mb-3">
-                                <div>
+                                }}
+                                className={cn(
+                                  "group cursor-pointer rounded-xl border p-4 transition-all relative overflow-hidden",
+                                  autoAssignPhase === "loading" && roster.learners.length === 0 && "animate-pulse bg-muted/50",
+                                  autoAssignPhase !== "idle" && "pointer-events-none",
+                                  !isProgramCompatible && "cursor-not-allowed opacity-45",
+                                  isSelected
+                                    ? "bg-primary/5 border-primary shadow-sm"
+                                    : "bg-background hover:bg-muted/50 border-border",
+                                  draftPlacement &&
+                                  isExpanded &&
+                                  "border-primary/50 bg-primary/5",
+                                )}>
+                                <div className="flex items-start justify-between gap-3 mb-3">
+                                  <div>
                                     <h4
                                       className={cn(
                                         "font-extrabold text-xl uppercase transition-colors flex items-center gap-2 flex-wrap",
@@ -2532,203 +2549,183 @@ export function SectioningWorkspace() {
                                       )}
                                     </h4>
                                     <span className="text-sm uppercase text-foreground font-bold">
-                                    Adviser: {s.adviser || "No Adviser Assigned"}
-                                  </span>
-                                </div>
-                                <div className="flex flex-wrap justify-end gap-2">
-                                  {draftPlacement && roster.isOverCapacity && (
-                                    <Badge
-                                      variant="destructive"
-                                      className="text-sm font-bold uppercase">
-                                      Over Capacity
-                                    </Badge>
-                                  )}
-
-                                </div>
-                              </div>
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between text-sm font-bold">
-                                  <span className="text-foreground uppercase">
-                                    Capacity Fill
-                                  </span>
-                                  <span
-                                    className={cn(
-                                      isOverCapacity
-                                        ? "text-destructive font-bold"
-                                        : "text-foreground",
-                                    )}>
-                                    <AnimatedCount from={s.currentCount} to={roster.totalCount} animate={autoAssignPhase === "resolving" && !prefersReducedMotion} /> / {s.maxCapacity}{" "}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2 text-sm font-bold uppercase text-foreground">
-                                  <Badge className="bg-blue-600/10 text-blue-600 border-blue-600 border-2 px-2 gap-1 flex items-center">
-                                    M: <AnimatedCount from={s.boys} to={roster.genderCounts.boys} animate={autoAssignPhase === "resolving" && !prefersReducedMotion} />
-                                  </Badge>
-                                  <Badge className="bg-pink-600/10 text-pink-600 border-pink-600 border-2 px-2 gap-1 flex items-center">
-                                    F: <AnimatedCount from={s.girls} to={roster.genderCounts.girls} animate={autoAssignPhase === "resolving" && !prefersReducedMotion} />
-                                  </Badge>
-                                  {draftPlacement && (
-                                    <motion.span
-                                      initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.6 }}
-                                      animate={{ opacity: 1, scale: 1 }}
-                                      transition={{ type: "spring", stiffness: 380, damping: 18, delay: 0.15 }}>
-                                      <Badge className="border border-amber-400 bg-amber-100 text-amber-900 hover:bg-amber-100">
-                                        DRAFT: {roster.totalCount}
+                                      Adviser: {s.adviser || "No Adviser Assigned"}
+                                    </span>
+                                  </div>
+                                  <div className="flex flex-wrap justify-end gap-2">
+                                    {draftPlacement && roster.isOverCapacity && (
+                                      <Badge
+                                        variant="destructive"
+                                        className="text-sm font-bold uppercase">
+                                        Over Capacity
                                       </Badge>
-                                    </motion.span>
-                                  )}
-                                </div>
-                                <div className="h-2 rounded-full bg-card overflow-hidden">
-                                  <div
-                                    className={cn(
-                                      "h-full rounded-full transition-all",
-                                      roster.isOverCapacity
-                                        ? "bg-destructive"
-                                        : isSelected
-                                          ? "bg-primary"
-                                          : "bg-primary",
                                     )}
-                                    style={{
-                                      width: `${Math.min((roster.totalCount / s.maxCapacity) * 100, 100)}%`,
-                                    }}
-                                  />
-                                </div>
-                              </div>
 
-                              {draftPlacement && isExpanded && (
-                                <div
-                                  className="mt-4 overflow-x-auto rounded-md border bg-card"
-                                  onClick={(event) => event.stopPropagation()}>
-                                  <table className="w-full text-left text-sm whitespace-nowrap">
-                                    <thead className="bg-muted text-foreground">
-                                      <tr className="uppercase">
-                                        <th className="p-3 font-bold">Learner</th>
-                                        <th className="p-3 text-center font-bold">Sex</th>
-                                        <th className="p-3 text-center font-bold">Status</th>
-                                        <th className="p-3 text-center font-bold">Gen Ave</th>
-                                        <th className="p-3 text-right font-bold">Action</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y">
-                                      {roster.learners.length === 0 ? (
-                                        <tr>
-                                          <td
-                                            colSpan={5}
-                                            className="p-4 text-center font-bold text-foreground">
-                                            No drafted learners in this section.
-                                          </td>
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between text-sm font-bold">
+                                    <span className="text-foreground uppercase">
+                                      Learner Count
+                                    </span>
+                                    <span className="text-foreground">
+                                      <AnimatedCount from={s.currentCount} to={roster.totalCount} animate={autoAssignPhase === "resolving" && !prefersReducedMotion} /> Learners
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-sm font-bold uppercase text-foreground">
+                                    <Badge className="bg-blue-600/10 text-blue-600 border-blue-600 border-2 px-2 gap-1 flex items-center">
+                                      M: <AnimatedCount from={s.boys} to={roster.genderCounts.boys} animate={autoAssignPhase === "resolving" && !prefersReducedMotion} />
+                                    </Badge>
+                                    <Badge className="bg-pink-600/10 text-pink-600 border-pink-600 border-2 px-2 gap-1 flex items-center">
+                                      F: <AnimatedCount from={s.girls} to={roster.genderCounts.girls} animate={autoAssignPhase === "resolving" && !prefersReducedMotion} />
+                                    </Badge>
+                                    {draftPlacement && (
+                                      <motion.span
+                                        initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.6 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ type: "spring", stiffness: 380, damping: 18, delay: 0.15 }}>
+                                        <Badge className="border border-amber-400 bg-amber-100 text-amber-900 hover:bg-amber-100">
+                                          DRAFT: {roster.totalCount}
+                                        </Badge>
+                                      </motion.span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {draftPlacement && isExpanded && (
+                                  <div
+                                    className="mt-4 overflow-x-auto rounded-md border bg-card"
+                                    onClick={(event) => event.stopPropagation()}>
+                                    <table className="w-full text-left text-sm whitespace-nowrap">
+                                      <thead className="bg-muted text-foreground">
+                                        <tr className="uppercase">
+                                          <th className="p-3 font-bold">Learner</th>
+                                          <th className="p-3 text-center font-bold">Sex</th>
+                                          <th className="p-3 text-center font-bold">Status</th>
+                                          <th className="p-3 text-center font-bold">Gen Ave</th>
+                                          <th className="p-3 text-center font-bold">Action</th>
                                         </tr>
-                                      ) : (
-                                        roster.learners.map((learner, index) => (
-                                          <tr key={learner.applicationId} className={cn("hover:bg-muted/60 transition-colors", index % 2 === 0 ? "bg-background" : "bg-muted/50")}>
-                                            <td className="p-3">
-                                              <div className="flex flex-col">
-                                                <span className="font-bold uppercase text-foreground">
-                                                  {formatLearnerName(learner)}
-                                                </span>
-                                                <span className="font-bold uppercase text-foreground">
-                                                  {learner.lrn ?? "NO LRN"}
-                                                  {learner.isOverridden && (
-                                                    <Badge className="!text-[11px] ml-2 bg-amber-600 text-white hover:bg-amber-600">
-                                                      Added Manually
-                                                    </Badge>
-                                                  )}
-                                                </span>
-                                              </div>
-                                            </td>
-                                            <td className="p-3 font-bold text-center">
-                                              <Badge
-                                                className={cn(
-                                                  "px-2",
-                                                  learner.sex === "MALE"
-                                                    ? "bg-blue-600/10 text-blue-600 border-blue-600 border-2"
-                                                    : "bg-pink-600/10 text-pink-600 border-pink-600 border-2"
-                                                )}>
-                                                {learner.sex === "MALE" ? "M" : "F"}
-                                              </Badge>
-                                            </td>
-                                            <td className="p-2 text-center">
-                                              <Badge className={cn(
-                                                "px-2 uppercase",
-                                                learner.status === "OFFICIALLY_ENROLLED" ? "bg-green-600 text-white hover:bg-green-600 border-green-600" 
-                                                : learner.status === "PENDING_CONFIRMATION" ? "bg-amber-500 text-white hover:bg-amber-500 border-amber-500"
-                                                : "bg-muted text-muted-foreground border-muted hover:bg-muted"
-                                              )}>
-                                                {learner.status === "OFFICIALLY_ENROLLED" ? "Enrolled" : learner.status === "PENDING_CONFIRMATION" ? "Pending Confirmation" : "Pre-Registered"}
-                                              </Badge>
-                                            </td>
-                                            <td className="p-3 font-bold text-center">
-                                              {learner.genAve?.toFixed(2) ?? "--"}
-                                            </td>
-                                            <td className="p-3 text-center">
-                                              <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                  <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8">
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                  </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="z-[100]">
-                                                  <DropdownMenuItem
-                                                    onClick={() =>
-                                                      openMoveDialog(
-                                                        learner.applicationId,
-                                                        s.id,
-                                                      )
-                                                    }>
-                                                    <MoveRight className="mr-2 h-4 w-4" />
-                                                    Move to Section
-                                                  </DropdownMenuItem>
-                                                  <DropdownMenuItem
-                                                    onClick={() =>
-                                                      openSwapDialog(
-                                                        learner.applicationId,
-                                                        s.id,
-                                                      )
-                                                    }>
-                                                    <ArrowRightLeft className="mr-2 h-4 w-4" />
-                                                    Swap Section
-                                                  </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                              </DropdownMenu>
+                                      </thead>
+                                      <tbody className="divide-y">
+                                        {roster.learners.length === 0 ? (
+                                          <tr>
+                                            <td
+                                              colSpan={5}
+                                              className="p-4 text-center font-bold text-foreground">
+                                              No drafted learners in this section.
                                             </td>
                                           </tr>
-                                        ))
-                                      )}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              )}
+                                        ) : (
+                                          roster.learners.map((learner, index) => (
+                                            <tr key={learner.applicationId} className={cn("hover:bg-muted/60 transition-colors", index % 2 === 0 ? "bg-background" : "bg-muted/50")}>
+                                              <td className="p-3">
+                                                <div className="flex flex-col">
+                                                  <span className="font-bold uppercase text-foreground">
+                                                    {formatLearnerName(learner)}
+                                                  </span>
+                                                  <span className="font-bold uppercase text-foreground">
+                                                    {learner.lrn ?? "NO LRN"}
+                                                    {learner.isOverridden && (
+                                                      <Badge className="!text-[11px] ml-2 bg-amber-600 text-white hover:bg-amber-600">
+                                                        Added Manually
+                                                      </Badge>
+                                                    )}
+                                                  </span>
+                                                </div>
+                                              </td>
+                                              <td className="p-3 font-bold text-center">
+                                                <Badge
+                                                  className={cn(
+                                                    "px-2",
+                                                    learner.sex === "MALE"
+                                                      ? "bg-blue-600/10 text-blue-600 border-blue-600 border-2"
+                                                      : "bg-pink-600/10 text-pink-600 border-pink-600 border-2"
+                                                  )}>
+                                                  {learner.sex === "MALE" ? "M" : "F"}
+                                                </Badge>
+                                              </td>
+                                              <td className="p-2 text-center">
+                                                <Badge className={cn(
+                                                  "px-2 uppercase",
+                                                  learner.status === "OFFICIALLY_ENROLLED" ? "bg-green-600 text-white hover:bg-green-600 border-green-600"
+                                                    : learner.status === "PENDING_CONFIRMATION" ? "bg-amber-500 text-white hover:bg-amber-500 border-amber-500"
+                                                      : "bg-muted text-muted-foreground border-muted hover:bg-muted"
+                                                )}>
+                                                  {learner.status === "OFFICIALLY_ENROLLED" ? "Enrolled" : learner.status === "PENDING_CONFIRMATION" ? "Pending Confirmation" : "Pre-Registered"}
+                                                </Badge>
+                                              </td>
+                                              <td className="p-3 font-bold text-center">
+                                                {learner.genAve?.toFixed(2) ?? "--"}
+                                              </td>
+                                              <td className="p-3 text-center">
+                                                <DropdownMenu>
+                                                  <DropdownMenuTrigger asChild>
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      className="h-8 w-8">
+                                                      <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                  </DropdownMenuTrigger>
+                                                  <DropdownMenuContent align="end" className="z-[100]">
+                                                    <DropdownMenuItem
+                                                      onClick={() =>
+                                                        openMoveDialog(
+                                                          learner.applicationId,
+                                                          s.id,
+                                                        )
+                                                      }>
+                                                      <MoveRight className="mr-2 h-4 w-4" />
+                                                      Move to Section
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                      onClick={() =>
+                                                        openSwapDialog(
+                                                          learner.applicationId,
+                                                          s.id,
+                                                        )
+                                                      }>
+                                                      <ArrowRightLeft className="mr-2 h-4 w-4" />
+                                                      Swap Section
+                                                    </DropdownMenuItem>
+                                                  </DropdownMenuContent>
+                                                </DropdownMenu>
+                                              </td>
+                                            </tr>
+                                          ))
+                                        )}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
 
-                              {!draftPlacement && s.currentCount > 0 && (
-                                <InlineSectionTable
-                                  sectionId={s.id}
-                                  onMoveLearner={!isHistoricalReadOnly ? openNormalMoveDialog : undefined}
-                                  onRemoveLearner={!isHistoricalReadOnly ? openRemoveDialog : undefined}
-                                  onForfeitSlot={!isHistoricalReadOnly ? openForfeitDialog : undefined}
-                                />
-                              )}
-                              {draftPlacement && selectedAppIds.length > 0 && isProgramCompatible && (
-                                <div className="mt-4">
-                                  <Button 
-                                    className="w-full text-base font-bold uppercase"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      assignSelectedToDraftSection(s.id);
-                                    }}
-                                  >
-                                    Add Selected Here
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })
-                        }
-                      </div>
-                    ));
+                                {!draftPlacement && s.currentCount > 0 && (
+                                  <InlineSectionTable
+                                    sectionId={s.id}
+                                    onMoveLearner={!isHistoricalReadOnly ? openNormalMoveDialog : undefined}
+                                    onRemoveLearner={!isHistoricalReadOnly ? openRemoveDialog : undefined}
+                                    onForfeitSlot={!isHistoricalReadOnly ? openForfeitDialog : undefined}
+                                  />
+                                )}
+                                {draftPlacement && selectedAppIds.length > 0 && isProgramCompatible && (
+                                  <div className="mt-4">
+                                    <Button
+                                      className="w-full text-base font-bold uppercase"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        assignSelectedToDraftSection(s.id);
+                                      }}
+                                    >
+                                      Add Selected Here
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })
+                          }
+                        </div>
+                      ));
                   })()
                 )}
               </div>
@@ -2977,7 +2974,7 @@ export function SectioningWorkspace() {
                   How the system will place learners:
                 </p>
                 <ul className="list-disc space-y-2 pl-5 leading-relaxed text-foreground text-sm">
-                  <li 
+                  <li
                     className={cn("transition-colors cursor-pointer hover:opacity-80", isAnimationVisible && animationScene === 0 ? "font-bold text-primary" : "")}
                     onClick={() => { if (isAnimationVisible) setAnimationScene(0); }}
                   >
@@ -2990,14 +2987,14 @@ export function SectioningWorkspace() {
 
                     return (
                       <>
-                        <li 
+                        <li
                           className={cn("transition-colors cursor-pointer hover:opacity-80", isAnimationVisible && animationScene === 1 ? "font-bold text-primary" : "")}
                           onClick={() => { if (isAnimationVisible) setAnimationScene(1); }}
                         >
                           Phase 2: Assigning qualified learners to Special Curricular Programs (SCP){availableScp.length > 0 ? ` like ${availableScp.map((p) => SCP_SHORT_LABELS[p] || p).join(", ")}` : " (none currently available)"}.
                         </li>
                         {enableHomogeneousSections && (
-                          <li 
+                          <li
                             className={cn("transition-colors cursor-pointer hover:opacity-80", isAnimationVisible && animationScene === 2 ? "font-bold text-primary" : "")}
                             onClick={() => { if (isAnimationVisible) setAnimationScene(2); }}
                           >
@@ -3007,7 +3004,7 @@ export function SectioningWorkspace() {
                       </>
                     );
                   })()}
-                  <li 
+                  <li
                     className={cn("transition-colors cursor-pointer hover:opacity-80", isAnimationVisible && animationScene === 3 ? "font-bold text-primary" : "")}
                     onClick={() => { if (isAnimationVisible) setAnimationScene(3); }}
                   >
@@ -3028,7 +3025,7 @@ export function SectioningWorkspace() {
               <div className="h-[450px]">
                 {(() => {
                   const isMock = filteredAndSortedPool.length < 10;
-                  
+
                   const allRegular = currentGradeSections.filter(s => s.programType === "REGULAR");
                   const topSectionCount = enableHomogeneousSections ? Math.min(allRegular.length, homogeneousSectionCount) : 0;
                   const topSections = allRegular.filter(s => s.isHomogeneous).slice(0, topSectionCount);
@@ -3044,13 +3041,13 @@ export function SectioningWorkspace() {
                     const hasSte = currentGradeSections.some(s => s.programType === "SCIENCE_TECHNOLOGY_AND_ENGINEERING");
                     const hasSpa = currentGradeSections.some(s => s.programType === "SPECIAL_PROGRAM_IN_THE_ARTS");
                     const hasSps = currentGradeSections.some(s => s.programType === "SPECIAL_PROGRAM_IN_SPORTS");
-                    
+
                     if (hasSte && remaining > 0) { scp.ste = Math.min(5, remaining); remaining -= scp.ste; }
                     if (hasSpa && remaining > 0) { scp.spa = Math.min(5, remaining); remaining -= scp.spa; }
                     if (hasSps && remaining > 0) { scp.sps = Math.min(5, remaining); remaining -= scp.sps; }
-                    
+
                     becTotal = remaining;
-                    
+
                     if (topSections.length > 0) {
                       topBecCount = Math.min(Math.ceil(becTotal / 3), becTotal);
                     }
@@ -3061,14 +3058,14 @@ export function SectioningWorkspace() {
                       else if (l.programType === "SPECIAL_PROGRAM_IN_SPORTS") scp.sps++;
                       else if (l.programType === "REGULAR") becTotal++;
                     });
-                    
+
                     const totalSections = topSections.length + regularSections.length;
                     const targetPerSection = totalSections > 0 ? Math.ceil(becTotal / totalSections) : 0;
                     const maxAvailableTopCapacity = topSections.reduce((acc, sec) => acc + Math.max(0, sec.maxCapacity - sec.currentCount), 0);
                     const balancedTopCapacity = targetPerSection * topSections.length;
-                    
+
                     const totalTopCapacity = Math.min(balancedTopCapacity, maxAvailableTopCapacity);
-                    
+
                     const eligibleForTop = filteredAndSortedPool.filter(l => l.programType === "REGULAR" && l.academicStatus !== "CONDITIONALLY_PROMOTED");
                     topBecCount = Math.min(eligibleForTop.length, totalTopCapacity);
                   }
@@ -3079,10 +3076,10 @@ export function SectioningWorkspace() {
                     topBec: { count: topBecCount, sections: topSections.length, sectionNames: topSections.map(s => s.name) },
                     regularBec: { count: becTotal - topBecCount, sections: regularSections.length, sectionNames: regularSections.map(s => s.name) }
                   };
-                  
-                  return <AutoAssignVisualizer 
-                    scene={animationScene} 
-                    poolStats={stats} 
+
+                  return <AutoAssignVisualizer
+                    scene={animationScene}
+                    poolStats={stats}
                     isPaused={isAnimationPaused}
                     onTogglePause={() => setIsAnimationPaused(!isAnimationPaused)}
                     onNext={handleNextScene}
@@ -3098,7 +3095,7 @@ export function SectioningWorkspace() {
                 </div>
                 {(() => {
                   const isMock = filteredAndSortedPool.length < 10;
-                  
+
                   const allRegular = currentGradeSections.filter(s => s.programType === "REGULAR");
                   const topSectionCount = enableHomogeneousSections ? Math.min(allRegular.length, homogeneousSectionCount) : 0;
                   const topSections = allRegular.filter(s => s.isHomogeneous).slice(0, topSectionCount);
@@ -3114,13 +3111,13 @@ export function SectioningWorkspace() {
                     const hasSte = currentGradeSections.some(s => s.programType === "SCIENCE_TECHNOLOGY_AND_ENGINEERING");
                     const hasSpa = currentGradeSections.some(s => s.programType === "SPECIAL_PROGRAM_IN_THE_ARTS");
                     const hasSps = currentGradeSections.some(s => s.programType === "SPECIAL_PROGRAM_IN_SPORTS");
-                    
+
                     if (hasSte && remaining > 0) { scp.ste = Math.min(5, remaining); remaining -= scp.ste; }
                     if (hasSpa && remaining > 0) { scp.spa = Math.min(5, remaining); remaining -= scp.spa; }
                     if (hasSps && remaining > 0) { scp.sps = Math.min(5, remaining); remaining -= scp.sps; }
-                    
+
                     becTotal = remaining;
-                    
+
                     if (topSections.length > 0) {
                       topBecCount = Math.min(Math.ceil(becTotal / 3), becTotal);
                     }
@@ -3131,14 +3128,14 @@ export function SectioningWorkspace() {
                       else if (l.programType === "SPECIAL_PROGRAM_IN_SPORTS") scp.sps++;
                       else if (l.programType === "REGULAR") becTotal++;
                     });
-                    
+
                     const totalSections = topSections.length + regularSections.length;
                     const targetPerSection = totalSections > 0 ? Math.ceil(becTotal / totalSections) : 0;
                     const maxAvailableTopCapacity = topSections.reduce((acc, sec) => acc + Math.max(0, sec.maxCapacity - sec.currentCount), 0);
                     const balancedTopCapacity = targetPerSection * topSections.length;
-                    
+
                     const totalTopCapacity = Math.min(balancedTopCapacity, maxAvailableTopCapacity);
-                    
+
                     const eligibleForTop = filteredAndSortedPool.filter(l => l.programType === "REGULAR" && l.academicStatus !== "CONDITIONALLY_PROMOTED");
                     topBecCount = Math.min(eligibleForTop.length, totalTopCapacity);
                   }
@@ -3149,7 +3146,7 @@ export function SectioningWorkspace() {
                     topBec: { count: topBecCount, sections: topSections.length, sectionNames: topSections.map(s => s.name) },
                     regularBec: { count: becTotal - topBecCount, sections: regularSections.length, sectionNames: regularSections.map(s => s.name) }
                   };
-                  
+
                   return <AutoAssignVisualizer scene={3} poolStats={stats} />;
                 })()}
               </div>

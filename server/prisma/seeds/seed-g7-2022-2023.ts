@@ -85,10 +85,10 @@ async function seedGrade7() {
       include: { teacher: true }
     });
     
-    const enrolledById = sectionAdviser?.teacher?.userId || null;
+    let enrolledById = sectionAdviser?.teacher?.userId || null;
     if (!enrolledById) {
-      console.warn(`⚠️ No section adviser found for section ${section.name}. Skipping learners for this section.`);
-      continue;
+      const systemAdmin = await prisma.user.findFirst({ where: { roles: { has: "SYSTEM_ADMIN" } } });
+      enrolledById = systemAdmin?.id || 1;
     }
 
     for (let l = 0; l < 10; l++) {
@@ -299,4 +299,7 @@ seedGrade7()
     await prisma.$disconnect();
     await pool.end();
   });
+
+
+
 
