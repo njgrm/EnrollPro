@@ -42,7 +42,7 @@ import type {
 import { toastApiError } from "@/shared/hooks/useApiToast";
 import { useSettingsStore } from "@/store/settings.slice";
 import { useSchoolYearContext } from "@/shared/hooks/useSchoolYearContext";
-import { Card, CardContent, CardHeader } from "@/shared/ui/card";
+import { Card, CardContent } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { ConfirmationModal } from "@/shared/ui/confirmation-modal";
 import { Input } from "@/shared/ui/input";
@@ -61,7 +61,6 @@ import {
   createFadeShiftVariants,
   createMotionTransition,
   getReducedMotionProps,
-  motionTokens,
   useMotionPreferences,
 } from "@/shared/lib/motion";
 import { QueueTable } from "../components/QueueTable";
@@ -82,6 +81,7 @@ import { useQuery } from "@tanstack/react-query";
 const BOSY_REALTIME_TOPICS: RealtimeInvalidationTopic[] = [
   "bosy:queue",
   "bosy:readiness",
+  "enrollment:pending-verifications",
   "enrollment:applications",
   "students:list",
   "school-years:list",
@@ -119,12 +119,12 @@ export default function BOSYPage() {
   const userRoles = useAuthStore((s) => s.user?.roles) ?? [];
   const isAdmin = userRoles.includes("SYSTEM_ADMIN");
   const isHeadRegistrar = userRoles.includes("HEAD_REGISTRAR");
-  const ancillaryRoles = useAuthStore((s) => s.user?.ancillaryRoles) ?? [];
+  const rawAncillaryRoles = useAuthStore((s) => s.user?.ancillaryRoles);
   const isStrictClassAdviser = userRoles.includes("CLASS_ADVISER") && !isAdmin && !isHeadRegistrar &&
-    !ancillaryRoles.includes("GRADE 7 COORDINATOR") &&
-    !ancillaryRoles.includes("GRADE 8 COORDINATOR") &&
-    !ancillaryRoles.includes("GRADE 9 COORDINATOR") &&
-    !ancillaryRoles.includes("GRADE 10 COORDINATOR");
+    !(rawAncillaryRoles ?? []).includes("GRADE 7 COORDINATOR") &&
+    !(rawAncillaryRoles ?? []).includes("GRADE 8 COORDINATOR") &&
+    !(rawAncillaryRoles ?? []).includes("GRADE 9 COORDINATOR") &&
+    !(rawAncillaryRoles ?? []).includes("GRADE 10 COORDINATOR");
 
   const { data: advisoryData } = useQuery({
     queryKey: ["teacher", "advisory", syId],
@@ -133,11 +133,11 @@ export default function BOSYPage() {
   });
 
   const coordinatorTargetGradeOrder = useMemo(() => {
-    const coordinatorRole = ancillaryRoles.find((role) =>
+    const coordinatorRole = (rawAncillaryRoles ?? []).find((role) =>
       /^GRADE (7|8|9|10) COORDINATOR$/.test(role),
     );
     return coordinatorRole?.match(/^GRADE (7|8|9|10) COORDINATOR$/)?.[1] ?? null;
-  }, [ancillaryRoles]);
+  }, [rawAncillaryRoles]);
 
   const assignedTargetGradeOrder = (isAdmin || isHeadRegistrar)
     ? null
@@ -275,7 +275,10 @@ export default function BOSYPage() {
   const refreshBosyWorkspace = useCallback(() => {
     void fetchReadiness();
     void fetchQueue();
-  }, [fetchQueue, fetchReadiness]);
+    void queryClient.invalidateQueries({
+      queryKey: ["enrollment", "pending-verifications"],
+    });
+  }, [fetchQueue, fetchReadiness, queryClient]);
 
   useRealtimeRefresh({
     topics: BOSY_REALTIME_TOPICS,

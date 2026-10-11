@@ -4,6 +4,7 @@ import { z } from "zod"
 import type { ApplicantType, ScpAssessmentResult, ScpAssessmentState } from "../../../generated/prisma/index.js"
 import { AppError } from "../../../lib/AppError.js"
 import { prisma } from "../../../lib/prisma.js"
+import { broadcastEnrollmentInvalidation } from "../../../lib/realtime-events.js"
 
 const supportedProgramSchema = z.enum([
   "SCIENCE_TECHNOLOGY_AND_ENGINEERING",
@@ -283,6 +284,8 @@ export const bulkSaveScpAssessments = async (req: Request, res: Response): Promi
     }
   })
 
+  broadcastEnrollmentInvalidation(schoolYearId);
+
   res.json({ message: "Assessments updated successfully.", updatedCount: updates.length })
 }
 
@@ -401,6 +404,8 @@ export const forfeitScpSlot = async (req: Request, res: Response): Promise<void>
     return { promotedApplicant };
   })
 
+  broadcastEnrollmentInvalidation(schoolYearId);
+
   res.json({ 
     message: "Slot successfully forfeited.", 
     promotedApplicant: result.promotedApplicant 
@@ -468,6 +473,8 @@ export const restoreScpApplication = async (req: Request, res: Response): Promis
 
     return newStatus
   })
+
+  broadcastEnrollmentInvalidation(schoolYearId);
 
   res.json({ message: "Application restored successfully.", status: resultStatus })
 }

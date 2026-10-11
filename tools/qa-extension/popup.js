@@ -33,15 +33,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  document.getElementById('btn-early-reg').addEventListener('click', () => {
+  document.getElementById('btn-walkin-enrollment')?.addEventListener('click', () => {
+    sendMessage('FILL_WALKIN_ENROLLMENT');
+  });
+
+  document.getElementById('btn-walkin-scp')?.addEventListener('click', () => {
+    sendMessage('FILL_WALKIN_SCP');
+  });
+
+  document.getElementById('btn-early-reg')?.addEventListener('click', () => {
     sendMessage('FILL_EARLY_REGISTRATION');
   });
 
-  document.getElementById('btn-scp').addEventListener('click', () => {
+  document.getElementById('btn-scp')?.addEventListener('click', () => {
     sendMessage('FILL_SCP_ADMISSION');
   });
 
-  document.getElementById('btn-enrollment').addEventListener('click', () => {
+  document.getElementById('btn-enrollment')?.addEventListener('click', () => {
     sendMessage('FILL_ENROLLMENT');
   });
 });

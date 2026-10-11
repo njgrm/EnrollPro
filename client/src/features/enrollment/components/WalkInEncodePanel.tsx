@@ -819,7 +819,7 @@ export function WalkInEncodePanel() {
                                       <Input
                                         placeholder="12-digit Learner Reference Number (LRN)"
                                         disabled={noLrn}
-                                        className="uppercase font-bold"
+                                        className="uppercase font-bold h-14 text-lg font-bold text-center border-2 tracking-widest"
                                         value={field.value ?? ""}
                                         onChange={(e) => {
                                           const val = e.target.value.replace(/\D/g, '').slice(0, 12);
@@ -836,7 +836,7 @@ export function WalkInEncodePanel() {
                                           }
                                         }}
                                       />
-                                      <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-primary" />
+                                      <Search className="w-4 h-4 absolute right-6 top-1/2 -translate-y-1/2 text-primary" />
                                     </div>
                                   </FormControl>
                                   <FormMessage />

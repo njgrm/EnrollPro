@@ -848,6 +848,8 @@ export async function submitEnrollment(req: Request, res: Response) {
       });
     });
 
+    broadcastEnrollmentInvalidation(application.schoolYearId, [application.learnerId]);
+
     res.status(201).json({
       message: "Application submitted successfully",
       trackingNumber: application.trackingNumber,
@@ -1056,6 +1058,8 @@ export async function updateExistingApplication(req: Request, res: Response) {
     });
   });
 
+  broadcastEnrollmentInvalidation(application.schoolYearId, [application.learnerId]);
+
   res.status(200).json({
       message: "Application updated successfully",
       trackingNumber: application.trackingNumber,
@@ -1244,6 +1248,8 @@ export async function submitEarlyRegistration(req: Request, res: Response) {
         }
       });
     });
+
+    broadcastEnrollmentInvalidation(application.schoolYearId, [application.learnerId]);
 
     res.status(201).json({
       message: "Early registration submitted successfully",
@@ -1516,6 +1522,8 @@ export async function updateEarlyRegistration(req: Request, res: Response) {
         }
       });
     });
+
+    broadcastEnrollmentInvalidation(application.schoolYearId, [application.learnerId]);
 
     res.status(200).json({
       message: "Early registration updated successfully",

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { isAxiosError } from "axios";
@@ -6,7 +6,7 @@ import { queryKeys } from "@/shared/lib/queryKeys";
 import {
   CheckCircle2, XCircle, AlertCircle, Trash2,
   Loader2, Search, SlidersHorizontal, Plus, Clock, AlertTriangle, Eye,
-  Maximize2, Minimize2
+  Maximize2, Minimize2, RefreshCw
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
@@ -32,6 +32,13 @@ import { ConfirmationModal } from "@/shared/ui/confirmation-modal";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { TwoPanelSkeleton } from "@/shared/components/PageLoadingSkeleton";
 import { UserPhoto } from "@/shared/components/UserPhoto";
+import { useRealtimeRefresh } from "@/shared/hooks/useRealtimeRefresh";
+import type { RealtimeInvalidationTopic } from "@enrollpro/shared";
+
+const VERIFICATION_REALTIME_TOPICS: RealtimeInvalidationTopic[] = [
+  "enrollment:pending-verifications",
+  "enrollment:applications",
+];
 
 interface AtlasSubjectOption {
   code: string;
@@ -170,14 +177,15 @@ function VerificationRow({ label, children, valueClassName }: { label: React.Rea
 export function VerificationWorkspace() {
   const { isHistoricalReadOnly } = useHistoricalReadOnly();
   const queryClient = useQueryClient();
-  const ancillaryRoles = useAuthStore((state) => state.user?.ancillaryRoles) ?? [];
+  const rawAncillaryRoles = useAuthStore((state) => state.user?.ancillaryRoles);
   const coordinatorGradeOrder = useMemo(() => {
-    const coordinatorRole = ancillaryRoles.find((role) =>
+    const roles = rawAncillaryRoles ?? [];
+    const coordinatorRole = roles.find((role) =>
       /^GRADE (7|8|9|10) COORDINATOR$/.test(role),
     );
     const grade = coordinatorRole?.match(/^GRADE (7|8|9|10) COORDINATOR$/)?.[1];
     return grade ? Number(grade) : null;
-  }, [ancillaryRoles]);
+  }, [rawAncillaryRoles]);
   const isTransfereeOnlyCoordinator =
     coordinatorGradeOrder !== null && coordinatorGradeOrder > 7;
 
@@ -202,92 +210,10 @@ export function VerificationWorkspace() {
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState<string>("");
 
-  const cancelMutation = useMutation({
-    mutationFn: (reason: string) => api.patch(`/enrollment/${selectedAppId}/cancel`, { reason }),
-    onSuccess: () => {
-      sileo.success({
-        title: "Application Cancelled",
-        description: `${selectedApp?.learner.firstName}'s application has been cancelled.`
-      });
-      queryClient.invalidateQueries({ queryKey: ["enrollment", "pending-verifications"] });
-      setCancelModalOpen(false);
-      setSelectedAppId(null);
-    },
-    onError: (err: unknown) => {
-      const message = isAxiosError(err) ? err.response?.data?.message : err instanceof Error ? err.message : "Unknown error";
-      sileo.error({
-        title: "Cancellation Failed",
-        description: message || "Failed to cancel application."
-      });
-    }
-  });
-
   const [restoreModalOpen, setRestoreModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-
-  const restoreMutation = useMutation({
-    mutationFn: () => api.patch(`/enrollment/${selectedAppId}/restore`),
-    onSuccess: () => {
-      sileo.success({
-        title: "Application Restored",
-        description: `${selectedApp?.learner.firstName}'s application has been successfully restored.`
-      });
-      queryClient.invalidateQueries({ queryKey: ["enrollment", "pending-verifications"] });
-      setRestoreModalOpen(false);
-      setSelectedAppId(null);
-    },
-    onError: (err: unknown) => {
-      const message = isAxiosError(err) ? err.response?.data?.message : err instanceof Error ? err.message : "Unknown error";
-      sileo.error({
-        title: "Restore Failed",
-        description: message || "Failed to restore application."
-      });
-    }
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: () => api.delete(`/enrollment/${selectedAppId}`),
-    onSuccess: () => {
-      sileo.success({
-        title: "Application Deleted",
-        description: `${selectedApp?.learner.firstName}'s application has been permanently deleted.`
-      });
-      queryClient.invalidateQueries({ queryKey: ["enrollment", "pending-verifications"] });
-      setDeleteModalOpen(false);
-      setSelectedAppId(null);
-    },
-    onError: (err: unknown) => {
-      const message = isAxiosError(err) ? err.response?.data?.message : err instanceof Error ? err.message : "Unknown error";
-      sileo.error({
-        title: "Delete Failed",
-        description: message || "Failed to delete application."
-      });
-    }
-  });
-
   const [revertModalOpen, setRevertModalOpen] = useState(false);
   const [revertReason, setRevertReason] = useState("");
-
-  const revertMutation = useMutation({
-    mutationFn: () => api.patch(`/enrollment/${selectedAppId}/revert`, { reason: revertReason }),
-    onSuccess: () => {
-      sileo.success({
-        title: "Enrollment Reverted",
-        description: `${selectedApp?.learner.firstName} has been reverted to the For Review queue.`
-      });
-      queryClient.invalidateQueries({ queryKey: ["enrollment", "pending-verifications"] });
-      setRevertModalOpen(false);
-      setRevertReason("");
-      setSelectedAppId(null);
-    },
-    onError: (err: unknown) => {
-      const message = isAxiosError(err) ? err.response?.data?.message : err instanceof Error ? err.message : "Unknown error";
-      sileo.error({
-        title: "Revert Failed",
-        description: message || "Failed to revert enrollment."
-      });
-    }
-  });
 
   const {
     inputValue: searchQuery,
@@ -359,12 +285,23 @@ export function VerificationWorkspace() {
     return null;
   }, [coordinatorGradeOrder, activeSchoolYear?.gradeLevels]);
 
+  useRealtimeRefresh({
+    topics: VERIFICATION_REALTIME_TOPICS,
+    onRefresh: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["enrollment", "pending-verifications"],
+      });
+    },
+  });
+
   const {
     data: pendingVerifications = [],
     isLoading,
     isPending,
     isError: isPendingVerificationsError,
     error: pendingVerificationsError,
+    refetch,
+    isFetching,
   } = useQuery({
     queryKey: ["enrollment", "pending-verifications", assignedGradeLevelId],
     queryFn: () =>
@@ -372,7 +309,35 @@ export function VerificationWorkspace() {
         params: assignedGradeLevelId ? { gradeLevelId: assignedGradeLevelId } : {}
       }).then((r) => r.data),
     enabled: !isHistoricalReadOnly,
+    staleTime: 0,
+    refetchInterval: isHistoricalReadOnly ? false : 10_000,
+    refetchOnWindowFocus: "always",
   });
+
+  const previousAppIdsRef = useRef<Set<number> | null>(null);
+
+  useEffect(() => {
+    if (isLoading || isPending) return;
+    const currentIds = new Set(pendingVerifications.map((a) => a.id));
+
+    if (previousAppIdsRef.current !== null) {
+      const newPendingApps = pendingVerifications.filter(
+        (app) =>
+          !previousAppIdsRef.current!.has(app.id) &&
+          app.status === "PENDING_VERIFICATION",
+      );
+
+      if (newPendingApps.length > 0) {
+        const newest = newPendingApps[0];
+        sileo.info({
+          title: "New Enrollee Received",
+          description: `${newest.learner.lastName}, ${newest.learner.firstName} is waiting for review.`,
+        });
+      }
+    }
+
+    previousAppIdsRef.current = currentIds;
+  }, [pendingVerifications, isLoading, isPending]);
 
   const selectedApp = useMemo(() => {
     return pendingVerifications.find((app) => app.id === selectedAppId);
@@ -610,12 +575,151 @@ export function VerificationWorkspace() {
     return fallback;
   };
 
-  const handleSelect = (appId: number) => {
+  const getNextAppId = useCallback((currentId: number | null): number | null => {
+    if (!currentId) return null;
+    const currentIndex = filteredVerifications.findIndex((app) => app.id === currentId);
+    if (currentIndex === -1) return null;
+
+    if (currentIndex + 1 < filteredVerifications.length) {
+      return filteredVerifications[currentIndex + 1].id;
+    }
+    if (currentIndex > 0) {
+      return filteredVerifications[currentIndex - 1].id;
+    }
+    return null;
+  }, [filteredVerifications]);
+
+  const handleSelect = useCallback((appId: number) => {
     setSelectedAppId(appId);
     setAssignedSectionId(undefined);
     setSf9EligibilityStatus("PROMOTED");
     setConditionalSubjects([]);
-  };
+    setTimeout(() => {
+      const el = document.getElementById(`verification-card-${appId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }, 50);
+  }, []);
+
+  // When filtered list updates, if the currently selected learner no longer exists, select next/first available
+  useEffect(() => {
+    if (selectedAppId !== null && !isLoading && !isPending) {
+      if (filteredVerifications.length === 0) {
+        setSelectedAppId(null);
+      } else {
+        const exists = filteredVerifications.some((app) => app.id === selectedAppId);
+        if (!exists) {
+          handleSelect(filteredVerifications[0].id);
+        }
+      }
+    }
+  }, [filteredVerifications, selectedAppId, isLoading, isPending, handleSelect]);
+
+  const cancelMutation = useMutation({
+    mutationFn: (reason: string) => api.patch(`/enrollment/${selectedAppId}/cancel`, { reason }),
+    onSuccess: () => {
+      sileo.success({
+        title: "Application Cancelled",
+        description: `${selectedApp?.learner.firstName}'s application has been cancelled.`
+      });
+      const currentId = selectedAppId;
+      const nextAppId = getNextAppId(currentId);
+      queryClient.invalidateQueries({ queryKey: ["enrollment", "pending-verifications"] });
+      setCancelModalOpen(false);
+      if (nextAppId) {
+        handleSelect(nextAppId);
+      } else {
+        setSelectedAppId(null);
+      }
+    },
+    onError: (err: unknown) => {
+      const message = isAxiosError(err) ? err.response?.data?.message : err instanceof Error ? err.message : "Unknown error";
+      sileo.error({
+        title: "Cancellation Failed",
+        description: message || "Failed to cancel application."
+      });
+    }
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: () => api.patch(`/enrollment/${selectedAppId}/restore`),
+    onSuccess: () => {
+      sileo.success({
+        title: "Application Restored",
+        description: `${selectedApp?.learner.firstName}'s application has been successfully restored.`
+      });
+      const currentId = selectedAppId;
+      const nextAppId = getNextAppId(currentId);
+      queryClient.invalidateQueries({ queryKey: ["enrollment", "pending-verifications"] });
+      setRestoreModalOpen(false);
+      if (nextAppId) {
+        handleSelect(nextAppId);
+      } else {
+        setSelectedAppId(null);
+      }
+    },
+    onError: (err: unknown) => {
+      const message = isAxiosError(err) ? err.response?.data?.message : err instanceof Error ? err.message : "Unknown error";
+      sileo.error({
+        title: "Restore Failed",
+        description: message || "Failed to restore application."
+      });
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => api.delete(`/enrollment/${selectedAppId}`),
+    onSuccess: () => {
+      sileo.success({
+        title: "Application Deleted",
+        description: `${selectedApp?.learner.firstName}'s application has been permanently deleted.`
+      });
+      const currentId = selectedAppId;
+      const nextAppId = getNextAppId(currentId);
+      queryClient.invalidateQueries({ queryKey: ["enrollment", "pending-verifications"] });
+      setDeleteModalOpen(false);
+      if (nextAppId) {
+        handleSelect(nextAppId);
+      } else {
+        setSelectedAppId(null);
+      }
+    },
+    onError: (err: unknown) => {
+      const message = isAxiosError(err) ? err.response?.data?.message : err instanceof Error ? err.message : "Unknown error";
+      sileo.error({
+        title: "Delete Failed",
+        description: message || "Failed to delete application."
+      });
+    }
+  });
+
+  const revertMutation = useMutation({
+    mutationFn: () => api.patch(`/enrollment/${selectedAppId}/revert`, { reason: revertReason }),
+    onSuccess: () => {
+      sileo.success({
+        title: "Enrollment Reverted",
+        description: `${selectedApp?.learner.firstName} has been reverted to the For Review queue.`
+      });
+      const currentId = selectedAppId;
+      const nextAppId = getNextAppId(currentId);
+      queryClient.invalidateQueries({ queryKey: ["enrollment", "pending-verifications"] });
+      setRevertModalOpen(false);
+      setRevertReason("");
+      if (nextAppId) {
+        handleSelect(nextAppId);
+      } else {
+        setSelectedAppId(null);
+      }
+    },
+    onError: (err: unknown) => {
+      const message = isAxiosError(err) ? err.response?.data?.message : err instanceof Error ? err.message : "Unknown error";
+      sileo.error({
+        title: "Revert Failed",
+        description: message || "Failed to revert enrollment."
+      });
+    }
+  });
 
   const approveLearner = async () => {
     if (!selectedAppId || !sf9Verified || !psaVerified) return;
@@ -631,10 +735,13 @@ export function VerificationWorkspace() {
       }
     }
 
+    const currentId = selectedAppId;
+    const nextAppId = getNextAppId(currentId);
+
     setProcessing(true);
     try {
       await api.post("/enrollment/finalize-intake", {
-        applicationId: selectedAppId,
+        applicationId: currentId,
         checklistVerified: true,
         assignedProgram,
         sectionId: assignedSectionId,
@@ -646,9 +753,14 @@ export function VerificationWorkspace() {
         title: "Verification Successful",
         description: `Learner has been verified and queued for sectioning.`,
       });
-      setSelectedAppId(null);
-      setSf9Verified(false);
-      setPsaVerified(false);
+
+      if (nextAppId) {
+        handleSelect(nextAppId);
+      } else {
+        setSelectedAppId(null);
+        setSf9Verified(false);
+        setPsaVerified(false);
+      }
       setConfirmModalState(null);
       void queryClient.invalidateQueries({ queryKey: ["enrollment", "pending-verifications"] });
       void queryClient.invalidateQueries({ queryKey: queryKeys.sectioningPool() });
@@ -680,10 +792,13 @@ export function VerificationWorkspace() {
       }
     }
 
+    const currentId = selectedAppId;
+    const nextAppId = getNextAppId(currentId);
+
     setProcessing(true);
     try {
       await api.post("/enrollment/finalize-intake", {
-        applicationId: selectedAppId,
+        applicationId: currentId,
         checklistVerified: false, // indicating temporary enrollment
         isMissingSf9: !sf9Verified,
         isMissingPsa: !psaVerified,
@@ -696,9 +811,14 @@ export function VerificationWorkspace() {
         title: "Temporarily Enrolled",
         description: `Learner has been assigned temporary enrollment status.`,
       });
-      setSelectedAppId(null);
-      setSf9Verified(false);
-      setPsaVerified(false);
+
+      if (nextAppId) {
+        handleSelect(nextAppId);
+      } else {
+        setSelectedAppId(null);
+        setSf9Verified(false);
+        setPsaVerified(false);
+      }
       setConfirmModalState(null);
       void queryClient.invalidateQueries({ queryKey: ["enrollment", "pending-verifications"] });
       void queryClient.invalidateQueries({ queryKey: queryKeys.sectioningPool() });
@@ -719,9 +839,12 @@ export function VerificationWorkspace() {
   const updateDeficientDocuments = async () => {
     if (!selectedAppId || !selectedApp) return;
 
+    const currentId = selectedAppId;
+    const nextAppId = getNextAppId(currentId);
+
     setProcessing(true);
     try {
-      await api.patch(`/enrollment/${selectedAppId}/complete-requirements`, {
+      await api.patch(`/enrollment/${currentId}/complete-requirements`, {
         sf9Verified,
         psaVerified,
         sectionId: assignedSectionId === undefined ? null : assignedSectionId,
@@ -734,9 +857,14 @@ export function VerificationWorkspace() {
           ? "All requirements verified. Learner is no longer deficient."
           : "Document checklist has been updated.",
       });
-      setSelectedAppId(null);
-      setSf9Verified(false);
-      setPsaVerified(false);
+
+      if (allVerified && nextAppId) {
+        handleSelect(nextAppId);
+      } else if (allVerified) {
+        setSelectedAppId(null);
+        setSf9Verified(false);
+        setPsaVerified(false);
+      }
       void queryClient.invalidateQueries({ queryKey: ["enrollment", "pending-verifications"] });
       void queryClient.invalidateQueries({ queryKey: queryKeys.sectioningPool() });
     } catch (error: unknown) {
@@ -929,6 +1057,17 @@ export function VerificationWorkspace() {
           </div>
 
           <div className="flex flex-row flex-wrap items-center justify-start xl:justify-end gap-3 w-full xl:w-auto shrink-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { void refetch(); }}
+              disabled={isFetching}
+              title="Refresh queue"
+              className="h-11 px-4 font-bold gap-2 bg-white border-gray-300 hover:bg-gray-50 shadow-sm"
+            >
+              <RefreshCw className={cn("w-4 h-4 text-foreground", isFetching && "animate-spin text-primary")} />
+              <span>Refresh</span>
+            </Button>
             {!isHistoricalReadOnly && (
               <WalkInEncodePanel />
             )}
@@ -1113,6 +1252,7 @@ export function VerificationWorkspace() {
                 filteredVerifications.map((app) => (
                   <div
                     key={app.id}
+                    id={`verification-card-${app.id}`}
                     onClick={() => handleSelect(app.id)}
                     className={cn(
                       "cursor-pointer border-2 p-3 transition-all relative overflow-hidden",
