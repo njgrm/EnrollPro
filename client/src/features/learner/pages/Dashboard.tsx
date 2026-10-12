@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Navigate, useNavigate } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import { Navigate, useLocation, useNavigate } from "react-router";
 import {
   LogOut,
   AlertTriangle,
@@ -13,6 +13,7 @@ import {
 import { useLearnerAuthStore } from "@/store/learner-auth.slice";
 import { useThemeStore } from "@/store/theme.slice";
 import axios from "axios";
+import { Toaster, sileo } from "sileo";
 import { getLearnerApi } from "@/shared/api/axiosInstance";
 
 import { motion, AnimatePresence } from "motion/react";
@@ -179,6 +180,43 @@ export default function LearnerDashboard() {
       .finally(() => setLoading(false));
   }, [token]);
 
+  const location = useLocation();
+  const welcomeToastTriggered = useRef(false);
+
+  useEffect(() => {
+    if (welcomeToastTriggered.current) return;
+
+    let toastData: { title: string; description: string } | null = null;
+
+    const navToast = (location.state as { welcomeToast?: { title: string; description: string } })?.welcomeToast;
+    if (navToast?.title) {
+      toastData = navToast;
+      window.history.replaceState({ ...window.history.state, usr: null }, "");
+    } else {
+      const pending = sessionStorage.getItem("pendingWelcomeToast");
+      if (pending) {
+        sessionStorage.removeItem("pendingWelcomeToast");
+        try {
+          toastData = JSON.parse(pending) as { title: string; description: string };
+        } catch {
+          // ignore json parse error
+        }
+      }
+    }
+
+    if (!toastData) return;
+
+    welcomeToastTriggered.current = true;
+    sessionStorage.removeItem("pendingWelcomeToast");
+
+    window.setTimeout(() => {
+      sileo.success({
+        title: toastData.title,
+        description: toastData.description,
+      });
+    }, 350);
+  }, [location.state]);
+
   if (!user || !token) {
     return <Navigate to="/learner/login" replace />;
   }
@@ -202,6 +240,7 @@ export default function LearnerDashboard() {
 
   return (
     <div className="min-h-screen bg-background relative">
+      <Toaster position="top-right" theme="light" />
       <svg
         className="fixed inset-0 h-full w-full opacity-[0.08] pointer-events-none z-0 print:hidden"
         xmlns="http://www.w3.org/2000/svg"

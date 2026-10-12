@@ -40,7 +40,7 @@ import { Badge } from "@/shared/ui/badge";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { sileo } from "sileo";
 import { useHistoricalReadOnly } from "@/shared/hooks/useHistoricalReadOnly";
-import { cn, SCP_LABELS, getGradeLevelBadgeStyles, formatGradeLevel } from "@/shared/lib/utils";
+import { cn, SCP_LABELS, getGradeLevelBadgeStyles, formatGradeLevel, formatSectionProgramLabel } from "@/shared/lib/utils";
 import {
   Tooltip,
   TooltipContent,
@@ -80,6 +80,7 @@ import { useResizablePanel } from "@/shared/hooks/useResizablePanel";
 import { useRealtimeRefresh } from "@/shared/hooks/useRealtimeRefresh";
 import { useAuthStore } from "@/store/auth.slice";
 import { AutoAssignVisualizer } from "./AutoAssignVisualizer";
+import { FinalizingSectionLoader } from "./FinalizingSectionLoader";
 
 interface SectionSummary {
   id: number;
@@ -119,6 +120,8 @@ interface PoolLearner {
   academicStatus: string;
   studentPhoto?: string | null;
   draftSectionId?: number;
+  isFinalized?: boolean;
+  finalizedSectionId?: number;
 }
 
 interface GradeLevelOption {
@@ -150,6 +153,7 @@ interface DraftGenderCounts {
 interface DraftLearnerPlacement extends PoolLearner {
   sectionId: number;
   isOverridden: boolean;
+  isNew?: boolean;
 }
 
 interface DraftSectionRoster {
@@ -157,6 +161,7 @@ interface DraftSectionRoster {
   learners: DraftLearnerPlacement[];
   genderCounts: DraftGenderCounts;
   totalCount: number;
+  newCount?: number;
   isOverCapacity: boolean;
 }
 
@@ -380,11 +385,13 @@ const buildRoster = (
 ): DraftSectionRoster => {
   const sortedLearners = [...learners].sort(sortLearnersByAverage);
   const totalCount = section.currentCount + sortedLearners.length;
+  const newCount = sortedLearners.filter((learner) => Boolean(learner.isNew)).length;
   return {
     section,
     learners: sortedLearners,
     genderCounts: calculateGenderCounts(section, sortedLearners),
     totalCount,
+    newCount,
     isOverCapacity: totalCount > section.maxCapacity,
   };
 };
@@ -392,7 +399,18 @@ const buildRoster = (
 const rebuildDraftPlacement = (draft: DraftPlacement): DraftPlacement => ({
   ...draft,
   rosters: draft.rosters.map((roster) =>
-    buildRoster(roster.section, roster.learners),
+    buildRoster(
+      roster.section,
+      roster.learners.map((learner) => ({
+        ...learner,
+        isNew:
+          learner.isFinalized && !learner.isOverridden
+            ? false
+            : learner.isNew !== undefined
+            ? learner.isNew
+            : Boolean(learner.isOverridden || !learner.isFinalized),
+      })),
+    ),
   ),
 });
 
@@ -487,6 +505,7 @@ const loadDraftPlacementFromServer = (
         ...learner,
         sectionId: learner.draftSectionId,
         isOverridden: false,
+        isNew: !learner.isFinalized,
       });
     } else {
       unplacedLearners.push(learner);
@@ -510,6 +529,7 @@ const createDraftPlacement = (
   enableHomogeneousSections: boolean,
   homogeneousSectionCount: number,
   heterogeneousRoundRobin: boolean,
+  _previousRosters?: DraftSectionRoster[],
 ): DraftPlacement => {
   const rostersBySectionId = new Map<number, DraftLearnerPlacement[]>(
     sections.map((section) => [section.id, []])
@@ -637,6 +657,13 @@ const createDraftPlacement = (
     }
   }
 
+  for (const section of sections) {
+    const sectionLearners = rostersBySectionId.get(section.id) ?? [];
+    for (const learner of sectionLearners) {
+      learner.isNew = !learner.isFinalized;
+    }
+  }
+
   return {
     gradeLevelId,
     generatedAt: new Date().toISOString(),
@@ -706,6 +733,12 @@ export function SectioningWorkspace() {
   const [commitDialogOpen, setCommitDialogOpen] = useState(false);
   const [allowCapacityOverride, setAllowCapacityOverride] = useState(false);
   const [commitProcessing, setCommitProcessing] = useState(false);
+  const [finalizingProgress, setFinalizingProgress] = useState<{
+    currentSection: string;
+    completedSections: number;
+    totalSections: number;
+    isComplete?: boolean;
+  } | null>(null);
   const [masterlistModalSectionId, setMasterlistModalSectionId] = useState<
     number | null
   >(null);
@@ -762,7 +795,29 @@ export function SectioningWorkspace() {
   const [draftPlacements, setDraftPlacements] = useState<Record<string, DraftPlacement>>(() => {
     try {
       const stored = localStorage.getItem("enrollpro_draft_placements");
-      return stored ? JSON.parse(stored) : {};
+      if (!stored) return {};
+      const parsed = JSON.parse(stored) as Record<string, DraftPlacement>;
+      const normalized: Record<string, DraftPlacement> = {};
+      for (const [key, dp] of Object.entries(parsed)) {
+        normalized[key] = {
+          ...dp,
+          rosters: dp.rosters.map((roster) =>
+            buildRoster(
+              roster.section,
+              roster.learners.map((l) => ({
+                ...l,
+                isNew:
+                  l.isFinalized && !l.isOverridden
+                    ? false
+                    : l.isNew !== undefined
+                    ? l.isNew
+                    : Boolean(l.isOverridden || !l.isFinalized),
+              }))
+            )
+          ),
+        };
+      }
+      return normalized;
     } catch {
       return {};
     }
@@ -880,7 +935,9 @@ export function SectioningWorkspace() {
   }, [sectionsData, draftPlacement, sections.length]);
   useEffect(() => {
     if (poolData) {
-      if (!draftPlacement || pool.length === 0) {
+      if (!draftPlacement) {
+        setPool(poolData.filter((p) => !p.isFinalized && p.status !== "OFFICIALLY_ENROLLED"));
+      } else if (pool.length === 0) {
         setPool(poolData);
       }
     }
@@ -916,7 +973,18 @@ export function SectioningWorkspace() {
               fresh.applicantType !== l.applicantType
             ) {
               hasChanges = true;
-              return { ...l, ...fresh, sectionId: roster.section.id, isOverridden: l.isOverridden };
+              return {
+                ...l,
+                ...fresh,
+                sectionId: roster.section.id,
+                isOverridden: l.isOverridden,
+                isNew:
+                  fresh.isFinalized && !l.isOverridden
+                    ? false
+                    : l.isNew !== undefined
+                    ? l.isNew
+                    : Boolean(l.isOverridden || !fresh.isFinalized),
+              };
             }
             return l;
           });
@@ -1093,7 +1161,12 @@ export function SectioningWorkspace() {
 
   const currentGradePool = useMemo(() => {
     if (!activeGradeLevelId) return [];
-    return pool.filter((p) => String(p.gradeLevelId) === activeGradeLevelId);
+    return pool.filter(
+      (p) =>
+        String(p.gradeLevelId) === activeGradeLevelId &&
+        !p.isFinalized &&
+        p.status !== "OFFICIALLY_ENROLLED",
+    );
   }, [pool, activeGradeLevelId]);
   const draftLearnerCount = useMemo(
     () =>
@@ -1242,6 +1315,7 @@ export function SectioningWorkspace() {
             ...l,
             sectionId,
             isOverridden: true,
+            isNew: true,
           })),
         ];
 
@@ -1292,6 +1366,7 @@ export function SectioningWorkspace() {
         params: { gradeLevelId: activeGradeLevelId, includeAssigned: "true" }
       });
       const fullPool = res.data;
+      const previousRosters = draftPlacement?.rosters;
 
       const loadingTimer = setTimeout(() => {
         try {
@@ -1302,6 +1377,7 @@ export function SectioningWorkspace() {
             enableHomogeneousSections,
             homogeneousSectionCount,
             heterogeneousRoundRobin,
+            previousRosters,
           );
 
           setDraftPlacement(newDraft);
@@ -1422,6 +1498,7 @@ export function SectioningWorkspace() {
             ...learnerToMove,
             sectionId: destinationSectionId,
             isOverridden: true,
+            isNew: true,
           },
         ]);
       } else {
@@ -1432,6 +1509,7 @@ export function SectioningWorkspace() {
               ...learnerToMove,
               sectionId: destinationSectionId,
               isOverridden: true,
+              isNew: true,
             }
           ]));
         }
@@ -1598,6 +1676,7 @@ export function SectioningWorkspace() {
               ...otherLearner,
               sectionId: sourceSectionId,
               isOverridden: true,
+              isNew: true,
             };
           }
           if (learner.applicationId === otherLearner.applicationId) {
@@ -1605,6 +1684,7 @@ export function SectioningWorkspace() {
               ...sourceLearner,
               sectionId: otherSectionId,
               isOverridden: true,
+              isNew: true,
             };
           }
           return learner;
@@ -1622,12 +1702,19 @@ export function SectioningWorkspace() {
   const commitDraftPlacement = async () => {
     if (!draftPlacement) return;
 
-    const assignments: CommitDraftAssignment[] = draftPlacement.rosters
-      .filter((roster) => roster.learners.length > 0)
-      .map((roster) => ({
-        sectionId: roster.section.id,
-        applicationIds: roster.learners.map((learner) => learner.applicationId),
-      }));
+    const activeRosters = draftPlacement.rosters.filter((roster) => roster.learners.length > 0);
+    const total = activeRosters.length;
+
+    const assignments: CommitDraftAssignment[] = activeRosters.map((roster) => ({
+      sectionId: roster.section.id,
+      applicationIds: roster.learners.map((learner) => learner.applicationId),
+    }));
+
+    if (assignments.length === 0) {
+      setCommitDialogOpen(false);
+      return;
+    }
+
     const overrides = draftPlacement.rosters.reduce<Record<number, boolean>>(
       (accumulator, roster) => {
         for (const learner of roster.learners) {
@@ -1638,9 +1725,22 @@ export function SectioningWorkspace() {
       {},
     );
 
+    // Close confirmation dialog immediately so the right pane loading overlay is in full focus
+    setCommitDialogOpen(false);
     setCommitProcessing(true);
+
+    const firstProg = formatSectionProgramLabel(
+      activeRosters[0].section.programType,
+      activeRosters[0].section.isHomogeneous,
+    );
+    setFinalizingProgress({
+      currentSection: firstProg ? `${firstProg} — ${activeRosters[0].section.name}` : activeRosters[0].section.name,
+      completedSections: 0,
+      totalSections: total,
+    });
+
     try {
-      const response = await api.post<CommitDraftResponse>(
+      const commitPromise = api.post<CommitDraftResponse>(
         "/sectioning/commit-draft",
         {
           assignments,
@@ -1648,6 +1748,32 @@ export function SectioningWorkspace() {
           allowCapacityOverride,
         },
       );
+
+      // Smooth paced stepping through each section being finalized
+      for (let i = 0; i < activeRosters.length; i++) {
+        const roster = activeRosters[i];
+        const prog = formatSectionProgramLabel(
+          roster.section.programType,
+          roster.section.isHomogeneous,
+        );
+        setFinalizingProgress({
+          currentSection: prog ? `${prog} — ${roster.section.name}` : roster.section.name,
+          completedSections: i,
+          totalSections: total,
+        });
+        await new Promise((resolve) => setTimeout(resolve, prefersReducedMotion ? 100 : 600));
+      }
+
+      const response = await commitPromise;
+
+      // Show brief 100% completed check state before fading out
+      setFinalizingProgress({
+        currentSection: "",
+        completedSections: total,
+        totalSections: total,
+        isComplete: true,
+      });
+      await new Promise((resolve) => setTimeout(resolve, prefersReducedMotion ? 50 : 400));
       const skippedCount = response.data.skippedApplications.length;
       const committedApplicationIds = new Set(
         response.data.committedApplications.map(
@@ -1688,18 +1814,29 @@ export function SectioningWorkspace() {
         };
       });
       const nextPool = pool.filter(
-        (learner) => !committedApplicationIds.has(learner.applicationId),
+        (learner) =>
+          !committedApplicationIds.has(learner.applicationId) &&
+          !learner.isFinalized &&
+          learner.status !== "OFFICIALLY_ENROLLED",
       );
 
       setSections(nextSections);
       setPool(nextPool);
-      queryClient.setQueryData<SectionSummary[]>(
-        [...queryKeys.sectioningSections(), assignedGradeLevelId],
-        nextSections,
+      queryClient.setQueriesData<SectionSummary[]>(
+        { queryKey: queryKeys.sectioningSections() },
+        () => nextSections,
       );
-      queryClient.setQueryData<PoolLearner[]>(
-        [...queryKeys.sectioningPool(), assignedGradeLevelId],
-        nextPool,
+      queryClient.setQueriesData<PoolLearner[]>(
+        { queryKey: queryKeys.sectioningPool() },
+        (current) =>
+          current
+            ? current.filter(
+                (l) =>
+                  !committedApplicationIds.has(l.applicationId) &&
+                  !l.isFinalized &&
+                  l.status !== "OFFICIALLY_ENROLLED",
+              )
+            : [],
       );
 
       const affectedSectionIds = Array.from(
@@ -1792,6 +1929,7 @@ export function SectioningWorkspace() {
       });
     } finally {
       setCommitProcessing(false);
+      setFinalizingProgress(null);
     }
   };
 
@@ -2319,7 +2457,7 @@ export function SectioningWorkspace() {
             {/* RIGHT PANE: AVAILABLE SECTIONS */}
             <div
               className={cn(
-                "@container/section-pane flex-1 flex flex-col h-full overflow-hidden bg-card text-card-foreground min-w-0",
+                "@container/section-pane flex-1 flex flex-col h-full overflow-hidden bg-card text-card-foreground min-w-0 relative",
                 "transition-[left,box-shadow] duration-300 ease-in-out",
                 isDesktopViewport && "absolute inset-y-0 right-0",
                 isRightPaneFullscreen && "z-[60] shadow-2xl",
@@ -2333,6 +2471,17 @@ export function SectioningWorkspace() {
                   }
                   : undefined
               }>
+              <AnimatePresence>
+                {finalizingProgress && (
+                  <FinalizingSectionLoader
+                    currentSection={finalizingProgress.currentSection}
+                    completedSections={finalizingProgress.completedSections}
+                    totalSections={finalizingProgress.totalSections}
+                    isComplete={finalizingProgress.isComplete}
+                  />
+                )}
+              </AnimatePresence>
+
               <CardHeader className="border-b border-border bg-muted/20">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 space-y-1">
@@ -2589,6 +2738,27 @@ export function SectioningWorkspace() {
                                         </Badge>
                                       </motion.span>
                                     )}
+                                    {draftPlacement && (roster.newCount ?? 0) > 0 && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <motion.span
+                                              initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.6 }}
+                                              animate={{ opacity: 1, scale: 1 }}
+                                              transition={{ type: "spring", stiffness: 380, damping: 18, delay: 0.2 }}>
+                                              <Badge className="border border-emerald-500 bg-emerald-100 text-emerald-800 hover:bg-emerald-100 font-bold px-2 gap-0.5 cursor-default">
+                                                +<AnimatedCount from={0} to={roster.newCount!} animate={autoAssignPhase === "resolving" && !prefersReducedMotion} /> NEW
+                                              </Badge>
+                                            </motion.span>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p className="text-xs font-semibold">
+                                              {roster.newCount} new learner{roster.newCount === 1 ? "" : "s"} inserted during re-run.
+                                            </p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
                                   </div>
                                 </div>
 
@@ -2628,6 +2798,11 @@ export function SectioningWorkspace() {
                                                     {learner.isOverridden && (
                                                       <Badge className="!text-[11px] ml-2 bg-amber-600 text-white hover:bg-amber-600">
                                                         Added Manually
+                                                      </Badge>
+                                                    )}
+                                                    {learner.isNew && (
+                                                      <Badge className="!text-[11px] ml-2 bg-emerald-600 text-white hover:bg-emerald-600">
+                                                        NEW
                                                       </Badge>
                                                     )}
                                                   </span>

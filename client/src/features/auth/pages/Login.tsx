@@ -6,7 +6,6 @@ import {
   AlertCircle,
   BookOpen,
   Calendar,
-  CheckCircle,
   ClipboardList,
   Eye,
   EyeOff,
@@ -58,6 +57,7 @@ type SchoolMetaSettings = SettingsState & {
   schoolRegion?: string | null;
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function getHomeRoute(user: AuthResponseUser): string {
   const roles = user.roles || [];
   const anc = user.ancillaryRoles || [];
@@ -91,6 +91,54 @@ export function getHomeRoute(user: AuthResponseUser): string {
   }
 
   return "/personnel/dashboard";
+}
+
+function getLoginSuccessMessage(user: AuthResponseUser): string {
+  if (user.mustChangePassword) {
+    return "Account security update required. Setting up your new password...";
+  }
+
+  const roles = user.roles || [];
+  const anc = user.ancillaryRoles || [];
+
+  const isDashboardUser =
+    roles.includes("SYSTEM_ADMIN") ||
+    roles.includes("PRINCIPAL") ||
+    roles.includes("HEAD_REGISTRAR") ||
+    roles.includes("SCHOOL_REGISTRAR") ||
+    roles.includes("GRADE_LEVEL_COORDINATOR") ||
+    roles.includes("STE_COORDINATOR") ||
+    roles.includes("SPA_COORDINATOR") ||
+    roles.includes("SPS_COORDINATOR") ||
+    anc.some((r) =>
+      [
+        "GRADE 7 COORDINATOR",
+        "GRADE 8 COORDINATOR",
+        "GRADE 9 COORDINATOR",
+        "GRADE 10 COORDINATOR",
+      ].includes(r),
+    ) ||
+    anc.some((r) =>
+      ["STE HEAD TEACHER", "SPA HEAD TEACHER", "SPS HEAD TEACHER"].includes(r),
+    );
+
+  if (isDashboardUser) {
+    return "Login successful! Redirecting to dashboard...";
+  }
+
+  if (roles.includes("CLASS_ADVISER")) {
+    return "Login successful! Redirecting to advisory class...";
+  }
+
+  if (roles.includes("TEACHER")) {
+    return "Login successful! Redirecting to teacher workspace...";
+  }
+
+  if (roles.includes("MRF")) {
+    return "Login successful! Redirecting to activity log...";
+  }
+
+  return "Login successful! Redirecting to dashboard...";
 }
 
 function reverseSsoErrorMessage(
@@ -348,9 +396,22 @@ export default function Login() {
   }, [apiBase, settings.logoUrl]);
 
   const [showPassword, setShowPassword] = useState(false);
-  const [accountName, setAccountName] = useState("");
+  const [accountName, setAccountName] = useState(() => {
+    return (
+      localStorage.getItem("rememberedAccountName") ||
+      localStorage.getItem("rememberedEmployeeId") ||
+      localStorage.getItem("rememberedEmail") ||
+      ""
+    );
+  });
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    return Boolean(
+      localStorage.getItem("rememberedAccountName") ||
+      localStorage.getItem("rememberedEmployeeId") ||
+      localStorage.getItem("rememberedEmail"),
+    );
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -366,7 +427,15 @@ export default function Login() {
       .then(({ data }) => {
         setAuth(data.user);
         const destination = getHomeRoute(data.user);
-        navigate(destination, { replace: true });
+        const toastPayload = {
+          title: "Welcome back",
+          description: `Signed in as ${data.user.firstName} ${data.user.lastName}`,
+        };
+        sessionStorage.setItem("pendingWelcomeToast", JSON.stringify(toastPayload));
+        navigate(destination, {
+          replace: true,
+          state: { welcomeToast: toastPayload },
+        });
       })
       .catch(() => {
         clearAuth();
@@ -377,18 +446,6 @@ export default function Login() {
         });
       });
   }, [clearAuth, navigate, reverseSsoSucceeded, setAuth]);
-
-  // Hydrate from localStorage
-  useEffect(() => {
-    const savedId =
-      localStorage.getItem("rememberedAccountName") ||
-      localStorage.getItem("rememberedEmployeeId") ||
-      localStorage.getItem("rememberedEmail");
-    if (savedId) {
-      setAccountName(savedId);
-      setRememberMe(true);
-    }
-  }, []);
 
   useEffect(() => {
     if (!sessionExpired) {
@@ -434,26 +491,32 @@ export default function Login() {
       }
 
       setError(null);
-      setSuccess("Login successful! Redirecting...");
-
-      sileo.success({
-        title: "Welcome back",
-        description: `Signed in as ${payload.user.firstName} ${payload.user.lastName}`,
-      });
+      const successMessage = getLoginSuccessMessage(payload.user);
+      setSuccess(successMessage);
 
       if (payload.user.mustChangePassword) {
-        setSuccess("Account security update required...");
+        sessionStorage.removeItem("pendingWelcomeToast");
         redirectTimeoutRef.current = window.setTimeout(() => {
           navigate("/change-password?origin=staff", { replace: true });
-        }, 100);
+        }, 800);
         return;
       }
+
+      const toastPayload = {
+        title: "Welcome back",
+        description: `Signed in as ${payload.user.firstName} ${payload.user.lastName}`,
+      };
+
+      sessionStorage.setItem("pendingWelcomeToast", JSON.stringify(toastPayload));
 
       const destination = getHomeRoute(payload.user);
 
       redirectTimeoutRef.current = window.setTimeout(() => {
-        navigate(destination, { replace: true });
-      }, 100);
+        navigate(destination, {
+          replace: true,
+          state: { welcomeToast: toastPayload },
+        });
+      }, 800);
     },
     [navigate, setAuth, rememberMe],
   );
@@ -479,13 +542,13 @@ export default function Login() {
       } else {
         toastApiError(err as never);
       }
-    } finally {
       setIsLoading(false);
     }
   };
 
   if (
     user
+    && !success
     && !user.mustChangePassword
     && !reverseSsoErrorCode
     && !reverseSsoSucceeded
@@ -653,27 +716,22 @@ export default function Login() {
             </CardHeader>
 
             <CardContent className="px-6 pb-5 pt-4">
+              {/* Status Notifications */}
               {error && (
-                <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-red-50 to-rose-50 border border-red-100 flex items-center gap-2.5 login-scale-in">
-                  <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
-                    <AlertCircle className="w-4 h-4 text-red-600" />
-                  </div>
-                  <span className="text-base leading-tight font-bold text-red-700">
+                <div className="mb-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 flex items-start gap-2.5 animate-in fade-in zoom-in-95 duration-200">
+                  <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                  <p className="text-sm font-semibold text-destructive leading-tight">
                     {error}
-                  </span>
+                  </p>
                 </div>
               )}
 
               {success && (
-                <div className="mb-4 p-3 rounded-xl border flex items-center gap-2.5 login-scale-in bg-gradient-to-r from-primary/10 to-accent/10 border-primary/25">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-primary/15">
-                    <CheckCircle className="w-4 h-4 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-base leading-tight font-bold text-primary">
-                      {success}
-                    </p>
-                  </div>
+                <div className="mb-4 p-3 rounded-xl bg-primary/10 border border-primary/20 flex items-start gap-2.5 animate-in fade-in zoom-in-95 duration-200">
+                  <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                  <p className="text-sm font-semibold text-primary leading-tight">
+                    {success}
+                  </p>
                 </div>
               )}
 
@@ -776,12 +834,12 @@ export default function Login() {
 
                 <Button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || Boolean(success)}
                   className="w-full h-11 font-bold text-base leading-tight rounded-xl shadow-emerald-sm hover:shadow-emerald transition-all duration-300 hover:-translate-y-0.5 disabled:hover:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed bg-gradient-to-r from-primary to-accent hover:from-primary/95 hover:to-accent/95 text-primary-foreground">
-                  {isLoading ? (
+                  {isLoading || Boolean(success) ? (
                     <span className="flex items-center justify-center gap-2">
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      Signing in...
+                      {success ? "Redirecting..." : "Signing in..."}
                     </span>
                   ) : (
                     <span className="flex items-center justify-center gap-2">

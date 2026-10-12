@@ -259,6 +259,8 @@ export async function getSectioningPool(req: Request, res: Response) {
       academicStatus: app.academicStatus,
       status: app.status,
       draftSectionId: app.enrollmentRecord?.isDraft ? app.enrollmentRecord.sectionId : undefined,
+      isFinalized: Boolean((app.enrollmentRecord && !app.enrollmentRecord.isDraft) || app.status === "OFFICIALLY_ENROLLED"),
+      finalizedSectionId: app.enrollmentRecord && !app.enrollmentRecord.isDraft ? app.enrollmentRecord.sectionId : undefined,
     }));
 
     return res.json(pool);

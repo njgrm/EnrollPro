@@ -219,12 +219,8 @@ export default function LearnerLogin() {
       setError(null);
       setSuccess("Login successful! Redirecting to learner dashboard...");
 
-      sileo.success({
-        title: "Welcome",
-        description: `Signed in as ${payload.learner.firstName} ${payload.learner.lastName}`,
-      });
-
       if (payload.requiresPasswordReset) {
+        sessionStorage.removeItem("pendingWelcomeToast");
         setRequiresPasswordReset(true);
         setSuccess("First-time login detected. Setting up your new password...");
         redirectTimeoutRef.current = window.setTimeout(() => {
@@ -233,8 +229,18 @@ export default function LearnerLogin() {
         return;
       }
 
+      const toastPayload = {
+        title: "Welcome",
+        description: `Signed in as ${payload.learner.firstName} ${payload.learner.lastName}`,
+      };
+
+      sessionStorage.setItem("pendingWelcomeToast", JSON.stringify(toastPayload));
+
       redirectTimeoutRef.current = window.setTimeout(() => {
-        navigate("/learner/portal", { replace: true });
+        navigate("/learner/portal", {
+          replace: true,
+          state: { welcomeToast: toastPayload },
+        });
       }, 800);
     },
     [navigate, setAuth, rememberMe, setRequiresPasswordReset],

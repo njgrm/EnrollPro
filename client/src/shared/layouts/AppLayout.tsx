@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "motion/react";
-import { useEffect, useState, memo, useCallback, type ReactNode, Fragment } from "react";
+import { useEffect, useState, useRef, memo, useCallback, type ReactNode, Fragment } from "react";
 import type React from "react";
 import { useNavigate, useLocation, useOutlet } from "react-router";
 import axios from "axios";
@@ -874,21 +874,21 @@ function AppSidebar() {
   const isHeadRegistrar = useAuthStore(
     (s) => s.user?.roles?.includes("HEAD_REGISTRAR"),
   );
-  const isRegistrar = isHeadRegistrar;
+  const _isRegistrar = isHeadRegistrar;
   const ancillaryRoles = useAuthStore((s) => s.user?.ancillaryRoles) ?? [];
   const isStrictClassAdviser = userRoles.includes("CLASS_ADVISER") && !isAdmin && !isHeadRegistrar && 
     !ancillaryRoles.includes("GRADE 7 COORDINATOR") &&
     !ancillaryRoles.includes("GRADE 8 COORDINATOR") &&
     !ancillaryRoles.includes("GRADE 9 COORDINATOR") &&
     !ancillaryRoles.includes("GRADE 10 COORDINATOR");
-  const isGradeLevelCoordinator = 
+  const _isGradeLevelCoordinator = 
     userRoles.includes("GRADE_LEVEL_COORDINATOR") ||
     ancillaryRoles.includes("GRADE 7 COORDINATOR") ||
     ancillaryRoles.includes("GRADE 8 COORDINATOR") ||
     ancillaryRoles.includes("GRADE 9 COORDINATOR") ||
     ancillaryRoles.includes("GRADE 10 COORDINATOR");
 
-  const isScpCoordinator = 
+  const _isScpCoordinator = 
     userRoles.includes("STE_COORDINATOR") ||
     userRoles.includes("SPA_COORDINATOR") ||
     userRoles.includes("SPS_COORDINATOR") ||
@@ -978,7 +978,7 @@ function AppSidebar() {
     ? "Integrated-system login status is unavailable."
     : "Checking login availability.";
 
-  const hasCompanionNavigation = ([
+  const _hasCompanionNavigation = ([
     "AIMS",
     "SMART",
     "ATLAS",
@@ -1160,6 +1160,42 @@ export default function AppLayout({ children }: { children?: ReactNode }) {
       window.removeEventListener("ROLLOVER_COMPLETE", handleRolloverComplete);
     };
   }, [navigate]);
+
+  const welcomeToastTriggered = useRef(false);
+
+  useEffect(() => {
+    if (welcomeToastTriggered.current) return;
+
+    let toastData: { title: string; description: string } | null = null;
+
+    const navToast = (location.state as { welcomeToast?: { title: string; description: string } })?.welcomeToast;
+    if (navToast?.title) {
+      toastData = navToast;
+      window.history.replaceState({ ...window.history.state, usr: null }, "");
+    } else {
+      const pending = sessionStorage.getItem("pendingWelcomeToast");
+      if (pending) {
+        sessionStorage.removeItem("pendingWelcomeToast");
+        try {
+          toastData = JSON.parse(pending) as { title: string; description: string };
+        } catch {
+          // ignore json parse error
+        }
+      }
+    }
+
+    if (!toastData) return;
+
+    welcomeToastTriggered.current = true;
+    sessionStorage.removeItem("pendingWelcomeToast");
+
+    window.setTimeout(() => {
+      sileo.success({
+        title: toastData.title,
+        description: toastData.description,
+      });
+    }, 350);
+  }, [location.state]);
 
   const { isHistoricalReadOnly } = useHistoricalReadOnly();
   const [showCorrectionModal, setShowCorrectionModal] = useState(false);
