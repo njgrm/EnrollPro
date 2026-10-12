@@ -112,6 +112,8 @@ export async function getPublicConfig(
       region: null,
       division: null,
       globalDefaultPassword: "DepEd2026!",
+      activeSchoolYear: "2026-2027",
+      systemPhase: "OFFICIAL_ENROLLMENT",
     })
     return
   }
@@ -133,6 +135,8 @@ export async function getPublicConfig(
     region: setting.region,
     division: setting.division,
     globalDefaultPassword: setting.globalDefaultPassword,
+    activeSchoolYear: setting.activeSchoolYear?.yearLabel ?? "2026-2027",
+    systemPhase: setting.systemPhase ?? "OFFICIAL_ENROLLMENT",
   })
 }
 
