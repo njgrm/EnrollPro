@@ -60,7 +60,15 @@ export interface SmartSf10Response {
   schoolRecords: SmartSf10Record[];
 }
 
-export async function fetchSmartSf10ByLrn(lrn: string): Promise<SmartSf10Record[]> {
+export interface FetchSmartSf10Options {
+  timeoutMs?: number;
+  maxAttempts?: number;
+}
+
+export async function fetchSmartSf10ByLrn(
+  lrn: string,
+  options?: FetchSmartSf10Options,
+): Promise<SmartSf10Record[]> {
   let typedResponse: SmartSf10Response;
 
   try {
@@ -78,14 +86,16 @@ export async function fetchSmartSf10ByLrn(lrn: string): Promise<SmartSf10Record[
     let responseData: unknown;
     let responseReceived = false;
     let lastTransportError: unknown = null;
+    const maxAttempts = options?.maxAttempts ?? SMART_TRANSPORT_ATTEMPTS;
+    const timeout = options?.timeoutMs ?? 10_000;
 
-    for (let attempt = 1; attempt <= SMART_TRANSPORT_ATTEMPTS; attempt += 1) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
         const response = await axios.get<unknown>(
           `${cleanBaseUrl}/api/integration/students/${encodeURIComponent(lrn)}/sf10-grades`,
           {
             headers: { 'X-EnrollPro-API-Key': smartToken },
-            timeout: 10_000,
+            timeout,
           }
         );
         responseData = response.data;
@@ -93,7 +103,7 @@ export async function fetchSmartSf10ByLrn(lrn: string): Promise<SmartSf10Record[
         break;
       } catch (error: unknown) {
         lastTransportError = error;
-        if (!isRetryableSmartTransportError(error) || attempt === SMART_TRANSPORT_ATTEMPTS) {
+        if (!isRetryableSmartTransportError(error) || attempt === maxAttempts) {
           throw error;
         }
         await new Promise<void>((resolve) => setTimeout(resolve, 400 * attempt));

@@ -234,7 +234,7 @@ export default function ViewProgramRoster() {
     <PageTransition className="space-y-6">
       <div className="mb-4 flex flex-col gap-3">
         <Link
-          to="/dashboard"
+          to="/personnel/dashboard"
           className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:text-foreground transition-colors"
         >
           ← Back to Dashboard

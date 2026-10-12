@@ -116,7 +116,7 @@ export function AtomicRolloverDialog({
         title: "New School Year Started",
         description: `School Year ${response.data.year.yearLabel} is now active.`,
       })
-      navigate("/dashboard", { replace: true })
+      navigate("/personnel/dashboard", { replace: true })
     } catch (error: unknown) {
       toastApiError(error as Parameters<typeof toastApiError>[0])
     } finally {

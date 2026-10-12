@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { Lock } from "lucide-react";
@@ -8,7 +8,7 @@ import { getHomeRoute } from "@/features/auth/pages/Login";
 export default function Forbidden() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const hasDashboard = user ? getHomeRoute(user as any) === "/dashboard" : false;
+  const hasDashboard = user ? getHomeRoute(user as Parameters<typeof getHomeRoute>[0]) === "/personnel/dashboard" : false;
 
   return (
     <div className="flex h-full flex-1 min-h-[60vh] items-center justify-center p-4">
@@ -28,7 +28,7 @@ export default function Forbidden() {
 
           <div className="w-full space-y-3 pt-2">
             {hasDashboard && (
-              <Button className="w-full font-bold h-11" onClick={() => navigate("/dashboard")}>
+              <Button className="w-full font-bold h-11" onClick={() => navigate("/personnel/dashboard")}>
                 Return to Dashboard
               </Button>
             )}

@@ -17,7 +17,7 @@ export default function NotFound() {
     } else {
       // Fallback routing logic for empty history stack
       if (staffUser) {
-        navigate("/dashboard", { replace: true });
+        navigate("/personnel/dashboard", { replace: true });
       } else if (learnerUser) {
         navigate("/learner/portal", { replace: true });
       } else {

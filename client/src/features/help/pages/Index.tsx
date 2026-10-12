@@ -111,7 +111,7 @@ export default function HelpDocumentation() {
             "Send enrolled learners to Section Assignment for class placement.",
           ]}
           actionLabel="Open Learner Enrollment"
-          actionTo="/learner-enrollment"
+          actionTo="/personnel/learner-enrollment"
         />
 
         <GuideSection
@@ -124,7 +124,7 @@ export default function HelpDocumentation() {
             "Review the class adviser, learner count, sex totals, and learner details before exporting the official SF1.",
           ]}
           actionLabel="Open Class Sections"
-          actionTo="/sections"
+          actionTo="/personnel/sections"
         />
 
         <GuideSection
@@ -139,7 +139,7 @@ export default function HelpDocumentation() {
           actionLabel={
             canManageSchoolYear ? "Open School Year Settings" : undefined
           }
-          actionTo={canManageSchoolYear ? "/settings?tab=school-year" : undefined}
+          actionTo={canManageSchoolYear ? "/personnel/settings?tab=school-year" : undefined}
         />
 
         <GuideSection
@@ -154,7 +154,7 @@ export default function HelpDocumentation() {
           actionLabel={
             canManagePersonnel ? "Open Personnel Directory" : undefined
           }
-          actionTo={canManagePersonnel ? "/personnel" : undefined}
+          actionTo={canManagePersonnel ? "/personnel/directory" : undefined}
         />
       </div>
     </div>

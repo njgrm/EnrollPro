@@ -49,11 +49,14 @@ const EarlyRegistration = lazy(() => import("@/features/admission/pages/early-re
 const EarlyRegistrationMasterlist = lazy(() => import("@/features/admission/pages/early-registration-masterlist/EarlyRegistrationMasterlist"));
 
 function getFallbackVariant(pathname: string): SkeletonPageVariant {
-  if (pathname === "/dashboard") return "dashboard";
+  if (pathname === "/dashboard" || pathname === "/personnel/dashboard") return "dashboard";
   if (
     pathname === "/learners" ||
+    pathname === "/personnel/learners" ||
     pathname === "/personnel" ||
+    pathname === "/personnel/directory" ||
     pathname === "/audit-logs" ||
+    pathname === "/personnel/audit-logs" ||
     pathname.includes("masterlist") ||
     pathname.includes("eosy")
   ) {
@@ -64,13 +67,27 @@ function getFallbackVariant(pathname: string): SkeletonPageVariant {
   }
   if (
     pathname === "/learner-enrollment" ||
+    pathname === "/personnel/learner-enrollment" ||
     pathname === "/section-assignment" ||
+    pathname === "/personnel/section-assignment" ||
     pathname.includes("sectioning")
   ) {
     return "twoPanel";
   }
-  if (pathname === "/sections" || pathname === "/integration") return "cardGrid";
-  if (pathname === "/settings" || pathname.includes("profile")) return "settings";
+  if (
+    pathname === "/sections" ||
+    pathname === "/personnel/sections" ||
+    pathname === "/integration"
+  ) {
+    return "cardGrid";
+  }
+  if (
+    pathname === "/settings" ||
+    pathname === "/personnel/settings" ||
+    pathname.includes("profile")
+  ) {
+    return "settings";
+  }
   return "generic";
 }
 
@@ -169,16 +186,16 @@ export const router = createBrowserRouter([
           {
             element: <ProtectedRoute allowedRoles={["SYSTEM_ADMIN", "PRINCIPAL", "HEAD_REGISTRAR", "SCHOOL_REGISTRAR", "GRADE_LEVEL_COORDINATOR", "STE_COORDINATOR", "SPA_COORDINATOR", "SPS_COORDINATOR"]} allowedAncillaryRoles={["GRADE 7 COORDINATOR", "GRADE 8 COORDINATOR", "GRADE 9 COORDINATOR", "GRADE 10 COORDINATOR", "STE HEAD TEACHER", "SPA HEAD TEACHER", "SPS HEAD TEACHER"]} />,
             children: [
-              { path: "/dashboard", element: renderLazyPage(Dashboard) },
-              { path: "/dashboard/program-roster/:programType", element: renderLazyPage(ViewProgramRoster) },
+              { path: "/personnel/dashboard", element: renderLazyPage(Dashboard) },
+              { path: "/personnel/dashboard/program-roster/:programType", element: renderLazyPage(ViewProgramRoster) },
             ],
           },
           // Common Misc Routes
           {
             element: <ProtectedRoute allowedRoles={["SYSTEM_ADMIN", "PRINCIPAL", "HEAD_REGISTRAR", "SCHOOL_REGISTRAR", "TEACHER", "CLASS_ADVISER", "GRADE_LEVEL_COORDINATOR", "STE_COORDINATOR", "SPA_COORDINATOR", "SPS_COORDINATOR", "MRF"]} />,
             children: [
-              { path: "/my-activity", element: renderLazyPage(MyActivity) },
-              { path: "/help", element: renderLazyPage(HelpDocumentation) },
+              { path: "/personnel/my-activity", element: renderLazyPage(MyActivity) },
+              { path: "/personnel/help", element: renderLazyPage(HelpDocumentation) },
             ],
           },
           // Learner Directory & Class Sections
@@ -188,62 +205,62 @@ export const router = createBrowserRouter([
               allowedAncillaryRoles={["GRADE 7 COORDINATOR", "GRADE 8 COORDINATOR", "GRADE 9 COORDINATOR", "GRADE 10 COORDINATOR", "STE HEAD TEACHER", "SPA HEAD TEACHER", "SPS HEAD TEACHER"]} 
             />,
             children: [
-              { path: "/learners", element: renderLazyPage(Students) },
-              { path: "/learner/:id", element: renderLazyPage(Profile) },
-              { path: "/sections", element: renderLazyPage(Homerooms) },
-              { path: "/sections/view-masterlist/:sectionId", element: renderLazyPage(ViewMasterlist) },
+              { path: "/personnel/learners", element: renderLazyPage(Students) },
+              { path: "/personnel/learner/:id", element: renderLazyPage(Profile) },
+              { path: "/personnel/sections", element: renderLazyPage(Homerooms) },
+              { path: "/personnel/sections/view-masterlist/:sectionId", element: renderLazyPage(ViewMasterlist) },
             ],
           },
           // Registration & Sectioning
           {
             element: <ProtectedRoute allowedRoles={["SYSTEM_ADMIN", "HEAD_REGISTRAR", "SCHOOL_REGISTRAR", "GRADE_LEVEL_COORDINATOR"]} allowedAncillaryRoles={["GRADE 7 COORDINATOR", "GRADE 8 COORDINATOR", "GRADE 9 COORDINATOR", "GRADE 10 COORDINATOR"]} />,
             children: [
-              { path: "/early-registration-masterlist", element: renderLazyPage(EarlyRegistrationMasterlist) },
-              { path: "/section-assignment", element: renderLazyPage(Enrollment) },
-              { path: "/eosy", element: renderLazyPage(EosyUpdating) },
+              { path: "/personnel/early-registration-masterlist", element: renderLazyPage(EarlyRegistrationMasterlist) },
+              { path: "/personnel/section-assignment", element: renderLazyPage(Enrollment) },
+              { path: "/personnel/eosy", element: renderLazyPage(EosyUpdating) },
             ],
           },
           // Learner Enrollment
           {
             element: <ProtectedRoute allowedRoles={["SYSTEM_ADMIN", "HEAD_REGISTRAR", "SCHOOL_REGISTRAR", "GRADE_LEVEL_COORDINATOR", "CLASS_ADVISER"]} allowedAncillaryRoles={["GRADE 7 COORDINATOR", "GRADE 8 COORDINATOR", "GRADE 9 COORDINATOR", "GRADE 10 COORDINATOR"]} />,
             children: [
-              { path: "/learner-enrollment", element: renderLazyPage(BOSYPage) },
+              { path: "/personnel/learner-enrollment", element: renderLazyPage(BOSYPage) },
             ],
           },
           // SCP Admission
           {
             element: <ProtectedRoute allowedRoles={["SYSTEM_ADMIN", "HEAD_REGISTRAR", "SCHOOL_REGISTRAR", "STE_COORDINATOR", "SPA_COORDINATOR", "SPS_COORDINATOR"]} allowedAncillaryRoles={["STE HEAD TEACHER", "SPA HEAD TEACHER", "SPS HEAD TEACHER"]} />,
             children: [
-              { path: "/learner-admission", element: renderLazyPage(LearnerAdmissionIndex) },
+              { path: "/personnel/learner-admission", element: renderLazyPage(LearnerAdmissionIndex) },
             ],
           },
           // Class Adviser Only
           {
             element: <ProtectedRoute allowedRoles={["CLASS_ADVISER"]} />,
             children: [
-              { path: "/teacher/advisory", element: renderLazyPage(AdvisoryClass) },
+              { path: "/personnel/teacher/advisory", element: renderLazyPage(AdvisoryClass) },
             ],
           },
           // System Configuration
           {
             element: <ProtectedRoute allowedRoles={["SYSTEM_ADMIN", "PRINCIPAL"]} />,
             children: [
-              { path: "/settings", element: renderLazyPage(Settings) },
+              { path: "/personnel/settings", element: renderLazyPage(Settings) },
             ],
           },
           // Personnel Directory
           {
             element: <ProtectedRoute allowedRoles={["SYSTEM_ADMIN", "PRINCIPAL", "HEAD_REGISTRAR"]} />,
             children: [
-              { path: "/personnel", element: renderLazyPage(Teachers) },
+              { path: "/personnel/directory", element: renderLazyPage(Teachers) },
             ],
           },
           // System Admin Only
           {
             element: <ProtectedRoute allowedRoles={["SYSTEM_ADMIN"]} />,
             children: [
-              { path: "/admin/system", element: renderLazyPage(SystemHealth) },
-              { path: "/audit-logs", element: renderLazyPage(AuditLogs) },
+              { path: "/personnel/admin/system", element: renderLazyPage(SystemHealth) },
+              { path: "/personnel/audit-logs", element: renderLazyPage(AuditLogs) },
             ],
           },
         ],

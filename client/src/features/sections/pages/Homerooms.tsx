@@ -578,7 +578,7 @@ export default function Homerooms() {
                 setDeleteId(s.id);
                 setDeleteName(s.name);
               }}
-              onViewMasterlist={() => navigate(`/sections/view-masterlist/${s.id}`)}
+              onViewMasterlist={() => navigate(`/personnel/sections/view-masterlist/${s.id}`)}
               canMutate={canMutate}
               isEosyClosing={systemPhase === "EOSY_CLOSING"}
             />

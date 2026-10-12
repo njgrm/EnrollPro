@@ -72,7 +72,7 @@ export function PhaseOfficial({ stats }: { stats: DashboardStats }) {
           />
           <SectionSaturationPanel
             sections={stats.sectionSaturation}
-            onReview={() => navigate("/sections")}
+            onReview={() => navigate("/personnel/sections")}
           />
         </div>
       </div>
@@ -101,7 +101,7 @@ export function PhaseOfficial({ stats }: { stats: DashboardStats }) {
             detail="Learner applications waiting for school verification"
             zeroLabel="No Pending Enrollment Records"
             actionLabel="Process Enrollment Records"
-            onAction={() => navigate("/learner-enrollment?tab=incoming")}
+            onAction={() => navigate("/personnel/learner-enrollment?tab=incoming")}
           />
           <OperationalQueueCard
             title="Unsectioned Learners"
@@ -109,7 +109,7 @@ export function PhaseOfficial({ stats }: { stats: DashboardStats }) {
             detail="Enrolled learners waiting for an SF1 class section"
             zeroLabel="All Enrolled Learners Have Sections"
             actionLabel="Assign Class Sections"
-            onAction={() => navigate("/section-assignment")}
+            onAction={() => navigate("/personnel/section-assignment")}
           />
           <OperationalQueueCard
             title="Missing School Requirements"
@@ -117,7 +117,7 @@ export function PhaseOfficial({ stats }: { stats: DashboardStats }) {
             detail="Learners requiring SF9 or PSA document follow-up"
             zeroLabel="All Required Documents Recorded"
             actionLabel="Review Missing Requirements"
-            onAction={() => navigate("/learner-enrollment?tab=incoming")}
+            onAction={() => navigate("/personnel/learner-enrollment?tab=incoming")}
             warning
           />
         </section>
@@ -134,11 +134,11 @@ export function PhaseOfficial({ stats }: { stats: DashboardStats }) {
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <SectionSaturationPanel
           sections={stats.sectionSaturation}
-          onReview={() => navigate("/sections")}
+          onReview={() => navigate("/personnel/sections")}
         />
         <Sf1CompliancePanel
           compliance={stats.sf1Compliance}
-          onReview={() => navigate("/learners")}
+          onReview={() => navigate("/personnel/learners")}
         />
       </section>
 

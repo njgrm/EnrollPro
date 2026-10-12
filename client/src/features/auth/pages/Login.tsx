@@ -75,22 +75,22 @@ export function getHomeRoute(user: AuthResponseUser): string {
     anc.some(r => ["STE HEAD TEACHER", "SPA HEAD TEACHER", "SPS HEAD TEACHER"].includes(r));
 
   if (isDashboardUser) {
-    return "/dashboard";
+    return "/personnel/dashboard";
   }
 
   if (roles.includes("CLASS_ADVISER")) {
-    return "/teacher/advisory";
+    return "/personnel/teacher/advisory";
   }
 
   if (roles.includes("TEACHER")) {
-    return "/learners";
+    return "/personnel/learners";
   }
 
   if (roles.includes("MRF")) {
-    return "/my-activity";
+    return "/personnel/my-activity";
   }
 
-  return "/dashboard";
+  return "/personnel/dashboard";
 }
 
 function reverseSsoErrorMessage(

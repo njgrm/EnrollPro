@@ -208,18 +208,26 @@ export async function learnerLogin(req: Request, res: Response): Promise<void> {
     ? await prisma.user.findUnique({ where: { id: learner.userId } })
     : null;
 
-  const DEFAULT_LEARNER_PASSWORD = "DepEd2026!";
+  const matchesConfiguredDefault = await isConfiguredDefaultPassword(password);
   let isDefaultPassword = false;
   let passwordValid = false;
 
   if (user) {
     passwordValid = await bcrypt.compare(password, user.password);
-    if (passwordValid && password === DEFAULT_LEARNER_PASSWORD) {
+    if (passwordValid && matchesConfiguredDefault) {
       isDefaultPassword = true;
+    } else if (!passwordValid && user.mustChangePassword && matchesConfiguredDefault) {
+      passwordValid = true;
+      isDefaultPassword = true;
+      const hashed = await bcrypt.hash(password, 12);
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { password: hashed },
+      });
     }
   }
 
-  if (!passwordValid && password === DEFAULT_LEARNER_PASSWORD && !user) {
+  if (!passwordValid && matchesConfiguredDefault && !user) {
     isDefaultPassword = true;
     passwordValid = true;
 
@@ -608,7 +616,7 @@ export async function getLearnerDashboardUnified(req: Request, res: Response): P
   let smartSf10Records: Awaited<ReturnType<typeof fetchSmartSf10ByLrn>> = [];
   try {
     if (learner.lrn) {
-      smartSf10Records = await fetchSmartSf10ByLrn(learner.lrn);
+      smartSf10Records = await fetchSmartSf10ByLrn(learner.lrn, { timeoutMs: 800, maxAttempts: 1 });
     }
   } catch (error) {
     console.error("Failed to fetch SMART SF10 records:", error);

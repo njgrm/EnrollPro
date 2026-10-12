@@ -431,26 +431,17 @@ export function StudentDetailPanel({
 
   const handleResetPasswordConfirm = async () => {
     if (!student) return;
-    if (!defaultPasswordInput.trim()) {
-      sileo.error({
-        title: "Validation Error",
-        description: "Default password cannot be empty.",
-      });
-      return;
-    }
+    const finalPassword = defaultPasswordInput.trim() || globalDefaultPassword || "DepEd2026!";
     setShowResetPasswordConfirm(false);
     setIsPortalActionSubmitting(true);
     try {
-      await api.post(`/students/${student.id}/reset-password`, { password: defaultPasswordInput });
+      await api.post(`/students/${student.id}/reset-password`, { password: finalPassword });
       sileo.success({
         title: "Password Reset Success",
         description: "Student portal password has been reset.",
       });
-    } catch (_err: unknown) {
-      sileo.error({
-        title: "Failed to Reset Password",
-        description: "An error occurred while resetting password.",
-      });
+    } catch (err: unknown) {
+      toastApiError(err as never);
     } finally {
       setIsPortalActionSubmitting(false);
     }
@@ -1153,17 +1144,17 @@ export function StudentDetailPanel({
               <div className="shrink-0 ml-4 hidden sm:flex flex-col gap-2">
                 <Button
                   variant="outline"
-                  className="font-bold text-sm h-9 px-4 uppercase border-primary text-primary hover:bg-primary hover:text-primary-foreground shadow-sm rounded-md transition-all active:scale-[0.98] w-full justify-start"
+                  className="font-bold text-sm h-9 px-4 uppercase border-primary text-primary hover:bg-primary hover:text-primary-foreground shadow-sm rounded-md transition-all active:scale-[0.98] w-full justify-start cursor-pointer"
                   onClick={handleEditClick}>
                   <UserRoundPen className="mr-2 h-4 w-4 shrink-0" />
-                  Edit Learner Data
+                  EDIT LEARNER DATA
                 </Button>
                 <Button
                   variant="outline"
-                  className="font-bold text-sm h-9 px-4 uppercase border-muted-foreground text-muted-foreground hover:bg-muted/50 hover:text-foreground shadow-sm rounded-md transition-all active:scale-[0.98] w-full justify-start"
+                  className="font-bold text-sm h-9 px-4 uppercase border-muted-foreground text-muted-foreground hover:bg-muted/50 hover:text-foreground shadow-sm rounded-md transition-all active:scale-[0.98] w-full justify-start cursor-pointer"
                   onClick={handleResetPassword}>
                   <Key className="mr-2 h-4 w-4 shrink-0" />
-                  Reset Password
+                  RESET PASSWORD
                 </Button>
               </div>
             )}
@@ -1174,17 +1165,17 @@ export function StudentDetailPanel({
             <div className="mt-4 sm:hidden flex flex-col gap-2 w-full">
                 <Button
                   variant="outline"
-                  className="font-bold text-sm h-9 px-4 uppercase border-gray-300 text-gray-700 hover:bg-gray-50 shadow-sm rounded-md transition-all active:scale-[0.98] w-full"
+                  className="font-bold text-sm h-9 px-4 uppercase border-primary text-primary hover:bg-primary hover:text-primary-foreground shadow-sm rounded-md transition-all active:scale-[0.98] w-full cursor-pointer"
                   onClick={handleEditClick}>
-                  <UserRoundPen className="mr-2 h-4 w-4 shrink-0 text-gray-500" />
-                  Edit Learner Data
+                  <UserRoundPen className="mr-2 h-4 w-4 shrink-0" />
+                  EDIT LEARNER DATA
                 </Button>
                 <Button
                   variant="outline"
-                  className="font-bold text-sm h-9 px-4 uppercase border-gray-300 text-gray-700 hover:bg-gray-50 shadow-sm rounded-md transition-all active:scale-[0.98] w-full"
+                  className="font-bold text-sm h-9 px-4 uppercase border-muted-foreground text-muted-foreground hover:bg-muted/50 hover:text-foreground shadow-sm rounded-md transition-all active:scale-[0.98] w-full cursor-pointer"
                   onClick={handleResetPassword}>
-                  <Key className="mr-2 h-4 w-4 shrink-0 text-gray-500" />
-                  Reset Password
+                  <Key className="mr-2 h-4 w-4 shrink-0" />
+                  RESET PASSWORD
                 </Button>
             </div>
           )}
@@ -2118,7 +2109,7 @@ export function StudentDetailPanel({
                   <div className="space-y-4 border-border">
                     <div className="space-y-2">
                       <Label className="text-base font-bold uppercase text-foreground">
-                        Student Portal Access
+                        Learner Portal Access
                       </Label>
                       <p className="text-sm font-bold leading-tight text-foreground">
                         Toggle whether this user can sign in to the portal.
@@ -2255,7 +2246,7 @@ export function StudentDetailPanel({
             disabled={isSubmitting || !isProfileFormDirty}
             className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase text-base px-6 cursor-pointer">
             {isSubmitting ? (
-              <Loader2 className="h-4 w-4  mr-2" />
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
               <CheckCircle2 className="h-4 w-4 mr-2" />
             )}

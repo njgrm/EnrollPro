@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { isAxiosError } from "axios";
 import { queryKeys } from "@/shared/lib/queryKeys";
 import {
@@ -195,6 +195,7 @@ export function VerificationWorkspace() {
 
   const [processing, setProcessing] = useState(false);
   const [selectedAppId, setSelectedAppId] = useState<number | null>(null);
+  const [exitingAppId, setExitingAppId] = useState<number | null>(null);
   const [viewStudentId, setViewStudentId] = useState<number | null>(null);
   const [expandedPane, setExpandedPane] = useState<"LEFT" | "RIGHT" | null>(null);
 
@@ -430,6 +431,10 @@ export function VerificationWorkspace() {
     return result;
   }, [pendingVerifications, activeSearchQuery, intakeCategoryFilter, programFilter, activeTab, isTransfereeOnlyCoordinator, trackingNumberFilter, showOnline, showWalkIn]);
 
+  const visibleVerifications = useMemo(() => {
+    if (!exitingAppId) return filteredVerifications;
+    return filteredVerifications.filter((app) => app.id !== exitingAppId);
+  }, [filteredVerifications, exitingAppId]);
 
   const atlasSubjectsQuery = useQuery({
     queryKey: ["enrollment", "walk-in", "atlas-subjects", selectedApp?.gradeLevelId, assignedProgram],
@@ -604,7 +609,7 @@ export function VerificationWorkspace() {
 
   // When filtered list updates, if the currently selected learner no longer exists, select next/first available
   useEffect(() => {
-    if (selectedAppId !== null && !isLoading && !isPending) {
+    if (selectedAppId !== null && !isLoading && !isPending && !exitingAppId) {
       if (filteredVerifications.length === 0) {
         setSelectedAppId(null);
       } else {
@@ -614,24 +619,29 @@ export function VerificationWorkspace() {
         }
       }
     }
-  }, [filteredVerifications, selectedAppId, isLoading, isPending, handleSelect]);
+  }, [filteredVerifications, selectedAppId, isLoading, isPending, handleSelect, exitingAppId]);
 
   const cancelMutation = useMutation({
     mutationFn: (reason: string) => api.patch(`/enrollment/${selectedAppId}/cancel`, { reason }),
-    onSuccess: () => {
+    onSuccess: async () => {
       sileo.success({
         title: "Application Cancelled",
         description: `${selectedApp?.learner.firstName}'s application has been cancelled.`
       });
       const currentId = selectedAppId;
       const nextAppId = getNextAppId(currentId);
-      queryClient.invalidateQueries({ queryKey: ["enrollment", "pending-verifications"] });
       setCancelModalOpen(false);
+      if (currentId) {
+        setExitingAppId(currentId);
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
       if (nextAppId) {
         handleSelect(nextAppId);
       } else {
         setSelectedAppId(null);
       }
+      setExitingAppId(null);
+      void queryClient.invalidateQueries({ queryKey: ["enrollment", "pending-verifications"] });
     },
     onError: (err: unknown) => {
       const message = isAxiosError(err) ? err.response?.data?.message : err instanceof Error ? err.message : "Unknown error";
@@ -754,6 +764,16 @@ export function VerificationWorkspace() {
         description: `Learner has been verified and queued for sectioning.`,
       });
 
+      // 1. Close confirmation modal first so its exit animation plays
+      setConfirmModalState(null);
+
+      // 2. Trigger exit animation on the enrolled card
+      setExitingAppId(currentId);
+
+      // 3. Wait for both modal exit animation and card slide/fade animation to complete
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      // 4. Then move highlight to the next learner
       if (nextAppId) {
         handleSelect(nextAppId);
       } else {
@@ -761,7 +781,8 @@ export function VerificationWorkspace() {
         setSf9Verified(false);
         setPsaVerified(false);
       }
-      setConfirmModalState(null);
+
+      setExitingAppId(null);
       void queryClient.invalidateQueries({ queryKey: ["enrollment", "pending-verifications"] });
       void queryClient.invalidateQueries({ queryKey: queryKeys.sectioningPool() });
     } catch (error: unknown) {
@@ -772,9 +793,9 @@ export function VerificationWorkspace() {
           "An error occurred while verifying the learner.",
         ),
       });
+      setConfirmModalState(null);
     } finally {
       setProcessing(false);
-      setConfirmModalState(null);
     }
   };
 
@@ -812,6 +833,16 @@ export function VerificationWorkspace() {
         description: `Learner has been assigned temporary enrollment status.`,
       });
 
+      // 1. Close confirmation modal first so its exit animation plays
+      setConfirmModalState(null);
+
+      // 2. Trigger exit animation on the card
+      setExitingAppId(currentId);
+
+      // 3. Wait for both animations to complete
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      // 4. Then move highlight to the next learner
       if (nextAppId) {
         handleSelect(nextAppId);
       } else {
@@ -819,7 +850,8 @@ export function VerificationWorkspace() {
         setSf9Verified(false);
         setPsaVerified(false);
       }
-      setConfirmModalState(null);
+
+      setExitingAppId(null);
       void queryClient.invalidateQueries({ queryKey: ["enrollment", "pending-verifications"] });
       void queryClient.invalidateQueries({ queryKey: queryKeys.sectioningPool() });
     } catch (error: unknown) {
@@ -830,9 +862,9 @@ export function VerificationWorkspace() {
           "An error occurred while temporarily enrolling the learner.",
         ),
       });
+      setConfirmModalState(null);
     } finally {
       setProcessing(false);
-      setConfirmModalState(null);
     }
   };
 
@@ -858,12 +890,17 @@ export function VerificationWorkspace() {
           : "Document checklist has been updated.",
       });
 
-      if (allVerified && nextAppId) {
-        handleSelect(nextAppId);
-      } else if (allVerified) {
-        setSelectedAppId(null);
-        setSf9Verified(false);
-        setPsaVerified(false);
+      if (allVerified) {
+        setExitingAppId(currentId);
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        if (nextAppId) {
+          handleSelect(nextAppId);
+        } else {
+          setSelectedAppId(null);
+          setSf9Verified(false);
+          setPsaVerified(false);
+        }
+        setExitingAppId(null);
       }
       void queryClient.invalidateQueries({ queryKey: ["enrollment", "pending-verifications"] });
       void queryClient.invalidateQueries({ queryKey: queryKeys.sectioningPool() });
@@ -966,14 +1003,14 @@ export function VerificationWorkspace() {
 
                   <div className="space-y-2 pt-2 border-t">
                     <Label className="text-sm text-muted-foreground uppercase">Admission Channel</Label>
-                    <div className="flex flex-col gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <div className="flex items-center gap-2">
                         <Checkbox
                           id="filter-online"
                           checked={localShowOnline}
                           onCheckedChange={(c) => setLocalShowOnline(c as boolean)}
                         />
-                        <label htmlFor="filter-online" className="text-sm font-bold cursor-pointer select-none">Show Online</label>
+                        <label htmlFor="filter-online" className="font-bold cursor-pointer select-none">Show Online</label>
                       </div>
                       <div className="flex items-center gap-2">
                         <Checkbox
@@ -981,7 +1018,7 @@ export function VerificationWorkspace() {
                           checked={localShowWalkIn}
                           onCheckedChange={(c) => setLocalShowWalkIn(c as boolean)}
                         />
-                        <label htmlFor="filter-walkin" className="text-sm font-bold cursor-pointer select-none">Show Walk-in</label>
+                        <label htmlFor="filter-walkin" className="font-bold cursor-pointer select-none">Show Walk-in</label>
                       </div>
                     </div>
                   </div>
@@ -1230,7 +1267,7 @@ export function VerificationWorkspace() {
                       : "Please refresh the page and try again."}
                   </span>
                 </div>
-              ) : filteredVerifications.length === 0 ? (
+              ) : visibleVerifications.length === 0 && !exitingAppId ? (
                 <div className="h-full flex items-center justify-center flex-col gap-3 text-foreground p-8 text-center">
                   {activeSearchQuery ? (
                     <Search className="h-8 w-8 text-foreground" />
@@ -1249,66 +1286,83 @@ export function VerificationWorkspace() {
                   </span>
                 </div>
               ) : (
-                filteredVerifications.map((app) => (
-                  <div
-                    key={app.id}
-                    id={`verification-card-${app.id}`}
-                    onClick={() => handleSelect(app.id)}
-                    className={cn(
-                      "cursor-pointer border-2 p-3 transition-all relative overflow-hidden",
-                      selectedAppId === app.id
-                        ? getGradeCardClasses(app.gradeLevel.name)
-                        : "bg-white hover:bg/50 border-border"
-                    )}
-                  >
-                    <div className="flex justify-between items-center w-full">
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <UserPhoto
-                          photo={app.learner.studentPhoto}
-                          containerClassName={cn("w-12 h-12 rounded-full shadow-sm border shrink-0 border-2", selectedAppId === app.id ? "border-primary" : "border-primary")}
-                          className="w-full h-full object-cover"
-                          alt={`${app.learner.firstName} ${app.learner.lastName}`}
-                        />
-                        <div className="flex flex-col min-w-0">
-                          <h4 className={cn("font-extrabold text-base leading-tight uppercase tracking-tight truncate", selectedAppId === app.id ? getGradeTextColor(app.gradeLevel.name) : "text-foreground")} title={`${app.learner.lastName}, ${app.learner.firstName}${app.learner.middleName ? ` ${app.learner.middleName}` : ""}`}>
-                            {app.learner.lastName}, {app.learner.firstName}{app.learner.middleName ? ` ${app.learner.middleName}` : ""}
-                          </h4>
-                          <span className="text-sm font-semibold uppercase text-foreground mt-0.5 truncate text-foreground">
-                            LRN: {app.learner.lrn || "NO LRN"}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-1.5 shrink-0 ml-3">
-                        {app.status === "WITHDRAWN" ? (
-                          <Badge variant="outline" className="text-sm uppercase font-bold w-fit px-2.5 py-0.5 border-red-500/30 text-red-600 bg-red-50">
-                            CANCELLED
-                          </Badge>
-                        ) : (
-                          <div className="flex items-center gap-1.5">
-                            <Badge variant="outline" className={cn("text-sm uppercase font-bold w-fit px-2.5 py-0.5", getGradeLevelBadgeStyles(app.gradeLevel.name))}>
-                              {formatGradeLevel(app.gradeLevel.name)}
-                            </Badge>
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "text-sm uppercase font-bold w-fit px-2.5 py-0.5",
-                                app.admissionChannel === "ONLINE"
-                                  ? "bg-blue-100/50 text-blue-800 border-blue-200"
-                                  : "bg-amber-100/50 text-amber-800 border-amber-200"
-                              )}
-                            >
-                              {app.admissionChannel === "ONLINE" ? "ONLINE" : "WALK-IN"}
-                            </Badge>
+                <AnimatePresence initial={false}>
+                  {visibleVerifications.map((app) => (
+                    <motion.div
+                      key={app.id}
+                      id={`verification-card-${app.id}`}
+                      layout
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{
+                        opacity: 0,
+                        height: 0,
+                        paddingTop: 0,
+                        paddingBottom: 0,
+                        marginTop: 0,
+                        marginBottom: 0,
+                        borderWidth: 0,
+                        overflow: "hidden",
+                        transition: { duration: 0.25, ease: [0.4, 0, 0.2, 1] }
+                      }}
+                      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                      onClick={() => handleSelect(app.id)}
+                      className={cn(
+                        "cursor-pointer border-2 p-3 transition-colors relative overflow-hidden",
+                        selectedAppId === app.id
+                          ? getGradeCardClasses(app.gradeLevel.name)
+                          : "bg-white hover:bg/50 border-border"
+                      )}
+                    >
+                      <div className="flex justify-between items-center w-full">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <UserPhoto
+                            photo={app.learner.studentPhoto}
+                            containerClassName={cn("w-12 h-12 rounded-full shadow-sm border shrink-0 border-2", selectedAppId === app.id ? "border-primary" : "border-primary")}
+                            className="w-full h-full object-cover"
+                            alt={`${app.learner.firstName} ${app.learner.lastName}`}
+                          />
+                          <div className="flex flex-col min-w-0">
+                            <h4 className={cn("font-extrabold text-base leading-tight uppercase tracking-tight truncate", selectedAppId === app.id ? getGradeTextColor(app.gradeLevel.name) : "text-foreground")} title={`${app.learner.lastName}, ${app.learner.firstName}${app.learner.middleName ? ` ${app.learner.middleName}` : ""}`}>
+                              {app.learner.lastName}, {app.learner.firstName}{app.learner.middleName ? ` ${app.learner.middleName}` : ""}
+                            </h4>
+                            <span className="text-sm font-semibold uppercase text-foreground mt-0.5 truncate text-foreground">
+                              LRN: {app.learner.lrn || "NO LRN"}
+                            </span>
                           </div>
-                        )}
-                        <div className="flex items-center text-sm text-foreground font-bold whitespace-nowrap text-foreground">
-                          <Clock className="w-3 h-3 mr-1 shrink-0" />
-                          {format(new Date(app.createdAt), "MMM d, h:mm:ss a")}
+                        </div>
+                        <div className="flex flex-col items-end gap-1.5 shrink-0 ml-3">
+                          {app.status === "WITHDRAWN" ? (
+                            <Badge variant="outline" className="text-sm uppercase font-bold w-fit px-2.5 py-0.5 border-red-500/30 text-red-600 bg-red-50">
+                              CANCELLED
+                            </Badge>
+                          ) : (
+                            <div className="flex items-center gap-1.5">
+                              <Badge variant="outline" className={cn("text-sm uppercase font-bold w-fit px-2.5 py-0.5", getGradeLevelBadgeStyles(app.gradeLevel.name))}>
+                                {formatGradeLevel(app.gradeLevel.name)}
+                              </Badge>
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "text-sm uppercase font-bold w-fit px-2.5 py-0.5",
+                                  app.admissionChannel === "ONLINE"
+                                    ? "bg-blue-100/50 text-blue-800 border-blue-200"
+                                    : "bg-amber-100/50 text-amber-800 border-amber-200"
+                                )}
+                              >
+                                {app.admissionChannel === "ONLINE" ? "ONLINE" : "WALK-IN"}
+                              </Badge>
+                            </div>
+                          )}
+                          <div className="flex items-center text-sm text-foreground font-bold whitespace-nowrap text-foreground">
+                            <Clock className="w-3 h-3 mr-1 shrink-0" />
+                            {format(new Date(app.createdAt), "MMM d, h:mm:ss a")}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                ))
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               )}
             </div>
           </div>

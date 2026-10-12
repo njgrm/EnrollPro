@@ -59,6 +59,7 @@ export function getLearnerApi(token: string) {
     baseURL: import.meta.env.VITE_API_URL || "/api",
     withCredentials: true,
     headers: { Authorization: `Bearer ${token}` },
+    timeout: 10000,
   });
 }
 

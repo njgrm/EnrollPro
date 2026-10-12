@@ -129,7 +129,7 @@ export default function AdminLayout() {
         localStorage.removeItem(key);
       }
     });
-    navigate("/dashboard");
+    navigate("/personnel/dashboard");
   };
 
   const toggleSidebarCollapse = () => {

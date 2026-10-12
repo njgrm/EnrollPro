@@ -14,6 +14,7 @@ import {
 } from "../integration/atlas-subject-catalog.service.js";
 import { normalizeDateToUtcNoon } from "../school-year/school-year.service.js";
 import { getAdviserGradeLevelId } from "../teachers/adviser-scope.service.js";
+import { ensureLearnerUserAccount } from "../learner/learner.service.js";
 
 interface StaffIntakeContext {
   schoolYearId: number;
@@ -289,7 +290,7 @@ export async function finalizeIntake(req: Request, res: Response) {
   const application = await prisma.enrollmentApplication.findUnique({
     where: { id: applicationId },
     include: {
-      learner: { select: { firstName: true, lastName: true, lrn: true } },
+      learner: { select: { id: true, firstName: true, lastName: true, lrn: true, sex: true } },
       schoolYear: { select: { yearLabel: true } },
       gradeLevel: { select: { name: true } },
       familyMembers: {
@@ -404,6 +405,7 @@ export async function finalizeIntake(req: Request, res: Response) {
           isLateEnrollee: setting?.systemPhase === "CLASSES_ONGOING",
         }
       });
+      await ensureLearnerUserAccount(tx, application.learner);
     }
 
     if (isMissingPsa) {
@@ -1011,6 +1013,7 @@ export async function directEncodeWalkIn(
             isLateEnrollee: intakeContext.systemPhase === "CLASSES_ONGOING",
           }
         });
+        await ensureLearnerUserAccount(tx, learner);
       }
 
       return application;
@@ -1047,7 +1050,7 @@ export async function completeRequirements(req: Request, res: Response) {
   const application = await prisma.enrollmentApplication.findUnique({
     where: { id: applicationId },
     include: {
-      learner: { select: { id: true, firstName: true, lastName: true } },
+      learner: { select: { id: true, firstName: true, lastName: true, lrn: true, sex: true } },
       schoolYear: { select: { id: true } },
     },
   });
@@ -1129,6 +1132,7 @@ export async function completeRequirements(req: Request, res: Response) {
              }
            });
          }
+         await ensureLearnerUserAccount(tx, application.learner);
       }
     }
   });

@@ -4,6 +4,7 @@ import { prisma } from "../../../lib/prisma.js";
 import { generatePortalPin } from "../../learner/portal-pin.service.js";
 import { normalizeDateToUtcNoon } from "../../school-year/school-year.service.js";
 import { broadcastStudentInvalidation } from "../../../lib/realtime-events.js";
+import { getDefaultLearnerPassword } from "../../auth/default-password.service.js";
 
 const getRequestUserId = (req: Request): number | null => {
   const userId = req.user?.userId;
@@ -754,8 +755,7 @@ const resolveApplicationId = async (
 
       let newPassword = password;
       if (!newPassword) {
-        const settings = await prisma.schoolSetting.findFirst();
-        newPassword = settings?.globalDefaultPassword || "DepEd2026!";
+        newPassword = await getDefaultLearnerPassword();
       }
 
       const hashedPassword = await bcrypt.hash(newPassword, 12);
@@ -841,7 +841,8 @@ const resolveApplicationId = async (
       if (!userId) {
         const lrn = applicant.learner.lrn || "123456789012";
         const accountName = `LRN-${lrn}`;
-        const defaultPasswordHash = await bcrypt.hash("DepEd2026!", 12);
+        const defaultPassword = await getDefaultLearnerPassword();
+        const defaultPasswordHash = await bcrypt.hash(defaultPassword, 12);
         const createdUser = await prisma.user.create({
           data: {
             firstName: applicant.learner.firstName,

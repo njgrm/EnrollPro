@@ -1692,7 +1692,7 @@ export default function EosyUpdating() {
 
 
   if (!isEosyPhase && !isHistoricalReadOnly) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/personnel/dashboard" replace />;
   }
 
   return (

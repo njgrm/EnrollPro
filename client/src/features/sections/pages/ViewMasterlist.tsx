@@ -164,7 +164,8 @@ export default function ViewMasterlist({ sectionId: propSectionId, onBack, mode 
   const { activeSchoolYearId, viewingSchoolYearId, systemPhase } = useSettingsStore();
   const ayId = viewingSchoolYearId ?? activeSchoolYearId;
   const { ayLabel } = useSchoolYearContext();
-  const { isHistoricalReadOnly } = useHistoricalReadOnly();
+  const { isHistoricalReadOnly, hasOverride } = useHistoricalReadOnly();
+  const canMutate = (!isHistoricalReadOnly || hasOverride) && systemPhase !== "EOSY_CLOSING";
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const sf1FileInputRef = useRef<HTMLInputElement | null>(null);
@@ -196,7 +197,7 @@ export default function ViewMasterlist({ sectionId: propSectionId, onBack, mode 
       ]);
 
       if (masterlistRes.data.section.schoolYearId !== ayId && !propSectionId) {
-        navigate("/sections", { replace: true });
+        navigate("/personnel/sections", { replace: true });
         return;
       }
 
@@ -545,7 +546,7 @@ export default function ViewMasterlist({ sectionId: propSectionId, onBack, mode 
           </button>
         ) : (
           <Link
-            to="/sections"
+            to="/personnel/sections"
             className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:text-foreground transition-colors"
           >
             ← Back to Class Sections Lobby
@@ -880,7 +881,7 @@ export default function ViewMasterlist({ sectionId: propSectionId, onBack, mode 
           onRefreshData={fetchMasterlistData}
           onTransferOut={() => { }}
           onDropout={() => { }}
-          canEditProfile={false}
+          canEditProfile={canMutate}
         />
       )}
     </PageTransition>

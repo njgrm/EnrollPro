@@ -698,7 +698,7 @@ export default function Students() {
 
   const handleOpenProfilePage = useCallback(
     (identifier: string | number) => {
-      navigate(`/learner/${identifier}`);
+      navigate(`/personnel/learner/${identifier}`);
     },
     [navigate],
   );
@@ -1849,8 +1849,8 @@ export default function Students() {
         onRefreshData={refreshTables}
         onTransferOut={handlePanelTransferOut}
         onDropout={handlePanelDropout}
-        onExpand={(identifier) => navigate(`/learner/${identifier ?? selectedStudentId}`)}
-        canEditProfile={false}
+        onExpand={(identifier) => navigate(`/personnel/learner/${identifier ?? selectedStudentId}`)}
+        canEditProfile={canMutate}
       />
 
       <Dialog

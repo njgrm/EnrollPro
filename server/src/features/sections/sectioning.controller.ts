@@ -9,6 +9,7 @@ import {
   getSectionManagementGradeScope,
   isGradeLevelWithinScope,
 } from "./grade-level-scope.service.js";
+import { ensureLearnerUserAccount } from "../learner/learner.service.js";
 
 const INACTIVE_EOSY_STATUSES: EosyStatus[] = [
   EosyStatus.TRANSFERRED_OUT,
@@ -321,7 +322,7 @@ export async function assignBulk(req: Request, res: Response) {
       where: { id: { in: applicationIds } },
       include: {
         learner: {
-          select: { firstName: true, lastName: true, isBalikAral: true },
+          select: { id: true, firstName: true, lastName: true, lrn: true, sex: true, isBalikAral: true },
         },
         enrollmentRecord: { select: { id: true } }
       }
@@ -393,6 +394,8 @@ export async function assignBulk(req: Request, res: Response) {
           where: { id: app.id },
           data: { status: "OFFICIALLY_ENROLLED" }
         });
+
+        await ensureLearnerUserAccount(tx, app.learner);
 
         records.push(record);
       }
@@ -693,7 +696,7 @@ export async function commitDraft(req: Request, res: Response) {
         where: { id: { in: applicationIds } },
         include: {
           learner: {
-            select: { firstName: true, lastName: true, isBalikAral: true },
+            select: { id: true, firstName: true, lastName: true, lrn: true, sex: true, isBalikAral: true },
           },
           enrollmentRecord: { select: { id: true, isDraft: true } },
         },
@@ -846,10 +849,15 @@ export async function commitDraft(req: Request, res: Response) {
             },
           });
 
+          const finalStatus = freshApplication.status === "PENDING_CONFIRMATION" ? "PENDING_CONFIRMATION" : "OFFICIALLY_ENROLLED";
           await tx.enrollmentApplication.update({
             where: { id: application.id },
-            data: { status: freshApplication.status === "PENDING_CONFIRMATION" ? "PENDING_CONFIRMATION" : "OFFICIALLY_ENROLLED" },
+            data: { status: finalStatus },
           });
+
+          if (finalStatus === "OFFICIALLY_ENROLLED") {
+            await ensureLearnerUserAccount(tx, application.learner);
+          }
 
           return created;
         });

@@ -457,9 +457,7 @@ export default function ChangePassword() {
           description: "Your new password has been set. You can now access the Learner Portal.",
         });
 
-        setTimeout(() => {
-          window.location.replace("/learner/portal");
-        }, 500);
+        navigate("/learner/portal", { replace: true });
       } else if (user) {
         const res = await api.patch("/auth/change-password", { newPassword, currentPassword });
 

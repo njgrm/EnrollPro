@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "motion/react";
 import { useEffect, useState, memo, useCallback, type ReactNode, Fragment } from "react";
 import type React from "react";
-import { useNavigate, useLocation, Link, useOutlet } from "react-router";
+import { useNavigate, useLocation, useOutlet } from "react-router";
 import axios from "axios";
 import { Toaster, sileo } from "sileo";
 import {
@@ -285,7 +285,7 @@ function UserNav() {
               className="cursor-pointer py-2 font-bold"
               onSelect={() =>
                 navigateWithGuard(
-                  `/teachers?employeeId=${encodeURIComponent(user.employeeId ?? "")}`,
+                  `/personnel/directory?employeeId=${encodeURIComponent(user.employeeId ?? "")}`,
                 )
               }>
               <UserRound className="mr-2 h-4 w-4" />
@@ -294,7 +294,7 @@ function UserNav() {
           ) : null}
           <DropdownMenuItem
             className="cursor-pointer py-2 font-bold"
-            onSelect={() => navigateWithGuard("/my-activity")}>
+            onSelect={() => navigateWithGuard("/personnel/my-activity")}>
             <History className="mr-2 h-4 w-4" />
             My Activity Log
           </DropdownMenuItem>
@@ -574,7 +574,7 @@ const NavItem = memo(function NavItem({
   let isActive = pathname === to;
 
   if (!isActive && to !== "/") {
-    if (to === "/sections" && pathname.startsWith("/sections")) {
+    if (to === "/personnel/sections" && pathname.startsWith("/personnel/sections")) {
       isActive = false;
     } else if (pathname.startsWith(to + "/")) {
       isActive = true;
@@ -582,23 +582,23 @@ const NavItem = memo(function NavItem({
   }
 
   if (
-    to === "/sections" &&
-    pathname.startsWith("/sections/view-masterlist")
+    to === "/personnel/sections" &&
+    pathname.startsWith("/personnel/sections/view-masterlist")
   ) {
     isActive = true;
   }
 
   if (
-    to === "/learners" &&
-    pathname.startsWith("/learner/")
+    to === "/personnel/learners" &&
+    pathname.startsWith("/personnel/learner/")
   ) {
     isActive = true;
   }
 
   // Surgical exclusion for EOSY updating overlapping with Sectioning & Masterlists
   if (
-    to === "/section-assignment" &&
-    pathname.startsWith("/eosy")
+    to === "/personnel/section-assignment" &&
+    pathname.startsWith("/personnel/eosy")
   ) {
     isActive = false;
   }
@@ -677,31 +677,31 @@ const NAVIGATION_MATRIX: AppNavConfigGroup[] = [
     items: [
       {
         label: "Dashboard",
-        to: "/dashboard",
+        to: "/personnel/dashboard",
         icon: LayoutDashboard,
         access: (roles, anc) => roles.some(r => ["SYSTEM_ADMIN", "PRINCIPAL", "HEAD_REGISTRAR", "SCHOOL_REGISTRAR", "GRADE_LEVEL_COORDINATOR", "STE_COORDINATOR", "SPA_COORDINATOR", "SPS_COORDINATOR"].includes(r)) || anc.some(a => ["GRADE 7 COORDINATOR", "GRADE 8 COORDINATOR", "GRADE 9 COORDINATOR", "GRADE 10 COORDINATOR", "STE HEAD TEACHER", "SPA HEAD TEACHER", "SPS HEAD TEACHER"].includes(a))
       },
       {
         label: "Early Registration",
-        to: "/early-registration-masterlist",
+        to: "/personnel/early-registration-masterlist",
         icon: FolderOpen,
         access: (roles, anc) => roles.some(r => ["SYSTEM_ADMIN", "HEAD_REGISTRAR", "SCHOOL_REGISTRAR", "GRADE_LEVEL_COORDINATOR"].includes(r)) || anc.some(a => ["GRADE 7 COORDINATOR", "GRADE 8 COORDINATOR", "GRADE 9 COORDINATOR", "GRADE 10 COORDINATOR"].includes(a))
       },
       {
         label: "SCP Admission",
-        to: "/learner-admission",
+        to: "/personnel/learner-admission",
         icon: CheckCircle2,
         access: (roles, anc) => roles.some(r => ["SYSTEM_ADMIN", "HEAD_REGISTRAR", "SCHOOL_REGISTRAR", "STE_COORDINATOR", "SPA_COORDINATOR", "SPS_COORDINATOR"].includes(r)) || anc.some(a => a.endsWith("HEAD TEACHER"))
       },
       {
         label: "Learner Enrollment",
-        to: "/learner-enrollment",
+        to: "/personnel/learner-enrollment",
         icon: UserPlus,
         access: (roles, anc) => roles.some(r => ["SYSTEM_ADMIN", "HEAD_REGISTRAR", "SCHOOL_REGISTRAR", "GRADE_LEVEL_COORDINATOR", "CLASS_ADVISER"].includes(r)) || anc.some(a => a.endsWith("COORDINATOR"))
       },
       {
         label: "Section Assignment",
-        to: "/section-assignment",
+        to: "/personnel/section-assignment",
         icon: Calendar,
         access: (roles, anc, isStrict) => !isStrict && (roles.some(r => ["SYSTEM_ADMIN", "HEAD_REGISTRAR", "SCHOOL_REGISTRAR", "GRADE_LEVEL_COORDINATOR"].includes(r)) || anc.some(a => a.endsWith("COORDINATOR")))
       }
@@ -714,7 +714,7 @@ const NAVIGATION_MATRIX: AppNavConfigGroup[] = [
     items: [
       {
         label: "Dashboard",
-        to: "/dashboard",
+        to: "/personnel/dashboard",
         icon: LayoutDashboard,
         access: (roles, anc, isStrict) => !isStrict
       },
@@ -724,7 +724,7 @@ const NAVIGATION_MATRIX: AppNavConfigGroup[] = [
             <span>EOSY Updating</span>
           </div>
         ),
-        to: "/eosy",
+        to: "/personnel/eosy",
         icon: ArrowUpRightSquare,
         access: (roles, anc, isStrict) => !isStrict && (roles.some(r => ["SYSTEM_ADMIN", "HEAD_REGISTRAR", "SCHOOL_REGISTRAR", "GRADE_LEVEL_COORDINATOR"].includes(r)) || anc.some(a => a.endsWith("COORDINATOR")))
       }
@@ -736,19 +736,19 @@ const NAVIGATION_MATRIX: AppNavConfigGroup[] = [
     items: [
       {
         label: "Learner Directory",
-        to: "/learners",
+        to: "/personnel/learners",
         icon: Users,
         access: (roles, anc, isStrict) => !isStrict
       },
       {
         label: "Personnel Directory",
-        to: "/personnel",
+        to: "/personnel/directory",
         icon: Presentation,
         access: (roles) => roles.some(r => ["SYSTEM_ADMIN", "PRINCIPAL", "HEAD_REGISTRAR"].includes(r))
       },
       {
         label: "Class Sections",
-        to: "/sections",
+        to: "/personnel/sections",
         icon: List,
         access: (roles, anc, isStrict) => !isStrict
       }
@@ -760,7 +760,7 @@ const NAVIGATION_MATRIX: AppNavConfigGroup[] = [
     items: [
       {
         label: "Advisory Class",
-        to: "/teacher/advisory",
+        to: "/personnel/teacher/advisory",
         icon: BookOpen,
         access: (roles) => roles.includes("CLASS_ADVISER")
       }
@@ -806,13 +806,13 @@ const NAVIGATION_MATRIX: AppNavConfigGroup[] = [
     items: [
       {
         label: "Activity Logs",
-        to: "/audit-logs",
+        to: "/personnel/audit-logs",
         icon: History,
         access: (roles) => roles.includes("SYSTEM_ADMIN")
       },
       {
         label: "System Configuration",
-        to: "/settings",
+        to: "/personnel/settings",
         icon: Settings,
         access: (roles) => roles.includes("SYSTEM_ADMIN")
       }
@@ -1097,28 +1097,28 @@ const ROUTE_PHASES: Record<string, {
   redirectTo: string;
   redirectLabel: string;
 }> = {
-  "/learner-enrollment": {
+  "/personnel/learner-enrollment": {
     allowedPhases: ["OFFICIAL_ENROLLMENT", "CLASSES_ONGOING"],
     moduleName: "Learner Enrollment",
-    redirectTo: "/section-assignment",
+    redirectTo: "/personnel/section-assignment",
     redirectLabel: "Take me to Section Assignment"
   },
-  "/section-assignment": {
+  "/personnel/section-assignment": {
     allowedPhases: ["OFFICIAL_ENROLLMENT", "CLASSES_ONGOING"],
     moduleName: "Section Assignment",
-    redirectTo: "/sections",
+    redirectTo: "/personnel/sections",
     redirectLabel: "Take me to Class Sections"
   },
-  "/section-assignment/walk-in": {
+  "/personnel/section-assignment/walk-in": {
     allowedPhases: ["OFFICIAL_ENROLLMENT", "CLASSES_ONGOING"],
     moduleName: "Learner Enrollment",
-    redirectTo: "/learner-enrollment",
+    redirectTo: "/personnel/learner-enrollment",
     redirectLabel: "Take me to Learner Enrollment"
   },
-  "/eosy": {
+  "/personnel/eosy": {
     allowedPhases: ["EOSY_CLOSING"],
     moduleName: "EOSY Updating",
-    redirectTo: "/dashboard",
+    redirectTo: "/personnel/dashboard",
     redirectLabel: "Take me to Dashboard"
   }
 };
@@ -1152,7 +1152,7 @@ export default function AppLayout({ children }: { children?: ReactNode }) {
         title: "New School Year Ready",
         description: "The new school year is active. The dashboard has been refreshed.",
       });
-      navigate("/dashboard");
+      navigate("/personnel/dashboard");
     };
 
     window.addEventListener("ROLLOVER_COMPLETE", handleRolloverComplete);
@@ -1174,13 +1174,13 @@ export default function AppLayout({ children }: { children?: ReactNode }) {
 
   const selectedSchoolYearId = viewingSchoolYearId ?? activeSchoolYearId;
   const isSchoolYearBypassRoute =
-    location.pathname === "/dashboard" ||
-    location.pathname.startsWith("/admin/system") ||
-    location.pathname.startsWith("/settings") ||
-    // BOSY rollover always targets the active year ΓÇö intentional bypass
-    location.pathname === "/learner-enrollment" ||
-    // Walk-in encoder is a direct mutation flow ΓÇö intentional bypass
-    location.pathname === "/section-assignment/walk-in";
+    location.pathname === "/personnel/dashboard" ||
+    location.pathname.startsWith("/personnel/admin/system") ||
+    location.pathname.startsWith("/personnel/settings") ||
+    // BOSY rollover always targets the active year — intentional bypass
+    location.pathname === "/personnel/learner-enrollment" ||
+    // Walk-in encoder is a direct mutation flow — intentional bypass
+    location.pathname === "/personnel/section-assignment/walk-in";
   const shouldShowNoSchoolYearState =
     initialized && !isSchoolYearBypassRoute && !selectedSchoolYearId;
 

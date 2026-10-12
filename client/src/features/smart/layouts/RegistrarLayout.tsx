@@ -126,7 +126,7 @@ export default function RegistrarLayout() {
         localStorage.removeItem(key);
       }
     });
-    navigate("/dashboard");
+    navigate("/personnel/dashboard");
   };
 
   const toggleSidebarCollapse = () => {

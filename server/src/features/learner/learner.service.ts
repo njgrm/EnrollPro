@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { getDefaultLearnerPassword } from "../auth/default-password.service.js";
 
 interface LearnerAccountStore {
   learner: {
@@ -39,7 +40,7 @@ interface LearnerAccountStore {
 /**
  * Ensures a Learner has a corresponding User record in the users table.
  * Uses LRN as accountName if available, otherwise falls back to a temporary format.
- * Default password is 'DepEd2026!' and must be changed on first login.
+ * Default password is based on the active school year (or system default) and must be changed on first login.
  */
 export async function ensureLearnerUserAccount(
   tx: LearnerAccountStore,
@@ -50,6 +51,7 @@ export async function ensureLearnerUserAccount(
     lrn: string | null;
     sex: "MALE" | "FEMALE";
   },
+  customPassword?: string,
 ) {
   // 1. Check if user account already linked
   const existingLearner = await tx.learner.findUnique({
@@ -84,7 +86,8 @@ export async function ensureLearnerUserAccount(
   }
 
   // 3. Create new User account
-  const defaultPasswordHash = await bcrypt.hash("DepEd2026!", 12);
+  const defaultPassword = customPassword ?? (await getDefaultLearnerPassword());
+  const defaultPasswordHash = await bcrypt.hash(defaultPassword, 12);
   const newUser = await tx.user.create({
     data: {
       firstName: learner.firstName.trim(),

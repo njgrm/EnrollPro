@@ -45,7 +45,7 @@ export function PhaseOngoing({ stats }: { stats: DashboardStats }) {
           detail="Campus walk-in records awaiting verification"
           zeroLabel="No Late Enrollment Records Pending"
           actionLabel="Process Late Walk-In Records"
-          onAction={() => navigate("/learner-enrollment?tab=incoming")}
+          onAction={() => navigate("/personnel/learner-enrollment?tab=incoming")}
         />
         <OperationalQueueCard
           title="Unsectioned Learners"
@@ -53,7 +53,7 @@ export function PhaseOngoing({ stats }: { stats: DashboardStats }) {
           detail="Verified learners not yet listed in an SF1 section"
           zeroLabel="All Enrolled Learners Have Sections"
           actionLabel="Review Class Placement"
-          onAction={() => navigate("/section-assignment")}
+          onAction={() => navigate("/personnel/section-assignment")}
         />
         <OperationalQueueCard
           title="Missing School Requirements"
@@ -61,7 +61,7 @@ export function PhaseOngoing({ stats }: { stats: DashboardStats }) {
           detail="Temporary enrollment requirements still unresolved"
           zeroLabel="All Required Documents Recorded"
           actionLabel="Review Missing Requirements"
-          onAction={() => navigate("/learner-enrollment?tab=incoming")}
+          onAction={() => navigate("/personnel/learner-enrollment?tab=incoming")}
           warning
         />
       </section>
@@ -71,11 +71,11 @@ export function PhaseOngoing({ stats }: { stats: DashboardStats }) {
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <SectionSaturationPanel
           sections={stats.sectionSaturation}
-          onReview={() => navigate("/sections")}
+          onReview={() => navigate("/personnel/sections")}
         />
         <Sf1CompliancePanel
           compliance={stats.sf1Compliance}
-          onReview={() => navigate("/learners")}
+          onReview={() => navigate("/personnel/learners")}
         />
       </section>
 

@@ -93,7 +93,7 @@ export default function TeacherLayout() {
         localStorage.removeItem(key);
       }
     });
-    navigate("/dashboard");
+    navigate("/personnel/dashboard");
   };
 
   const toggleSidebarCollapse = () => {

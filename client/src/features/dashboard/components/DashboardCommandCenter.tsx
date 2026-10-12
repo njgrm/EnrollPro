@@ -51,28 +51,28 @@ const SUMMARY_ITEMS = [
     label: "Total Enrollees",
     helper: "Officially enrolled learners assigned to a valid class section",
     icon: GraduationCap,
-    route: "/learners",
+    route: "/personnel/learners",
   },
   {
     key: "activeFaculty" as const,
     label: "Active Personnel",
     helper: "Personnel currently in active service",
     icon: Presentation,
-    route: "/personnel",
+    route: "/personnel/directory",
   },
   {
     key: "enrolledSections" as const,
     label: "Sections with Learners",
     helper: "Sections with active learners",
     icon: School,
-    route: "/sections",
+    route: "/personnel/sections",
   },
   {
     key: "pendingSystemValidations" as const,
     label: "Records for Review",
     helper: "Learners counted once even with several concerns",
     icon: ShieldCheck,
-    route: "/learner-enrollment",
+    route: "/personnel/learner-enrollment",
   },
 ]
 
@@ -189,7 +189,7 @@ export function DashboardActionToolbar({
             variant="outline"
             disabled={intakeLocked || !canManageEnrollment}
             onClick={() =>
-              navigate("/learner-admission?action=walk-in-scp")
+              navigate("/personnel/learner-admission?action=walk-in-scp")
             }
             className="w-full sm:w-auto justify-center hover:bg-primary hover:text-primary-foreground"
           >
@@ -203,7 +203,7 @@ export function DashboardActionToolbar({
             variant="outline"
             disabled={intakeLocked || !canManageEnrollment}
             onClick={() =>
-              navigate("/learner-enrollment?tab=incoming&action=walk-in")
+              navigate("/personnel/learner-enrollment?tab=incoming&action=walk-in")
             }
             className="w-full sm:w-auto justify-center hover:bg-primary hover:text-primary-foreground"
           >
@@ -218,7 +218,7 @@ export function DashboardActionToolbar({
           <Button
             variant="outline"
             disabled={intakeLocked || !canManageSectioning}
-            onClick={() => navigate("/section-assignment")}
+            onClick={() => navigate("/personnel/section-assignment")}
             className="w-full sm:w-auto justify-center hover:bg-primary hover:text-primary-foreground"
           >
             <Users className="mr-2 size-4" />
@@ -229,7 +229,7 @@ export function DashboardActionToolbar({
         {isEosy && (
           <Button
             variant="outline"
-            onClick={() => navigate("/eosy")}
+            onClick={() => navigate("/personnel/eosy")}
             className="w-full sm:w-auto justify-center hover:bg-primary hover:text-primary-foreground"
           >
             <ClipboardCheck className="mr-2 size-4" />
@@ -402,7 +402,7 @@ export function CurriculumDistributionPanel({
                     <Button 
                       variant="default" 
                       className="w-full font-bold group-hover/card:bg-primary group-hover/card:text-primary-foreground transition-colors"
-                      onClick={() => navigate(`/dashboard/program-roster/${item.programType.toLowerCase()}`)}
+                      onClick={() => navigate(`/personnel/dashboard/program-roster/${item.programType.toLowerCase()}`)}
                     >
                       View Roster →
                     </Button>
@@ -555,7 +555,7 @@ export function SectionSaturationPanel({
               {visibleSections.map((section) => (
                 <div
                   key={section.id}
-                  onClick={() => navigate(`/sections/view-masterlist/${section.id}`)}
+                  onClick={() => navigate(`/personnel/sections/view-masterlist/${section.id}`)}
                   className={cn(
                     "rounded-md border p-3 hover:opacity-80 hover:cursor-pointer transition-opacity",
                     getGradeLevelBadgeStyles(section.gradeLevelName)

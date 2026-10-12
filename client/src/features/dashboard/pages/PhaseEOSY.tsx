@@ -25,7 +25,7 @@ export function PhaseEOSY({ stats }: { stats: DashboardStats }) {
           detail="Class advisers still completing EOSY records"
           zeroLabel="All Class Sections Finalized"
           actionLabel="Review Class Sections"
-          onAction={() => navigate("/eosy?status=pending")}
+          onAction={() => navigate("/personnel/eosy?status=pending")}
         />
         <OperationalQueueCard
           title="Incomplete Learner Results"
@@ -33,7 +33,7 @@ export function PhaseEOSY({ stats }: { stats: DashboardStats }) {
           detail="Learners without a final EOSY result"
           zeroLabel="All Learner Outcomes Recorded"
           actionLabel="Review Final Grade Records"
-          onAction={() => navigate("/eosy")}
+          onAction={() => navigate("/personnel/eosy")}
           warning
         />
         <OperationalQueueCard
@@ -42,7 +42,7 @@ export function PhaseEOSY({ stats }: { stats: DashboardStats }) {
           detail="Conditionally promoted and retained learners"
           zeroLabel="No Academic Deficiency Cases"
           actionLabel="Review Academic Outcomes"
-          onAction={() => navigate("/eosy")}
+          onAction={() => navigate("/personnel/eosy")}
           warning
         />
       </section>
@@ -65,7 +65,7 @@ export function PhaseEOSY({ stats }: { stats: DashboardStats }) {
         </CardHeader>
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Link to="/eosy?status=pending" className="flex items-center gap-4 rounded-lg p-3 -m-3 transition-colors hover:bg-slate-50 cursor-pointer group">
+            <Link to="/personnel/eosy?status=pending" className="flex items-center gap-4 rounded-lg p-3 -m-3 transition-colors hover:bg-slate-50 cursor-pointer group">
               <div className={`flex size-8 shrink-0 items-center justify-center rounded-full ${readiness.pendingSections === 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                 {readiness.pendingSections === 0 ? <Check className="size-4" strokeWidth={2} /> : <AlertTriangle className="size-4" strokeWidth={2} />}
               </div>
@@ -86,7 +86,7 @@ export function PhaseEOSY({ stats }: { stats: DashboardStats }) {
               </div>
             </Link>
 
-            <Link to="/eosy" className="flex items-center gap-4 rounded-lg p-3 -m-3 transition-colors hover:bg-slate-50 cursor-pointer group">
+            <Link to="/personnel/eosy" className="flex items-center gap-4 rounded-lg p-3 -m-3 transition-colors hover:bg-slate-50 cursor-pointer group">
               <div className={`flex size-8 shrink-0 items-center justify-center rounded-full ${readiness.incompleteLearnerOutcomes === 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                 {readiness.incompleteLearnerOutcomes === 0 ? <Check className="size-4" strokeWidth={2} /> : <AlertTriangle className="size-4" strokeWidth={2} />}
               </div>

@@ -6,6 +6,7 @@ import {
 } from "../../generated/prisma/index.js";
 import { prisma } from "../../lib/prisma.js";
 import { classifyDocumentReadiness } from "./bosy-intake-policy.service.js";
+import { ensureLearnerUserAccount } from "../learner/learner.service.js";
 
 export type BOSYQueueState =
   | "PENDING"
@@ -881,6 +882,23 @@ export async function bulkConfirmReturn(
         complianceStatus: "PENDING",
       },
     });
+  }
+
+  const officiallyEnrolledAppIds = [...completeWithSection, ...lackingWithSection];
+  if (officiallyEnrolledAppIds.length > 0) {
+    const enrolledApps = await prisma.enrollmentApplication.findMany({
+      where: { id: { in: officiallyEnrolledAppIds } },
+      include: {
+        learner: {
+          select: { id: true, firstName: true, lastName: true, lrn: true, sex: true },
+        },
+      },
+    });
+    for (const app of enrolledApps) {
+      if (app.learner) {
+        await ensureLearnerUserAccount(prisma, app.learner);
+      }
+    }
   }
 
   return {
