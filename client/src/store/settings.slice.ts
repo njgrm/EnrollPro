@@ -50,6 +50,7 @@ export interface SettingsState {
   enableHomogeneousSections: boolean;
   homogeneousSectionCount: number;
   heterogeneousRoundRobin: boolean;
+  topBecHeterogeneousRoundRobin: boolean;
   isBosyEnrollmentOpen: boolean;
   isScpAdmissionOpen: boolean;
   isEarlyRegistrationOpen: boolean;
@@ -156,6 +157,7 @@ export const useSettingsStore = create<SettingsState>()(
       enableHomogeneousSections: true,
       homogeneousSectionCount: 5,
       heterogeneousRoundRobin: true,
+      topBecHeterogeneousRoundRobin: true,
       isBosyEnrollmentOpen: false,
       isScpAdmissionOpen: false,
       isEarlyRegistrationOpen: false,

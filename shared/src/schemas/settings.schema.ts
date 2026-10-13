@@ -69,5 +69,7 @@ export const updateAlgorithmSchema = z.object({
     enable_top_bec: z.boolean(),
     top_bec_section_count: z.number().int().min(0),
     regular_bec_mode: z.enum(["HETEROGENEOUS", "HOMOGENEOUS"]),
+    top_bec_mode: z.enum(["HETEROGENEOUS", "HOMOGENEOUS"]).optional(),
+    top_bec_heterogeneous_round_robin: z.boolean().optional(),
   })
 });

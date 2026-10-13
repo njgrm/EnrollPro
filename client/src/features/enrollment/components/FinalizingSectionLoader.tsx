@@ -44,7 +44,7 @@ export function FinalizingSectionLoader({
       }}
       transition={createMotionTransition(motionPreferences, "normal")}
       {...getReducedMotionProps(motionPreferences.reduceMotion)}
-      className="pointer-events-auto absolute inset-0 z-50 flex items-center justify-center overflow-hidden bg-background/90 px-6 backdrop-blur-[2px]"
+      className="pointer-events-auto absolute inset-0 z-[70] flex items-center justify-center overflow-hidden bg-background/90 px-6 backdrop-blur-[2px]"
       role="status"
       aria-live="polite"
       aria-label="Finalizing official sections"
@@ -90,7 +90,7 @@ export function FinalizingSectionLoader({
         </svg>
       </div>
 
-      <div className="relative z-10 w-full max-w-md rounded-lg border border-primary/20 bg-card px-8 py-12 text-center shadow-xl">
+      <div className="relative z-10 w-full max-w-lg rounded-xl border border-primary/20 bg-card px-8 py-12 text-center shadow-2xl">
         {isComplete ? (
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}

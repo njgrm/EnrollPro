@@ -343,7 +343,7 @@ export function DataTable<TData, TValue>({
             <TableBody className="relative">
               <TableRow key="loading">
                 <TableCell colSpan={columns.length} className="p-0">
-                  <div className="min-h-[420px] flex flex-col items-center justify-center space-y-4">
+                  <div className="min-h-[460px] flex flex-col items-center justify-center space-y-4">
                     <Loader2 className="w-10 h-10 text-primary animate-spin" />
                     <div className="flex flex-col items-center space-y-1">
                       <p className="text-2xl font-extrabold">Loading...</p>

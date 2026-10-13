@@ -146,6 +146,7 @@ export default function RootLayout({ children }: { children?: ReactNode }) {
         enableHomogeneousSections: data.enableHomogeneousSections,
         homogeneousSectionCount: data.homogeneousSectionCount,
         heterogeneousRoundRobin: data.heterogeneousRoundRobin,
+        topBecHeterogeneousRoundRobin: data.topBecHeterogeneousRoundRobin ?? true,
         initialized: true,
       });
       return;

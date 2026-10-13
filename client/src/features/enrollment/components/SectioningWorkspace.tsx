@@ -40,6 +40,7 @@ import { Badge } from "@/shared/ui/badge";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { sileo } from "sileo";
 import { useHistoricalReadOnly } from "@/shared/hooks/useHistoricalReadOnly";
+import { useSchoolYearContext } from "@/shared/hooks/useSchoolYearContext";
 import { cn, SCP_LABELS, getGradeLevelBadgeStyles, formatGradeLevel, formatSectionProgramLabel } from "@/shared/lib/utils";
 import {
   Tooltip,
@@ -166,6 +167,7 @@ interface DraftSectionRoster {
 }
 
 interface DraftPlacement {
+  schoolYearId?: number;
   gradeLevelId: number;
   generatedAt: string;
   rosters: DraftSectionRoster[];
@@ -367,15 +369,11 @@ const _interleaveBySex = (learners: PoolLearner[]) => {
 };
 
 const calculateGenderCounts = (
-  section: SectionSummary,
   learners: DraftLearnerPlacement[],
 ): DraftGenderCounts => {
   return {
-    boys:
-      section.boys + learners.filter((learner) => learner.sex === "MALE").length,
-    girls:
-      section.girls +
-      learners.filter((learner) => learner.sex === "FEMALE").length,
+    boys: learners.filter((learner) => learner.sex === "MALE").length,
+    girls: learners.filter((learner) => learner.sex === "FEMALE").length,
   };
 };
 
@@ -384,12 +382,12 @@ const buildRoster = (
   learners: DraftLearnerPlacement[],
 ): DraftSectionRoster => {
   const sortedLearners = [...learners].sort(sortLearnersByAverage);
-  const totalCount = section.currentCount + sortedLearners.length;
+  const totalCount = sortedLearners.length;
   const newCount = sortedLearners.filter((learner) => Boolean(learner.isNew)).length;
   return {
     section,
     learners: sortedLearners,
-    genderCounts: calculateGenderCounts(section, sortedLearners),
+    genderCounts: calculateGenderCounts(sortedLearners),
     totalCount,
     newCount,
     isOverCapacity: totalCount > section.maxCapacity,
@@ -490,6 +488,7 @@ const loadDraftPlacementFromServer = (
   gradeLevelId: number,
   learners: PoolLearner[],
   sections: SectionSummary[],
+  schoolYearId?: number,
 ): DraftPlacement => {
   const rostersBySectionId = new Map<number, DraftLearnerPlacement[]>(
     sections.map((section) => [section.id, []])
@@ -497,22 +496,25 @@ const loadDraftPlacementFromServer = (
   const unplacedLearners: PoolLearner[] = [];
 
   for (const learner of learners) {
-    if (learner.draftSectionId) {
-      if (!rostersBySectionId.has(learner.draftSectionId)) {
-        rostersBySectionId.set(learner.draftSectionId, []);
+    if (String(learner.gradeLevelId) !== String(gradeLevelId)) continue;
+    const targetSectionId = learner.draftSectionId ?? learner.finalizedSectionId;
+    if (targetSectionId) {
+      if (!rostersBySectionId.has(targetSectionId)) {
+        rostersBySectionId.set(targetSectionId, []);
       }
-      rostersBySectionId.get(learner.draftSectionId)!.push({
+      rostersBySectionId.get(targetSectionId)!.push({
         ...learner,
-        sectionId: learner.draftSectionId,
+        sectionId: targetSectionId,
         isOverridden: false,
         isNew: !learner.isFinalized,
       });
-    } else {
+    } else if (!learner.isFinalized && learner.status !== "OFFICIALLY_ENROLLED") {
       unplacedLearners.push(learner);
     }
   }
 
   return {
+    schoolYearId,
     gradeLevelId,
     generatedAt: new Date().toISOString(),
     rosters: sections.map((section) =>
@@ -529,7 +531,9 @@ const createDraftPlacement = (
   enableHomogeneousSections: boolean,
   homogeneousSectionCount: number,
   heterogeneousRoundRobin: boolean,
+  topBecHeterogeneousRoundRobin: boolean,
   _previousRosters?: DraftSectionRoster[],
+  schoolYearId?: number,
 ): DraftPlacement => {
   const rostersBySectionId = new Map<number, DraftLearnerPlacement[]>(
     sections.map((section) => [section.id, []])
@@ -539,7 +543,9 @@ const createDraftPlacement = (
   const unassignedLearners: PoolLearner[] = [];
 
   for (const learner of learners) {
-    unassignedLearners.push(learner);
+    if (String(learner.gradeLevelId) === String(gradeLevelId)) {
+      unassignedLearners.push(learner);
+    }
   }
 
   const programTypes = Array.from(
@@ -606,18 +612,38 @@ const createDraftPlacement = (
       // The Slice: Extract top N learners
       const topLearners = eligibleForTop.slice(0, totalTopCapacity);
 
-      const topRemainingCapacity = new Map(
-        topSections.map(s => [s.id, s.maxCapacity || 40])
-      );
+      const unplacedTop: PoolLearner[] = topBecHeterogeneousRoundRobin
+        ? (() => {
+            const topRemainingCapacity = new Map(
+              topSections.map(s => [s.id, s.maxCapacity || 40])
+            );
+            const topMales = topLearners.filter(l => l.sex === "MALE");
+            const topFemales = topLearners.filter(l => l.sex === "FEMALE");
+            return snakeDraftLearners(topSections, topMales, topFemales, rostersBySectionId, topRemainingCapacity);
+          })()
+        : (() => {
+            // STRICT HOMOGENEOUS / STRICT ACADEMIC RANKING FOR TOP BEC:
+            // Fill each top section sequentially from highest to lowest rank up to its capacity limit.
+            let unassignedTop = [...topLearners];
+            const targetPerTopSection = Math.ceil(topLearners.length / topSections.length);
+            for (const section of topSections) {
+              const maxAvail = section.maxCapacity || 40;
+              const capacity = Math.min(targetPerTopSection, maxAvail);
+              const assigned = unassignedTop.slice(0, capacity);
+              unassignedTop = unassignedTop.slice(capacity);
 
-      const topMales = topLearners.filter(l => l.sex === "MALE");
-      const topFemales = topLearners.filter(l => l.sex === "FEMALE");
-
-      snakeDraftLearners(topSections, topMales, topFemales, rostersBySectionId, topRemainingCapacity);
+              const roster = rostersBySectionId.get(section.id);
+              if (roster) {
+                assigned.forEach(l => roster.push({ ...l, sectionId: section.id, draftSectionId: section.id, isOverridden: false }));
+              }
+            }
+            return unassignedTop;
+          })();
 
       // Remove assigned top learners from the master pool
-      const assignedIds = new Set(topLearners.map((l) => l.applicationId));
-      remainingLearners = remainingLearners.filter((l) => !assignedIds.has(l.applicationId));
+      const unplacedTopIds = new Set(unplacedTop.map(l => l.applicationId));
+      const assignedTopIds = new Set(topLearners.filter(l => !unplacedTopIds.has(l.applicationId)).map(l => l.applicationId));
+      remainingLearners = remainingLearners.filter((l) => !assignedTopIds.has(l.applicationId));
 
     }
 
@@ -665,6 +691,7 @@ const createDraftPlacement = (
   }
 
   return {
+    schoolYearId,
     gradeLevelId,
     generatedAt: new Date().toISOString(),
     rosters: sections.map((section) =>
@@ -746,6 +773,7 @@ export function SectioningWorkspace() {
   const queryClient = useQueryClient();
   const enableHomogeneousSections = useSettingsStore((s) => s.enableHomogeneousSections);
   const heterogeneousRoundRobin = useSettingsStore((s) => s.heterogeneousRoundRobin);
+  const topBecHeterogeneousRoundRobin = useSettingsStore((s) => s.topBecHeterogeneousRoundRobin ?? true);
 
   useEffect(() => () => {
     autoAssignTimers.current.forEach(clearTimeout);
@@ -792,28 +820,56 @@ export function SectioningWorkspace() {
     useSettingsStore.getState().updateUiPreference("sectioningGradeId", id);
   }, []);
 
+  const { ayId } = useSchoolYearContext();
+  const storageKey = `enrollpro_draft_placements_${ayId || "active"}`;
+
   const [draftPlacements, setDraftPlacements] = useState<Record<string, DraftPlacement>>(() => {
     try {
-      const stored = localStorage.getItem("enrollpro_draft_placements");
+      const stored =
+        localStorage.getItem(storageKey) ||
+        localStorage.getItem("enrollpro_draft_placements");
       if (!stored) return {};
       const parsed = JSON.parse(stored) as Record<string, DraftPlacement>;
       const normalized: Record<string, DraftPlacement> = {};
       for (const [key, dp] of Object.entries(parsed)) {
+        if (dp.schoolYearId && ayId && dp.schoolYearId !== ayId) continue;
+        const totalDrafted =
+          dp.rosters?.reduce(
+            (sum, r) => sum + (r.learners?.length || 0),
+            0,
+          ) || 0;
+        // Do not restore ghost/empty drafts where all rosters have 0 learners
+        if (totalDrafted === 0) continue;
+
         normalized[key] = {
           ...dp,
+          schoolYearId: dp.schoolYearId || (ayId ?? undefined),
+          unplacedLearners: (dp.unplacedLearners || []).filter(
+            (l) =>
+              (String(l.gradeLevelId) === key ||
+                String(l.gradeLevelId) === String(dp.gradeLevelId)) &&
+              !l.isFinalized &&
+              l.status !== "OFFICIALLY_ENROLLED",
+          ),
           rosters: dp.rosters.map((roster) =>
             buildRoster(
               roster.section,
-              roster.learners.map((l) => ({
-                ...l,
-                isNew:
-                  l.isFinalized && !l.isOverridden
-                    ? false
-                    : l.isNew !== undefined
-                    ? l.isNew
-                    : Boolean(l.isOverridden || !l.isFinalized),
-              }))
-            )
+              roster.learners
+                .filter(
+                  (l) =>
+                    String(l.gradeLevelId) === key ||
+                    String(l.gradeLevelId) === String(dp.gradeLevelId),
+                )
+                .map((l) => ({
+                  ...l,
+                  isNew:
+                    l.isFinalized && !l.isOverridden
+                      ? false
+                      : l.isNew !== undefined
+                      ? l.isNew
+                      : Boolean(l.isOverridden || !l.isFinalized),
+                })),
+            ),
           ),
         };
       }
@@ -824,24 +880,39 @@ export function SectioningWorkspace() {
   });
 
   useEffect(() => {
-    localStorage.setItem("enrollpro_draft_placements", JSON.stringify(draftPlacements));
-  }, [draftPlacements]);
+    localStorage.setItem(storageKey, JSON.stringify(draftPlacements));
+    localStorage.removeItem("enrollpro_draft_placements");
+  }, [draftPlacements, storageKey]);
 
   const draftPlacement = useMemo(() => {
     return draftPlacements[activeGradeLevelId] || null;
   }, [draftPlacements, activeGradeLevelId]);
 
-  const setDraftPlacement = useCallback((newDraft: DraftPlacement | null | ((prev: DraftPlacement | null) => DraftPlacement | null)) => {
-    setDraftPlacements(prev => {
-      const draft = typeof newDraft === 'function' ? newDraft(prev[activeGradeLevelId] || null) : newDraft;
-      if (draft === null) {
-        const copy = { ...prev };
-        delete copy[activeGradeLevelId];
-        return copy;
-      }
-      return { ...prev, [activeGradeLevelId]: draft };
-    });
-  }, [activeGradeLevelId]);
+  const setDraftPlacement = useCallback(
+    (
+      newDraft:
+        | DraftPlacement
+        | null
+        | ((prev: DraftPlacement | null) => DraftPlacement | null),
+    ) => {
+      setDraftPlacements((prev) => {
+        let draft =
+          typeof newDraft === "function"
+            ? newDraft(prev[activeGradeLevelId] || null)
+            : newDraft;
+        if (draft && ayId) {
+          draft = { ...draft, schoolYearId: ayId };
+        }
+        if (draft === null) {
+          const copy = { ...prev };
+          delete copy[activeGradeLevelId];
+          return copy;
+        }
+        return { ...prev, [activeGradeLevelId]: draft };
+      });
+    },
+    [activeGradeLevelId, ayId],
+  );
 
   const homogeneousSectionCount = useSettingsStore((s) => s.homogeneousSectionCount);
   const { spaEnabled, spsEnabled, steEnabled } = useSettingsStore();
@@ -936,12 +1007,16 @@ export function SectioningWorkspace() {
   useEffect(() => {
     if (poolData) {
       if (!draftPlacement) {
-        setPool(poolData.filter((p) => !p.isFinalized && p.status !== "OFFICIALLY_ENROLLED"));
-      } else if (pool.length === 0) {
+        setPool(
+          poolData.filter(
+            (p) => !p.isFinalized && p.status !== "OFFICIALLY_ENROLLED",
+          ),
+        );
+      } else {
         setPool(poolData);
       }
     }
-  }, [poolData, draftPlacement, pool.length]);
+  }, [poolData, draftPlacement]);
 
   useEffect(() => {
     if (!poolData || poolInitialLoading) return;
@@ -957,6 +1032,10 @@ export function SectioningWorkspace() {
         const freshLearners = roster.learners
           .filter((l) => {
             if (!poolMap.has(l.applicationId)) {
+              hasChanges = true;
+              return false;
+            }
+            if (String(l.gradeLevelId) !== String(currentDraft.gradeLevelId)) {
               hasChanges = true;
               return false;
             }
@@ -988,38 +1067,120 @@ export function SectioningWorkspace() {
             }
             return l;
           });
-        return { ...roster, learners: freshLearners };
+        return buildRoster(roster.section, freshLearners);
       });
 
-      const nextUnplaced = currentDraft.unplacedLearners
-        .filter((l) => {
-          if (!poolMap.has(l.applicationId)) {
-            hasChanges = true;
-            return false;
+      const nextUnplaced: PoolLearner[] = [];
+      for (const l of currentDraft.unplacedLearners) {
+        if (!poolMap.has(l.applicationId)) {
+          hasChanges = true;
+          continue;
+        }
+        if (String(l.gradeLevelId) !== String(currentDraft.gradeLevelId)) {
+          hasChanges = true;
+          continue;
+        }
+        const fresh = poolMap.get(l.applicationId)!;
+        const targetSectionId = fresh.draftSectionId ?? fresh.finalizedSectionId;
+        if (targetSectionId) {
+          hasChanges = true;
+          existingAppIds.add(fresh.applicationId);
+          const targetRoster = nextRosters.find(
+            (r) => r.section.id === targetSectionId,
+          );
+          if (targetRoster) {
+            const updatedLearners = [
+              ...targetRoster.learners,
+              {
+                ...fresh,
+                sectionId: targetSectionId,
+                isOverridden: false,
+                isNew: !fresh.isFinalized,
+              },
+            ];
+            const rosterIdx = nextRosters.findIndex(
+              (r) => r.section.id === targetSectionId,
+            );
+            nextRosters[rosterIdx] = buildRoster(
+              targetRoster.section,
+              updatedLearners,
+            );
           }
-          return true;
-        })
-        .map((l) => {
-          existingAppIds.add(l.applicationId);
-          const fresh = poolMap.get(l.applicationId)!;
-          if (
-            fresh.status !== l.status ||
-            fresh.duplicateFlag !== l.duplicateFlag ||
-            fresh.genAve !== l.genAve ||
-            fresh.applicantType !== l.applicantType
-          ) {
-            hasChanges = true;
-            return { ...l, ...fresh };
-          }
-          return l;
-        });
+          continue;
+        }
+        if (fresh.isFinalized || fresh.status === "OFFICIALLY_ENROLLED") {
+          hasChanges = true;
+          continue;
+        }
+        existingAppIds.add(fresh.applicationId);
+        if (
+          fresh.status !== l.status ||
+          fresh.duplicateFlag !== l.duplicateFlag ||
+          fresh.genAve !== l.genAve ||
+          fresh.applicantType !== l.applicantType
+        ) {
+          hasChanges = true;
+          nextUnplaced.push({ ...l, ...fresh });
+        } else {
+          nextUnplaced.push(l);
+        }
+      }
 
       const newLearners = poolData.filter(
-        (l) => !existingAppIds.has(l.applicationId)
+        (l) =>
+          String(l.gradeLevelId) === String(currentDraft.gradeLevelId) &&
+          !existingAppIds.has(l.applicationId),
       );
-      if (newLearners.length > 0) {
-        hasChanges = true;
-        nextUnplaced.push(...newLearners);
+      for (const l of newLearners) {
+        const targetSectionId = l.draftSectionId ?? l.finalizedSectionId;
+        if (targetSectionId) {
+          const targetRoster = nextRosters.find(
+            (r) => r.section.id === targetSectionId,
+          );
+          if (targetRoster) {
+            hasChanges = true;
+            existingAppIds.add(l.applicationId);
+            const freshLearner: DraftLearnerPlacement = {
+              ...l,
+              sectionId: targetSectionId,
+              isOverridden: false,
+              isNew: !l.isFinalized,
+            };
+            const updatedLearners = [...targetRoster.learners, freshLearner];
+            const rosterIdx = nextRosters.findIndex(
+              (r) => r.section.id === targetSectionId,
+            );
+            nextRosters[rosterIdx] = buildRoster(
+              targetRoster.section,
+              updatedLearners,
+            );
+            continue;
+          }
+        }
+        // Officially enrolled learners never go into unplaced
+        if (!l.isFinalized && l.status !== "OFFICIALLY_ENROLLED") {
+          hasChanges = true;
+          existingAppIds.add(l.applicationId);
+          nextUnplaced.push(l);
+        }
+      }
+
+      const totalDraftedLearners = nextRosters.reduce(
+        (sum, r) => sum + r.learners.length,
+        0,
+      );
+      // If there are no drafted learners in any section, clear the stale draft
+      if (totalDraftedLearners === 0) {
+        return null;
+      }
+
+      // If all learners in rosters are already officially enrolled with no overrides and unplaced is empty,
+      // there are no uncommitted draft changes — exit draft mode and show official sections.
+      const allRostersOfficiallyEnrolled = nextRosters.every((r) =>
+        r.learners.every((l) => l.isFinalized && !l.isOverridden),
+      );
+      if (allRostersOfficiallyEnrolled && nextUnplaced.length === 0) {
+        return null;
       }
 
       if (hasChanges) {
@@ -1031,14 +1192,49 @@ export function SectioningWorkspace() {
       }
       return currentDraft;
     });
-  }, [poolData, poolInitialLoading]);
+  }, [poolData, poolInitialLoading, setDraftPlacement]);
 
   const loading =
     (sectionsInitialLoading || poolInitialLoading || gradeLevelsLoading) &&
     !isHistoricalReadOnly;
 
   const [selectedAppIds, setSelectedAppIds] = useState<number[]>([]);
+  const [highlightedLearnerId, setHighlightedLearnerId] = useState<number | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleFocusDraftLearner = useCallback(
+    (applicationId: number, sectionId?: number) => {
+      if (sectionId) {
+        setExpandedSectionIds((prev) => new Set([...prev, sectionId]));
+      }
+      setHighlightedLearnerId(applicationId);
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current);
+      }
+      setTimeout(() => {
+        const el = document.getElementById(`draft-learner-${applicationId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        } else if (sectionId) {
+          const secEl = document.getElementById(`section-card-${sectionId}`);
+          secEl?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 120);
+
+      highlightTimerRef.current = setTimeout(() => {
+        setHighlightedLearnerId(null);
+      }, 2500);
+    },
+    [],
+  );
 
   type SortConfig = { key: "genAve"; direction: "asc" | "desc" } | null;
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
@@ -1176,6 +1372,28 @@ export function SectioningWorkspace() {
       ) ?? 0,
     [draftPlacement],
   );
+  const activeGradeDraftLearnerCount = useMemo(
+    () =>
+      draftPlacement?.rosters.reduce(
+        (total, roster) =>
+          total +
+          roster.learners.filter(
+            (l) => String(l.gradeLevelId) === activeGradeLevelId,
+          ).length,
+        0,
+      ) ?? 0,
+    [draftPlacement, activeGradeLevelId],
+  );
+  const activeGradeUnplacedCount = useMemo(
+    () =>
+      draftPlacement?.unplacedLearners?.filter(
+        (l) =>
+          String(l.gradeLevelId) === activeGradeLevelId &&
+          !l.isFinalized &&
+          l.status !== "OFFICIALLY_ENROLLED",
+      ).length ?? 0,
+    [draftPlacement, activeGradeLevelId],
+  );
   const hasDraftOverflow = useMemo(
     () =>
       draftPlacement?.rosters.some((roster) => roster.isOverCapacity) ?? false,
@@ -1224,12 +1442,46 @@ export function SectioningWorkspace() {
   }, [currentGradePool, activeSearchQuery, filterProgram]);
 
   const filteredAndSortedPool = useMemo(() => {
-    const visiblePool = draftPlacement && autoAssignPhase === "idle"
-      ? filteredPool.filter((learner) =>
-        draftPlacement.unplacedLearners.some((unplaced) => unplaced.applicationId === learner.applicationId)
-      )
-      : filteredPool;
-    const result = [...visiblePool];
+    const poolMap = new Map(
+      filteredPool
+        .filter((l) => String(l.gradeLevelId) === activeGradeLevelId)
+        .map((learner) => [learner.applicationId, learner]),
+    );
+    if (draftPlacement?.unplacedLearners) {
+      for (const unplaced of draftPlacement.unplacedLearners) {
+        if (
+          String(unplaced.gradeLevelId) === activeGradeLevelId &&
+          !unplaced.isFinalized &&
+          unplaced.status !== "OFFICIALLY_ENROLLED" &&
+          !poolMap.has(unplaced.applicationId)
+        ) {
+          if (filterProgram !== "all" && unplaced.programType !== filterProgram) continue;
+          if (activeSearchQuery) {
+            const queryTerms = activeSearchQuery
+              .toLowerCase()
+              .replace(/[,.]/g, " ")
+              .split(/\s+/)
+              .filter(Boolean);
+            const lrn = unplaced.lrn?.toLowerCase() || "";
+            const firstName = unplaced.firstName.toLowerCase();
+            const lastName = unplaced.lastName.toLowerCase();
+            const middleName = (unplaced.middleName || "").toLowerCase();
+            const matchesAll = queryTerms.every(
+              (term) =>
+                lrn.includes(term) ||
+                firstName.includes(term) ||
+                lastName.includes(term) ||
+                middleName.includes(term),
+            );
+            if (!matchesAll) continue;
+          }
+          poolMap.set(unplaced.applicationId, unplaced);
+        }
+      }
+    }
+    const result = Array.from(poolMap.values()).filter(
+      (learner) => String(learner.gradeLevelId) === activeGradeLevelId,
+    );
     if (sortConfig !== null) {
       result.sort((a, b) => {
         if (sortConfig.key === "genAve") {
@@ -1243,7 +1495,14 @@ export function SectioningWorkspace() {
       });
     }
     return result;
-  }, [filteredPool, sortConfig, draftPlacement, autoAssignPhase]);
+  }, [
+    filteredPool,
+    sortConfig,
+    draftPlacement,
+    activeGradeLevelId,
+    filterProgram,
+    activeSearchQuery,
+  ]);
 
   const assignLearners = async () => {
     if (!targetSectionId || selectedAppIds.length === 0) return;
@@ -1342,7 +1601,8 @@ export function SectioningWorkspace() {
       const draft = loadDraftPlacementFromServer(
         Number(activeGradeLevelId),
         currentGradePool,
-        currentGradeSections
+        currentGradeSections,
+        ayId ?? undefined,
       );
       const populatedSectionIds = draft.rosters
         .filter((roster) => roster.learners.length > 0)
@@ -1354,7 +1614,7 @@ export function SectioningWorkspace() {
       setTargetSectionId(null);
       setAllowCapacityOverride(false);
     }
-  }, [currentGradePool, currentGradeSections, draftPlacement, activeGradeLevelId, poolInitialLoading, sectionsInitialLoading, setDraftPlacement]);
+  }, [currentGradePool, currentGradeSections, draftPlacement, activeGradeLevelId, poolInitialLoading, sectionsInitialLoading, setDraftPlacement, ayId]);
 
   const generateDraftPlacement = async () => {
     if (!activeGradeLevelId || autoAssignPhase !== "idle" || processing) return;
@@ -1365,7 +1625,9 @@ export function SectioningWorkspace() {
       const res = await api.get<PoolLearner[]>("/sectioning/pool", {
         params: { gradeLevelId: activeGradeLevelId, includeAssigned: "true" }
       });
-      const fullPool = res.data;
+      const fullPool = res.data.filter(
+        (l) => String(l.gradeLevelId) === activeGradeLevelId,
+      );
       const previousRosters = draftPlacement?.rosters;
 
       const loadingTimer = setTimeout(() => {
@@ -1377,7 +1639,9 @@ export function SectioningWorkspace() {
             enableHomogeneousSections,
             homogeneousSectionCount,
             heterogeneousRoundRobin,
+            topBecHeterogeneousRoundRobin,
             previousRosters,
+            ayId ?? undefined,
           );
 
           setDraftPlacement(newDraft);
@@ -1980,8 +2244,16 @@ export function SectioningWorkspace() {
           section,
         };
       }
+      return buildRoster(section, []);
     }
-    return buildRoster(section, []);
+    return {
+      section,
+      learners: [],
+      genderCounts: { boys: section.boys, girls: section.girls },
+      totalCount: section.currentCount,
+      newCount: 0,
+      isOverCapacity: section.currentCount > section.maxCapacity,
+    };
   });
 
   const selectedDraftLearner = draftMoveAction
@@ -2027,11 +2299,12 @@ export function SectioningWorkspace() {
       .filter((group) => group.learners.length > 0)
       .sort((a, b) => a.sectionName.localeCompare(b.sectionName)) ?? [])
     : [];
-  const draftSectionByApplicationId = new Map<number, string>(
+  const draftSectionInfoByApplicationId = new Map<number, { sectionId: number; sectionName: string }>(
     draftPlacement?.rosters.flatMap((roster) =>
-      roster.learners.map(
-        (learner) => [learner.applicationId, roster.section.name] as const,
-      ),
+      roster.learners.map((learner) => [
+        learner.applicationId,
+        { sectionId: roster.section.id, sectionName: roster.section.name },
+      ] as const),
     ) ?? [],
   );
 
@@ -2040,7 +2313,7 @@ export function SectioningWorkspace() {
       <Tabs
         value={activeGradeLevelId}
         onValueChange={(val) => {
-          if (autoAssignPhase !== "idle") return;
+          if (autoAssignPhase !== "idle" || commitProcessing || Boolean(finalizingProgress)) return;
           if (isDraftActive) {
             setActiveGradeLevelId(val);
             return;
@@ -2057,16 +2330,20 @@ export function SectioningWorkspace() {
               key={g.id}
               value={String(g.id)}
               disabled={
-                selectedAppIds.length > 0 &&
-                !isDraftActive &&
-                activeGradeLevelId !== String(g.id)
+                commitProcessing ||
+                Boolean(finalizingProgress) ||
+                (selectedAppIds.length > 0 &&
+                  !isDraftActive &&
+                  activeGradeLevelId !== String(g.id))
               }
               className={cn(
                 "flex-1 min-w-25 font-bold transition-all relative z-10 data-[state=active]:bg-transparent data-[state=active]:shadow-none rounded-md",
-                selectedAppIds.length > 0 &&
-                !isDraftActive &&
-                activeGradeLevelId !== String(g.id) &&
-                "opacity-40 cursor-not-allowed bg-muted/20",
+                (commitProcessing ||
+                  Boolean(finalizingProgress) ||
+                  (selectedAppIds.length > 0 &&
+                    !isDraftActive &&
+                    activeGradeLevelId !== String(g.id))) &&
+                  "opacity-40 cursor-not-allowed bg-muted/20",
               )}>
               {activeGradeLevelId === String(g.id) && (
                 <motion.div
@@ -2093,6 +2370,17 @@ export function SectioningWorkspace() {
       <PageTransition key={activeGradeLevelId} className="flex-1 flex flex-col min-h-0 w-full overflow-hidden">
         <Card className="flex flex-col flex-1 min-h-0 h-full shadow-sm border-none bg-card overflow-hidden">
           <div className="relative flex flex-1 min-h-0 w-full overflow-hidden">
+            <AnimatePresence>
+              {finalizingProgress && (
+                <FinalizingSectionLoader
+                  currentSection={finalizingProgress.currentSection}
+                  completedSections={finalizingProgress.completedSections}
+                  totalSections={finalizingProgress.totalSections}
+                  isComplete={finalizingProgress.isComplete}
+                />
+              )}
+            </AnimatePresence>
+
             {/* LEFT PANE: UNSECTIONED POOL */}
             <div
               className={cn(
@@ -2107,12 +2395,24 @@ export function SectioningWorkspace() {
               <CardHeader className="border-b border-border bg-muted/20">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <CardTitle className="text-lg font-extrabold uppercase flex items-center gap-2 text-foreground">
-                      <Users className="h-5 w-5 text-primary" />
-                      LEARNERS READY FOR SECTIONING
+                    <CardTitle className="text-lg font-extrabold uppercase flex flex-wrap items-center gap-2 text-foreground">
+                      <Users className="h-5 w-5 text-primary shrink-0" />
+                      <span>LEARNERS READY FOR SECTIONING</span>
+                      {isDraftActive && activeGradeDraftLearnerCount > 0 && (
+                        <Badge className="border border-amber-400 bg-amber-100 text-amber-900 hover:bg-amber-100 font-bold px-2 py-0.5 text-xs">
+                          {activeGradeDraftLearnerCount} IN DRAFT
+                        </Badge>
+                      )}
+                      {isDraftActive && activeGradeUnplacedCount > 0 && (
+                        <Badge variant="outline" className="font-bold border-amber-500 text-amber-700 bg-amber-50 px-2 py-0.5 text-xs">
+                          {activeGradeUnplacedCount} UNPLACED
+                        </Badge>
+                      )}
                     </CardTitle>
                     <CardDescription className="text-sm text-foreground">
-                      Unassigned Walk-ins, Transferees, and Late Enrollees
+                      {isDraftActive
+                        ? "Temporary placements generated — review or finalize in the class lists pane"
+                        : "Unassigned Walk-ins, Transferees, and Late Enrollees"}
                     </CardDescription>
                   </div>
                   {selectedAppIds.length > 0 && (
@@ -2314,7 +2614,13 @@ export function SectioningWorkspace() {
                             const isSelected = selectedAppIds.includes(
                               l.applicationId,
                             );
+                            const draftInfo = draftSectionInfoByApplicationId.get(l.applicationId);
+                            const isDraftPlaced = Boolean(draftPlacement && draftInfo);
+                            const draftSectionName = draftInfo?.sectionName;
+                            const draftTargetSectionId = draftInfo?.sectionId;
+
                             const isDisabled =
+                              isDraftActive ||
                               autoAssignPhase !== "idle" ||
                               (selectedAllowedPrograms?.size > 0 &&
                                 !selectedAllowedPrograms?.has(l.programType));
@@ -2323,6 +2629,10 @@ export function SectioningWorkspace() {
                               <tr
                                 key={l.applicationId}
                                 onClick={() => {
+                                  if (isDraftPlaced && draftTargetSectionId) {
+                                    handleFocusDraftLearner(l.applicationId, draftTargetSectionId);
+                                    return;
+                                  }
                                   if (isDisabled) return;
                                   setSelectedAppIds((prev) =>
                                     prev.includes(l.applicationId)
@@ -2330,33 +2640,61 @@ export function SectioningWorkspace() {
                                       : [...prev, l.applicationId],
                                   );
                                 }}
+                                title={
+                                  isDraftPlaced
+                                    ? `Assigned to ${draftSectionName} (Draft). Click to view in Temporary Class Lists.`
+                                    : undefined
+                                }
                                 className={cn(
-                                  "group transition-[opacity,transform,background-color] duration-500",
-                                  autoAssignPhase === "resolving" &&
-                                  draftSectionByApplicationId.has(l.applicationId) &&
-                                  "translate-x-8 opacity-0",
-                                  isDisabled
+                                  "group transition-[opacity,transform,background-color] duration-300",
+                                  isDraftPlaced
+                                    ? "opacity-80 hover:opacity-100 bg-muted/20 cursor-pointer"
+                                    : isDisabled
                                     ? "cursor-not-allowed"
                                     : "cursor-pointer",
+                                  autoAssignPhase === "resolving" &&
+                                    isDraftPlaced &&
+                                    "scale-[0.99] opacity-80",
                                   isSelected && "bg-primary/5 hover:bg-primary/10",
                                 )}>
                                 <td
                                   className="p-4"
                                   onClick={(e) => e.stopPropagation()}>
-                                  <Checkbox
-                                    checked={isSelected}
-                                    disabled={isDisabled}
-                                    onCheckedChange={(checked) => {
-                                      if (isDisabled) return;
-                                      setSelectedAppIds((prev) =>
-                                        checked
-                                          ? [...prev, l.applicationId]
-                                          : prev.filter(
-                                            (id) => id !== l.applicationId,
-                                          ),
-                                      );
-                                    }}
-                                  />
+                                  {isDraftPlaced ? (
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="inline-flex cursor-not-allowed">
+                                            <Checkbox
+                                              checked={false}
+                                              disabled={true}
+                                              aria-label={`Assigned to draft section ${draftSectionName}`}
+                                            />
+                                          </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p className="text-xs font-semibold">
+                                            Assigned to draft section: {draftSectionName}
+                                          </p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  ) : (
+                                    <Checkbox
+                                      checked={isSelected}
+                                      disabled={isDisabled}
+                                      onCheckedChange={(checked) => {
+                                        if (isDisabled) return;
+                                        setSelectedAppIds((prev) =>
+                                          checked
+                                            ? [...prev, l.applicationId]
+                                            : prev.filter(
+                                              (id) => id !== l.applicationId,
+                                            ),
+                                        );
+                                      }}
+                                    />
+                                  )}
                                 </td>
                                 <td className="p-4">
                                   <div className="flex items-center gap-4">
@@ -2367,7 +2705,7 @@ export function SectioningWorkspace() {
                                       alt={`${l.firstName} ${l.lastName}`}
                                     />
                                     <div className="flex flex-col">
-                                      <span className="font-bold text-foreground uppercase flex items-center gap-2">
+                                      <span className="font-extrabold text-foreground uppercase flex items-center">
                                         {l.lastName}, {l.firstName}{" "}
                                         {l.middleName?.charAt(0)
                                           ? `${l.middleName.charAt(0)}.`
@@ -2380,7 +2718,7 @@ export function SectioningWorkspace() {
                                           </Badge>
                                         )}
                                       </span>
-                                      <div className="flex items-center gap-2 mt-1">
+                                      <div className="flex items-center gap-2 flex-wrap">
                                         <span className="text-sm font-bold uppercase text-foreground">
                                           {l.lrn || "NO LRN"}
                                         </span>
@@ -2391,14 +2729,6 @@ export function SectioningWorkspace() {
                                           )}>
                                           {l.sex === "MALE" ? "M" : "F"}
                                         </Badge>
-                                        <Badge className={cn(
-                                          "px-2 uppercase",
-                                          l.status === "OFFICIALLY_ENROLLED" ? "bg-green-600 text-white hover:bg-green-600 border-green-600"
-                                            : l.status === "PENDING_CONFIRMATION" ? "bg-amber-500 text-white hover:bg-amber-500 border-amber-500"
-                                              : "bg-muted text-muted-foreground border-muted hover:bg-muted"
-                                        )}>
-                                          {l.status === "OFFICIALLY_ENROLLED" ? "Enrolled" : l.status === "PENDING_CONFIRMATION" ? "Pending Confirmation" : "Pre-Registered"}
-                                        </Badge>
                                         {l.programType === "LATE_ENROLLEE" && (
                                           <Badge
                                             variant="outline"
@@ -2407,18 +2737,12 @@ export function SectioningWorkspace() {
                                           </Badge>
                                         )}
                                       </div>
-                                      {draftPlacement &&
-                                        draftSectionByApplicationId.has(
-                                          l.applicationId,
-                                        ) && (
-                                          <span className="text-sm mt-2 font-bold uppercase text-primary text-left">
-                                            Section:{" "}
-                                            {draftSectionByApplicationId.get(
-                                              l.applicationId,
-                                            )}{" "}
-                                            (Draft)
-                                          </span>
-                                        )}
+                                      {isDraftPlaced && (
+                                        <span className="text-sm font-bold uppercase text-amber-700 dark:text-amber-400 text-left flex items-center gap-1.5">
+                                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                                          Section: {draftSectionName} (Draft)
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
                                 </td>
@@ -2471,17 +2795,6 @@ export function SectioningWorkspace() {
                   }
                   : undefined
               }>
-              <AnimatePresence>
-                {finalizingProgress && (
-                  <FinalizingSectionLoader
-                    currentSection={finalizingProgress.currentSection}
-                    completedSections={finalizingProgress.completedSections}
-                    totalSections={finalizingProgress.totalSections}
-                    isComplete={finalizingProgress.isComplete}
-                  />
-                )}
-              </AnimatePresence>
-
               <CardHeader className="border-b border-border bg-muted/20">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 space-y-1">
@@ -2649,6 +2962,7 @@ export function SectioningWorkspace() {
 
                             return (
                               <div
+                                id={`section-card-${s.id}`}
                                 key={s.id}
                                 onClick={() => {
                                   if (autoAssignPhase !== "idle") return;
@@ -2787,7 +3101,15 @@ export function SectioningWorkspace() {
                                           </tr>
                                         ) : (
                                           roster.learners.map((learner, index) => (
-                                            <tr key={learner.applicationId} className={cn("hover:bg-muted/60 transition-colors", index % 2 === 0 ? "bg-background" : "bg-muted/50")}>
+                                            <tr
+                                              id={`draft-learner-${learner.applicationId}`}
+                                              key={learner.applicationId}
+                                              className={cn(
+                                                "hover:bg-muted/60 transition-all duration-300",
+                                                index % 2 === 0 ? "bg-background" : "bg-muted/50",
+                                                highlightedLearnerId === learner.applicationId &&
+                                                  "ring-2 ring-primary bg-primary/10 shadow-md font-semibold",
+                                              )}>
                                               <td className="p-3">
                                                 <div className="flex flex-col">
                                                   <span className="font-bold uppercase text-foreground">
@@ -2913,7 +3235,27 @@ export function SectioningWorkspace() {
                     transition={{ duration: 0.2, ease: "easeOut" }}
                     className="p-4 border-t border-border bg-muted/20 w-full shrink-0">
                     {draftPlacement ? (
-                      <div className="grid grid-cols-1 gap-3">
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setDraftPlacement(null);
+                            setSelectedAppIds([]);
+                            setTargetSectionId(null);
+                            sileo.info({
+                              title: "Draft discarded",
+                              description: "Returned to official class sections.",
+                            });
+                          }}
+                          disabled={
+                            commitProcessing ||
+                            autoAssignPhase !== "idle" ||
+                            isHistoricalReadOnly
+                          }
+                          className="h-12 font-bold uppercase border-destructive text-destructive hover:bg-destructive/10">
+                          Discard Draft
+                        </Button>
                         <Button
                           onClick={() => setCommitDialogOpen(true)}
                           disabled={
@@ -2922,7 +3264,7 @@ export function SectioningWorkspace() {
                             draftLearnerCount === 0 ||
                             isHistoricalReadOnly
                           }
-                          className="h-12 text-base font-bold uppercase">
+                          className="flex-1 h-12 text-base font-bold uppercase">
                           FINALIZE OFFICIAL SECTIONS
                         </Button>
                       </div>
@@ -3173,7 +3515,7 @@ export function SectioningWorkspace() {
                             className={cn("transition-colors cursor-pointer hover:opacity-80", isAnimationVisible && animationScene === 2 ? "font-bold text-primary" : "")}
                             onClick={() => { if (isAnimationVisible) setAnimationScene(2); }}
                           >
-                            Phase 3: Grouping top-performing learners homogeneously into Pilot/Top sections based on their grades.
+                            Phase 3: Grouping top-performing learners into Pilot/Top sections {topBecHeterogeneousRoundRobin ? "evenly to balance gender and academic averages." : "homogeneously based on strict academic ranking."}
                           </li>
                         )}
                       </>

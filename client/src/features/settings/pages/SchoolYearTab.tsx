@@ -1,7 +1,7 @@
 import { useManilaNow } from "@/shared/hooks/useManilaNow";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { sileo } from "sileo";
-import { cn, getManilaNow, MOCKED_SYSTEM_DATE_KEY } from "@/shared/lib/utils";
+import { cn, MOCKED_SYSTEM_DATE_KEY } from "@/shared/lib/utils";
 import {
   Calendar as CalendarIcon,
   AlertTriangle,
@@ -13,13 +13,13 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2, Circle } from "lucide-react";
 import api from "@/shared/api/axiosInstance";
 import {
   useSettingsStore,
   type SettingsState,
 } from "@/store/settings.slice";
 import { toastApiError } from "@/shared/hooks/useApiToast";
+import { queryKeys } from "@/shared/lib/queryKeys";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -302,6 +302,7 @@ export default function SchoolYearTab() {
     enableHomogeneousSections,
     homogeneousSectionCount,
     heterogeneousRoundRobin,
+    topBecHeterogeneousRoundRobin,
     viewingSchoolYearStatus,
     systemStatus,
     viewingSchoolYearId,
@@ -479,6 +480,7 @@ export default function SchoolYearTab() {
     enableHomogeneousSections: enableHomogeneousSections ?? false,
     homogeneousSectionCount: homogeneousSectionCount ?? 1,
     heterogeneousRoundRobin: heterogeneousRoundRobin ?? true,
+    topBecHeterogeneousRoundRobin: topBecHeterogeneousRoundRobin ?? true,
   });
 
   useEffect(() => {
@@ -486,16 +488,18 @@ export default function SchoolYearTab() {
       enableHomogeneousSections: enableHomogeneousSections ?? false,
       homogeneousSectionCount: homogeneousSectionCount ?? 1,
       heterogeneousRoundRobin: heterogeneousRoundRobin ?? true,
+      topBecHeterogeneousRoundRobin: topBecHeterogeneousRoundRobin ?? true,
     });
-  }, [enableHomogeneousSections, homogeneousSectionCount, heterogeneousRoundRobin]);
+  }, [enableHomogeneousSections, homogeneousSectionCount, heterogeneousRoundRobin, topBecHeterogeneousRoundRobin]);
 
   const isAlgorithmChanged = useMemo(() => {
     return (
       localAlgorithmState.enableHomogeneousSections !== (enableHomogeneousSections ?? false) ||
       localAlgorithmState.homogeneousSectionCount !== (homogeneousSectionCount ?? 5) ||
-      localAlgorithmState.heterogeneousRoundRobin !== (heterogeneousRoundRobin ?? true)
+      localAlgorithmState.heterogeneousRoundRobin !== (heterogeneousRoundRobin ?? true) ||
+      localAlgorithmState.topBecHeterogeneousRoundRobin !== (topBecHeterogeneousRoundRobin ?? true)
     );
-  }, [localAlgorithmState, enableHomogeneousSections, homogeneousSectionCount, heterogeneousRoundRobin]);
+  }, [localAlgorithmState, enableHomogeneousSections, homogeneousSectionCount, heterogeneousRoundRobin, topBecHeterogeneousRoundRobin]);
 
   useEffect(() => {
     setSelectedPhase(systemPhase);
@@ -538,11 +542,12 @@ export default function SchoolYearTab() {
     setLocalAlgorithmState({
       enableHomogeneousSections: enableHomogeneousSections ?? false,
       homogeneousSectionCount: homogeneousSectionCount ?? 1,
-    heterogeneousRoundRobin: heterogeneousRoundRobin ?? true,
+      heterogeneousRoundRobin: heterogeneousRoundRobin ?? true,
+      topBecHeterogeneousRoundRobin: topBecHeterogeneousRoundRobin ?? true,
     });
 
     setSelectedPhase(systemPhase);
-  }, [activeYear, enableHomogeneousSections, homogeneousSectionCount, heterogeneousRoundRobin, systemPhase]);
+  }, [activeYear, enableHomogeneousSections, homogeneousSectionCount, heterogeneousRoundRobin, topBecHeterogeneousRoundRobin, systemPhase]);
 
   const [isSubmittingConfig, setIsSubmittingConfig] = useState(false);
 
@@ -590,18 +595,22 @@ export default function SchoolYearTab() {
       if (isAlgorithmChanged) {
         const isHeterogeneous = localAlgorithmState.heterogeneousRoundRobin;
         const enableTopBec = isHeterogeneous ? localAlgorithmState.enableHomogeneousSections : false;
+        const isTopBecHeterogeneous = localAlgorithmState.topBecHeterogeneousRoundRobin;
 
         await api.patch("/settings/algorithm", { 
           sectioning_rules: { 
             enable_top_bec: enableTopBec, 
             top_bec_section_count: enableTopBec ? (localAlgorithmState.homogeneousSectionCount || 1) : 0, 
-            regular_bec_mode: isHeterogeneous ? "HETEROGENEOUS" : "HOMOGENEOUS" 
+            regular_bec_mode: isHeterogeneous ? "HETEROGENEOUS" : "HOMOGENEOUS",
+            top_bec_mode: isTopBecHeterogeneous ? "HETEROGENEOUS" : "HOMOGENEOUS",
+            top_bec_heterogeneous_round_robin: isTopBecHeterogeneous,
           } 
         });
         setSettings({
           enableHomogeneousSections: enableTopBec,
           homogeneousSectionCount: enableTopBec ? (localAlgorithmState.homogeneousSectionCount || 1) : 0,
           heterogeneousRoundRobin: isHeterogeneous,
+          topBecHeterogeneousRoundRobin: isTopBecHeterogeneous,
         });
       }
 
@@ -617,8 +626,16 @@ export default function SchoolYearTab() {
       });
 
       await queryClient.invalidateQueries({ queryKey: ["schoolYears"] });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.publicSettings });
       const pubRes = await api.get("/settings/public");
-      setSettings({ enrollmentPhase: pubRes.data.enrollmentPhase, systemPhase: pubRes.data.systemPhase });
+      setSettings({
+        enrollmentPhase: pubRes.data.enrollmentPhase,
+        systemPhase: pubRes.data.systemPhase,
+        enableHomogeneousSections: pubRes.data.enableHomogeneousSections,
+        homogeneousSectionCount: pubRes.data.homogeneousSectionCount,
+        heterogeneousRoundRobin: pubRes.data.heterogeneousRoundRobin,
+        topBecHeterogeneousRoundRobin: pubRes.data.topBecHeterogeneousRoundRobin ?? true,
+      });
       setShowPhaseModal(false);
 
     } catch (err) {
@@ -1517,7 +1534,7 @@ export default function SchoolYearTab() {
                             transition={{ duration: 0.2 }}
                             className="overflow-hidden"
                           >
-                            <div className="mt-4 ml-8 pl-6 border-l-2 border-primary/20">
+                            <div className="mt-4 ml-8 pl-6 border-l-2 border-primary/20 space-y-6">
                               <div className="space-y-2 font-bold">
                                 <Label>Number of Top BEC Sections (per grade level)</Label>
                                 <Input
@@ -1537,6 +1554,75 @@ export default function SchoolYearTab() {
                                 <p className="text-sm text-foreground">
                                   The algorithm will isolate the highest-ranking learners to fill these specific sections first.
                                 </p>
+                              </div>
+
+                              <div className="space-y-4">
+                                <div className="space-y-1">
+                                  <Label className="text-lg font-extrabold tracking-wide break-words">Top BEC Distribution Method</Label>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 m-3">
+                                  {[
+                                    { 
+                                      value: true, 
+                                      title: "Heterogeneous / Even Distribution",
+                                      desc: "Evenly distribute top-performing learners across all available Top BEC sections to balance academic performance and male-to-female ratio." 
+                                    },
+                                    { 
+                                      value: false, 
+                                      title: "Homogeneous / Strict Academic Ranking",
+                                      desc: "Strictly rank and fill Top BEC sections sequentially from highest to lowest final general average." 
+                                    }
+                                  ].map(opt => {
+                                    const isChecked = localAlgorithmState.topBecHeterogeneousRoundRobin === opt.value;
+                                    return (
+                                      <button
+                                        type="button"
+                                        key={opt.title}
+                                        onClick={() => {
+                                          if (!isArchived) setLocalAlgorithmState(prev => ({ ...prev, topBecHeterogeneousRoundRobin: opt.value }));
+                                        }}
+                                        aria-pressed={isChecked}
+                                        className={cn(
+                                          "relative flex h-full flex-col items-center justify-center rounded-md border bg-card px-4 py-5 text-center shadow-sm transition-colors text-foreground",
+                                          isChecked
+                                            ? "border-primary ring-1 ring-primary text-primary bg-primary/5"
+                                            : "border-border hover:border-primary",
+                                          isArchived && "opacity-60 cursor-not-allowed pointer-events-none"
+                                        )}
+                                      >
+                                        <div className="flex h-full flex-col justify-start text-left">
+                                          <div>
+                                            <span className="block text-lg font-extrabold uppercase break-words">
+                                              {opt.title}
+                                            </span>
+                                          </div>
+                                          <div className={cn(
+                                            "text-sm whitespace-normal",
+                                            isChecked ? "text-primary/90" : "text-foreground"
+                                          )}>
+                                            {opt.desc}
+                                          </div>
+                                        </div>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+
+                                <AnimatePresence>
+                                  {!localAlgorithmState.topBecHeterogeneousRoundRobin && (
+                                    <motion.div
+                                      initial={{ opacity: 0, y: -10 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      exit={{ opacity: 0, y: -10 }}
+                                      className="mt-4 mx-3 flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-amber-700 dark:text-amber-400"
+                                    >
+                                      <AlertTriangle className="h-5 w-5 shrink-0" strokeWidth={3} />
+                                      <p className="font-bold">
+                                        <strong>Note:</strong> Strict homogeneous sectioning may result in unbalanced gender ratios in certain sections.
+                                      </p>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
                               </div>
                             </div>
                           </motion.div>

@@ -1085,6 +1085,8 @@ export async function executeSchoolYearRollover({
               setting.homogeneousSectionCount,
             heterogeneousRoundRobin:
               setting.heterogeneousRoundRobin,
+            topBecHeterogeneousRoundRobin:
+              setting.topBecHeterogeneousRoundRobin,
           },
         },
       });

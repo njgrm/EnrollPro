@@ -47,7 +47,7 @@ function Ticker({ value, duration = 0.8, className }: { value: number, duration?
 }
 
 export function AutoAssignVisualizer({ scene, poolStats, isPaused, onTogglePause, onNext, onPrev }: Props) {
-  const { steEnabled, spaEnabled, spsEnabled, heterogeneousRoundRobin, enableHomogeneousSections } = useSettingsStore();
+  const { steEnabled, spaEnabled, spsEnabled, heterogeneousRoundRobin, topBecHeterogeneousRoundRobin, enableHomogeneousSections } = useSettingsStore();
   const [animationReady, setAnimationReady] = useState(false);
   const [prevScene, setPrevScene] = useState(scene);
 
@@ -70,7 +70,7 @@ export function AutoAssignVisualizer({ scene, poolStats, isPaused, onTogglePause
       case 1:
         return "Phase 2: Assigning qualified learners to Special Curricular Programs (SCP) like Science, Technology, and Engineering (STE).";
       case 2:
-        return "Phase 3: Grouping top-performing learners homogeneously into Pilot/Top sections based on their grades.";
+        return `Phase 3: Grouping top-performing learners into Pilot/Top sections ${topBecHeterogeneousRoundRobin ? "evenly to balance gender and academic averages." : "homogeneously based on strict academic ranking."}`;
       case 3:
         return `Phase ${enableHomogeneousSections ? 4 : 3}: Distributing the remaining learners ${heterogeneousRoundRobin ? "heterogeneously across regular sections to balance gender and academic averages." : "homogeneously by strictly ranking them by final general average."}`;
       default:
@@ -335,8 +335,8 @@ export function AutoAssignVisualizer({ scene, poolStats, isPaused, onTogglePause
 
         <div className="absolute top-0 left-0 w-full h-full flex justify-center items-start pointer-events-none z-20">
           {(() => {
-            let trackCounts: Record<string, number> = {};
-            let trackTotals: Record<string, number> = {};
+            const trackCounts: Record<string, number> = {};
+            const trackTotals: Record<string, number> = {};
             nodes.forEach(n => { trackTotals[n.track] = (trackTotals[n.track] || 0) + 1; });
 
             let waitingCount = 0;

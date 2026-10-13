@@ -68,9 +68,10 @@ async function seedGrade7() {
       include: { teacher: true }
     });
     
-    const enrolledById = sectionAdviser?.teacher?.userId || null;
+        let enrolledById = sectionAdviser?.teacher?.userId || null;
     if (!enrolledById) {
-      throw new Error(`No section adviser found for section ${section.name}.`);
+      const systemAdmin = await prisma.user.findFirst({ where: { roles: { has: "SYSTEM_ADMIN" } } });
+      enrolledById = systemAdmin?.id || 1;
     }
 
     const baseSectionCount = Math.floor(TARGET_LEARNER_COUNT / sections.length);

@@ -42,6 +42,7 @@ interface SettingsSnapshot {
   enableHomogeneousSections?: boolean
   homogeneousSectionCount?: number
   heterogeneousRoundRobin?: boolean
+  topBecHeterogeneousRoundRobin?: boolean
 }
 
 function parseSettingsSnapshot(value: unknown): SettingsSnapshot | null {
@@ -74,6 +75,10 @@ function parseSettingsSnapshot(value: unknown): SettingsSnapshot | null {
     heterogeneousRoundRobin:
       typeof source.heterogeneousRoundRobin === "boolean"
         ? source.heterogeneousRoundRobin
+        : undefined,
+    topBecHeterogeneousRoundRobin:
+      typeof source.topBecHeterogeneousRoundRobin === "boolean"
+        ? source.topBecHeterogeneousRoundRobin
         : undefined,
   }
 }
@@ -188,6 +193,7 @@ export async function getPublicSettings(
       enableHomogeneousSections: snapshotSettings?.enableHomogeneousSections ?? settings.enableHomogeneousSections,
       homogeneousSectionCount: snapshotSettings?.homogeneousSectionCount ?? settings.homogeneousSectionCount,
       heterogeneousRoundRobin: snapshotSettings?.heterogeneousRoundRobin ?? settings.heterogeneousRoundRobin,
+      topBecHeterogeneousRoundRobin: snapshotSettings?.topBecHeterogeneousRoundRobin ?? settings.topBecHeterogeneousRoundRobin,
       enrollmentPhase,
       isBosyEnrollmentOpen,
       isScpAdmissionOpen: isScpAdmissionOpenFlag,
@@ -572,7 +578,14 @@ export async function updateAlgorithm(req: Request, res: Response): Promise<void
     return;
   }
 
-  const { enable_top_bec, top_bec_section_count, regular_bec_mode } = sectioning_rules;
+  const { enable_top_bec, top_bec_section_count, regular_bec_mode, top_bec_mode, top_bec_heterogeneous_round_robin } = sectioning_rules;
+
+  const isTopBecHeterogeneous =
+    typeof top_bec_heterogeneous_round_robin === "boolean"
+      ? top_bec_heterogeneous_round_robin
+      : top_bec_mode !== undefined
+        ? top_bec_mode === "HETEROGENEOUS"
+        : undefined;
 
   const settings = await getOrCreateSettings();
 
@@ -582,6 +595,7 @@ export async function updateAlgorithm(req: Request, res: Response): Promise<void
       enableHomogeneousSections: enable_top_bec,
       homogeneousSectionCount: top_bec_section_count,
       heterogeneousRoundRobin: regular_bec_mode === "HETEROGENEOUS",
+      ...(isTopBecHeterogeneous !== undefined ? { topBecHeterogeneousRoundRobin: isTopBecHeterogeneous } : {}),
     },
   });
 
