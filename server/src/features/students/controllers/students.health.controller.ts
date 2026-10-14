@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { prisma } from "../../../lib/prisma.js";
 import { normalizeDateToUtcNoon } from "../../school-year/school-year.service.js";
 import { broadcastStudentInvalidation } from "../../../lib/realtime-events.js";
+import { canCoordinatorAccessLearner } from "../../sections/grade-level-scope.service.js";
 
 const getRequestUserId = (req: Request): number | null => {
   const userId = req.user?.userId;
@@ -22,6 +23,13 @@ const getRequestUserId = (req: Request): number | null => {
       });
       if (!learner) {
         return res.status(404).json({ message: "Student not found" });
+      }
+
+      const accessCheck = await canCoordinatorAccessLearner(req, learnerId);
+      if (!accessCheck.allowed) {
+        return res.status(403).json({
+          message: "Access denied: You can only view student records in your assigned grade level.",
+        });
       }
 
       const records = await prisma.healthRecord.findMany({
@@ -75,6 +83,13 @@ const getRequestUserId = (req: Request): number | null => {
       });
       if (!learner) {
         return res.status(404).json({ message: "Student not found" });
+      }
+
+      const accessCheck = await canCoordinatorAccessLearner(req, learnerId, parsedSchoolYearId);
+      if (!accessCheck.allowed) {
+        return res.status(403).json({
+          message: "Access denied: You can only manage student records in your assigned grade level.",
+        });
       }
 
       const existingRecord = await prisma.healthRecord.findFirst({
@@ -160,6 +175,13 @@ const getRequestUserId = (req: Request): number | null => {
         return res
           .status(400)
           .json({ message: "Invalid student or health record id" });
+      }
+
+      const accessCheck = await canCoordinatorAccessLearner(req, learnerId);
+      if (!accessCheck.allowed) {
+        return res.status(403).json({
+          message: "Access denied: You can only manage student records in your assigned grade level.",
+        });
       }
 
       const { assessmentPeriod, assessmentDate, weightKg, heightCm, notes } =

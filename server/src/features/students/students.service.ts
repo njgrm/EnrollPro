@@ -153,6 +153,7 @@ export async function findStudents(query: {
   learnerId?: number | string;
   search?: string;
   gradeLevelId?: number | string;
+  gradeLevelIds?: number[];
   sectionId?: number | string;
   sectionIds?: string;
   programType?: ApplicantType | string;
@@ -202,6 +203,22 @@ export async function findStudents(query: {
   const resolvedStatuses = normalizeStatuses(status) ?? (resolvedSchoolYearId ? ACTIVE_STATUS_DEFAULTS : undefined);
   const resolvedSortOrder = normalizeSortOrder(sortOrder);
   const resolvedHasBackSubjects = normalizeBoolean(hasBackSubjects);
+  const resolvedGradeLevelIds = query.gradeLevelIds;
+
+  let effectiveGradeFilter: number | { in: number[] } | undefined = undefined;
+  if (resolvedGradeLevelIds && resolvedGradeLevelIds.length > 0) {
+    if (resolvedGradeLevelId) {
+      if (resolvedGradeLevelIds.includes(resolvedGradeLevelId)) {
+        effectiveGradeFilter = resolvedGradeLevelId;
+      } else {
+        effectiveGradeFilter = { in: [] };
+      }
+    } else {
+      effectiveGradeFilter = { in: resolvedGradeLevelIds };
+    }
+  } else if (resolvedGradeLevelId) {
+    effectiveGradeFilter = resolvedGradeLevelId;
+  }
   
   const skip = (resolvedPage - 1) * resolvedLimit;
   const orderBy = resolveStudentOrderBy(sortBy, resolvedSortOrder);
@@ -253,9 +270,9 @@ export async function findStudents(query: {
     const appWhere: Prisma.EnrollmentApplicationWhereInput = {};
     const historyWhere: Prisma.EnrollmentHistoryWhereInput = {};
     
-    if (resolvedGradeLevelId) {
-      appWhere.gradeLevelId = resolvedGradeLevelId;
-      historyWhere.gradeLevelId = resolvedGradeLevelId;
+    if (effectiveGradeFilter !== undefined) {
+      appWhere.gradeLevelId = effectiveGradeFilter;
+      historyWhere.gradeLevelId = effectiveGradeFilter;
     }
     if (resolvedCompletionYearId) {
       appWhere.schoolYearId = resolvedCompletionYearId;
@@ -400,7 +417,7 @@ export async function findStudents(query: {
       learner: learnerWhere,
     };
 
-    if (resolvedGradeLevelId) historyWhere.gradeLevelId = resolvedGradeLevelId;
+    if (effectiveGradeFilter !== undefined) historyWhere.gradeLevelId = effectiveGradeFilter;
     if (resolvedSectionId) historyWhere.sectionId = resolvedSectionId;
     if (resolvedSectionIds && resolvedSectionIds.length > 0) historyWhere.sectionId = { in: resolvedSectionIds };
     if (resolvedSectionFilter) {
@@ -582,7 +599,7 @@ export async function findStudents(query: {
     }
   }
 
-  if (resolvedGradeLevelId) where.gradeLevelId = resolvedGradeLevelId;
+  if (effectiveGradeFilter !== undefined) where.gradeLevelId = effectiveGradeFilter;
   if (resolvedSectionId) enrollmentRecordFilters.sectionId = resolvedSectionId;
   if (resolvedSectionIds && resolvedSectionIds.length > 0) enrollmentRecordFilters.sectionId = { in: resolvedSectionIds };
   if (resolvedSectionFilter) {
@@ -695,6 +712,7 @@ export async function findStudents(query: {
 export async function getStudentsSummary(query: {
   schoolYearId?: number | string;
   status?: ApplicationStatus | string | string[];
+  gradeLevelIds?: number[];
 }) {
   const resolvedSchoolYearId = parsePositiveInt(query.schoolYearId);
   if (!resolvedSchoolYearId) {
@@ -711,11 +729,16 @@ export async function getStudentsSummary(query: {
   const isArchived = sy?.status === "ARCHIVED";
 
   let applications: StudentSummaryRow[] = [];
+  const summaryGradeFilter =
+    query.gradeLevelIds && query.gradeLevelIds.length > 0
+      ? { gradeLevelId: { in: query.gradeLevelIds } }
+      : {};
 
   if (isArchived) {
     const histories = await prisma.enrollmentHistory.findMany({
       where: {
         schoolYearId: resolvedSchoolYearId,
+        ...summaryGradeFilter,
       },
       select: {
         eosyStatus: true,
@@ -761,6 +784,7 @@ export async function getStudentsSummary(query: {
           resolvedStatuses.length === 1
             ? resolvedStatuses[0]
             : { in: resolvedStatuses },
+        ...summaryGradeFilter,
       },
       select: {
         learnerType: true,

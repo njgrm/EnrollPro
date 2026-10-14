@@ -12,6 +12,10 @@ import {
   parseStoredGrades,
   getHistoricalReportedGrades,
 } from "../../learner/grade-utils.js";
+import {
+  getLearnerDirectoryGradeScope,
+  canCoordinatorAccessLearner,
+} from "../../sections/grade-level-scope.service.js";
 
 type FamilyMemberLike = {
   relationship: string;
@@ -210,6 +214,8 @@ const normalizeStatus = (value: unknown): ApplicationStatus | undefined => {
         });
       }
 
+      const scopedGradeLevelIds = await getLearnerDirectoryGradeScope(req);
+
       const {
         applications,
         total,
@@ -219,6 +225,7 @@ const normalizeStatus = (value: unknown): ApplicationStatus | undefined => {
         schoolYearId,
         search: parseQueryString(req.query.search),
         gradeLevelId: parseQueryString(req.query.gradeLevelId),
+        gradeLevelIds: scopedGradeLevelIds ?? undefined,
         sectionId: parseQueryString(req.query.sectionId),
         sectionIds: parseQueryString(req.query.sectionIds),
         programType: parseQueryString(req.query.programType),
@@ -310,9 +317,12 @@ const normalizeStatus = (value: unknown): ApplicationStatus | undefined => {
         return res.status(400).json({ message: "schoolYearId is required" });
       }
 
+      const scopedGradeLevelIds = await getLearnerDirectoryGradeScope(req);
+
       const summary = await fetchStudentsSummary({
         schoolYearId,
         status: normalizeStatus(req.query.status),
+        gradeLevelIds: scopedGradeLevelIds ?? undefined,
       });
 
       res.json(summary);
@@ -330,6 +340,13 @@ const normalizeStatus = (value: unknown): ApplicationStatus | undefined => {
       }
 
       const schoolYearId = Number(req.query.schoolYearId) || req.schoolYearId;
+
+      const accessCheck = await canCoordinatorAccessLearner(req, parsedId, schoolYearId);
+      if (!accessCheck.allowed) {
+        return res.status(403).json({
+          message: "Access denied: You can only view student records in your assigned grade level.",
+        });
+      }
 
       const liveApplicant = await prisma.enrollmentApplication.findFirst({
         where: { learnerId: parsedId, schoolYearId },
@@ -749,6 +766,13 @@ const normalizeStatus = (value: unknown): ApplicationStatus | undefined => {
       const parsedId = Number.parseInt(String(req.params.id ?? ""), 10);
       if (Number.isNaN(parsedId)) {
         return res.status(400).json({ message: "Invalid student id" });
+      }
+
+      const accessCheck = await canCoordinatorAccessLearner(req, parsedId);
+      if (!accessCheck.allowed) {
+        return res.status(403).json({
+          message: "Access denied: You can only view student records in your assigned grade level.",
+        });
       }
 
       const learner = await prisma.learner.findUnique({

@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { AppError } from "../../../lib/AppError.js";
 import { prisma } from "../../../lib/prisma.js";
 import { fetchSmartBackSubjectsForLearner } from "../../integration/smart-back-subjects.service.js";
+import { canCoordinatorAccessLearner } from "../../sections/grade-level-scope.service.js";
 
 export async function getStudentBackSubjects(
   req: Request,
@@ -41,11 +42,11 @@ export async function getStudentBackSubjects(
   const learnerPromise = isLrn
     ? prisma.learner.findUnique({
         where: { lrn: learnerIdentifier },
-        select: { lrn: true },
+        select: { id: true, lrn: true },
       })
     : prisma.learner.findUnique({
         where: { id: learnerId ?? -1 },
-        select: { lrn: true },
+        select: { id: true, lrn: true },
       });
 
   const [learner, schoolYear] = await Promise.all([
@@ -61,6 +62,19 @@ export async function getStudentBackSubjects(
   }
   if (!schoolYear) {
     throw new AppError(404, "School year not found.", "SCHOOL_YEAR_NOT_FOUND");
+  }
+
+  const accessCheck = await canCoordinatorAccessLearner(
+    req,
+    learner.id,
+    requestedSchoolYearId,
+  );
+  if (!accessCheck.allowed) {
+    throw new AppError(
+      403,
+      "Access denied: You can only view student records in your assigned grade level.",
+      "GRADE_LEVEL_FORBIDDEN",
+    );
   }
   if (!learner.lrn || !/^\d{12}$/.test(learner.lrn)) {
     throw new AppError(

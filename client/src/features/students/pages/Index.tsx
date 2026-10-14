@@ -24,6 +24,7 @@ import {
 import api from "@/shared/api/axiosInstance";
 import { useSettingsStore } from "@/store/settings.slice";
 import { useHistoricalReadOnly } from "@/shared/hooks/useHistoricalReadOnly";
+import { useAuthStore } from "@/store/auth.slice";
 import { toastApiError } from "@/shared/hooks/useApiToast";
 import { HybridDatePicker } from "@/shared/components/HybridDatePicker";
 import { useHeaderStore } from "@/store/header.slice";
@@ -312,8 +313,7 @@ export default function Students() {
     },
   });
 
-  const { panelPercentage, isDesktopViewport, startResizing } =
-    useResizablePanel(75, { storageKey: "learner-directory-detail-pane" });
+  useResizablePanel(75, { storageKey: "learner-directory-detail-pane" });
 
   const {
     inputValue: search,
@@ -322,6 +322,29 @@ export default function Students() {
     isSearching,
     clearSearch,
   } = useDebouncedSearch();
+
+  const currentUser = useAuthStore((state) => state.user);
+
+  const isUnrestricted = useMemo(() => {
+    const roles = currentUser?.roles ?? [];
+    return roles.some((r) =>
+      ["SYSTEM_ADMIN", "HEAD_REGISTRAR", "PRINCIPAL", "SCHOOL_REGISTRAR"].includes(r),
+    );
+  }, [currentUser?.roles]);
+
+  const coordinatorGradeNumber = useMemo(() => {
+    if (isUnrestricted) return null;
+    const allRoles = [
+      ...(currentUser?.roles ?? []),
+      ...(currentUser?.ancillaryRoles ?? []),
+    ];
+    if (allRoles.includes("GRADE 7 COORDINATOR")) return 7;
+    if (allRoles.includes("GRADE 8 COORDINATOR")) return 8;
+    if (allRoles.includes("GRADE 9 COORDINATOR")) return 9;
+    if (allRoles.includes("GRADE 10 COORDINATOR")) return 10;
+    return null;
+  }, [currentUser?.roles, currentUser?.ancillaryRoles, isUnrestricted]);
+
   const [gradeLevelFilter, setGradeLevelFilter] = useState<string>("all");
   const [programFilter, setProgramFilter] = useState<string>("all");
   const [sectionFilter, setSectionFilter] = useState<string>("all");
@@ -346,7 +369,7 @@ export default function Students() {
   }, [isFilterPopoverOpen, gradeLevelFilter, programFilter, sectionFilter, promotionStatusFilter, completionYearFilter]);
 
   const activeFilterCount =
-    (gradeLevelFilter !== "all" && activeTab !== "completers" ? 1 : 0) +
+    (gradeLevelFilter !== "all" && activeTab !== "completers" && coordinatorGradeNumber === null ? 1 : 0) +
     (programFilter !== "all" ? 1 : 0) +
     (sectionFilter !== "all" ? 1 : 0) +
     (promotionStatusFilter !== "all" && activeTab !== "completers" ? 1 : 0) +
@@ -529,7 +552,7 @@ export default function Students() {
       );
       const g10 = gradeLevels.find(gl => gl.name.toUpperCase().includes("GRADE 10"));
       if (!g10) return [];
-      return allSections.filter((s: any) => s.gradeLevelId === g10.id);
+      return allSections.filter((s: { gradeLevelId?: number }) => s.gradeLevelId === g10.id);
     },
     enabled: activeTab === "completers" && localCompletionYearFilter !== "all" && gradeLevels.length > 0,
   });
@@ -543,7 +566,21 @@ export default function Students() {
           api.get(`/school-years/grade-levels`),
           api.get(`/sections/${ayId}`),
         ]);
-        setGradeLevels(glRes.data.gradeLevels || []);
+        const rawGradeLevels = glRes.data.gradeLevels || [];
+        const scopedGradeLevels =
+          coordinatorGradeNumber !== null
+            ? rawGradeLevels.filter((gl: GradeLevel) =>
+                gl.name.toUpperCase().includes(`GRADE ${coordinatorGradeNumber}`),
+              )
+            : rawGradeLevels;
+
+        setGradeLevels(scopedGradeLevels);
+
+        if (coordinatorGradeNumber !== null && scopedGradeLevels.length > 0) {
+          const coordinatorGradeId = scopedGradeLevels[0].id.toString();
+          setGradeLevelFilter(coordinatorGradeId);
+          setLocalGradeFilter(coordinatorGradeId);
+        }
 
         // Flatten sections from grade levels in the response
         const allSections = (secRes.data.gradeLevels || []).flatMap(
@@ -559,7 +596,18 @@ export default function Students() {
       }
     };
     fetchFilters();
-  }, [ayId]);
+  }, [ayId, coordinatorGradeNumber]);
+
+  useEffect(() => {
+    if (
+      coordinatorGradeNumber !== null &&
+      coordinatorGradeNumber !== 10 &&
+      activeTab === "completers"
+    ) {
+      useSettingsStore.getState().updateUiPreference("studentsTab", "active");
+      setPage(1);
+    }
+  }, [coordinatorGradeNumber, activeTab]);
 
   // Filter sections by grade level
   useEffect(() => {
@@ -1272,7 +1320,7 @@ export default function Students() {
                             <SelectItem value="all" className="leading-tight font-bold">
                               All Batches
                             </SelectItem>
-                            {schoolYearsQuery.data?.map((sy: any) => (
+                            {schoolYearsQuery.data?.map((sy: { id: number; yearLabel: string }) => (
                               <SelectItem
                                 key={sy.id}
                                 value={sy.id.toString()}
@@ -1288,15 +1336,18 @@ export default function Students() {
                         <Label className="text-sm text-muted-foreground uppercase">Grade Level</Label>
                         <Select
                           isFilter
+                          disabled={coordinatorGradeNumber !== null}
                           value={localGradeFilter}
                           onValueChange={setLocalGradeFilter}>
                           <SelectTrigger className="h-10 w-full leading-tight font-bold">
                             <SelectValue placeholder="All Grades" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all" className="leading-tight font-bold">
-                              All Grades
-                            </SelectItem>
+                            {coordinatorGradeNumber === null && (
+                              <SelectItem value="all" className="leading-tight font-bold">
+                                All Grades
+                              </SelectItem>
+                            )}
                             {gradeLevels.map((gl) => (
                               <SelectItem
                                 key={gl.id}
@@ -1362,7 +1413,7 @@ export default function Students() {
                             All Sections
                           </SelectItem>
                           {activeTab === "completers" ? (
-                            completerSectionsQuery.data?.map((sec: any) => (
+                            completerSectionsQuery.data?.map((sec: { id: number; name: string }) => (
                               <SelectItem
                                 key={sec.id}
                                 value={sec.id.toString()}
@@ -1459,7 +1510,11 @@ export default function Students() {
                   </div>
                   <div className="p-4 border-t flex items-center justify-between bg-muted/30 rounded-b-md">
                     <Button variant="ghost" size="sm" onClick={() => {
-                        setLocalGradeFilter("all");
+                        const defaultGrade =
+                          coordinatorGradeNumber !== null && gradeLevels.length > 0
+                            ? gradeLevels[0].id.toString()
+                            : "all";
+                        setLocalGradeFilter(defaultGrade);
                         setLocalProgramFilter("all");
                         setLocalSectionFilter("all");
                         setLocalPromotionStatusFilter("all");
@@ -1771,21 +1826,23 @@ export default function Students() {
               <span className="sm:hidden">Active</span>
             </span>
           </TabsTrigger>
-          <TabsTrigger
-            value="completers"
-            className="flex-1 min-w-25 font-bold transition-all relative z-10 data-[state=active]:bg-transparent data-[state=active]:shadow-none rounded-lg">
-            {activeTab === "completers" && (
-              <motion.div
-                layoutId="students-active-pill"
-                className="absolute inset-0 bg-primary shadow-sm rounded-lg"
-                transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
-              />
-            )}
-            <span className={cn("relative z-20 uppercase", activeTab === "completers" ? "text-primary-foreground" : "text-foreground")}>
-              <span className="hidden sm:inline">Completers / Alumni</span>
-              <span className="sm:hidden">Alumni</span>
-            </span>
-          </TabsTrigger>
+          {(coordinatorGradeNumber === null || coordinatorGradeNumber === 10) && (
+            <TabsTrigger
+              value="completers"
+              className="flex-1 min-w-25 font-bold transition-all relative z-10 data-[state=active]:bg-transparent data-[state=active]:shadow-none rounded-lg">
+              {activeTab === "completers" && (
+                <motion.div
+                  layoutId="students-active-pill"
+                  className="absolute inset-0 bg-primary shadow-sm rounded-lg"
+                  transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
+                />
+              )}
+              <span className={cn("relative z-20 uppercase", activeTab === "completers" ? "text-primary-foreground" : "text-foreground")}>
+                <span className="hidden sm:inline">Completers / Alumni</span>
+                <span className="sm:hidden">Alumni</span>
+              </span>
+            </TabsTrigger>
+          )}
           <TabsTrigger
             value="inactive"
             className="flex-1 min-w-25 font-bold transition-all relative z-10 data-[state=active]:bg-transparent data-[state=active]:shadow-none rounded-lg">

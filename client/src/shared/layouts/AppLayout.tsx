@@ -64,9 +64,11 @@ import { Separator } from "@/shared/ui/separator";
 import {
   cn,
   formatUserRole,
+  getGradeLevelBadgeStyles,
   MOCKED_SYSTEM_DATE_ANCHOR_KEY,
   MOCKED_SYSTEM_DATE_KEY,
 } from "@/shared/lib/utils";
+import { DEPED_TEACHER_ANCILLARY_ROLE_OPTIONS } from "@enrollpro/shared";
 import { Badge } from "@/shared/ui/badge";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { UserPhoto } from "@/shared/components/UserPhoto";
@@ -178,6 +180,12 @@ function UserNav() {
   const employeeLabel = user?.employeeId
     ? `Employee ID: ${user.employeeId}`
     : "Employee ID not set";
+  const ancillaryRoles = user?.ancillaryRoles ?? [];
+
+  const formatAncillaryRoleLabel = (role: string) => {
+    const match = DEPED_TEACHER_ANCILLARY_ROLE_OPTIONS.find((opt) => opt.value === role);
+    return match?.label ?? role;
+  };
 
   const navigateWithGuard = (destination: string) => {
     confirmOrRun(() => navigate(destination));
@@ -203,9 +211,14 @@ function UserNav() {
               </div>
             )}
             <div className="grid min-w-0 flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-              <span className="truncate font-extrabold uppercase">{displayName}</span>
+              <span className="truncate font-extrabold uppercase text-primary">{displayName}</span>
               <span className="truncate text-xs font-semibold text-sidebar-foreground">
                 {roleLabel}
+                {ancillaryRoles.length > 0 && (
+                  <span className="">
+                    {", "} {ancillaryRoles.map(formatAncillaryRoleLabel).join(", ")}
+                  </span>
+                )}
               </span>
             </div>
             <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
@@ -218,26 +231,32 @@ function UserNav() {
           sideOffset={8}
           forceMount>
           <DropdownMenuLabel className="px-3 py-3 font-normal">
-            <div className="flex min-w-0 items-center gap-3">
-              {user?.photoPath ? (
-              <UserPhoto
-                photo={user.photoPath}
-                containerClassName="flex size-8 shrink-0 rounded-full border-2 border-primary border-solid overflow-hidden"
-                className="w-full h-full object-cover"
-                alt={displayName}
-              />
-            ) : (
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground border-2 border-primary border-solid">
-                {initials}
-              </div>
-            )}
+            <div className="flex min-w-0 items-start gap-3">
               <div className="grid min-w-0 flex-1 gap-1 text-left">
-                <p className="truncate text-sm font-bold uppercase leading-none">
+                <p className="truncate text-base font-extrabold uppercase leading-none text-primary">
                   {displayName}
                 </p>
                 <p className="truncate text-sm font-bold leading-tight text-foreground">
                   {roleLabel}
                 </p>
+                {ancillaryRoles.length > 0 && (
+                  <div className="flex flex-wrap gap-1 my-0.5">
+                    {ancillaryRoles.map((role) => (
+                      <Badge
+                        key={role}
+                        variant="secondary"
+                        className={cn(
+                          "text-sm font-bold px-1.5 py-0.5 leading-tight rounded-md border shadow-none",
+                          role.includes("GRADE")
+                            ? getGradeLevelBadgeStyles(role)
+                            : "bg-primary/10 text-primary border-primary/20",
+                        )}
+                      >
+                        {formatAncillaryRoleLabel(role)}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
                 <p className="truncate text-sm font-bold leading-tight text-foreground">
                   {employeeLabel}
                 </p>

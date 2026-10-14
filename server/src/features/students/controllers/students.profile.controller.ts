@@ -5,6 +5,7 @@ import { generatePortalPin } from "../../learner/portal-pin.service.js";
 import { normalizeDateToUtcNoon } from "../../school-year/school-year.service.js";
 import { broadcastStudentInvalidation } from "../../../lib/realtime-events.js";
 import { getDefaultLearnerPassword } from "../../auth/default-password.service.js";
+import { canCoordinatorAccessLearner } from "../../sections/grade-level-scope.service.js";
 
 const getRequestUserId = (req: Request): number | null => {
   const userId = req.user?.userId;
@@ -27,18 +28,44 @@ const resolveApplicationId = async (
   return application?.id ?? null;
 };
 
+const resolveApplicationWithScopeCheck = async (
+  req: Request,
+  res: Response,
+  learnerId: number,
+): Promise<number | null> => {
+  const applicationId = await resolveApplicationId(learnerId, req.schoolYearId);
+  if (!applicationId) {
+    res.status(404).json({ message: "Student not found" });
+    return null;
+  }
+  const accessCheck = await canCoordinatorAccessLearner(
+    req,
+    learnerId,
+    req.schoolYearId,
+  );
+  if (!accessCheck.allowed) {
+    res.status(403).json({
+      message:
+        "Access denied: You can only manage student records in your assigned grade level.",
+    });
+    return null;
+  }
+  return applicationId;
+};
+
   export const updateStudent = async (req: Request, res: Response) => {
     try {
       const learnerId = Number.parseInt(String(req.params.id ?? ""), 10);
       if (Number.isNaN(learnerId)) {
         return res.status(400).json({ message: "Invalid student id" });
       }
-      const applicationId = await resolveApplicationId(
+      const applicationId = await resolveApplicationWithScopeCheck(
+        req,
+        res,
         learnerId,
-        req.schoolYearId,
       );
       if (!applicationId) {
-        return res.status(404).json({ message: "Student not found" });
+        return;
       }
 
       const {
@@ -262,12 +289,13 @@ const resolveApplicationId = async (
       if (Number.isNaN(learnerId)) {
         return res.status(400).json({ message: "Invalid student id" });
       }
-      const applicationId = await resolveApplicationId(
+      const applicationId = await resolveApplicationWithScopeCheck(
+        req,
+        res,
         learnerId,
-        req.schoolYearId,
       );
       if (!applicationId) {
-        return res.status(404).json({ message: "Student not found" });
+        return;
       }
 
       const { raw: newPin } = generatePortalPin();
@@ -324,12 +352,13 @@ const resolveApplicationId = async (
       if (Number.isNaN(learnerId)) {
         return res.status(400).json({ message: "Invalid student id" });
       }
-      const applicationId = await resolveApplicationId(
+      const applicationId = await resolveApplicationWithScopeCheck(
+        req,
+        res,
         learnerId,
-        req.schoolYearId,
       );
       if (!applicationId) {
-        return res.status(404).json({ message: "Student not found" });
+        return;
       }
 
       const { deficiencyType } = req.body as { deficiencyType: "SF9" | "FINANCIAL" | "ALL" };
@@ -418,12 +447,13 @@ const resolveApplicationId = async (
       if (Number.isNaN(learnerId)) {
         return res.status(400).json({ message: "Invalid student id" });
       }
-      const applicationId = await resolveApplicationId(
+      const applicationId = await resolveApplicationWithScopeCheck(
+        req,
+        res,
         learnerId,
-        req.schoolYearId,
       );
       if (!applicationId) {
-        return res.status(404).json({ message: "Student not found" });
+        return;
       }
 
       const { type } = req.body;
@@ -516,12 +546,13 @@ const resolveApplicationId = async (
 
       const learnerId = Number.parseInt(String(req.params.id ?? ""), 10);
       if (Number.isNaN(learnerId)) return res.status(400).json({ message: "Invalid student id" });
-      const applicationId = await resolveApplicationId(
+      const applicationId = await resolveApplicationWithScopeCheck(
+        req,
+        res,
         learnerId,
-        req.schoolYearId,
       );
       if (!applicationId) {
-        return res.status(404).json({ message: "Student not found" });
+        return;
       }
 
       const setting = await prisma.schoolSetting.findFirst();
@@ -575,12 +606,13 @@ const resolveApplicationId = async (
 
       const learnerId = Number.parseInt(String(req.params.id ?? ""), 10);
       if (Number.isNaN(learnerId)) return res.status(400).json({ message: "Invalid student id" });
-      const applicationId = await resolveApplicationId(
+      const applicationId = await resolveApplicationWithScopeCheck(
+        req,
+        res,
         learnerId,
-        req.schoolYearId,
       );
       if (!applicationId) {
-        return res.status(404).json({ message: "Student not found" });
+        return;
       }
 
       const setting = await prisma.schoolSetting.findFirst();
@@ -655,12 +687,13 @@ const resolveApplicationId = async (
 
       const learnerId = Number.parseInt(String(req.params.id ?? ""), 10);
       if (Number.isNaN(learnerId)) return res.status(400).json({ message: "Invalid student id" });
-      const applicationId = await resolveApplicationId(
+      const applicationId = await resolveApplicationWithScopeCheck(
+        req,
+        res,
         learnerId,
-        req.schoolYearId,
       );
       if (!applicationId) {
-        return res.status(404).json({ message: "Student not found" });
+        return;
       }
 
       const setting = await prisma.schoolSetting.findFirst();
@@ -734,12 +767,13 @@ const resolveApplicationId = async (
       if (Number.isNaN(learnerId)) {
         return res.status(400).json({ message: "Invalid student id" });
       }
-      const applicationId = await resolveApplicationId(
+      const applicationId = await resolveApplicationWithScopeCheck(
+        req,
+        res,
         learnerId,
-        req.schoolYearId,
       );
       if (!applicationId) {
-        return res.status(404).json({ message: "Student not found" });
+        return;
       }
 
       const applicant = await prisma.enrollmentApplication.findUnique({
@@ -815,12 +849,13 @@ const resolveApplicationId = async (
       if (Number.isNaN(learnerId)) {
         return res.status(400).json({ message: "Invalid student id" });
       }
-      const applicationId = await resolveApplicationId(
+      const applicationId = await resolveApplicationWithScopeCheck(
+        req,
+        res,
         learnerId,
-        req.schoolYearId,
       );
       if (!applicationId) {
-        return res.status(404).json({ message: "Student not found" });
+        return;
       }
 
       const { isActive } = req.body as { isActive: boolean };
@@ -897,12 +932,13 @@ const resolveApplicationId = async (
       const learnerId = Number.parseInt(String(req.params.id ?? ""), 10);
       if (Number.isNaN(learnerId)) return res.status(400).json({ message: "Invalid student id" });
       
-      const applicationId = await resolveApplicationId(
+      const applicationId = await resolveApplicationWithScopeCheck(
+        req,
+        res,
         learnerId,
-        req.schoolYearId,
       );
       if (!applicationId) {
-        return res.status(404).json({ message: "Student not found" });
+        return;
       }
 
       const applicant = await prisma.enrollmentApplication.findUnique({
