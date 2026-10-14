@@ -35,7 +35,7 @@ import {
   createScaleFadeVariants,
   useMotionPreferences,
 } from "@/shared/lib/motion";
-import { DataTableSkeleton } from "@/shared/components/PageLoadingSkeleton";
+import { useDelayedLoading } from "@/shared/hooks/useDelayedLoading";
 
 interface EosyTransitionListProps {
   from: string;
@@ -54,14 +54,6 @@ function EosyTransitionList({ from, to }: EosyTransitionListProps) {
   );
 }
 
-const getNextGradeName = (currentName: string) => {
-  const match = currentName.match(/\d+/);
-  if (match) {
-    const nextGrade = parseInt(match[0], 10) + 1;
-    return `Grade ${nextGrade}`;
-  }
-  return "the next grade level";
-};
 
 interface QueueTableProps {
   items: BOSYQueueItem[];
@@ -111,7 +103,7 @@ function statusBadge(item: BOSYQueueItem) {
         Pending
       </Badge>
     );
-  if (item.status === "READY_FOR_SECTIONING" && item.isTemporarilyEnrolled)
+  if (item.isTemporarilyEnrolled)
     return (
       <div className="flex max-w-72 flex-col items-center gap-1.5 text-center">
         <Badge
@@ -185,7 +177,6 @@ function AcademicStatusTooltipBadge({ item }: { item: BOSYQueueItem }) {
   let hoverClass: string;
 
   const currentGradeName = item.gradeLevelName;
-  const isGrade10 = currentGradeName.includes("10");
   const currentGradeLabel = currentGradeName.toUpperCase();
   const previousGradeLabel = getPreviousGradeName(currentGradeName).toUpperCase();
   const incomingGradeLabel = `INCOMING ${currentGradeName}`.toUpperCase();
@@ -436,7 +427,7 @@ function QueueMobileCard({
 
     if (
       (queueState === "CONFIRMED" || queueState === "TEMPORARY")
-      && item.status === "READY_FOR_SECTIONING"
+      && (item.status === "READY_FOR_SECTIONING" || item.status === "OFFICIALLY_ENROLLED")
     ) {
       return (
         <Button
@@ -470,7 +461,7 @@ function QueueMobileCard({
 
     if (
       (queueState === "CONFIRMED" || queueState === "TEMPORARY")
-      && item.status === "READY_FOR_SECTIONING"
+      && (item.status === "READY_FOR_SECTIONING" || item.status === "OFFICIALLY_ENROLLED")
     ) {
       return (
         <ActionMenuButton
@@ -768,7 +759,7 @@ export function QueueTable({
 
         if (
           (queueState === "CONFIRMED" || queueState === "TEMPORARY")
-          && r.status === "READY_FOR_SECTIONING"
+          && (r.status === "READY_FOR_SECTIONING" || r.status === "OFFICIALLY_ENROLLED")
         ) {
           return (
             <div className="flex w-full items-center justify-center gap-2 py-3">
@@ -811,13 +802,21 @@ export function QueueTable({
     allowActions,
   ]);
 
+  const isMobileLoading = useDelayedLoading(loading, 350, queueState);
+
   return (
     <div className="flex flex-col flex-1 h-full w-full min-h-0">
       <motion.div
         layout
         className="space-y-3 md:hidden">
-        {loading ? (
-          <DataTableSkeleton rows={10} columns={4} className="rounded-md" />
+        {isMobileLoading ? (
+          <div className="min-h-[350px] flex flex-col items-center justify-center space-y-4 text-center p-8 bg-card rounded-2xl border border-border">
+            <Loader2 className="w-10 h-10 text-primary animate-spin" />
+            <div className="flex flex-col items-center space-y-1">
+              <p className="text-2xl font-extrabold text-foreground">Loading...</p>
+              <p className="text-base text-muted-foreground">Fetching records...</p>
+            </div>
+          </div>
         ) : items.length > 0 ? (
           <AnimatePresence mode="popLayout" initial={false}>
             {items.map((item) => {
@@ -870,6 +869,7 @@ export function QueueTable({
           className="border-x-0 border-b-0 border-t-0 rounded-md h-full flex-1"
           tableClassName="w-full table-fixed"
           loading={loading}
+          transitionKey={queueState}
           emptyStateContent={
             <div className="flex flex-col items-center justify-center min-h-[320px] max-h-[300px] p-12 text-center gap-1 text-foreground">
               <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-5">

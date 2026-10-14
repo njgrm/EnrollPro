@@ -88,12 +88,15 @@ function getFallbackVariant(pathname: string): SkeletonPageVariant {
   ) {
     return "settings";
   }
+  if (pathname.includes("bosy")) {
+    return "bosy";
+  }
   return "generic";
 }
 
 function PageFallback() {
   const location = useLocation();
-  return <PageLoadingSkeleton withDelay={true} variant={getFallbackVariant(location.pathname)} />;
+  return <PageLoadingSkeleton variant={getFallbackVariant(location.pathname)} />;
 }
 
 function renderLazyPage(
@@ -250,7 +253,7 @@ export const router = createBrowserRouter([
           },
           // Personnel Directory
           {
-            element: <ProtectedRoute allowedRoles={["SYSTEM_ADMIN", "PRINCIPAL", "HEAD_REGISTRAR"]} />,
+            element: <ProtectedRoute allowedRoles={["SYSTEM_ADMIN", "PRINCIPAL"]} />,
             children: [
               { path: "/personnel/directory", element: renderLazyPage(Teachers) },
             ],

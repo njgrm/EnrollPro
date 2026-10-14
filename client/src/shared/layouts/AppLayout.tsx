@@ -744,7 +744,7 @@ const NAVIGATION_MATRIX: AppNavConfigGroup[] = [
         label: "Personnel Directory",
         to: "/personnel/directory",
         icon: Presentation,
-        access: (roles) => roles.some(r => ["SYSTEM_ADMIN", "PRINCIPAL", "HEAD_REGISTRAR"].includes(r))
+        access: (roles) => roles.some(r => ["SYSTEM_ADMIN", "PRINCIPAL"].includes(r))
       },
       {
         label: "Class Sections",

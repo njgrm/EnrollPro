@@ -75,7 +75,8 @@ export default function HelpDocumentation() {
   const roles = useAuthStore((state) => state.user?.roles) ?? [];
   const canManageSchoolYear =
     roles.includes("SYSTEM_ADMIN") || roles.includes("HEAD_REGISTRAR");
-  const canManagePersonnel = roles.includes("SYSTEM_ADMIN");
+  const canManagePersonnel =
+    roles.includes("SYSTEM_ADMIN") || roles.includes("PRINCIPAL");
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-5 p-4 sm:p-6">

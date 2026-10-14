@@ -33,6 +33,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { TwoPanelSkeleton } from "@/shared/components/PageLoadingSkeleton";
 import { UserPhoto } from "@/shared/components/UserPhoto";
 import { useRealtimeRefresh } from "@/shared/hooks/useRealtimeRefresh";
+import { useDelayedLoading } from "@/shared/hooks/useDelayedLoading";
 import type { RealtimeInvalidationTopic } from "@enrollpro/shared";
 
 const VERIFICATION_REALTIME_TOPICS: RealtimeInvalidationTopic[] = [
@@ -314,6 +315,12 @@ export function VerificationWorkspace() {
     refetchInterval: isHistoricalReadOnly ? false : 10_000,
     refetchOnWindowFocus: "always",
   });
+
+  const isWorkspaceLoading = useDelayedLoading(
+    isLoading || isPending || isFetching,
+    350,
+    activeTab,
+  );
 
   const previousAppIdsRef = useRef<Set<number> | null>(null);
 
@@ -1266,6 +1273,14 @@ export function VerificationWorkspace() {
                       ? pendingVerificationsError.response?.data?.message ?? "Please refresh the page and try again."
                       : "Please refresh the page and try again."}
                   </span>
+                </div>
+              ) : isWorkspaceLoading ? (
+                <div className="h-full min-h-[350px] flex flex-col items-center justify-center space-y-4 text-center p-8">
+                  <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                  <div className="flex flex-col items-center space-y-1">
+                    <p className="text-2xl font-extrabold text-foreground">Loading...</p>
+                    <p className="text-base text-muted-foreground">Fetching records...</p>
+                  </div>
                 </div>
               ) : visibleVerifications.length === 0 && !exitingAppId ? (
                 <div className="h-full flex items-center justify-center flex-col gap-3 text-foreground p-8 text-center">

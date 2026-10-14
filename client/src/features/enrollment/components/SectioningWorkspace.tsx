@@ -99,6 +99,8 @@ interface SectionSummary {
   isHomogeneous?: boolean;
   sectionRank?: number | null;
   draftCount?: number;
+  draftBoys?: number;
+  draftGirls?: number;
 }
 
 interface PoolLearner {
@@ -508,7 +510,7 @@ const loadDraftPlacementFromServer = (
         isOverridden: false,
         isNew: !learner.isFinalized,
       });
-    } else if (!learner.isFinalized && learner.status !== "OFFICIALLY_ENROLLED") {
+    } else if (!learner.isFinalized) {
       unplacedLearners.push(learner);
     }
   }
@@ -848,8 +850,7 @@ export function SectioningWorkspace() {
             (l) =>
               (String(l.gradeLevelId) === key ||
                 String(l.gradeLevelId) === String(dp.gradeLevelId)) &&
-              !l.isFinalized &&
-              l.status !== "OFFICIALLY_ENROLLED",
+              !l.isFinalized,
           ),
           rosters: dp.rosters.map((roster) =>
             buildRoster(
@@ -1009,7 +1010,7 @@ export function SectioningWorkspace() {
       if (!draftPlacement) {
         setPool(
           poolData.filter(
-            (p) => !p.isFinalized && p.status !== "OFFICIALLY_ENROLLED",
+            (p) => !p.isFinalized,
           ),
         );
       } else {
@@ -1108,7 +1109,7 @@ export function SectioningWorkspace() {
           }
           continue;
         }
-        if (fresh.isFinalized || fresh.status === "OFFICIALLY_ENROLLED") {
+        if (fresh.isFinalized) {
           hasChanges = true;
           continue;
         }
@@ -1157,8 +1158,7 @@ export function SectioningWorkspace() {
             continue;
           }
         }
-        // Officially enrolled learners never go into unplaced
-        if (!l.isFinalized && l.status !== "OFFICIALLY_ENROLLED") {
+        if (!l.isFinalized) {
           hasChanges = true;
           existingAppIds.add(l.applicationId);
           nextUnplaced.push(l);
@@ -1360,8 +1360,7 @@ export function SectioningWorkspace() {
     return pool.filter(
       (p) =>
         String(p.gradeLevelId) === activeGradeLevelId &&
-        !p.isFinalized &&
-        p.status !== "OFFICIALLY_ENROLLED",
+        !p.isFinalized,
     );
   }, [pool, activeGradeLevelId]);
   const draftLearnerCount = useMemo(
@@ -1389,8 +1388,7 @@ export function SectioningWorkspace() {
       draftPlacement?.unplacedLearners?.filter(
         (l) =>
           String(l.gradeLevelId) === activeGradeLevelId &&
-          !l.isFinalized &&
-          l.status !== "OFFICIALLY_ENROLLED",
+          !l.isFinalized,
       ).length ?? 0,
     [draftPlacement, activeGradeLevelId],
   );
@@ -1452,7 +1450,6 @@ export function SectioningWorkspace() {
         if (
           String(unplaced.gradeLevelId) === activeGradeLevelId &&
           !unplaced.isFinalized &&
-          unplaced.status !== "OFFICIALLY_ENROLLED" &&
           !poolMap.has(unplaced.applicationId)
         ) {
           if (filterProgram !== "all" && unplaced.programType !== filterProgram) continue;
@@ -2080,8 +2077,7 @@ export function SectioningWorkspace() {
       const nextPool = pool.filter(
         (learner) =>
           !committedApplicationIds.has(learner.applicationId) &&
-          !learner.isFinalized &&
-          learner.status !== "OFFICIALLY_ENROLLED",
+          !learner.isFinalized,
       );
 
       setSections(nextSections);
@@ -2097,8 +2093,7 @@ export function SectioningWorkspace() {
             ? current.filter(
                 (l) =>
                   !committedApplicationIds.has(l.applicationId) &&
-                  !l.isFinalized &&
-                  l.status !== "OFFICIALLY_ENROLLED",
+                  !l.isFinalized,
               )
             : [],
       );
@@ -2249,10 +2244,13 @@ export function SectioningWorkspace() {
     return {
       section,
       learners: [],
-      genderCounts: { boys: section.boys, girls: section.girls },
-      totalCount: section.currentCount,
+      genderCounts: {
+        boys: section.draftCount ? (section.draftBoys ?? section.boys) : section.boys,
+        girls: section.draftCount ? (section.draftGirls ?? section.girls) : section.girls,
+      },
+      totalCount: section.draftCount ? section.draftCount : section.currentCount,
       newCount: 0,
-      isOverCapacity: section.currentCount > section.maxCapacity,
+      isOverCapacity: (section.draftCount || section.currentCount) > section.maxCapacity,
     };
   });
 

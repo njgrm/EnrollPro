@@ -1,11 +1,12 @@
 import { useEffect, useState, useMemo, startTransition } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import { RegistrySkeleton } from "@/shared/components/PageLoadingSkeleton";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { DataTable } from "@/shared/ui/data-table";
 import { Button } from "@/shared/ui/button";
 import { useHeaderStore } from "@/store/header.slice";
-import { Search, FolderOpen, FileText, Eye } from "lucide-react";
+import { Search, FolderOpen, Eye } from "lucide-react";
 import api from "@/shared/api/axiosInstance";
 import { UserPhoto } from "@/shared/components/UserPhoto";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
@@ -68,6 +69,20 @@ function getProgramAbbreviation(type?: string | null) {
   }
 }
 
+function EarlyRegistrationEmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center p-12 text-center h-full border-none w-full">
+      <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-5">
+        <FolderOpen className="h-8 w-8 text-primary" />
+      </div>
+      <h3 className="text-2xl font-extrabold text-foreground">No Records Found</h3>
+      <p className="text-muted-foreground mx-auto">
+        No early registration records found for this category.
+      </p>
+    </div>
+  );
+}
+
 export default function EarlyRegistrationMasterlist() {
   const setTitle = useHeaderStore((state: { setTitle: (title: string | null) => void }) => state.setTitle);
   const [selectedTab, setSelectedTab] = useState<"7" | "8-10">("7");
@@ -95,8 +110,8 @@ export default function EarlyRegistrationMasterlist() {
       setSelectedLearnerForModal(null);
       void queryClient.invalidateQueries({ queryKey: ["early-registrations"] });
     },
-    onError: (error: any) => {
-      toastApiError(error);
+    onError: (error: unknown) => {
+      toastApiError(error as never);
     }
   });
 
@@ -109,8 +124,8 @@ export default function EarlyRegistrationMasterlist() {
       setSelectedLearnerForRestoreModal(null);
       void queryClient.invalidateQueries({ queryKey: ["early-registrations"] });
     },
-    onError: (error: any) => {
-      toastApiError(error);
+    onError: (error: unknown) => {
+      toastApiError(error as never);
     }
   });
 
@@ -134,6 +149,7 @@ export default function EarlyRegistrationMasterlist() {
       });
       return data;
     },
+    placeholderData: keepPreviousData,
   });
 
   const baseFilteredData = useMemo(() => {
@@ -347,17 +363,9 @@ export default function EarlyRegistrationMasterlist() {
     },
   ];
 
-  const EmptyState = () => (
-    <div className="flex flex-col items-center justify-center p-12 text-center h-full border-none w-full">
-      <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-5">
-        <FolderOpen className="h-8 w-8 text-primary" />
-      </div>
-      <h3 className="text-2xl font-extrabold text-foreground">No Records Found</h3>
-      <p className="text-muted-foreground mx-auto">
-        No early registration records found for this category.
-      </p>
-    </div>
-  );
+  if (isFetching && applications.length === 0) {
+    return <RegistrySkeleton />;
+  }
 
   return (
     <div className="flex flex-1 h-full w-full min-h-0 flex-col">
@@ -467,7 +475,8 @@ export default function EarlyRegistrationMasterlist() {
                 data={paginatedData}
                 columns={columns}
                 loading={isFetching}
-                emptyStateContent={<EmptyState />}
+                transitionKey={`${selectedTab}-${filterTab}`}
+                emptyStateContent={<EarlyRegistrationEmptyState />}
                 sorting={sorting}
                 onSortingChange={setSorting}
               />

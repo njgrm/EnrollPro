@@ -27,6 +27,7 @@ import { useHistoricalReadOnly } from "@/shared/hooks/useHistoricalReadOnly";
 import { toastApiError } from "@/shared/hooks/useApiToast";
 import { HybridDatePicker } from "@/shared/components/HybridDatePicker";
 import { useHeaderStore } from "@/store/header.slice";
+import { RegistrySkeleton } from "@/shared/components/PageLoadingSkeleton";
 
 import { sileo } from "sileo";
 import { Button } from "@/shared/ui/button";
@@ -1024,6 +1025,10 @@ export default function Students() {
               <div className="flex min-w-0 items-center gap-3 py-3 pl-2">
                 <UserPhoto
                   photo={row.original.studentPhoto}
+                  entityType="learner"
+                  entityId={row.original.id}
+                  firstName={row.original.firstName}
+                  lastName={row.original.lastName}
                   containerClassName="w-12 h-12 rounded-full shadow-sm border shrink-0 border-2 border-primary border-solid"
                   className="w-full h-full object-cover"
                   alt={row.original.fullName}
@@ -1521,6 +1526,10 @@ export default function Students() {
                       <div className="flex items-center gap-3 min-w-0">
                         <UserPhoto
                           photo={student.studentPhoto}
+                          entityType="learner"
+                          entityId={student.id}
+                          firstName={student.firstName}
+                          lastName={student.lastName}
                           containerClassName="w-10 h-10 rounded-full shadow-sm border shrink-0"
                           className="w-full h-full object-cover"
                           alt={student.fullName}
@@ -1673,6 +1682,7 @@ export default function Students() {
                 columns={columns}
                 data={students}
                 loading={loading}
+                transitionKey={activeTab}
                 loadingBehavior="delayed"
                 forceEmptyState={isSearching}
                 virtualize={true}
@@ -1702,6 +1712,13 @@ export default function Students() {
     </div>
   );
 
+  const setTitle = useHeaderStore((s) => s.setTitle);
+
+  useEffect(() => {
+    setTitle("Learner Directory");
+    return () => setTitle(null);
+  }, [setTitle]);
+
   if (!ayId) {
     return (
       <div className="flex h-[calc(100vh-12rem)] w-full items-center justify-center">
@@ -1725,12 +1742,9 @@ export default function Students() {
     );
   }
 
-  const setTitle = useHeaderStore((s) => s.setTitle);
-
-  useEffect(() => {
-    setTitle("Learner Directory");
-    return () => setTitle(null);
-  }, [setTitle]);
+  if (studentsQuery.isPending && !studentsQuery.data) {
+    return <RegistrySkeleton />;
+  }
 
   return (
     <div className="flex flex-col min-w-0 w-full max-w-full overflow-hidden h-[calc(100vh-6rem)]">

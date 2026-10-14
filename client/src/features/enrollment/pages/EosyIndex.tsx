@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import { RegistrySkeleton } from "@/shared/components/PageLoadingSkeleton";
 import { PreFlightBlockerModal } from "@/features/enrollment/components/PreFlightBlockerModal";
 import { EosyOverrideModal } from "@/features/enrollment/components/EosyOverrideModal";
 import { AtomicRolloverDialog } from "@/features/settings/components/AtomicRolloverDialog";
@@ -479,6 +480,7 @@ export default function EosyUpdating() {
       return (res.data.records || []) as EnrollmentRecord[];
     },
     enabled: Boolean(ayId && activeTab),
+    placeholderData: keepPreviousData,
   });
 
   const _smartConnectionQuery = useQuery({
@@ -1211,6 +1213,10 @@ export default function EosyUpdating() {
               <div className="flex min-w-0 items-center gap-3 py-1 pl-1">
                 <UserPhoto
                   photo={r.enrollmentApplication.learner.studentPhoto}
+                  entityType="learner"
+                  entityId={r.enrollmentApplication.learner.id}
+                  firstName={r.enrollmentApplication.learner.firstName}
+                  lastName={r.enrollmentApplication.learner.lastName}
                   containerClassName="w-12 h-12 rounded-full shadow-sm border shrink-0"
                   className="w-full h-full object-cover"
                   alt={`${r.enrollmentApplication.learner.lastName}, ${r.enrollmentApplication.learner.firstName}`}
@@ -1273,6 +1279,10 @@ export default function EosyUpdating() {
             <div className="flex min-w-0 items-center gap-3 py-1 pl-1">
               <UserPhoto
                 photo={r.enrollmentApplication.learner.studentPhoto}
+                entityType="learner"
+                entityId={r.enrollmentApplication.learner.id}
+                firstName={r.enrollmentApplication.learner.firstName}
+                lastName={r.enrollmentApplication.learner.lastName}
                 containerClassName="w-12 h-12 rounded-full shadow-sm shrink-0 border-2 border-primary border-solid"
                 className="w-full h-full object-cover"
                 alt={`${r.enrollmentApplication.learner.lastName}, ${r.enrollmentApplication.learner.firstName}`}
@@ -1695,6 +1705,10 @@ export default function EosyUpdating() {
     return <Navigate to="/personnel/dashboard" replace />;
   }
 
+  if (isInitialLoad || (Boolean(ayId && activeTab) && recordsQuery.isPending && !recordsQuery.data)) {
+    return <RegistrySkeleton />;
+  }
+
   return (
     <>
       <div className="flex min-h-0 flex-col overflow-hidden">
@@ -2069,6 +2083,7 @@ export default function EosyUpdating() {
                           columns={columns}
                           data={filteredRecords}
                           loading={loadingRecords}
+                          transitionKey={`${activeTab}-${sectionFilter}`}
                           loadingBehavior="delayed"
                           containerHeight="100%"
                           bodyOverlay={(

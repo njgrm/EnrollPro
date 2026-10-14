@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetDescription,
-} from "@/shared/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import {
@@ -13,6 +13,8 @@ import {
   CheckCircle2,
   AlertCircle,
   AlertTriangle,
+  X,
+  FolderOpen,
 } from "lucide-react";
 import api from "@/shared/api/axiosInstance";
 import { Badge } from "@/shared/ui/badge";
@@ -74,8 +76,9 @@ export default function InsertLateEnrolleeDrawer({
   onSuccess,
 }: InsertLateEnrolleeDrawerProps) {
   const { classOpeningDate } = useSettingsStore();
-  const { panelPercentage, isDesktopViewport, startResizing } = useResizablePanel(50, {
-    storageKey: "late-enrollee-drawer",
+  const { panelPercentage, isDesktopViewport, startResizing, startResizingRight } = useResizablePanel(60, {
+    centered: true,
+    storageKey: "late-enrollee-modal",
   });
   const {
     inputValue: search,
@@ -185,36 +188,64 @@ export default function InsertLateEnrolleeDrawer({
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        className="p-0 overflow-visible border-l shadow-2xl flex flex-col h-full bg-background w-full sm:w-auto sm:max-w-none"
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        showClose={false}
+        aria-describedby={undefined}
+        onPointerDownOutside={(e) => {
+          e.preventDefault();
+          closeDrawer();
+        }}
+        onEscapeKeyDown={(e) => {
+          e.preventDefault();
+          closeDrawer();
+        }}
+        className="p-0 flex flex-col h-[90vh] md:h-[95vh] border overflow-visible w-full sm:w-auto sm:max-w-none max-w-[95vw]"
         style={isDesktopViewport ? { width: `${panelPercentage}vw` } : undefined}
       >
-        {/* Resize Handle — hidden on mobile */}
+        {/* Left Resize Handle */}
         <div
           onMouseDown={startResizing}
-          className="absolute left-[-4px] top-0 bottom-0 w-[8px] cursor-col-resize z-50 hover:bg-primary/30 transition-colors hidden sm:flex items-center justify-center group">
+          className="absolute left-[-4px] top-0 bottom-0 w-[8px] cursor-col-resize z-50 hover:bg-primary/30 transition-colors hidden sm:flex items-center justify-center group rounded-l-md"
+        >
           <div className="h-8 w-1.5 rounded-full bg-muted-foreground/20 group-hover:bg-primary/50" />
         </div>
 
-        {/* Header — exactly matches StudentDetailPanel */}
-        <div className="flex items-center justify-between p-3 sm:p-4 border-b shrink-0 bg-primary font-bold relative">
-          <div>
-            <SheetTitle className="text-base sm:text-lg text-primary-foreground font-bold uppercase flex items-center gap-2">
-              Insert Late Enrollee
-            </SheetTitle>
-            <SheetDescription className="text-sm text-primary-foreground/80 font-semibold uppercase">
-              {gradeLevelName} — {sectionName}
-            </SheetDescription>
-          </div>
+        {/* Right Resize Handle */}
+        <div
+          onMouseDown={startResizingRight}
+          className="absolute right-[-4px] top-0 bottom-0 w-[8px] cursor-col-resize z-50 hover:bg-primary/30 transition-colors hidden sm:flex items-center justify-center group rounded-r-md"
+        >
+          <div className="h-8 w-1.5 rounded-full bg-muted-foreground/20 group-hover:bg-primary/50" />
         </div>
 
-        {/* Scrollable Content — matches StudentDetailPanel content area */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4 font-bold">
+        <div className="flex-1 flex flex-col h-full overflow-hidden bg-background rounded-md">
+          {/* Header — exactly matches StudentDetailPanel */}
+          <div className="flex items-center justify-between p-3 sm:p-4 border-b shrink-0 bg-primary font-bold relative">
+            <div>
+              <DialogTitle className="text-base sm:text-lg text-primary-foreground font-bold uppercase flex items-center gap-2">
+                Insert Late Enrollee
+              </DialogTitle>
+              <DialogDescription className="text-sm text-primary-foreground/80 font-semibold uppercase">
+                {gradeLevelName} — {sectionName}
+              </DialogDescription>
+            </div>
+            <button
+              type="button"
+              onClick={closeDrawer}
+              className="rounded-full p-2 text-primary-foreground hover:bg-primary-foreground/20 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-foreground focus:ring-offset-2 disabled:pointer-events-none"
+            >
+              <X strokeWidth={3} className="h-5 w-5" />
+              <span className="sr-only">Close</span>
+            </button>
+          </div>
+
+        {/* Content Area */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-3 sm:p-4 font-bold">
           {!selectedLearner ? (
-            <div className="space-y-4">
+            <div className="flex-1 flex flex-col min-h-0 space-y-4">
               {/* Search Input */}
-              <div className="relative">
+              <div className="relative shrink-0">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground" />
                 <Input
                   placeholder="Search unsectioned learners by LRN or Last Name..."
@@ -226,8 +257,8 @@ export default function InsertLateEnrolleeDrawer({
               </div>
 
               {/* Learner Pool List */}
-              <div className="bg-[hsl(var(--muted))] rounded-md border overflow-hidden">
-                <div className="max-h-[calc(100vh-22rem)] overflow-y-auto">
+              <div className="flex-1 flex flex-col min-h-0 bg-[hsl(var(--muted))] rounded-md border overflow-hidden">
+                <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
                   {loading ? (
                     <div className="space-y-0 divide-y divide-border/50">
                       {Array.from({ length: 6 }).map((_, index) => (
@@ -241,9 +272,9 @@ export default function InsertLateEnrolleeDrawer({
                       ))}
                     </div>
                   ) : isSearching ? (
-                    <div className="py-16 flex flex-col items-center justify-center gap-3 text-center px-6">
+                    <div className="flex-1 flex flex-col items-center justify-center p-12 text-center w-full my-auto">
                       <Search className="h-10 w-10 animate-pulse text-foreground/40" />
-                      <div className="space-y-1">
+                      <div className="space-y-1 mt-3">
                         <p className="text-lg font-bold text-foreground">
                           Searching...
                         </p>
@@ -253,14 +284,15 @@ export default function InsertLateEnrolleeDrawer({
                       </div>
                     </div>
                   ) : filteredPool.length === 0 ? (
-                    <div className="py-16 flex flex-col items-center justify-center text-center px-6">
-                      <AlertCircle className="h-8 w-8 text-foreground/30 mb-2" />
-                      <p className="text-base leading-tight font-bold text-foreground">
-                        No unsectioned learners found
-                      </p>
-                      <p className="text-base text-foreground/60 mt-1 max-w-[240px] font-semibold">
-                        Ensure learners have passed verification and are marked
-                        "Ready for Sectioning".
+                    <div className="flex-1 flex flex-col items-center justify-center p-12 text-center h-full border-none w-full my-auto">
+                      <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-5">
+                        <FolderOpen className="h-8 w-8 text-primary" />
+                      </div>
+                      <h3 className="text-2xl font-extrabold text-foreground">No Records Found</h3>
+                      <p className="text-muted-foreground mx-auto">
+                        {activeSearch
+                          ? "No unsectioned learners match this search."
+                          : "Ensure learners have passed verification and are marked \"Ready for Sectioning\"."}
                       </p>
                     </div>
                   ) : (
@@ -326,7 +358,7 @@ export default function InsertLateEnrolleeDrawer({
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="flex-1 overflow-y-auto space-y-4">
               {/* Selected Learner Card — matches StudentDetailPanel summary block style */}
               <div className="bg-[hsl(var(--muted))] p-4 rounded-md border">
                 <div className="flex items-center justify-between">
@@ -431,29 +463,30 @@ export default function InsertLateEnrolleeDrawer({
           )}
         </div>
 
-        {/* Footer — matches StudentDetailPanel footer style */}
-        <div className="px-4 py-4 bg-muted/30 border-t border-border flex items-center justify-end gap-2 shrink-0">
-          <Button
-            variant="outline"
-            onClick={closeDrawer}
-            className="font-bold uppercase text-sm h-10 px-4"
-          >
-            Cancel
-          </Button>
-          <Button
-            disabled={!selectedLearner || isSubmitting}
-            onClick={handleSlotting}
-            className="font-bold uppercase text-sm h-10 px-6 bg-primary hover:bg-primary/95 text-primary-foreground shadow-sm"
-          >
-            {isSubmitting ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <CheckCircle2 className="h-4 w-4 mr-2" />
-            )}
-            Confirm & Update SF1
-          </Button>
+          {/* Footer — 50 50 buttons */}
+          <div className="p-4 bg-muted/30 border-t border-border grid grid-cols-2 gap-3 shrink-0">
+            <Button
+              variant="outline"
+              onClick={closeDrawer}
+              className="w-full font-bold uppercase text-sm h-11"
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={!selectedLearner || isSubmitting}
+              onClick={handleSlotting}
+              className="w-full font-bold uppercase text-sm h-11 bg-primary hover:bg-primary/95 text-primary-foreground shadow-sm"
+            >
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+              )}
+              Confirm & Update SF1
+            </Button>
+          </div>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }

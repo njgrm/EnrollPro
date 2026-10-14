@@ -656,7 +656,7 @@ export async function revokeConfirmedReturn(
       status: true,
       learnerType: true,
       enrollmentRecord: {
-        select: { id: true },
+        select: { id: true, isDraft: true },
       },
     },
   });
@@ -670,31 +670,42 @@ export async function revokeConfirmedReturn(
       { status: 422 },
     );
   }
-  if (application.status !== "READY_FOR_SECTIONING") {
+  if (
+    application.status !== "READY_FOR_SECTIONING" &&
+    application.status !== "OFFICIALLY_ENROLLED"
+  ) {
     throw Object.assign(
       new Error(
-        `Cannot Unenroll: application is in status "${application.status}", expected "READY_FOR_SECTIONING".`,
+        `Cannot Unenroll: application is in status "${application.status}", expected "READY_FOR_SECTIONING" or "OFFICIALLY_ENROLLED".`,
       ),
       { status: 422 },
     );
   }
-  if (application.enrollmentRecord) {
+  if (application.enrollmentRecord && !application.enrollmentRecord.isDraft) {
     throw Object.assign(
-      new Error("This learner is already assigned to a class section and can no longer be reversed here."),
+      new Error("This learner is already officially assigned to a finalized class section and can no longer be reversed here."),
       { status: 422 },
     );
   }
 
-  const updated = await prisma.enrollmentApplication.update({
-    where: { id: applicationId },
-    data: {
-      status: "PENDING_CONFIRMATION",
-      confirmationConsent: false,
-      isTemporarilyEnrolled: false,
-      complianceStatus: null,
-      encodedById: actingUserId,
-    },
-    select: { id: true, status: true },
+  const updated = await prisma.$transaction(async (tx) => {
+    if (application.enrollmentRecord?.id) {
+      await tx.enrollmentRecord.delete({
+        where: { id: application.enrollmentRecord.id },
+      });
+    }
+
+    return tx.enrollmentApplication.update({
+      where: { id: applicationId },
+      data: {
+        status: "PENDING_CONFIRMATION",
+        confirmationConsent: false,
+        isTemporarilyEnrolled: false,
+        complianceStatus: null,
+        encodedById: actingUserId,
+      },
+      select: { id: true, status: true },
+    });
   });
 
   return { applicationId: updated.id, status: updated.status };
@@ -711,7 +722,7 @@ export async function markConfirmedTransferOut(
       status: true,
       learnerType: true,
       enrollmentRecord: {
-        select: { id: true },
+        select: { id: true, isDraft: true },
       },
     },
   });
@@ -725,31 +736,42 @@ export async function markConfirmedTransferOut(
       { status: 422 },
     );
   }
-  if (application.status !== "READY_FOR_SECTIONING") {
+  if (
+    application.status !== "READY_FOR_SECTIONING" &&
+    application.status !== "OFFICIALLY_ENROLLED"
+  ) {
     throw Object.assign(
       new Error(
-        `Cannot mark transfer out: application is in status "${application.status}", expected "READY_FOR_SECTIONING".`,
+        `Cannot mark transfer out: application is in status "${application.status}", expected "READY_FOR_SECTIONING" or "OFFICIALLY_ENROLLED".`,
       ),
       { status: 422 },
     );
   }
-  if (application.enrollmentRecord) {
+  if (application.enrollmentRecord && !application.enrollmentRecord.isDraft) {
     throw Object.assign(
-      new Error("This learner is already assigned to a class section and can no longer be transferred here."),
+      new Error("This learner is already officially assigned to a finalized class section and can no longer be transferred here."),
       { status: 422 },
     );
   }
 
-  const updated = await prisma.enrollmentApplication.update({
-    where: { id: applicationId },
-    data: {
-      status: "TRANSFERRING_OUT",
-      confirmationConsent: false,
-      isTemporarilyEnrolled: false,
-      complianceStatus: null,
-      encodedById: actingUserId,
-    },
-    select: { id: true, status: true },
+  const updated = await prisma.$transaction(async (tx) => {
+    if (application.enrollmentRecord?.id) {
+      await tx.enrollmentRecord.delete({
+        where: { id: application.enrollmentRecord.id },
+      });
+    }
+
+    return tx.enrollmentApplication.update({
+      where: { id: applicationId },
+      data: {
+        status: "TRANSFERRING_OUT",
+        confirmationConsent: false,
+        isTemporarilyEnrolled: false,
+        complianceStatus: null,
+        encodedById: actingUserId,
+      },
+      select: { id: true, status: true },
+    });
   });
 
   return { applicationId: updated.id, status: updated.status };

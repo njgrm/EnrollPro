@@ -63,6 +63,7 @@ import {
   useUnsavedChangesPrompt,
 } from "@/shared/hooks/useUnsavedChanges";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { SettingsSkeleton } from "@/shared/components/PageLoadingSkeleton";
 
 const MANILA_TIME_ZONE = "Asia/Manila";
 
@@ -891,7 +892,7 @@ export default function SchoolYearTab() {
   };
 
   if (loading) {
-    return null;
+    return <SettingsSkeleton />;
   }
 
   const activePhase = selectedPhase ?? systemPhase ?? "OFFICIAL_ENROLLMENT";

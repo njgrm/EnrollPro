@@ -125,6 +125,8 @@ export async function getSectionsSummary(req: Request, res: Response) {
       
       const boys = officialRecords.filter((r) => r.learner.sex === "MALE").length;
       const girls = officialRecords.filter((r) => r.learner.sex === "FEMALE").length;
+      const draftBoys = draftRecords.filter((r) => r.learner.sex === "MALE").length;
+      const draftGirls = draftRecords.filter((r) => r.learner.sex === "FEMALE").length;
 
       return {
         id: s.id,
@@ -141,6 +143,8 @@ export async function getSectionsSummary(req: Request, res: Response) {
         draftCount: draftRecords.length,
         boys,
         girls,
+        draftBoys,
+        draftGirls,
         adviser: s.advisers[0]?.teacher
           ? `${s.advisers[0].teacher.lastName}, ${s.advisers[0].teacher.firstName}`
           : "Unassigned",
@@ -259,7 +263,7 @@ export async function getSectioningPool(req: Request, res: Response) {
       academicStatus: app.academicStatus,
       status: app.status,
       draftSectionId: app.enrollmentRecord?.isDraft ? app.enrollmentRecord.sectionId : undefined,
-      isFinalized: Boolean((app.enrollmentRecord && !app.enrollmentRecord.isDraft) || app.status === "OFFICIALLY_ENROLLED"),
+      isFinalized: Boolean(app.enrollmentRecord && !app.enrollmentRecord.isDraft),
       finalizedSectionId: app.enrollmentRecord && !app.enrollmentRecord.isDraft ? app.enrollmentRecord.sectionId : undefined,
     }));
 

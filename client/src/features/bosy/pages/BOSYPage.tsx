@@ -68,10 +68,12 @@ import { PaginationBar } from "@/shared/components/PaginationBar";
 import { BulkConfirmBar } from "../components/BulkConfirmBar";
 import { useHistoricalReadOnly } from "@/shared/hooks/useHistoricalReadOnly";
 import { VerificationWorkspace } from "@/features/enrollment/components/VerificationWorkspace";
+import { BatchEnrollingLoader } from "@/features/enrollment/components/BatchEnrollingLoader";
 import { useRealtimeRefresh } from "@/shared/hooks/useRealtimeRefresh";
 import type { RealtimeInvalidationTopic } from "@enrollpro/shared";
 import { useGuardedTabChange } from "@/shared/hooks/useUnsavedChanges";
 import { useSearchParams } from "react-router";
+import { BOSYSkeleton } from "@/shared/components/PageLoadingSkeleton";
 
 import { sileo } from "sileo";
 import { useAuthStore } from "@/store/auth.slice";
@@ -200,6 +202,13 @@ export default function BOSYPage() {
   const [busyActionIds, setBusyActionIds] = useState<Set<number>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
   const [showBulkConfirmModal, setShowBulkConfirmModal] = useState(false);
+  const [enrollingProgress, setEnrollingProgress] = useState<{
+    currentLearnerName?: string | null;
+    currentLrn?: string | null;
+    completedLearners: number;
+    totalLearners: number;
+    isComplete?: boolean;
+  } | null>(null);
 
 
   const [confirmSingleTarget, setConfirmSingleTarget] = useState<BOSYQueueItem | null>(null);
@@ -451,19 +460,70 @@ export default function BOSYPage() {
 
   const handleBulkConfirm = async () => {
     if (!syId || selectedIds.length === 0) return;
-    sileo.info({
-      title: "Processing Bulk Confirmation",
-      description: "Applying BOSY confirmation to selected learner records.",
-    });
+
+    const selectedItems = queueItems.filter((item) => selectedIds.includes(item.applicationId));
+    const total = selectedIds.length;
+    const firstItem = selectedItems[0];
+
+    setShowBulkConfirmModal(false);
     setBulkLoading(true);
+    setEnrollingProgress({
+      currentLearnerName: firstItem ? `${firstItem.lastName}, ${firstItem.firstName}` : null,
+      currentLrn: firstItem?.lrn ?? null,
+      completedLearners: 0,
+      totalLearners: total,
+      isComplete: false,
+    });
+
     try {
-      const result = await bulkConfirm({
+      let isApiDone = false;
+      const confirmPromise = bulkConfirm({
         applicationIds: selectedIds,
         schoolYearId: syId,
+      }).finally(() => {
+        isApiDone = true;
       });
+
+      // Dynamically paced stepping through selected continuing learners
+      const stepCount = Math.min(total, 40);
+      const stepDelay = motionPreferences.reduceMotion
+        ? 10
+        : Math.max(20, Math.min(80, Math.floor(1600 / stepCount)));
+      const stepIncrement = Math.max(1, Math.floor(total / stepCount));
+
+      for (let i = 0; i < total; i += stepIncrement) {
+        if (isApiDone) break;
+        const currentItem = selectedItems[i] || selectedItems[selectedItems.length - 1];
+        setEnrollingProgress({
+          currentLearnerName: currentItem ? `${currentItem.lastName}, ${currentItem.firstName}` : null,
+          currentLrn: currentItem?.lrn ?? null,
+          completedLearners: i,
+          totalLearners: total,
+          isComplete: false,
+        });
+        await new Promise((resolve) => setTimeout(resolve, stepDelay));
+      }
+
+      const result = await confirmPromise;
+
+      // Show brief 100% completed check state before fading out
+      setEnrollingProgress({
+        currentLearnerName: null,
+        currentLrn: null,
+        completedLearners: total,
+        totalLearners: total,
+        isComplete: true,
+      });
+
+      await new Promise((resolve) =>
+        setTimeout(resolve, motionPreferences.reduceMotion ? 100 : 500),
+      );
+
+      setEnrollingProgress(null);
+
       if (result.confirmed.length > 0) {
         sileo.success({
-          title: "Bulk Confirmation Completed",
+          title: "Bulk Enrollment Completed",
           description:
             `${result.readyForSectioning.length} officially enrolled; ` +
             `${result.temporarilyEnrolled.length} temporarily enrolled.`,
@@ -494,6 +554,7 @@ export default function BOSYPage() {
         });
       }
     } catch (e) {
+      setEnrollingProgress(null);
       toastApiError(e as never);
     } finally {
       setBulkLoading(false);
@@ -530,6 +591,10 @@ export default function BOSYPage() {
         </p>
       </div>
     );
+  }
+
+  if (!readiness) {
+    return <BOSYSkeleton />;
   }
 
   return (
@@ -623,6 +688,7 @@ export default function BOSYPage() {
                         type="button"
                         key={label}
                         onClick={() => {
+                          setQueueLoading(true);
                           setQueueState(filterVal);
                           setQueuePage(1);
                           setRowSelection({});
@@ -1167,6 +1233,18 @@ export default function BOSYPage() {
           )}
         </AnimatePresence>
       </Tabs>
+
+      <AnimatePresence>
+        {enrollingProgress && (
+          <BatchEnrollingLoader
+            currentLearnerName={enrollingProgress.currentLearnerName}
+            currentLrn={enrollingProgress.currentLrn}
+            completedLearners={enrollingProgress.completedLearners}
+            totalLearners={enrollingProgress.totalLearners}
+            isComplete={enrollingProgress.isComplete}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

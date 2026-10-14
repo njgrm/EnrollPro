@@ -1,5 +1,4 @@
 import { motion, AnimatePresence } from "motion/react";
-import { useSearchParams } from "react-router";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import SchoolProfileTab from "./SchoolProfileTab";
 import SchoolYearTab from "./SchoolYearTab";
@@ -13,6 +12,7 @@ import { useHeaderStore } from "@/store/header.slice";
 import { useGuardedTabChange } from "@/shared/hooks/useUnsavedChanges";
 
 import { useQuery } from "@tanstack/react-query";
+import { SettingsSkeleton } from "@/shared/components/PageLoadingSkeleton";
 
 const VALID_TABS = [
   "profile",
@@ -35,7 +35,7 @@ export default function Settings() {
   }, [updateUiPreference]);
   const guardedTabChange = useGuardedTabChange(handleTabChange);
 
-  useQuery({
+  const schoolYearsQuery = useQuery({
     queryKey: ["schoolYears"],
     queryFn: async () => {
       const res = await api.get("/school-years");
@@ -59,6 +59,10 @@ export default function Settings() {
     setTitle("System Configuration");
     return () => setTitle(null);
   }, [setTitle]);
+
+  if (schoolYearsQuery.isPending && !schoolYearsQuery.data) {
+    return <SettingsSkeleton />;
+  }
 
   return (
     <div className="flex flex-1 h-full w-full min-h-0 flex-col">

@@ -5,9 +5,20 @@ import { useState, useEffect, useRef } from "react";
  * Modified to ensure loading skeletons appear immediately ON EVERY MOUNT
  * and display for a MINIMUM amount of time (default 400ms) to prevent flashing.
  */
-export function useDelayedLoading(isLoading: boolean, minimumLoadTimeMs = 400) {
+export function useDelayedLoading(
+  isLoading: boolean,
+  minimumLoadTimeMs = 350,
+  resetKey?: unknown,
+) {
   // Always start as true to enforce minimum loading skeleton on mount
   const [isShowingLoading, setIsShowingLoading] = useState(true);
+  const [prevResetKey, setPrevResetKey] = useState<unknown>(resetKey);
+
+  // Idiomatic React pattern: adjust state during render when resetKey prop changes
+  if (resetKey !== undefined && resetKey !== prevResetKey) {
+    setPrevResetKey(resetKey);
+    setIsShowingLoading(true);
+  }
   
   // Do not initialize with Date.now() during render, as React Suspense or 
   // concurrent rendering can cause long delays before the effect actually runs.
@@ -15,8 +26,15 @@ export function useDelayedLoading(isLoading: boolean, minimumLoadTimeMs = 400) {
   const timeoutRef = useRef<number | null>(null);
   const activationFrameRef = useRef<number | null>(null);
   const prevIsLoading = useRef<boolean>(isLoading);
+  const prevResetKeyRef = useRef<unknown>(resetKey);
 
   useEffect(() => {
+    // Detect change in resetKey (such as tab change) to restart loading timer
+    if (resetKey !== undefined && resetKey !== prevResetKeyRef.current) {
+      prevResetKeyRef.current = resetKey;
+      startTimeRef.current = Date.now();
+    }
+
     // Set the start time exactly when the component is mounted and painted to the screen
     if (startTimeRef.current === null) {
       startTimeRef.current = Date.now();
@@ -62,7 +80,7 @@ export function useDelayedLoading(isLoading: boolean, minimumLoadTimeMs = 400) {
         window.clearTimeout(timeoutRef.current);
       }
     };
-  }, [isLoading, minimumLoadTimeMs]);
+  }, [isLoading, minimumLoadTimeMs, resetKey]);
 
   // A request can start between renders. Include the source state directly so
   // consumers never render an empty result before this hook's effect runs.

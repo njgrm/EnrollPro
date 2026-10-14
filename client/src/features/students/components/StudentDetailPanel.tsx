@@ -892,7 +892,7 @@ export function StudentDetailPanel({
     }
   };
 
-  if (showSkeleton) {
+  if (loading) {
     return (
       <div className="flex flex-col h-full overflow-hidden bg-background">
         {showHeader && (
@@ -1077,6 +1077,10 @@ export function StudentDetailPanel({
             <div className="flex items-start gap-4 sm:gap-6">
               <UserPhoto
                 photo={student.studentPhoto}
+                entityType="learner"
+                entityId={student.id}
+                firstName={student.firstName}
+                lastName={student.lastName}
                 containerClassName="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 border-primary border-dashed shadow-md shrink-0"
                 className="w-full h-full object-cover rounded-full"
                 onEnlarge={() => setIsPhotoEnlarged(true)}

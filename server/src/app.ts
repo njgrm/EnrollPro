@@ -32,6 +32,8 @@ import integrationRoutes from "./features/integration/integration.router.js";
 import addressRoutes from "./features/address/address.router.js";
 import { geographyRouter } from "./features/geography/geography.router.js";
 import systemRoutes from "./features/system/system.router.js";
+import mediaRoutes from "./features/media/media.routes.js";
+import { prisma } from "./lib/prisma.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { historicalReadOnlyGuard } from "./middleware/historical-read-only.guard.js";
 import { schoolYearContext } from "./middleware/school-year-context.middleware.js";
@@ -168,6 +170,8 @@ apiRouter.use("/integration/v1", integrationRoutes);
 // Public reference data — no auth; needed by unauthenticated online applicants
 apiRouter.use("/address", addressRoutes);
 apiRouter.use("/geography", geographyRouter);
+apiRouter.use("/media", mediaRoutes);
+apiRouter.use("/v1/media", mediaRoutes);
 
 // Catch-all for unmatched API routes (Express 5 regex)
 apiRouter.all(/(.*)/, (req, res) => {
@@ -180,7 +184,43 @@ apiRouter.all(/(.*)/, (req, res) => {
 app.use("/api", apiRouter);
 
 // Static files for uploads — open CORS so any tailnet host can fetch images/logos/docs
-app.use("/uploads", cors({ origin: "*" }), express.static(uploadsDir));
+app.use("/api/v1/media", mediaRoutes);
+
+// Storage Layer Protection (RA 10173 Compliance):
+// Explicitly block all direct public access to learner/personnel media assets.
+// Direct URL requests return 403 Forbidden. Only public school logos remain accessible.
+app.use(
+  "/uploads",
+  cors({ origin: "*" }),
+  async (req, res, next) => {
+    const filename = path.basename(req.path);
+
+    // Exempt public school logos used in landing/login/portal headers
+    if (filename.toLowerCase().includes("logo") || filename.toLowerCase().includes("ememhs")) {
+      return next();
+    }
+
+    try {
+      const setting = await prisma.schoolSetting.findFirst({
+        select: { logoUrl: true, logoPath: true },
+      });
+      if (setting) {
+        const activeLogoFile = setting.logoUrl ? path.basename(setting.logoUrl) : null;
+        if (activeLogoFile && activeLogoFile === filename) {
+          return next();
+        }
+      }
+    } catch {
+      // Proceed with security block if setting lookup fails
+    }
+
+    res.status(403).json({
+      code: "FORBIDDEN",
+      message: "Direct access to media assets is forbidden under RA 10173. Time-limited signed URLs must be used.",
+    });
+  },
+  express.static(uploadsDir)
+);
 
 // Error handler
 app.use(errorHandler);

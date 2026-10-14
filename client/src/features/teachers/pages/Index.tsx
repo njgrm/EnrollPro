@@ -19,6 +19,7 @@ import { cn, getGradeLevelBadgeStyles, formatGradeLevel, getGradeLevelButtonStyl
 import { useHeaderStore } from "@/store/header.slice";
 import { useAuthStore } from "@/store/auth.slice";
 import { useRealtimeRefresh } from "@/shared/hooks/useRealtimeRefresh";
+import { RegistrySkeleton } from "@/shared/components/PageLoadingSkeleton";
 
 import {
   SearchIcon,
@@ -281,6 +282,7 @@ export default function Teachers() {
 
     const ROLE_LABELS: Record<string, string> = {
       SYSTEM_ADMIN: "System Admin",
+      PRINCIPAL: "School Head",
       HEAD_REGISTRAR: "Head Registrar",
       CLASS_ADVISER: "Class Adviser",
       TEACHER: "Teacher",
@@ -570,7 +572,8 @@ export default function Teachers() {
           .join(" ");
       }
       const roles = t.userAccount?.roles || [];
-      if (roles.includes("SYSTEM_ADMIN")) return "School Head";
+      if (roles.includes("SYSTEM_ADMIN")) return "System Admin";
+      if (roles.includes("PRINCIPAL")) return "School Head";
       if (roles.includes("HEAD_REGISTRAR")) return "Registrar";
       return "Subject Teacher";
     }
@@ -674,6 +677,10 @@ export default function Teachers() {
               <div className="flex min-w-0 items-center gap-3 py-3 pl-2">
                 <UserPhoto
                   photo={row.original.photoPath}
+                  entityType="teacher"
+                  entityId={row.original.id}
+                  firstName={row.original.firstName}
+                  lastName={row.original.lastName}
                   containerClassName="w-12 h-12 rounded-full shadow-sm border shrink-0 border-2 border-primary border-solid"
                   className="w-full h-full object-cover"
                   alt={formatTeacherName(row.original)}
@@ -1121,6 +1128,10 @@ export default function Teachers() {
     return () => setTitle(null);
   }, [setTitle]);
 
+  if (teachersQuery.isPending && !teachersQuery.data) {
+    return <RegistrySkeleton />;
+  }
+
   return (
     <div className="flex flex-col min-w-0 w-full max-w-full overflow-hidden h-[calc(100vh-6rem)] gap-4">
       <input
@@ -1266,6 +1277,7 @@ export default function Teachers() {
             columns={columns}
             data={paginatedTeachers}
             loading={loading}
+            transitionKey={activeMetric}
             loadingBehavior="delayed"
             estimatedRowHeight={60}
             className="border-none rounded-md h-full"

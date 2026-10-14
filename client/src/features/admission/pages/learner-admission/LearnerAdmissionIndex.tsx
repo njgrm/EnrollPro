@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query"
+import { RegistrySkeleton } from "@/shared/components/PageLoadingSkeleton"
 import { queryKeys } from "@/shared/lib/queryKeys"
 import type { ColumnDef } from "@tanstack/react-table"
 import { ClipboardCheck, Loader2, Search, SlidersHorizontal, Info, Lock, MoreHorizontal, Plus, X } from "lucide-react"
@@ -212,7 +213,7 @@ function EnrollmentStatusBadge({ application }: { application: RankedApplication
 export default function LearnerAdmissionIndex() {
   const queryClient = useQueryClient()
   const setTitle = useHeaderStore((state) => state.setTitle)
-  const { activeSchoolYearLabel, steEnabled, spaEnabled, spsEnabled, steCapacity, spaCapacity, spsCapacity, steRosterLocked, spaRosterLocked, spsRosterLocked } = useSettingsStore()
+  const { steEnabled, spaEnabled, spsEnabled, steCapacity, spaCapacity, spsCapacity, steRosterLocked, spaRosterLocked, spsRosterLocked } = useSettingsStore()
   const [selectedTab, setSelectedTab] = useState<ScpProgram | "">("")
   const [searchTerm, setSearchTerm] = useState("")
   const [page, setPage] = useState(1)
@@ -311,6 +312,7 @@ export default function LearnerAdmissionIndex() {
       return data
     },
     enabled: activeTab !== "",
+    placeholderData: keepPreviousData,
   })
 
   useEffect(() => {
@@ -866,11 +868,11 @@ export default function LearnerAdmissionIndex() {
         else if (s === "DROPPED_OUT") label = "Dropped Out";
         else if (s === "TRANSFERRED_OUT") label = "Transferred Out";
 
-        let colorClass = "";
-        let hoverClass = "";
-        let titleColorClass = "";
-        let title = "";
-        let description = "";
+        let colorClass: string;
+        let hoverClass: string;
+        let titleColorClass: string;
+        let title: string;
+        let description: string;
 
         if (s === "PROMOTED" || s === "PROMOTED_TO_BEC") {
           title = "PROMOTED";
@@ -1007,6 +1009,10 @@ export default function LearnerAdmissionIndex() {
         </div>
       </div>
     )
+  }
+
+  if (isFetching && applicants.length === 0) {
+    return <RegistrySkeleton />
   }
 
   return (
@@ -1164,37 +1170,39 @@ export default function LearnerAdmissionIndex() {
 
           <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
             <div className="min-h-0 flex-1 overflow-auto bg/5">
-              {!isFetching && applicants.length === 0 ? (
-                <div className="flex h-full min-h-[420px] flex-col items-center justify-center px-6 text-center">
-                  <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <ClipboardCheck className="h-8 w-8" />
+              <DataTable<ApplicationTableRow, unknown>
+                key={activeTab}
+                transitionKey={activeTab}
+                loading={isFetching}
+                columns={columns}
+                data={paginatedApplicants}
+                emptyStateContent={
+                  <div className="flex h-full min-h-[420px] flex-col items-center justify-center px-6 text-center">
+                    <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <ClipboardCheck className="h-8 w-8" />
+                    </div>
+                    <h2 className="text-2xl font-extrabold text-foreground">No Applicants Found</h2>
+                    <p className="mt-2 max-w-lg text-base text-muted-foreground">
+                      There are no applicants currently registered for this program. Wait for online submissions or manually encode a walk-in.
+                    </p>
+                    {previousSchoolYearFilter === "all" && (
+                      <Button
+                        type="button"
+                        size="lg"
+                        disabled={isRosterLocked}
+                        title={isRosterLocked ? "Cannot encode walk-ins while the roster is finalized." : undefined}
+                        onClick={() => {
+                          setWalkInSuccess(null)
+                          setIsWalkInOpen(true)
+                        }}
+                        className="mt-6 min-w-72 text-base font-bold"
+                      >
+                        <Plus className="mr-2 h-5 w-5" />
+                        Encode Walk-in Applicant
+                      </Button>
+                    )}
                   </div>
-                  <h2 className="text-2xl font-extrabold text-foreground">No Applicants Found</h2>
-                  <p className="mt-2 max-w-lg text-base text-muted-foreground">
-                    There are no applicants currently registered for this program. Wait for online submissions or manually encode a walk-in.
-                  </p>
-                  {previousSchoolYearFilter === "all" && (
-                    <Button
-                      type="button"
-                      size="lg"
-                      disabled={isRosterLocked}
-                      title={isRosterLocked ? "Cannot encode walk-ins while the roster is finalized." : undefined}
-                      onClick={() => {
-                        setWalkInSuccess(null)
-                        setIsWalkInOpen(true)
-                      }}
-                      className="mt-6 min-w-72 text-base font-bold"
-                    >
-                      <Plus className="mr-2 h-5 w-5" />
-                      Encode Walk-in Applicant
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <DataTable<ApplicationTableRow, unknown>
-                  key={activeTab}
-                  columns={columns}
-                  data={paginatedApplicants}
+                }
                   getRowId={(row) => row.id.toString()}
                   isHeaderRow={isCustomHeaderRow}
                   renderHeaderRow={(row, columnsCount) => {
@@ -1245,7 +1253,6 @@ export default function LearnerAdmissionIndex() {
                     )
                   }}
                   meta={{ edits, updateEdit, isRosterLocked }}
-                  loading={isFetching}
                   loadingBehavior="delayed"
                   virtualize={false}
                   className="h-full rounded-md border-none"
@@ -1254,7 +1261,6 @@ export default function LearnerAdmissionIndex() {
                   noResultsMessage="No applicants found for the selected filters."
                   striped={false}
                 />
-              )}
             </div>
             <PaginationBar total={filteredApplicants.filter(a => !isCustomHeaderRow(a)).length} page={page} limit={limit} onPageChange={setPage} onLimitChange={(nextLimit) => { setLimit(nextLimit); setPage(1) }} itemName="Applicants" />
           </CardContent>

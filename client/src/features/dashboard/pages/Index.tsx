@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
 import api from "@/shared/api/axiosInstance";
 import { useSchoolYearContext } from "@/shared/hooks/useSchoolYearContext";
-import { PageLoadingSkeleton } from "@/shared/components/PageLoadingSkeleton";
+import { DashboardSkeleton } from "@/shared/components/PageLoadingSkeleton";
 import { useHeaderStore } from "@/store/header.slice";
 import type { DashboardStats } from "../types";
 import { useRealtimeRefresh } from "@/shared/hooks/useRealtimeRefresh";
@@ -99,8 +99,10 @@ export default function DashboardIndex() {
     },
   });
 
-  if (loading || !stats) {
-    return <PageLoadingSkeleton />;
+  const isLoading = loading || !stats;
+
+  if (isLoading) {
+    return <DashboardSkeleton />;
   }
 
   const phase = stats.systemPhase;
@@ -125,9 +127,9 @@ export default function DashboardIndex() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
+      transition={{ duration: 0.22, ease: "easeOut" }}
       className="flex min-h-0 min-w-0 w-full flex-1 flex-col gap-4 pb-6"
     >
       <DashboardPhaseBanner

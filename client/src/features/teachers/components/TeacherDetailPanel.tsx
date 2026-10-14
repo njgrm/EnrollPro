@@ -778,7 +778,8 @@ export const TeacherDetailPanel = memo(function TeacherDetailPanel({
   };
   // Helper maps for human-readable labels in view mode
   const ROLE_LABEL_MAP: Record<string, string> = {
-    SYSTEM_ADMIN: "School Head",
+    SYSTEM_ADMIN: "System Admin",
+    PRINCIPAL: "School Head",
     HEAD_REGISTRAR: "Registrar",
     TEACHER: "Teacher",
     CLASS_ADVISER: "Class Adviser",
@@ -1187,7 +1188,8 @@ export const TeacherDetailPanel = memo(function TeacherDetailPanel({
                             render={({ field }) => (
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
                                 {([
-                                  { value: "SYSTEM_ADMIN", label: "School Head" },
+                                  { value: "SYSTEM_ADMIN", label: "System Admin" },
+                                  { value: "PRINCIPAL", label: "School Head" },
                                   { value: "HEAD_REGISTRAR", label: "Registrar" },
                                   { value: "TEACHER", label: "Teacher" },
                                   { value: "CLASS_ADVISER", label: "Class Adviser" },

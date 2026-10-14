@@ -18,7 +18,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/ui/table";
-import { Skeleton } from "@/shared/ui/skeleton";
 import { cn } from "@/shared/lib/utils";
 import { useDelayedLoading } from "@/shared/hooks/useDelayedLoading";
 
@@ -42,6 +41,7 @@ export interface DataTableProps<TData, TValue> {
   onRowClick?: (row: TData) => void;
   loading?: boolean;
   loadingBehavior?: "immediate" | "delayed";
+  transitionKey?: unknown;
   className?: string;
   tableClassName?: string;
   noResultsMessage?: string;
@@ -197,7 +197,8 @@ export function DataTable<TData, TValue>({
   getRowId,
   onRowClick,
   loading = false,
-  loadingBehavior = "immediate",
+  loadingBehavior = "delayed",
+  transitionKey,
   className,
   tableClassName,
   noResultsMessage = "No results.",
@@ -220,7 +221,7 @@ export function DataTable<TData, TValue>({
   isRowClickable,
   getRowAriaExpanded,
   getRowAriaLabel,
-  skeletonRowCount = 50,
+  skeletonRowCount: _skeletonRowCount = 50,
   isHeaderRow,
   renderHeaderRow,
   striped = true,
@@ -280,9 +281,9 @@ export function DataTable<TData, TValue>({
   });
 
   const virtualItems = rowVirtualizer.getVirtualItems();
-  const delayedLoading = useDelayedLoading(loading, 400);
-  const showLoadingRows = loadingBehavior === "immediate" ? loading : delayedLoading;
-  const suppressEmptyDuringDelayedLoading = loading && !showLoadingRows;
+  const delayedLoading = useDelayedLoading(Boolean(loading), 350, transitionKey);
+  const showLoadingRows = loadingBehavior === "immediate" ? Boolean(loading) : delayedLoading;
+  const suppressEmptyDuringDelayedLoading = (Boolean(loading) || delayedLoading) && !showLoadingRows;
 
   return (
     <div
@@ -346,8 +347,8 @@ export function DataTable<TData, TValue>({
                   <div className="min-h-[460px] flex flex-col items-center justify-center space-y-4">
                     <Loader2 className="w-10 h-10 text-primary animate-spin" />
                     <div className="flex flex-col items-center space-y-1">
-                      <p className="text-2xl font-extrabold">Loading...</p>
-                      <p className="text-base">Fetching records...</p>
+                      <p className="text-2xl font-extrabold text-foreground">Loading...</p>
+                      <p className="text-base text-muted-foreground">Fetching records...</p>
                     </div>
                   </div>
                 </TableCell>
