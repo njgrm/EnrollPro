@@ -484,7 +484,7 @@ export default function Login() {
       if (rememberMe) {
         localStorage.setItem(
           "rememberedAccountName",
-          payload.user.accountName || "",
+          payload.user.accountName || payload.user.employeeId || "",
         );
       } else {
         localStorage.removeItem("rememberedAccountName");

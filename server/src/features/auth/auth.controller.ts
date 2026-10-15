@@ -213,13 +213,14 @@ export function clearAuthSession(res: Response): void {
 }
 
 export function toAuthUserResponse(user: AuthUser) {
+  const userFullName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
   return {
     id: user.id,
     firstName: user.firstName,
     lastName: user.lastName,
     email: user.email,
     employeeId: user.employeeId,
-    accountName: user.accountName,
+    accountName: user.accountName || user.employeeId || user.email || userFullName,
     roles: normalizeApplicationRoles(user.roles),
     ancillaryRoles: user.ancillaryRoles,
     photoPath: user.photoPath,
@@ -417,10 +418,16 @@ export async function login(req: Request, res: Response): Promise<void> {
     },
   });
 
+  const userFullName = [updatedUser.firstName, updatedUser.lastName].filter(Boolean).join(" ").trim();
+  const userIdentifier = updatedUser.employeeId || updatedUser.accountName || updatedUser.email;
+  const userLabel = userFullName && userIdentifier
+    ? `${userFullName} (${userIdentifier})`
+    : userFullName || userIdentifier || `ID: ${updatedUser.id}`;
+
   await auditLog({
     userId: updatedUser.id,
     actionType: "USER_LOGIN",
-    description: `User ${updatedUser.accountName || updatedUser.email} logged in from ${req.ip}`,
+    description: `User ${userLabel} logged in from ${req.ip}`,
     req,
   });
 

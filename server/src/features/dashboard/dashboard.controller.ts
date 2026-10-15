@@ -307,31 +307,81 @@ export async function getStats(req: Request, res: Response): Promise<void> {
             motherTongue: true,
             hasPsaBirthCertificate: true,
             missingRequirements: true,
+            user: {
+              select: { mobileNumber: true },
+            },
+            enrollmentApplications: {
+              where: { schoolYearId: { not: schoolYearId } },
+              orderBy: { schoolYearId: "desc" },
+              take: 2,
+              select: {
+                contactNumber: true,
+                addresses: {
+                  select: {
+                    addressType: true,
+                    barangay: true,
+                    cityMunicipality: true,
+                    province: true,
+                    houseNoStreet: true,
+                    street: true,
+                    sitio: true,
+                  },
+                },
+                familyMembers: {
+                  select: {
+                    contactNumber: true,
+                  },
+                },
+              },
+            },
           },
         },
         addresses: {
-          where: { addressType: "CURRENT" },
           select: {
+            addressType: true,
             barangay: true,
             cityMunicipality: true,
+            province: true,
+            houseNoStreet: true,
+            street: true,
+            sitio: true,
           },
         },
         familyMembers: {
           select: { contactNumber: true },
+        },
+        scpAdmission: {
+          select: {
+            addresses: {
+              select: {
+                addressType: true,
+                barangay: true,
+                cityMunicipality: true,
+                province: true,
+                houseNoStreet: true,
+                street: true,
+                sitio: true,
+              },
+            },
+            familyMembers: {
+              select: { contactNumber: true },
+            },
+          },
         },
         enrollmentRecord: {
           select: {
             id: true,
             isLateEnrollee: true,
             dropOutDate: true,
-            transferOutDate: true, isDraft: true,
+            transferOutDate: true,
+            isDraft: true,
             eosyStatus: true,
             section: {
               select: { programType: true },
             },
           },
         },
-      }
+      },
     });
 
     applications.forEach(app => {
@@ -398,19 +448,45 @@ export async function getStats(req: Request, res: Response): Promise<void> {
     const documentFollowUpLearners = new Set<number>();
     const pendingValidationLearners = new Set<number>();
 
-    pipelineApplications.forEach((application) => {
+    // SF1 Learner Information Check applies strictly to active enrolled/sectioning learners (matching Learner Directory)
+    activeApplications.forEach((application) => {
       const learnerId = application.learnerId;
-      const currentAddress = application.addresses[0];
+
+      const allAddresses = [
+        ...application.addresses,
+        ...(application.scpAdmission?.addresses ?? []),
+        ...application.learner.enrollmentApplications.flatMap((app) => app.addresses),
+      ];
+
+      const resolvedAddress =
+        allAddresses.find((a) => a.addressType === "CURRENT") ??
+        allAddresses.find((a) => a.addressType === "PERMANENT") ??
+        allAddresses[0];
+
       const hasAddress = Boolean(
-        currentAddress
-        && hasText(currentAddress.barangay)
-        && hasText(currentAddress.cityMunicipality),
+        resolvedAddress &&
+          (hasText(resolvedAddress.barangay) ||
+            hasText(resolvedAddress.cityMunicipality) ||
+            hasText(resolvedAddress.province) ||
+            hasText(resolvedAddress.houseNoStreet) ||
+            hasText(resolvedAddress.street) ||
+            hasText(resolvedAddress.sitio)),
       );
-      const hasGuardianContact =
-        hasText(application.contactNumber)
-        || application.familyMembers.some((member) =>
-          hasText(member.contactNumber),
-        );
+
+      const allFamilyMembers = [
+        ...application.familyMembers,
+        ...(application.scpAdmission?.familyMembers ?? []),
+        ...application.learner.enrollmentApplications.flatMap((app) => app.familyMembers),
+      ];
+
+      const hasGuardianContact = Boolean(
+        hasText(application.contactNumber) ||
+          allFamilyMembers.some((member) => hasText(member.contactNumber)) ||
+          hasText(application.learner.user?.mobileNumber) ||
+          application.learner.enrollmentApplications.some((app) =>
+            hasText(app.contactNumber),
+          ),
+      );
 
       const learnerInfo = {
         name: `${application.learner.lastName}, ${application.learner.firstName}`,
@@ -434,27 +510,46 @@ export async function getStats(req: Request, res: Response): Promise<void> {
       }
 
       const hasSf1Gap =
-        !isValidLrn(application.learner.lrn)
-        || !application.learner.birthdate
-        || !hasText(application.learner.motherTongue)
-        || !hasAddress
-        || !hasGuardianContact;
-      const hasDocumentGap =
-        application.complianceStatus === "PENDING"
-        || application.isMissingSf9
-        || !application.learner.hasPsaBirthCertificate
-        || application.learner.missingRequirements.length > 0;
-      const hasQueueValidation =
-        application.status === "PENDING_VERIFICATION"
-        || (
-          application.status === "READY_FOR_SECTIONING"
-          && !application.enrollmentRecord
-        );
+        !isValidLrn(application.learner.lrn) ||
+        !application.learner.birthdate ||
+        !hasText(application.learner.motherTongue) ||
+        !hasAddress ||
+        !hasGuardianContact;
 
-      if (hasSf1Gap || hasDocumentGap || hasQueueValidation) {
+      const hasDocumentGap =
+        application.complianceStatus === "PENDING" ||
+        application.isMissingSf9 ||
+        !application.learner.hasPsaBirthCertificate ||
+        application.learner.missingRequirements.length > 0;
+
+      if (hasSf1Gap || hasDocumentGap) {
         pendingValidationLearners.add(learnerId);
       }
-      if (hasDocumentGap) documentFollowUpLearners.add(learnerId);
+      if (hasDocumentGap) {
+        documentFollowUpLearners.add(learnerId);
+      }
+    });
+
+    // Also include intake pipeline queue items and document follow-ups in pendingSystemValidations
+    pipelineApplications.forEach((application) => {
+      const hasDocumentGap =
+        application.complianceStatus === "PENDING" ||
+        application.isMissingSf9 ||
+        !application.learner.hasPsaBirthCertificate ||
+        application.learner.missingRequirements.length > 0;
+
+      if (hasDocumentGap) {
+        documentFollowUpLearners.add(application.learnerId);
+      }
+
+      const hasQueueValidation =
+        application.status === "PENDING_VERIFICATION" ||
+        (application.status === "READY_FOR_SECTIONING" &&
+          !application.enrollmentRecord);
+
+      if (hasQueueValidation || hasDocumentGap) {
+        pendingValidationLearners.add(application.learnerId);
+      }
     });
 
     const pendingEnrollmentTotal = pipelineApplications.filter(

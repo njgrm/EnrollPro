@@ -72,7 +72,7 @@ router.post(
 router.post(
   "/bulk-confirm",
   authenticate,
-  authorize("HEAD_REGISTRAR", "SYSTEM_ADMIN", "GRADE 7 COORDINATOR", "GRADE 8 COORDINATOR", "GRADE 9 COORDINATOR", "GRADE 10 COORDINATOR"),
+  authorize("HEAD_REGISTRAR", "SYSTEM_ADMIN", "TEACHER", "CLASS_ADVISER", "GRADE 7 COORDINATOR", "GRADE 8 COORDINATOR", "GRADE 9 COORDINATOR", "GRADE 10 COORDINATOR"),
   staffIntakePhaseGuard,
   bulkConfirmReturnHandler,
 );

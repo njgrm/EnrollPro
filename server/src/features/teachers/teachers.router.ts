@@ -14,8 +14,17 @@ import {
 
 const router: Router = Router();
 
-// All teacher routes require SYSTEM_ADMIN or PRINCIPAL role
-router.use(authenticate, authorize("SYSTEM_ADMIN", "PRINCIPAL"));
+// Authentication required for all teacher endpoints
+router.use(authenticate);
+
+// Profile endpoint accessible to any authenticated personnel user for their own profile
+router.get("/profile", teachersCtrl.getProfile);
+
+// Show endpoint allows SYSTEM_ADMIN, PRINCIPAL, or the teacher themselves
+router.get("/:id", teachersCtrl.show);
+
+// All management and mutation routes require SYSTEM_ADMIN or PRINCIPAL role
+router.use(authorize("SYSTEM_ADMIN", "PRINCIPAL"));
 
 router.get("/", teachersCtrl.index);
 router.get("/:id/designation", teachersCtrl.showDesignation);
@@ -31,7 +40,6 @@ router.put(
   validate(teacherDesignationSchema),
   teachersCtrl.upsertDesignation,
 );
-router.get("/:id", teachersCtrl.show);
 router.post("/", validate(teacherSchema), teachersCtrl.store);
 router.patch("/:id", validate(updateTeacherSchema), teachersCtrl.update);
 router.post("/:id/photo", secureUpload.single("photo"), teachersCtrl.uploadPhoto);

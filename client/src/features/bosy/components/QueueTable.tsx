@@ -61,6 +61,7 @@ interface QueueTableProps {
   isSearching?: boolean;
   queueState: "PENDING" | "CONFIRMED" | "TEMPORARY" | "TRANSFER_REQUEST";
   allowActions: boolean;
+  isStrictClassAdviser?: boolean;
   rowSelection: RowSelectionState;
   onRowSelectionChange: OnChangeFn<RowSelectionState>;
   onConfirmSingle: (applicationId: number) => void;
@@ -380,10 +381,12 @@ function QueueMobileCard({
   onMarkConfirmedTransferOut,
   confirmingIds,
   busyActionIds,
+  isStrictClassAdviser,
 }: {
   item: BOSYQueueItem;
   queueState: QueueTableProps["queueState"];
   allowActions: boolean;
+  isStrictClassAdviser?: boolean;
   selected: boolean;
   onSelectionChange: (checked: boolean) => void;
   onConfirmSingle: (applicationId: number) => void;
@@ -426,7 +429,8 @@ function QueueMobileCard({
     }
 
     if (
-      (queueState === "CONFIRMED" || queueState === "TEMPORARY")
+      !isStrictClassAdviser
+      && (queueState === "CONFIRMED" || queueState === "TEMPORARY")
       && (item.status === "READY_FOR_SECTIONING" || item.status === "OFFICIALLY_ENROLLED")
     ) {
       return (
@@ -446,7 +450,7 @@ function QueueMobileCard({
   })();
 
   const menuAction = (() => {
-    if (!allowActions) return null;
+    if (!allowActions || isStrictClassAdviser) return null;
 
     if (queueState === "PENDING" && item.status === "PENDING_CONFIRMATION") {
       return (
@@ -571,6 +575,7 @@ export function QueueTable({
   confirmingIds,
   busyActionIds,
   processedIds,
+  isStrictClassAdviser,
 }: QueueTableProps) {
   const columns = useMemo<ColumnDef<BOSYQueueItem>[]>(() => {
     const base: ColumnDef<BOSYQueueItem>[] = [
@@ -747,18 +752,21 @@ export function QueueTable({
                 {isConfirming && <Loader2 className="mr-2 h-4 w-4 " />}
                 Enroll
               </Button>
-              <ActionMenuButton
-                busy={isBusy}
-                disabled={isConfirming || isBusy}
-                label="Tag as Not Returning"
-                onSelect={() => onTransferRequest(r)}
-              />
+              {!isStrictClassAdviser && (
+                <ActionMenuButton
+                  busy={isBusy}
+                  disabled={isConfirming || isBusy}
+                  label="Tag as Not Returning"
+                  onSelect={() => onTransferRequest(r)}
+                />
+              )}
             </div>
           );
         }
 
         if (
-          (queueState === "CONFIRMED" || queueState === "TEMPORARY")
+          !isStrictClassAdviser
+          && (queueState === "CONFIRMED" || queueState === "TEMPORARY")
           && (r.status === "READY_FOR_SECTIONING" || r.status === "OFFICIALLY_ENROLLED")
         ) {
           return (
@@ -782,7 +790,7 @@ export function QueueTable({
           );
         }
 
-        return null;
+        return <div className="py-3 text-center text-muted-foreground">—</div>;
       },
       size: 220,
       minSize: 200,
@@ -800,6 +808,7 @@ export function QueueTable({
     confirmingIds,
     busyActionIds,
     allowActions,
+    isStrictClassAdviser,
   ]);
 
   const isMobileLoading = useDelayedLoading(loading, 350, queueState);
@@ -842,6 +851,7 @@ export function QueueTable({
                   onMarkConfirmedTransferOut={onMarkConfirmedTransferOut}
                   confirmingIds={confirmingIds}
                   busyActionIds={busyActionIds}
+                  isStrictClassAdviser={isStrictClassAdviser}
                 />
               );
             })}

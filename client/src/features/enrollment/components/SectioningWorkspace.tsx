@@ -762,6 +762,8 @@ export function SectioningWorkspace() {
   const [commitDialogOpen, setCommitDialogOpen] = useState(false);
   const [allowCapacityOverride, setAllowCapacityOverride] = useState(false);
   const [commitProcessing, setCommitProcessing] = useState(false);
+  const isCommittingRef = useRef(false);
+  const justCommittedRef = useRef(false);
   const [finalizingProgress, setFinalizingProgress] = useState<{
     currentSection: string;
     completedSections: number;
@@ -905,9 +907,13 @@ export function SectioningWorkspace() {
           draft = { ...draft, schoolYearId: ayId };
         }
         if (draft === null) {
+          if (!prev[activeGradeLevelId]) return prev;
           const copy = { ...prev };
           delete copy[activeGradeLevelId];
           return copy;
+        }
+        if (prev[activeGradeLevelId] === draft) {
+          return prev;
         }
         return { ...prev, [activeGradeLevelId]: draft };
       });
@@ -1006,6 +1012,7 @@ export function SectioningWorkspace() {
     }
   }, [sectionsData, draftPlacement, sections.length]);
   useEffect(() => {
+    if (justCommittedRef.current) return;
     if (poolData) {
       if (!draftPlacement) {
         setPool(
@@ -1020,7 +1027,7 @@ export function SectioningWorkspace() {
   }, [poolData, draftPlacement]);
 
   useEffect(() => {
-    if (!poolData || poolInitialLoading) return;
+    if (!poolData || poolInitialLoading || isCommittingRef.current || justCommittedRef.current) return;
 
     setDraftPlacement((currentDraft) => {
       if (!currentDraft) return currentDraft;
@@ -1311,12 +1318,13 @@ export function SectioningWorkspace() {
   useEffect(() => {
     setSelectedAppIds([]);
     setDraftMoveAction(null);
+    justCommittedRef.current = false;
   }, [activeGradeLevelId]);
 
   const isDraftActive = draftPlacement !== null;
 
   useEffect(() => {
-    if (!draftPlacement || isHistoricalReadOnly) return;
+    if (!draftPlacement || isHistoricalReadOnly || isCommittingRef.current || justCommittedRef.current) return;
 
     const handler = setTimeout(async () => {
       try {
@@ -1592,15 +1600,38 @@ export function SectioningWorkspace() {
   };
 
   useEffect(() => {
-    if (poolInitialLoading || sectionsInitialLoading || draftPlacement) return;
+    if (
+      poolInitialLoading ||
+      sectionsInitialLoading ||
+      draftPlacement ||
+      isCommittingRef.current ||
+      justCommittedRef.current
+    ) {
+      return;
+    }
 
-    if (currentGradePool.some((l) => l.draftSectionId)) {
+    const hasActiveServerDraft = currentGradePool.some(
+      (l) => Boolean(l.draftSectionId) && !l.isFinalized,
+    );
+
+    if (hasActiveServerDraft) {
       const draft = loadDraftPlacementFromServer(
         Number(activeGradeLevelId),
         currentGradePool,
         currentGradeSections,
         ayId ?? undefined,
       );
+
+      const hasUncommittedChanges =
+        draft.unplacedLearners.length > 0 ||
+        draft.rosters.some((r) =>
+          r.learners.some((l) => !l.isFinalized || l.isOverridden || l.isNew),
+        );
+
+      if (!hasUncommittedChanges) {
+        return;
+      }
+
       const populatedSectionIds = draft.rosters
         .filter((roster) => roster.learners.length > 0)
         .map((roster) => roster.section.id);
@@ -1616,6 +1647,7 @@ export function SectioningWorkspace() {
   const generateDraftPlacement = async () => {
     if (!activeGradeLevelId || autoAssignPhase !== "idle" || processing) return;
 
+    justCommittedRef.current = false;
     setAutoAssignPhase("loading");
 
     try {
@@ -1989,6 +2021,8 @@ export function SectioningWorkspace() {
     // Close confirmation dialog immediately so the right pane loading overlay is in full focus
     setCommitDialogOpen(false);
     setCommitProcessing(true);
+    isCommittingRef.current = true;
+    justCommittedRef.current = true;
 
     const firstProg = formatSectionProgramLabel(
       activeRosters[0].section.programType,
@@ -2158,6 +2192,18 @@ export function SectioningWorkspace() {
 
       setCommitDialogOpen(false);
       setDraftPlacement(null);
+
+      try {
+        const stored = localStorage.getItem(storageKey);
+        if (stored) {
+          const parsed = JSON.parse(stored) as Record<string, unknown>;
+          delete parsed[activeGradeLevelId];
+          localStorage.setItem(storageKey, JSON.stringify(parsed));
+        }
+      } catch {
+        // ignore
+      }
+
       setExpandedSectionIds(new Set());
       setDraftMoveAction(null);
       setMoveDestinationSectionId("");
@@ -2178,7 +2224,9 @@ export function SectioningWorkspace() {
           }),
         ),
       ]);
+      justCommittedRef.current = false;
     } catch (error: unknown) {
+      justCommittedRef.current = false;
       sileo.error({
         title: "Draft Commit Failed",
         description:
@@ -2187,6 +2235,7 @@ export function SectioningWorkspace() {
             : undefined) ?? "Could not commit the draft sectioning placements.",
       });
     } finally {
+      isCommittingRef.current = false;
       setCommitProcessing(false);
       setFinalizingProgress(null);
     }

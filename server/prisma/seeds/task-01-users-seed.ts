@@ -79,9 +79,13 @@ export const seedUsers = async () => {
 
       const user = await prisma.user.upsert({
         where: { employeeId: userData.employeeId },
-        update: { roles },
+        update: {
+          roles,
+          accountName: userData.employeeId,
+        },
         create: {
           employeeId: userData.employeeId,
+          accountName: userData.employeeId,
           firstName: userData.firstName,
           lastName: userData.lastName,
           sex: userData.sex,

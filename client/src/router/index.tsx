@@ -44,6 +44,7 @@ const ScpApply = lazy(() => import("@/features/admission/pages/scp-admission/Ind
 const LearnerAdmissionIndex = lazy(() => import("@/features/admission/pages/learner-admission/LearnerAdmissionIndex"));
 const BOSYPage = lazy(() => import("@/features/bosy/pages/BOSYPage"));
 const AdvisoryClass = lazy(() => import("@/features/teachers/pages/AdvisoryClass"));
+const PersonnelProfile = lazy(() => import("@/features/teachers/pages/Profile"));
 const TrackApplicationPage = lazy(() => import("@/features/admission/pages/scp-admission/Track"));
 const EarlyRegistration = lazy(() => import("@/features/admission/pages/early-registration/Index"));
 const EarlyRegistrationMasterlist = lazy(() => import("@/features/admission/pages/early-registration-masterlist/EarlyRegistrationMasterlist"));
@@ -197,6 +198,8 @@ export const router = createBrowserRouter([
           {
             element: <ProtectedRoute allowedRoles={["SYSTEM_ADMIN", "PRINCIPAL", "HEAD_REGISTRAR", "SCHOOL_REGISTRAR", "TEACHER", "CLASS_ADVISER", "GRADE_LEVEL_COORDINATOR", "STE_COORDINATOR", "SPA_COORDINATOR", "SPS_COORDINATOR", "MRF"]} />,
             children: [
+              { path: "/personnel/profile", element: renderLazyPage(PersonnelProfile) },
+              { path: "/personnel/profile/:id", element: renderLazyPage(PersonnelProfile) },
               { path: "/personnel/my-activity", element: renderLazyPage(MyActivity) },
               { path: "/personnel/help", element: renderLazyPage(HelpDocumentation) },
             ],
@@ -225,7 +228,7 @@ export const router = createBrowserRouter([
           },
           // Learner Enrollment
           {
-            element: <ProtectedRoute allowedRoles={["SYSTEM_ADMIN", "HEAD_REGISTRAR", "SCHOOL_REGISTRAR", "GRADE_LEVEL_COORDINATOR", "CLASS_ADVISER"]} allowedAncillaryRoles={["GRADE 7 COORDINATOR", "GRADE 8 COORDINATOR", "GRADE 9 COORDINATOR", "GRADE 10 COORDINATOR"]} />,
+            element: <ProtectedRoute allowedRoles={["SYSTEM_ADMIN", "HEAD_REGISTRAR", "SCHOOL_REGISTRAR", "GRADE_LEVEL_COORDINATOR", "CLASS_ADVISER"]} allowedAncillaryRoles={["CLASS ADVISER", "GRADE 7 COORDINATOR", "GRADE 8 COORDINATOR", "GRADE 9 COORDINATOR", "GRADE 10 COORDINATOR"]} />,
             children: [
               { path: "/personnel/learner-enrollment", element: renderLazyPage(BOSYPage) },
             ],

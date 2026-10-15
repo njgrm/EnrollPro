@@ -55,6 +55,7 @@ export function resolvePageTitle(pathname: string, search: string): string | nul
     "/section-assignment/requirements": "Documentary Requirements",
     "/personnel/teacher/advisory": "My Advisory Class",
     "/teacher/advisory": "My Advisory Class",
+    "/personnel/profile": "Personnel Profile",
     "/personnel/learner-admission": "SCP Admission",
     "/learner-admission": "SCP Admission",
   };
@@ -62,6 +63,7 @@ export function resolvePageTitle(pathname: string, search: string): string | nul
   if (exact[pathname]) return exact[pathname];
 
   // Prefix matches for dynamic segments
+  if (pathname.startsWith("/personnel/profile/")) return "Personnel Profile";
   if (pathname.startsWith("/personnel/learner/")) return "Learner Profile";
   if (pathname.startsWith("/personnel/sections/view-masterlist/")) return "Class Section Masterlist";
   if (pathname.startsWith("/personnel/dashboard/program-roster/")) return "Program Roster";

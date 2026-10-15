@@ -43,6 +43,8 @@ interface AuditUser {
   firstName: string;
   lastName: string;
   roles: string[];
+  employeeId?: string;
+  accountName?: string;
 }
 
 interface AuditLogRow {
@@ -392,7 +394,7 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
           if (type === "Enrollment") displayType = "Enrollment";
           if (type === "Enrollmentapplication") displayType = "Enrollment Application";
           if (type === "Student") displayType = "Learner Directory";
-          if (type === "User") displayType = "Staff Management";
+          if (type === "User") displayType = "Personnel Management";
           if (type === "Section") displayType = "Section Assignment";
           if (type === "Enrollmentapplication") displayType = "Enrollment Application";
 
@@ -401,7 +403,7 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
           if (displayType === "School Year") colorClass = "bg-indigo-100 text-indigo-800";
           if (displayType === "Learner Directory") colorClass = "bg-slate-700 text-white";
           if (displayType === "Enrollment" || displayType === "Enrollment Application") colorClass = "bg-emerald-100 text-emerald-800";
-          if (displayType === "Staff Management") colorClass = "bg-violet-100 text-violet-800";
+          if (displayType === "Personnel Management") colorClass = "bg-violet-100 text-violet-800";
           if (displayType === "Section Assignment") colorClass = "bg-amber-100 text-amber-800";
 
           return (
@@ -427,13 +429,21 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
         ),
         cell: ({ row }) => {
           const action = row.original.actionType;
+          let description = row.original.description;
+          if (description && description.includes("User null")) {
+            const user = row.original.user;
+            const fullName = user ? `${user.firstName} ${user.lastName}`.trim() : "";
+            const identifier = user ? (user.employeeId || user.accountName || user.id) : "";
+            const userLabel = fullName && identifier ? `${fullName} (${identifier})` : (fullName || String(identifier || ""));
+            description = description.replace("User null", userLabel ? `User ${userLabel}` : "User");
+          }
           return (
             <div className="flex min-w-0 flex-col text-left py-3 pl-2 leading-relaxed">
               <span className="font-bold text-foreground block mb-0.5 uppercase">
                 {actionLabel(action)}
               </span>
               <span className="text-base text-foreground max-w-[400px] break-words block">
-                {row.original.description}
+                {description}
               </span>
             </div>
           );

@@ -418,19 +418,208 @@ export async function index(req: Request, res: Response) {
   }
 }
 
-export async function show(req: Request, res: Response) {
-  const idStr = String(req.params.id);
-  const id = parseInt(idStr);
-  if (isNaN(id)) {
-    return res.status(400).json({ message: "Invalid teacher ID" });
-  }
-
+export async function getProfile(req: Request, res: Response) {
   try {
-    const teacher = await prisma.teacher.findUnique({
-      where: { id },
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        employeeId: true,
+        firstName: true,
+        lastName: true,
+        middleName: true,
+        suffix: true,
+        email: true,
+        mobileNumber: true,
+        sex: true,
+        designation: true,
+        isActive: true,
+        lastLoginAt: true,
+        mustChangePassword: true,
+        roles: true,
+        accessExpirationDate: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    const teacher = await prisma.teacher.findFirst({
+      where: {
+        OR: [
+          { userId },
+          ...(user.employeeId ? [{ employeeId: user.employeeId }] : []),
+        ],
+      },
       include: {
         departments: true,
         postgraduateDegrees: { orderBy: { sortOrder: "asc" } },
+        schedulePeriods: { orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }] },
+        advisoryHistory: {
+          include: {
+            section: {
+              include: {
+                gradeLevel: true,
+              },
+            },
+            schoolYear: true,
+          },
+          orderBy: { effectiveFrom: "desc" },
+        },
+        teacherDesignations: {
+          include: {
+            advisorySection: {
+              include: {
+                gradeLevel: true,
+              },
+            },
+            schoolYear: true,
+          },
+          orderBy: { createdAt: "desc" },
+        },
+        user: {
+          select: {
+            id: true,
+            email: true,
+            roles: true,
+            isActive: true,
+            lastLoginAt: true,
+            mustChangePassword: true,
+            accessExpirationDate: true,
+          },
+        },
+      },
+    });
+
+    if (!teacher) {
+      return res.json({
+        teacher: {
+          id: 0,
+          employeeId: user.employeeId,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          middleName: user.middleName,
+          suffix: user.suffix,
+          email: user.email,
+          contactNumber: user.mobileNumber,
+          sex: user.sex,
+          designationTitle: user.designation,
+          specialization: null,
+          departments: [],
+          plantillaPosition: user.designation,
+          undergraduateDegree: null,
+          bachelorMajor: null,
+          bachelorMinor: null,
+          postgraduateDegree: null,
+          majorSpecialization: null,
+          minorSpecialization: null,
+          postgraduateDegrees: [],
+          indigenousCommunity: null,
+          natureOfAppointment: "REGULAR_PERMANENT",
+          fundingSource: "NATIONAL",
+          photoPath: null,
+          birthdate: null,
+          personnelType: "NON_TEACHING",
+          functionalAssignment: user.designation,
+          ancillaryRoles: [],
+          atlasAssignTeachingLoad: false,
+          atlasBuildSchedules: false,
+          sectionCount: 0,
+          designation: null,
+          isActive: user.isActive,
+          serviceStatus: "ACTIVE",
+          createdAt: user.createdAt.toISOString(),
+          schedulePeriods: [],
+          advisoryHistory: [],
+          teacherDesignations: [],
+          userAccount: {
+            id: user.id,
+            isActive: user.isActive,
+            lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
+            mustChangePassword: user.mustChangePassword,
+            roles: user.roles,
+            accessExpirationDate: user.accessExpirationDate?.toISOString() ?? null,
+          },
+        },
+      });
+    }
+
+    const latestDesignation = teacher.teacherDesignations[0] || null;
+
+    res.json({
+      teacher: {
+        ...teacher,
+        userAccount: teacher.user,
+        designationTitle: teacher.designation,
+        designation: latestDesignation,
+        subjects: [],
+        departments: teacher.departments.map(d => d.code),
+        serviceStatus: teacher.serviceStatus,
+        ancillaryRoles: latestDesignation?.ancillaryRoles?.length ? latestDesignation.ancillaryRoles : teacher.ancillaryRoles,
+      },
+    });
+  } catch (error: unknown) {
+    const err = error as Error;
+    res.status(500).json({ message: err.message });
+  }
+}
+
+export async function show(req: Request, res: Response) {
+  const idStr = String(req.params.id);
+  const id = parseInt(idStr);
+
+  try {
+    const teacher = await prisma.teacher.findFirst({
+      where: {
+        OR: [
+          ...(isNaN(id) ? [] : [{ id }]),
+          { employeeId: idStr },
+        ],
+      },
+      include: {
+        departments: true,
+        postgraduateDegrees: { orderBy: { sortOrder: "asc" } },
+        schedulePeriods: { orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }] },
+        advisoryHistory: {
+          include: {
+            section: {
+              include: {
+                gradeLevel: true,
+              },
+            },
+            schoolYear: true,
+          },
+          orderBy: { effectiveFrom: "desc" },
+        },
+        teacherDesignations: {
+          include: {
+            advisorySection: {
+              include: {
+                gradeLevel: true,
+              },
+            },
+            schoolYear: true,
+          },
+          orderBy: { createdAt: "desc" },
+        },
+        user: {
+          select: {
+            id: true,
+            email: true,
+            roles: true,
+            isActive: true,
+            lastLoginAt: true,
+            mustChangePassword: true,
+            accessExpirationDate: true,
+          },
+        },
       },
     });
 
@@ -438,14 +627,35 @@ export async function show(req: Request, res: Response) {
       return res.status(404).json({ message: "Teacher not found" });
     }
 
+    const userRoles = req.user?.roles || [];
+    const isStaffAdmin = userRoles.includes("SYSTEM_ADMIN") || userRoles.includes("PRINCIPAL");
+    let isSelf = Boolean(req.user?.userId && teacher.userId === req.user.userId);
+    if (!isStaffAdmin && !isSelf && teacher.employeeId && req.user?.userId) {
+      const user = await prisma.user.findUnique({
+        where: { id: req.user.userId },
+        select: { employeeId: true },
+      });
+      if (user?.employeeId && user.employeeId === teacher.employeeId) {
+        isSelf = true;
+      }
+    }
+
+    if (!isStaffAdmin && !isSelf) {
+      return res.status(403).json({ message: "Access denied to this personnel profile" });
+    }
+
+    const latestDesignation = teacher.teacherDesignations[0] || null;
+
     res.json({
       teacher: {
         ...teacher,
+        userAccount: teacher.user,
         designationTitle: teacher.designation,
+        designation: latestDesignation,
         subjects: [],
         departments: teacher.departments.map(d => d.code),
         serviceStatus: teacher.serviceStatus,
-        ancillaryRoles: teacher.ancillaryRoles,
+        ancillaryRoles: latestDesignation?.ancillaryRoles?.length ? latestDesignation.ancillaryRoles : teacher.ancillaryRoles,
       },
     });
   } catch (error: unknown) {

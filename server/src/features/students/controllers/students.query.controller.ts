@@ -31,6 +31,9 @@ type AddressLike = {
   barangay?: string | null;
   cityMunicipality?: string | null;
   province?: string | null;
+  houseNoStreet?: string | null;
+  street?: string | null;
+  sitio?: string | null;
 };
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
@@ -93,35 +96,54 @@ const buildFullName = (person: {
 
 const pickParentOrGuardian = (
   familyMembers: FamilyMemberLike[] = [],
+  fallbackContact?: string | null,
 ): { name: string | null; contact: string | null } => {
   const mother = familyMembers.find((f) => f.relationship === "MOTHER");
   const father = familyMembers.find((f) => f.relationship === "FATHER");
   const guardian = familyMembers.find((f) => f.relationship === "GUARDIAN");
 
-  const selected = guardian ?? mother ?? father;
+  const selected = guardian ?? mother ?? father ?? familyMembers[0];
+  const contact =
+    guardian?.contactNumber ??
+    mother?.contactNumber ??
+    father?.contactNumber ??
+    familyMembers.find((f) => Boolean(f.contactNumber?.trim()))?.contactNumber ??
+    fallbackContact ??
+    null;
+
   return {
     name: selected ? `${selected.firstName} ${selected.lastName}` : null,
-    contact:
-      guardian?.contactNumber ??
-      mother?.contactNumber ??
-      father?.contactNumber ??
-      null,
+    contact,
   };
 };
 
 const buildAddress = (addresses: AddressLike[] = []): string | null => {
-  const currentAddress = addresses.find((a) => a.addressType === "CURRENT");
+  const currentAddress =
+    addresses.find((a) => a.addressType === "CURRENT") ??
+    addresses.find((a) => a.addressType === "PERMANENT") ??
+    addresses[0];
   if (!currentAddress) {
     return null;
   }
 
-  return [
+  const parts = [
     currentAddress.barangay,
     currentAddress.cityMunicipality,
     currentAddress.province,
-  ]
-    .filter(Boolean)
-    .join(", ");
+  ].filter(Boolean);
+
+  if (parts.length === 0) {
+    const fallback = [
+      currentAddress.houseNoStreet,
+      currentAddress.street,
+      currentAddress.sitio,
+    ]
+      .filter((p): p is string => typeof p === "string" && Boolean(p.trim()))
+      .join(" ");
+    return fallback.length > 0 ? fallback : null;
+  }
+
+  return parts.join(", ");
 };
 
 const parsePositiveInt = (value: unknown): number | null => {
@@ -241,8 +263,13 @@ const normalizeStatus = (value: unknown): ApplicationStatus | undefined => {
       });
 
       const students = applications.map((applicant: StudentSearchItem) => {
+        const fallbackContact =
+          "contactNumber" in applicant
+            ? (applicant as { contactNumber?: string | null }).contactNumber
+            : null;
         const parentOrGuardian = pickParentOrGuardian(
           applicant.familyMembers as FamilyMemberLike[],
+          fallbackContact,
         );
 
         // Extract the school year label for Batch/Year Completed column
@@ -649,7 +676,8 @@ const normalizeStatus = (value: unknown): ApplicationStatus | undefined => {
       const mother = familyMembers.find((f) => f.relationship === "MOTHER");
       const father = familyMembers.find((f) => f.relationship === "FATHER");
       const guardian = familyMembers.find((f) => f.relationship === "GUARDIAN");
-      const parentOrGuardian = pickParentOrGuardian(familyMembers);
+      const fallbackContact = applicant.contactNumber ?? null;
+      const parentOrGuardian = pickParentOrGuardian(familyMembers, fallbackContact);
 
       const student = {
         id: applicant.learner?.id || applicant.learnerId || applicant.id,

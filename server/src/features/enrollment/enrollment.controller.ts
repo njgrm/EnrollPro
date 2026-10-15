@@ -89,11 +89,7 @@ async function assertEnrollmentGradeScope(
   }
 
   if (roles.includes("CLASS_ADVISER")) {
-    const adviserGradeLevelId = await getAdviserGradeLevelId(req.user!.userId, schoolYearId);
-    if (adviserGradeLevelId !== gradeLevelId) {
-      throw new AppError(403, "You can only manage learners in your assigned advisory grade level.");
-    }
-    return;
+    throw new AppError(403, "Class advisers can only enroll continuing learners.");
   }
 
   throw new AppError(403, "You are not authorized to manage enrollment applications.");
@@ -460,14 +456,7 @@ export async function getPendingVerifications(req: Request, res: Response) {
   if (coordinatorGradeLevelId !== null) {
     finalGradeLevelId = coordinatorGradeLevelId;
   } else if (req.user!.roles.includes("CLASS_ADVISER")) {
-    const adviserGradeId = await getAdviserGradeLevelId(
-      req.user!.userId,
-      schoolYearId,
-    );
-    if (!adviserGradeId) {
-      return res.status(403).json({ message: "You do not have an active advisory class assigned." });
-    }
-    finalGradeLevelId = adviserGradeId;
+    return res.status(403).json({ message: "Class advisers can only enroll continuing learners." });
   } else if (req.query.gradeLevelId) {
     const requestedGradeLevelId = Number(req.query.gradeLevelId);
     if (!Number.isInteger(requestedGradeLevelId) || requestedGradeLevelId <= 0) {

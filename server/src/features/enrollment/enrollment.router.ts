@@ -24,7 +24,6 @@ const router: Router = Router();
 const enrollmentProcessorRoles = [
   "HEAD_REGISTRAR",
   "SYSTEM_ADMIN",
-  "CLASS_ADVISER",
   "GRADE 7 COORDINATOR",
   "GRADE 8 COORDINATOR",
   "GRADE 9 COORDINATOR",

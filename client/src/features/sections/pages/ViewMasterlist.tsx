@@ -429,14 +429,14 @@ export default function ViewMasterlist({ sectionId: propSectionId, onBack, mode 
           Total: {data.length}
         </span>
       </div>
-      <div className="flex-1">
-        <div className="overflow-x-auto">
-          <Table className="relative w-full">
+      <div className="flex-1 min-w-0">
+        <div className="overflow-x-auto rounded-md border border-border/40">
+          <Table className="w-full min-w-[500px]">
             <TableHeader className="border-b border-border bg-transparent">
               <TableRow className="hover:bg-transparent border-none">
-                <TableHead className="text-center font-bold text-foreground h-11 w-[40px] tracking-wide">#</TableHead>
-                <TableHead className="text-left font-bold text-foreground h-11 min-w-[200px] tracking-wide pl-4">LEARNER</TableHead>
-                <TableHead className="text-right font-bold text-foreground h-11 w-[120px] pr-4">ACTION</TableHead>
+                <TableHead className="text-center font-bold text-foreground h-11 w-[45px] min-w-[45px] tracking-wide whitespace-nowrap">#</TableHead>
+                <TableHead className="text-left font-bold text-foreground h-11 min-w-[280px] tracking-wide pl-4 whitespace-nowrap">LEARNER</TableHead>
+                <TableHead className="text-right font-bold text-foreground h-11 w-[125px] min-w-[125px] pr-4 whitespace-nowrap">ACTION</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y">
@@ -451,27 +451,27 @@ export default function ViewMasterlist({ sectionId: propSectionId, onBack, mode 
                   const _age = calculateAgeAsOfJuneFirst(learner.birthdate);
                   return (
                     <TableRow key={learner.id} className="hover:bg-muted/50 transition-colors group">
-                      <TableCell className="text-center font-bold text-sm text-foreground py-3">
+                      <TableCell className="text-center font-bold text-sm text-foreground py-3 w-[45px] min-w-[45px] whitespace-nowrap">
                         {idx + 1}
                       </TableCell>
-                      <TableCell className="py-3 pl-4">
-                        <div className="flex min-w-0 items-center gap-3">
+                      <TableCell className="py-3 pl-4 min-w-[280px] whitespace-nowrap">
+                        <div className="flex items-center gap-3 whitespace-nowrap">
                           <UserPhoto
                             photo={learner.studentPhoto || null}
                             containerClassName="w-10 h-10 rounded-full shadow-sm border shrink-0 border-2 border-primary border-solid"
                             className="w-full h-full object-cover"
                           />
-                          <div className="flex flex-col">
-                            <span className="font-extrabold text-sm uppercase text-foreground leading-tight">
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-extrabold text-sm uppercase text-foreground leading-tight whitespace-nowrap">
                               {learner.lastName}, {learner.firstName} {learner.middleName ? learner.middleName[0] + "." : ""}
                             </span>
-                            <span className="text-sm uppercase text-foreground mt-0.5">
+                            <span className="text-sm uppercase text-foreground mt-0.5 whitespace-nowrap">
                               LRN: {learner.lrn || "NO LRN"}
                             </span>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right py-3 pr-4">
+                      <TableCell className="text-right py-3 pr-4 w-[125px] min-w-[125px] whitespace-nowrap">
                         {mode === "sectioning" ? (
                           <Button
                             variant="default"

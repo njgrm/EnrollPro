@@ -126,9 +126,7 @@ function UserNav() {
   const navigate = useNavigate();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const { confirmOrRun } = useUnsavedChangesPrompt();
-  const canOpenPersonnelProfile =
-    user?.roles?.includes("SYSTEM_ADMIN") ||
-    user?.roles?.includes("HEAD_REGISTRAR");
+
 
   useEffect(() => {
     if (user && user.photoPath === undefined) {
@@ -237,6 +235,9 @@ function UserNav() {
                   {displayName}
                 </p>
                 <p className="truncate text-sm font-bold leading-tight text-foreground">
+                  {employeeLabel}
+                </p>
+                <p className="truncate text-sm font-bold leading-tight text-foreground">
                   {roleLabel}
                 </p>
                 {ancillaryRoles.length > 0 && (
@@ -257,9 +258,6 @@ function UserNav() {
                     ))}
                   </div>
                 )}
-                <p className="truncate text-sm font-bold leading-tight text-foreground">
-                  {employeeLabel}
-                </p>
               </div>
             </div>
           </DropdownMenuLabel>
@@ -299,14 +297,10 @@ function UserNav() {
             />
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          {canOpenPersonnelProfile && user?.employeeId ? (
+          {user ? (
             <DropdownMenuItem
               className="cursor-pointer py-2 font-bold"
-              onSelect={() =>
-                navigateWithGuard(
-                  `/personnel/directory?employeeId=${encodeURIComponent(user.employeeId ?? "")}`,
-                )
-              }>
+              onSelect={() => navigateWithGuard("/personnel/profile")}>
               <UserRound className="mr-2 h-4 w-4" />
               My Profile
             </DropdownMenuItem>
@@ -716,7 +710,7 @@ const NAVIGATION_MATRIX: AppNavConfigGroup[] = [
         label: "Learner Enrollment",
         to: "/personnel/learner-enrollment",
         icon: UserPlus,
-        access: (roles, anc) => roles.some(r => ["SYSTEM_ADMIN", "HEAD_REGISTRAR", "SCHOOL_REGISTRAR", "GRADE_LEVEL_COORDINATOR", "CLASS_ADVISER"].includes(r)) || anc.some(a => a.endsWith("COORDINATOR"))
+        access: (roles, anc) => roles.some(r => ["SYSTEM_ADMIN", "HEAD_REGISTRAR", "SCHOOL_REGISTRAR", "GRADE_LEVEL_COORDINATOR", "CLASS_ADVISER"].includes(r)) || anc.includes("CLASS ADVISER") || anc.some(a => a.endsWith("COORDINATOR"))
       },
       {
         label: "Section Assignment",

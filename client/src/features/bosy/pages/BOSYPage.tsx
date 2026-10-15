@@ -121,12 +121,18 @@ export default function BOSYPage() {
   const userRoles = useAuthStore((s) => s.user?.roles) ?? [];
   const isAdmin = userRoles.includes("SYSTEM_ADMIN");
   const isHeadRegistrar = userRoles.includes("HEAD_REGISTRAR");
-  const rawAncillaryRoles = useAuthStore((s) => s.user?.ancillaryRoles);
-  const isStrictClassAdviser = userRoles.includes("CLASS_ADVISER") && !isAdmin && !isHeadRegistrar &&
-    !(rawAncillaryRoles ?? []).includes("GRADE 7 COORDINATOR") &&
-    !(rawAncillaryRoles ?? []).includes("GRADE 8 COORDINATOR") &&
-    !(rawAncillaryRoles ?? []).includes("GRADE 9 COORDINATOR") &&
-    !(rawAncillaryRoles ?? []).includes("GRADE 10 COORDINATOR");
+  const isSchoolRegistrar = userRoles.includes("SCHOOL_REGISTRAR");
+  const userAncillaryRoles = useAuthStore((s) => s.user?.ancillaryRoles);
+  const rawAncillaryRoles = useMemo(() => userAncillaryRoles ?? [], [userAncillaryRoles]);
+  const isStrictClassAdviser =
+    (userRoles.includes("CLASS_ADVISER") || rawAncillaryRoles.includes("CLASS ADVISER")) &&
+    !isAdmin &&
+    !isHeadRegistrar &&
+    !isSchoolRegistrar &&
+    !rawAncillaryRoles.includes("GRADE 7 COORDINATOR") &&
+    !rawAncillaryRoles.includes("GRADE 8 COORDINATOR") &&
+    !rawAncillaryRoles.includes("GRADE 9 COORDINATOR") &&
+    !rawAncillaryRoles.includes("GRADE 10 COORDINATOR");
 
   const { data: advisoryData } = useQuery({
     queryKey: ["teacher", "advisory", syId],
@@ -563,18 +569,28 @@ export default function BOSYPage() {
   };
 
   const setTitle = useHeaderStore((s) => s.setTitle);
-  const activeTab = useSettingsStore((s) => s.uiPreferences.bosyTab);
+  const storedTab = useSettingsStore((s) => s.uiPreferences.bosyTab);
+  const effectiveTab = isStrictClassAdviser ? "continuing" : storedTab;
   const setActiveTab = useCallback((tab: string) => {
     useSettingsStore.getState().updateUiPreference("bosyTab", tab);
   }, []);
-  const guardedSetActiveTab = useGuardedTabChange(setActiveTab);
+  const guardedSetActiveTab = useGuardedTabChange((tab: string) => {
+    if (isStrictClassAdviser && tab !== "continuing") return;
+    setActiveTab(tab);
+  });
 
   useEffect(() => {
+    if (isStrictClassAdviser) {
+      if (storedTab !== "continuing") {
+        setActiveTab("continuing");
+      }
+      return;
+    }
     const requestedTab = searchParams.get("tab");
     if (requestedTab === "continuing" || requestedTab === "incoming") {
       setActiveTab(requestedTab);
     }
-  }, [searchParams, setActiveTab]);
+  }, [isStrictClassAdviser, searchParams, setActiveTab, storedTab]);
 
   useEffect(() => {
     setTitle("Learner Enrollment");
@@ -599,44 +615,46 @@ export default function BOSYPage() {
 
   return (
     <div className="flex flex-1 h-full w-full min-h-0 flex-col">
-      <Tabs value={activeTab} onValueChange={guardedSetActiveTab} className="flex min-h-0 flex-1 flex-col w-full h-full">
-        <TabsList className="w-full grid grid-cols-1 sm:grid-cols-2 h-auto gap-1 mb-4 p-1 bg-muted border border-border rounded-md relative shadow-sm">
-          <TabsTrigger
-            value="continuing"
-            className="w-full font-bold transition-all relative z-10 data-[state=active]:bg-transparent data-[state=active]:shadow-none rounded-md"
-          >
-            {activeTab === "continuing" && (
-              <motion.div
-                layoutId="bosy-active-pill"
-                className="absolute inset-0 bg-primary shadow-sm rounded-md"
-                transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
-              />
-            )}
-            <span className={cn("relative z-20 text-base uppercase truncate", activeTab === "continuing" ? "text-primary-foreground" : "text-foreground")}>
-              {scopedTargetGrade !== "ALL" ? `Continuing Learners (Grade ${scopedTargetGrade})` : "Continuing Learners"}
-            </span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="incoming"
-            className="w-full font-bold transition-all relative z-10 data-[state=active]:bg-transparent data-[state=active]:shadow-none rounded-md"
-          >
-            {activeTab === "incoming" && (
-              <motion.div
-                layoutId="bosy-active-pill"
-                className="absolute inset-0 bg-primary shadow-sm rounded-md"
-                transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
-              />
-            )}
-            <span className={cn("relative z-20 text-base uppercase truncate", activeTab === "incoming" ? "text-primary-foreground" : "text-foreground")}>
-              {scopedTargetGrade !== "ALL"
-                ? `Incoming Grade ${scopedTargetGrade} and Transferees`
-                : "Incoming Grade 7 and Transferees"}
-            </span>
-          </TabsTrigger>
-        </TabsList>
+      <Tabs value={effectiveTab} onValueChange={guardedSetActiveTab} className="flex min-h-0 flex-1 flex-col w-full h-full">
+        {!isStrictClassAdviser && (
+          <TabsList className="w-full grid grid-cols-1 sm:grid-cols-2 h-auto gap-1 mb-4 p-1 bg-muted border border-border rounded-md relative shadow-sm">
+            <TabsTrigger
+              value="continuing"
+              className="w-full font-bold transition-all relative z-10 data-[state=active]:bg-transparent data-[state=active]:shadow-none rounded-md"
+            >
+              {effectiveTab === "continuing" && (
+                <motion.div
+                  layoutId="bosy-active-pill"
+                  className="absolute inset-0 bg-primary shadow-sm rounded-md"
+                  transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
+                />
+              )}
+              <span className={cn("relative z-20 text-base uppercase truncate", effectiveTab === "continuing" ? "text-primary-foreground" : "text-foreground")}>
+                {scopedTargetGrade !== "ALL" ? `Continuing Learners (Grade ${scopedTargetGrade})` : "Continuing Learners"}
+              </span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="incoming"
+              className="w-full font-bold transition-all relative z-10 data-[state=active]:bg-transparent data-[state=active]:shadow-none rounded-md"
+            >
+              {effectiveTab === "incoming" && (
+                <motion.div
+                  layoutId="bosy-active-pill"
+                  className="absolute inset-0 bg-primary shadow-sm rounded-md"
+                  transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
+                />
+              )}
+              <span className={cn("relative z-20 text-base uppercase truncate", effectiveTab === "incoming" ? "text-primary-foreground" : "text-foreground")}>
+                {scopedTargetGrade !== "ALL"
+                  ? `Incoming Grade ${scopedTargetGrade} and Transferees`
+                  : "Incoming Grade 7 and Transferees"}
+              </span>
+            </TabsTrigger>
+          </TabsList>
+        )}
 
         <AnimatePresence mode="wait" initial={false}>
-          {activeTab === "continuing" && (
+          {effectiveTab === "continuing" && (
             <motion.div
               key="continuing"
               variants={tabPanelVariants}
@@ -886,6 +904,7 @@ export default function BOSYPage() {
                           isSearching={isSearching}
                           queueState={queueState}
                           allowActions={canMutate}
+                          isStrictClassAdviser={isStrictClassAdviser}
                           rowSelection={queueState === "PENDING" ? rowSelection : {}}
                           onRowSelectionChange={setRowSelection}
                           onConfirmSingle={handleConfirmSingle}
@@ -1214,7 +1233,7 @@ export default function BOSYPage() {
             </motion.div>
           )}
 
-          {activeTab === "incoming" && (
+          {!isStrictClassAdviser && effectiveTab === "incoming" && (
             <motion.div
               key="incoming"
               variants={tabPanelVariants}
