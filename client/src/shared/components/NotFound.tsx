@@ -19,7 +19,7 @@ export default function NotFound() {
       if (staffUser) {
         navigate("/personnel/dashboard", { replace: true });
       } else if (learnerUser) {
-        navigate("/learner/portal", { replace: true });
+        navigate("/learner/profile/sf9", { replace: true });
       } else {
         navigate("/", { replace: true });
       }

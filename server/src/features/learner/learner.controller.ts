@@ -6,7 +6,10 @@ import { AppError } from "../../lib/AppError.js";
 import type { LearnerAuthPayload } from "../../middleware/authenticate-learner.js";
 import { getStoredSmartSubjects } from "../integration/smart-outcome-envelope.js";
 import { fetchSmartSf10ByLrn } from "../integration/smart-sf10.service.js";
-import { isConfiguredDefaultPassword } from "../auth/default-password.service.js";
+import {
+  isConfiguredDefaultPassword,
+  isPasswordHashOfDefault,
+} from "../auth/default-password.service.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN: jwt.SignOptions["expiresIn"] =
@@ -272,6 +275,22 @@ export async function learnerLogin(req: Request, res: Response): Promise<void> {
 
   const requiresPasswordReset = isDefaultPassword || user.mustChangePassword;
 
+  if (requiresPasswordReset && !user.mustChangePassword) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        mustChangePassword: true,
+        lastLoginAt: new Date(),
+      },
+    });
+    user.mustChangePassword = true;
+  } else {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+  }
+
   const [enrollment, schoolSetting] = await Promise.all([
     getLearnerEnrollmentData(learner.id),
     prisma.schoolSetting.findFirst({ select: { schoolName: true } }),
@@ -337,7 +356,13 @@ export async function learnerSetupPassword(req: Request, res: Response): Promise
     return;
   }
 
-  if (!user.mustChangePassword) {
+  const isForcedReset = Boolean(
+    learnerPayload.requiresPasswordReset ||
+    user.mustChangePassword ||
+    (await isPasswordHashOfDefault(user.password))
+  );
+
+  if (!isForcedReset) {
     if (!currentPassword) {
       res.status(400).json({ code: "BAD_REQUEST", message: "Current password is required." });
       return;

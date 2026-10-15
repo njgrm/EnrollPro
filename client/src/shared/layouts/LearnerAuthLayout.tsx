@@ -10,7 +10,10 @@ export default function LearnerAuthLayout({ children }: { children?: ReactNode }
   const accentHsl = selectedAccentHsl;
   const toastTheme = accentForeground === '0 0% 100%' ? 'light' : 'dark';
   const location = useLocation();
-  const routeKey = `${location.pathname}${location.search}${location.hash}:${location.key}`;
+  const isProfileRoute = location.pathname.startsWith('/learner/profile');
+  const routeKey = isProfileRoute
+    ? '/learner/profile'
+    : `${location.pathname}${location.search}${location.hash}:${location.key}`;
 
   return (
     <div className='min-h-screen font-sans'>

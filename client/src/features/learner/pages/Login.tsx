@@ -237,7 +237,7 @@ export default function LearnerLogin() {
       sessionStorage.setItem("pendingWelcomeToast", JSON.stringify(toastPayload));
 
       redirectTimeoutRef.current = window.setTimeout(() => {
-        navigate("/learner/portal", {
+        navigate("/learner/profile/sf9", {
           replace: true,
           state: { welcomeToast: toastPayload },
         });
@@ -283,7 +283,7 @@ export default function LearnerLogin() {
     if (requiresPasswordReset) {
       return <Navigate to="/learner/change-password" state={{ isForcedReset: true }} replace />;
     }
-    return <Navigate to="/learner/portal" replace />;
+    return <Navigate to="/learner/profile/sf9" replace />;
   }
 
   if (!configLoaded) {
@@ -642,7 +642,7 @@ export default function LearnerLogin() {
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
-                      placeholder="Enter your password or PIN"
+                      placeholder="Enter your password"
                       value={password}
                       onChange={(e) => handlePasswordChange(e.target.value)}
                       className="pl-10 pr-10 h-10 sm:h-11 bg-background border-border hover:border-border/80 focus-visible:ring-2 focus-visible:ring-primary rounded-xl transition-all placeholder:text-muted-foreground/70 text-foreground font-bold"

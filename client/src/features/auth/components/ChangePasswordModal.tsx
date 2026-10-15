@@ -1,7 +1,7 @@
 import { AnimatedError } from "@/shared/components/AnimatedError";
 import { motion, AnimatePresence } from "motion/react";
 import { memo, useState, useEffect, useMemo, useCallback } from "react";
-import { Navigate, useSearchParams, useNavigate } from "react-router";
+import { Navigate, useSearchParams, useNavigate, useLocation } from "react-router";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@/shared/lib/zodResolver";
@@ -358,10 +358,13 @@ export default function ChangePassword() {
 
   const user = auth.user;
   const hasSession = Boolean(auth.user);
+  const location = useLocation();
+  const isForcedFromLocation = Boolean((location.state as { isForcedReset?: boolean } | null)?.isForcedReset);
   const [isForcedPasswordChange] = useState(() =>
     isExternalHandoff
+    || isForcedFromLocation
     || (isLearner
-      ? learnerAuth.requiresPasswordReset
+      ? (learnerAuth.requiresPasswordReset || location.pathname === "/learner/change-password")
       : Boolean(staffAuth.user?.mustChangePassword)),
   );
 
@@ -457,7 +460,7 @@ export default function ChangePassword() {
           description: "Your new password has been set. You can now access the Learner Portal.",
         });
 
-        navigate("/learner/portal", { replace: true });
+        navigate("/learner/profile/sf9", { replace: true });
       } else if (user) {
         const res = await api.patch("/auth/change-password", { newPassword, currentPassword });
 

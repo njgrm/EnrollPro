@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 // router/index.tsx
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, Navigate } from "react-router";
 import { useLocation } from "react-router";
 import { lazy, Suspense, type ComponentType, type LazyExoticComponent } from "react";
 import { PageLoadingSkeleton, type SkeletonPageVariant } from "@/shared/components/PageLoadingSkeleton";
@@ -134,6 +134,14 @@ export const router = createBrowserRouter([
           },
           {
             path: "/learner/portal",
+            element: <Navigate to="/learner/profile/sf9" replace />,
+          },
+          {
+            path: "/learner/profile",
+            element: <Navigate to="/learner/profile/sf9" replace />,
+          },
+          {
+            path: "/learner/profile/:tab",
             element: <LearnerDashboard />,
           },
         ],

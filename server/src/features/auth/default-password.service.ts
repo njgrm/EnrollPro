@@ -1,6 +1,7 @@
-import { prisma } from "../../lib/prisma.js"
+import bcrypt from "bcryptjs";
+import { prisma } from "../../lib/prisma.js";
 
-export const FALLBACK_DEFAULT_PASSWORD = "DepEd2026!"
+export const FALLBACK_DEFAULT_PASSWORD = "DepEd2026!";
 
 export async function getDefaultLearnerPassword(
   customClient?: {
@@ -70,4 +71,53 @@ export async function isConfiguredDefaultPassword(
     return candidate === FALLBACK_DEFAULT_PASSWORD;
   }
 }
+
+export async function isPasswordHashOfDefault(
+  passwordHash: string,
+): Promise<boolean> {
+  if (!passwordHash) {
+    return false;
+  }
+
+  const candidates = new Set<string>([FALLBACK_DEFAULT_PASSWORD]);
+
+  try {
+    const [settings, schoolYears] = await Promise.all([
+      prisma.schoolSetting.findMany({
+        take: 5,
+        orderBy: { id: "asc" },
+        select: { globalDefaultPassword: true },
+      }),
+      prisma.schoolYear.findMany({
+        select: { yearLabel: true },
+      }),
+    ]);
+
+    for (const s of settings) {
+      if (s.globalDefaultPassword) {
+        candidates.add(s.globalDefaultPassword);
+      }
+    }
+
+    for (const sy of schoolYears) {
+      if (sy.yearLabel) {
+        const year = sy.yearLabel.split("-")[0];
+        if (year) {
+          candidates.add(`DepEd${year}!`);
+        }
+      }
+    }
+  } catch {
+    // fallback to static candidates
+  }
+
+  for (const pwd of candidates) {
+    if (await bcrypt.compare(pwd, passwordHash)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 

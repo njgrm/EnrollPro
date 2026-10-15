@@ -616,23 +616,28 @@ export default function BOSYPage() {
   return (
     <div className="flex flex-1 h-full w-full min-h-0 flex-col">
       <Tabs value={effectiveTab} onValueChange={guardedSetActiveTab} className="flex min-h-0 flex-1 flex-col w-full h-full">
-        {!isStrictClassAdviser && (
-          <TabsList className="w-full grid grid-cols-1 sm:grid-cols-2 h-auto gap-1 mb-4 p-1 bg-muted border border-border rounded-md relative shadow-sm">
-            <TabsTrigger
-              value="continuing"
-              className="w-full font-bold transition-all relative z-10 data-[state=active]:bg-transparent data-[state=active]:shadow-none rounded-md"
-            >
-              {effectiveTab === "continuing" && (
-                <motion.div
-                  layoutId="bosy-active-pill"
-                  className="absolute inset-0 bg-primary shadow-sm rounded-md"
-                  transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
-                />
-              )}
-              <span className={cn("relative z-20 text-base uppercase truncate", effectiveTab === "continuing" ? "text-primary-foreground" : "text-foreground")}>
-                {scopedTargetGrade !== "ALL" ? `Continuing Learners (Grade ${scopedTargetGrade})` : "Continuing Learners"}
-              </span>
-            </TabsTrigger>
+        <TabsList
+          className={cn(
+            "w-full h-auto gap-1 mb-4 p-1 bg-muted border border-border rounded-md relative shadow-sm",
+            isStrictClassAdviser ? "grid grid-cols-1" : "grid grid-cols-1 sm:grid-cols-2",
+          )}
+        >
+          <TabsTrigger
+            value="continuing"
+            className="w-full font-bold transition-all relative z-10 data-[state=active]:bg-transparent data-[state=active]:shadow-none rounded-md"
+          >
+            {effectiveTab === "continuing" && (
+              <motion.div
+                layoutId="bosy-active-pill"
+                className="absolute inset-0 bg-primary shadow-sm rounded-md"
+                transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
+              />
+            )}
+            <span className={cn("relative z-20 text-base uppercase truncate", effectiveTab === "continuing" ? "text-primary-foreground" : "text-foreground")}>
+              {scopedTargetGrade !== "ALL" ? `Continuing Learners (Grade ${scopedTargetGrade})` : "Continuing Learners"}
+            </span>
+          </TabsTrigger>
+          {!isStrictClassAdviser && (
             <TabsTrigger
               value="incoming"
               className="w-full font-bold transition-all relative z-10 data-[state=active]:bg-transparent data-[state=active]:shadow-none rounded-md"
@@ -650,8 +655,8 @@ export default function BOSYPage() {
                   : "Incoming Grade 7 and Transferees"}
               </span>
             </TabsTrigger>
-          </TabsList>
-        )}
+          )}
+        </TabsList>
 
         <AnimatePresence mode="wait" initial={false}>
           {effectiveTab === "continuing" && (

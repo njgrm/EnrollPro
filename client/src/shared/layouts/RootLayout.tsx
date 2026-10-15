@@ -69,7 +69,7 @@ export default function RootLayout({ children }: { children?: ReactNode }) {
   const location = useLocation();
   const activeTheme = useActiveTheme();
   // Restrict dark mode exclusively to the HNHS Learner Information System page (/learner/portal)
-  const isDark = location.pathname.replace(/\/+$/, "") === "/learner/portal" && activeTheme === "dark";
+  const isDark = (location.pathname.replace(/\/+$/, "") === "/learner/portal" || location.pathname.startsWith("/learner/profile")) && activeTheme === "dark";
   const { colorScheme, selectedAccentHsl, logoUrl, setSettings, initialized, isHydrated, viewingSchoolYearId, activeSchoolYearId } =
     useSettingsStore();
 

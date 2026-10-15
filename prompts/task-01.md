@@ -1,54 +1,39 @@
-# UI/UX Refactoring Prompt: Cascading Section Filters for Learner Enrollment
+# UI/UX Refactoring Prompt: Mobile-First Learner Profile (SF1 & SF9)
 
-**Target System:** EnrollPro: Academic Institution's Digital Platform  
-**Target Module:** Learner Enrollment (Continuing Learners Tab)  
-**Reference Image:** `image_20cbbd.jpg`  
+**Target System:** EnrollPro: EMEMHS Learner Information System  
+**Target Module:** Learner Profile (Student-facing / Guardian-facing Portal)  
+**Reference Images:** `image_015344.png`, `image_015349.png`, `image_015363.png`, `image_015365.png`  
 **Context:** Department of Education (DepEd) JHS Public School System  
 
 ---
 
-Copy and paste the prompt below to instruct your AI agent or frontend development team on how to execute this UI refactoring.
+**Act as a Senior Frontend Developer and UI/UX Engineer.**
 
-***
+Your task is to refactor the current Learner Profile interface into a strictly mobile-first, responsive architecture. Public school learners and guardians predominantly access portals via mobile devices, rendering the current rigid two-column desktop layout[cite: 15] and wide data tables[cite: 15, 17] unusable on smaller screens. 
 
-**Act as a Senior UI/UX Engineer and Frontend Developer specializing in data-heavy EdTech interfaces.**
+Implement the following architectural and component-level improvements. **Crucial Constraint:** You must strictly reuse existing design system components (e.g., standard tabs, cards, dropdowns, sidepanels). Do not generate custom UI styling code, inline CSS, or bespoke utility class overrides. Focus on component orchestration and state architecture.
 
-Your task is to refactor the filter popover in the Learner Enrollment module (Continuing Learners tab). Currently, the system uses a single, flat dropdown labeled "ALL PREVIOUS SECTIONS" that dumps every section across all grade levels and programs into one long, unmanageable list[cite: 14]. 
+### 1. Layout Architecture & Full-Page Routing
+*   **Current State:** The interface uses a fixed left sidebar taking up roughly 30% of the screen[cite: 15, 17], forcing the main content into a constrained right-hand container. 
+*   **Refactoring:** Dismantle the two-column layout. Implement a stacked, single-column architecture for mobile viewports, scaling to a constrained max-width container on desktop. 
+*   **Routing Logic:** The current toggle between "HISTORICAL ACADEMIC RECORDS (SF9)" and "OFFICIAL LEARNER PROFILE (SF1)" relies on massive block buttons[cite: 15, 17]. Replace these with standard design system navigation tabs integrated with full-page routing (e.g., `/learner/profile/sf1` and `/learner/profile/sf9`). This ensures browser back-button compatibility and allows users to bookmark specific tabs.
 
-In a public DepEd high school environment, registrars manage thousands of students across different curricula. To optimize their workflow, you must replace this single dropdown with a **Cascading 3-Tier Filter System**.
+### 2. Mobile-First Learner Header & Sidepanel Integration
+*   **Current State:** The learner's photo, Name, LRN, Grade/Curriculum, and Official Class Adviser are stacked vertically in a massive sidebar[cite: 15, 17]. 
+*   **Refactoring:** 
+    *   Create a compact `<ProfileHeader />` component at the top of the page. Use a horizontal flex layout on mobile (Avatar on the left, Name and LRN on the right). 
+    *   Display only critical identifiers (Name, LRN, Grade - Section) in this header[cite: 15]. 
+    *   **Sidepanel Utilization:** Move the secondary administrative data, such as the "OFFICIAL CLASS ADVISER: TO BE ASSIGNED" status[cite: 15, 17], into a slide-out sidepanel or bottom sheet triggered by an "Advisory Details" action button. This reclaims primary screen real estate.
 
-Please implement the interface using the following comprehensive UI/UX guidelines:
+### 3. Refactoring SF9 (Historical Academic Records)
+*   **Current State:** Grades are displayed in a wide, traditional table format (Learning Areas, Term Ratings 1-3, Final Rating, Remarks)[cite: 15, 16], nested inside stacked accordions for each school year[cite: 16]. This will force horizontal scrolling on mobile and create a vertical "accordion overload."
+*   **Refactoring:**
+    *   **Dropdown Component:** Replace the stacked accordion list of school years (e.g., "GRADE 8 - MATAPAT", "GRADE 7 - AGUINALDO")[cite: 16] with a single, prominent Dropdown component labeled "Select Academic Year." Only one year's data should render at a time.
+    *   **Responsive Data Display:** Do not use standard `<table>` elements for mobile viewports. Re-architect the data into a list of `<GradeCard />` components. Each card should represent one Learning Area (e.g., "MATHEMATICS")[cite: 15, 16] and contain a responsive grid showing Q1, Q2, Q3, Q4, and the Final Rating. Switch to the traditional table view only at the `md` or `lg` breakpoint.
 
-### 1. UI Layout & Architecture
-Inside the existing filter popover[cite: 14], remove the single "ALL PREVIOUS SECTIONS" select input. Replace it with three vertically stacked dropdowns (or searchable comboboxes), each with a clear label. 
-
-Ensure the spacing is comfortable (e.g., `gap-4`) and use the system's standard styling (rounded borders, neutral gray outlines, and deep maroon accents for focus states).
-
-*   **Dropdown 1: Previous Grade Level**
-*   **Dropdown 2: Previous Program Type**
-*   **Dropdown 3: Previous Section**
-
-### 2. Cascading Logic & Interaction Rules
-The dropdowns must be reactive and dependent on one another to prevent users from selecting impossible combinations (e.g., selecting Grade 7, but seeing Grade 10 sections).
-
-**Step 1: Previous Grade Level**
-*   **Default State:** "All Grade Levels"
-*   **Options:** Grade 7, Grade 8, Grade 9, Grade 10.
-*   **Behavior:** Selecting a grade level dynamically filters the available options in the Program Type dropdown.
-
-**Step 2: Previous Program Type**
-*   **Default State:** Disabled and displays "Select Grade Level first" (unless Grade Level is selected).
-*   **Options (DepEd Standard):** Regular Basic Education Curriculum (BEC), Science Technology and Engineering (STE), Special Program in the Arts (SPA), Special Program in Sports (SPS), Special Program in Journalism (SPJ).
-*   **Behavior:** Once a Grade and Program are selected, it triggers the fetch/filter for the exact sections that belong to that intersection.
-
-**Step 3: Previous Section**
-*   **Default State:** Disabled and displays "Select Program Type first".
-*   **Options:** Dynamically populated based on Dropdown 1 and Dropdown 2. (e.g., If Dropdown 1 = "Grade 8" and Dropdown 2 = "SPA", this dropdown only shows sections like "Grade 8 - SPA Section A").
-*   **Behavior:** This serves as the final, granular filter. 
-
-### 3. Action Buttons & Filter Reset
-*   Retain the existing **"Clear All"** text button and **"Apply Filters"** solid maroon button at the bottom of the popover[cite: 14].
-*   Clicking **"Clear All"** must instantly reset all three dropdowns to their default empty/disabled states and remove any active filters on the master list[cite: 14].
-
-### 4. EdTech UX Rationale
-By grouping the data hierarchically (Grade $\rightarrow$ Program $\rightarrow$ Section), you eliminate cognitive overload for the School Registrar. When processing continuing learners, a registrar typically works batch-by-batch (e.g., enrolling all of last year's Grade 8 SPA students into Grade 9 SPA). This cascading filter exactly mirrors their physical administrative workflow.
+### 4. Refactoring SF1 (Official Learner Profile)
+*   **Current State:** Learner identity, residency, and parent/guardian backgrounds are displayed using rigid, two-column table structures with heavy borders (e.g., "SEX | FEMALE")[cite: 17, 18]. 
+*   **Refactoring:**
+    *   Strip out the table structures. Utilize standard label-value pair components from the design system.
+    *   Group the data logically into distinct `<Card />` containers: "I. Learner Identity", "II. Current Residency", and "III. Parent/Guardian Background"[cite: 17, 18].
+    *   Use a responsive CSS grid layout within these cards: 1 column on mobile (label stacked above value) and 2 or 3 columns on desktop to maximize screen space without hardcoding rigid table cells.

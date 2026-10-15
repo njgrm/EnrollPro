@@ -7,6 +7,7 @@ import { AppError } from "../../lib/AppError.js";
 import {
   FALLBACK_DEFAULT_PASSWORD,
   isConfiguredDefaultPassword,
+  isPasswordHashOfDefault,
 } from "./default-password.service.js";
 import type { Role } from "@enrollpro/shared";
 import { normalizeApplicationRoles } from "./application-role.service.js";
@@ -513,7 +514,12 @@ export async function changePassword(
     return;
   }
 
-  if (!user.mustChangePassword) {
+  const isForcedReset = Boolean(
+    user.mustChangePassword ||
+    (await isPasswordHashOfDefault(user.password))
+  );
+
+  if (!isForcedReset) {
     if (!currentPassword) {
       res.status(400).json({ message: "Current password is required." });
       return;
