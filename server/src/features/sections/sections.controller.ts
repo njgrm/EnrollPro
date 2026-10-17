@@ -17,6 +17,7 @@ import { ensureLearnerUserAccount } from "../learner/learner.service.js";
 import { broadcastRealtimeInvalidation } from "../../lib/sse.js";
 import {
   commitSf1RosterImport,
+  bulkImportSf1File,
   previewSf1RosterImport,
 } from "./sf1-roster.service.js";
 import {
@@ -1875,6 +1876,58 @@ export async function commitSectionSf1Import(
         error instanceof Error
           ? error.message
           : "Could not commit the SF1 roster import.",
+    });
+  }
+}
+
+export async function bulkImportSf1(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  if (!req.file?.buffer) {
+    res.status(400).json({ message: "Upload one SF1 Excel file." });
+    return;
+  }
+
+  const sectionIdRaw = req.params.id || req.body.sectionId || req.query.sectionId;
+  const targetSectionId = sectionIdRaw ? Number.parseInt(String(sectionIdRaw), 10) : null;
+
+  try {
+    const result = await bulkImportSf1File({
+      fileBuffer: req.file.buffer,
+      userId: req.user!.userId,
+      targetSectionId: Number.isInteger(targetSectionId) && (targetSectionId as number) > 0 ? targetSectionId : null,
+      schoolYearId: req.schoolYearId,
+    });
+
+    await auditLog({
+      userId: req.user!.userId,
+      actionType: "SF1_ROSTER_IMPORT_COMMITTED",
+      description: `Bulk imported ${result.importedCount} learner(s) into ${result.gradeLevelName} - ${result.sectionName} from SF1 file.`,
+      subjectType: "Section",
+      recordId: result.sectionId,
+      req,
+    });
+
+    broadcastRealtimeInvalidation({
+      topics: [
+        "homerooms:sections",
+        "sectioning:sections",
+        "sectioning:pool",
+        "students:list",
+        "dashboard:summary",
+      ],
+      schoolYearId: req.schoolYearId,
+      sectionIds: [result.sectionId],
+    });
+
+    res.json(result);
+  } catch (error: unknown) {
+    res.status(400).json({
+      message:
+        error instanceof Error
+          ? error.message
+          : "Could not import the SF1 roster file.",
     });
   }
 }

@@ -133,12 +133,45 @@ function upperText(value: string | null | undefined): string | null {
   return cleaned ? cleaned.toUpperCase() : null;
 }
 
+function safeCellText(cell: ExcelJS.Cell | null | undefined): string | null {
+  if (!cell) return null;
+  try {
+    const val = cell.value;
+    if (val === null || val === undefined) return null;
+    if (typeof val === "string") return cleanText(val);
+    if (typeof val === "number" || typeof val === "boolean") return String(val);
+    if (val instanceof Date) return val.toISOString();
+    if (typeof val === "object") {
+      if ("richText" in val && Array.isArray((val as { richText: Array<{ text?: string }> }).richText)) {
+        const text = (val as { richText: Array<{ text?: string }> }).richText
+          .map((r) => r.text || "")
+          .join("");
+        return cleanText(text);
+      }
+      if ("result" in val) {
+        const res = (val as { result: unknown }).result;
+        if (res === null || res === undefined) return null;
+        if (typeof res === "string") return cleanText(res);
+        if (typeof res === "number" || typeof res === "boolean") return String(res);
+        if (res instanceof Date) return res.toISOString();
+      }
+      if ("text" in val && typeof (val as { text: unknown }).text === "string") {
+        return cleanText((val as { text: string }).text);
+      }
+    }
+    return cleanText(cell.text);
+  } catch {
+    return null;
+  }
+}
+
 function cellText(row: ExcelJS.Row, column: number): string | null {
-  return cleanText(row.getCell(column).text);
+  return safeCellText(row.getCell(column));
 }
 
 function cellLines(row: ExcelJS.Row, column: number): string[] {
-  const value = row.getCell(column).text;
+  const value = safeCellText(row.getCell(column));
+  if (!value) return [];
   return value
     .split(/\r?\n/)
     .map((line) => cleanText(line))
@@ -596,6 +629,67 @@ function normalizeAtlasEntry(entry: AtlasScheduleEntry): Sf7SchedulePeriodPrevie
   };
 }
 
+function findSf7DataStartRow(worksheet: ExcelJS.Worksheet): number {
+  for (let r = 5; r <= 30; r++) {
+    const row = worksheet.getRow(r);
+    const col1 = safeCellText(row.getCell(1));
+    const col2 = safeCellText(row.getCell(2));
+    if (col1 && /^\d+$/.test(col1)) {
+      return r;
+    }
+    if (col2 && !/name of personnel|employee no|school id|summary/i.test(col2) && col1 && /\d/.test(col1)) {
+      return r;
+    }
+  }
+  return DATA_START_ROW;
+}
+
+function parseTeacherName(value: string | null): {
+  firstName: string;
+  lastName: string;
+  middleName: string | null;
+  suffix: string | null;
+} {
+  const text = cleanText(value);
+  if (!text) {
+    return { firstName: "Unknown", lastName: "Teacher", middleName: null, suffix: null };
+  }
+
+  const suffixMatch = text.match(/\b(JR\.?|SR\.?|I{2,3}|IV|V)\b$/i);
+  const suffix = suffixMatch ? suffixMatch[0].replace(/\.$/, "").toUpperCase() : null;
+  const nameWithoutSuffix = suffixMatch
+    ? cleanText(text.slice(0, suffixMatch.index))
+    : text;
+
+  if (nameWithoutSuffix?.includes(",")) {
+    const [lastNameRaw, restRaw] = nameWithoutSuffix.split(",", 2);
+    const restParts = cleanText(restRaw)?.split(" ").filter(Boolean) ?? [];
+    return {
+      lastName: upperText(lastNameRaw) || "Unknown",
+      firstName: upperText(restParts[0] ?? null) || "Unknown",
+      middleName: upperText(restParts.slice(1).join(" ") || null),
+      suffix,
+    };
+  }
+
+  const parts = nameWithoutSuffix?.split(" ").filter(Boolean) ?? [];
+  if (parts.length < 2) {
+    return {
+      firstName: upperText(nameWithoutSuffix) || "Unknown",
+      lastName: "Teacher",
+      middleName: null,
+      suffix,
+    };
+  }
+
+  return {
+    firstName: upperText(parts.slice(0, -1).join(" ")) || "Unknown",
+    lastName: upperText(parts[parts.length - 1] ?? null) || "Unknown",
+    middleName: null,
+    suffix,
+  };
+}
+
 export async function previewSf7Import(
   buffer: Buffer,
   source?: Sf7ImportSource,
@@ -625,9 +719,13 @@ export async function previewSf7Import(
       throw new Error("SF7 workbook has no worksheet.");
     }
 
-    const lastRow = Math.min(worksheet.rowCount, DATA_START_ROW + MAX_IMPORT_ROWS);
-    for (let rowNumber = DATA_START_ROW; rowNumber <= lastRow; rowNumber += 1) {
-      parsedRows.push(parsedRowFromWorksheet(worksheet.getRow(rowNumber), rowNumber));
+    const startRow = findSf7DataStartRow(worksheet);
+    const lastRow = Math.min(worksheet.rowCount, startRow + MAX_IMPORT_ROWS);
+    for (let rowNumber = startRow; rowNumber <= lastRow; rowNumber += 1) {
+      const parsed = parsedRowFromWorksheet(worksheet.getRow(rowNumber), rowNumber);
+      if (parsed.employeeIdRaw || parsed.fullName) {
+        parsedRows.push(parsed);
+      }
     }
   }
 
@@ -642,11 +740,11 @@ export async function commitSf7Import(
   const skippedRows: Sf7ImportCommitResponse["skippedRows"] = [];
 
   for (const row of input.rows) {
-    if (row.matchStatus !== "MATCHED" || !row.teacherId) {
+    if (!row.employeeId && !row.teacherId) {
       skippedRows.push({
         rowNumber: row.rowNumber,
         employeeId: row.employeeId,
-        reason: "Row is not matched to an EnrollPro teacher.",
+        reason: "Row is missing employee number.",
       });
       continue;
     }
@@ -659,20 +757,71 @@ export async function commitSf7Import(
       continue;
     }
 
-    await prisma.teacher.update({
-      where: { id: row.teacherId },
-      data: {
-        plantillaPosition: row.plantillaPosition,
-        undergraduateDegree: row.undergraduateDegree,
-        postgraduateDegree: row.postgraduateDegree,
-        majorSpecialization: row.majorSpecialization,
-        minorSpecialization: row.minorSpecialization,
-        indigenousCommunity: row.indigenousCommunity,
-        ...(row.natureOfAppointment ? { natureOfAppointment: row.natureOfAppointment } : {}),
-        ...(row.fundingSource ? { fundingSource: row.fundingSource } : {}),
-      },
-    });
-    updatedTeacherIds.push(row.teacherId);
+    const parsedName = parseTeacherName(row.fullName);
+    const nature = row.natureOfAppointment ?? "REGULAR_PERMANENT";
+    const fund = row.fundingSource ?? "NATIONAL";
+    const sex = row.sex ?? "FEMALE";
+
+    if (row.teacherId) {
+      const updated = await prisma.teacher.update({
+        where: { id: row.teacherId },
+        data: {
+          plantillaPosition: row.plantillaPosition,
+          undergraduateDegree: row.undergraduateDegree,
+          postgraduateDegree: row.postgraduateDegree,
+          majorSpecialization: row.majorSpecialization,
+          minorSpecialization: row.minorSpecialization,
+          indigenousCommunity: row.indigenousCommunity,
+          ...(row.natureOfAppointment ? { natureOfAppointment: row.natureOfAppointment } : {}),
+          ...(row.fundingSource ? { fundingSource: row.fundingSource } : {}),
+        },
+      });
+      updatedTeacherIds.push(updated.id);
+    } else if (row.employeeId) {
+      // Check if teacher exists by employeeId
+      const existing = await prisma.teacher.findUnique({
+        where: { employeeId: row.employeeId },
+      });
+
+      if (existing) {
+        const updated = await prisma.teacher.update({
+          where: { id: existing.id },
+          data: {
+            plantillaPosition: row.plantillaPosition ?? existing.plantillaPosition,
+            undergraduateDegree: row.undergraduateDegree ?? existing.undergraduateDegree,
+            postgraduateDegree: row.postgraduateDegree ?? existing.postgraduateDegree,
+            majorSpecialization: row.majorSpecialization ?? existing.majorSpecialization,
+            minorSpecialization: row.minorSpecialization ?? existing.minorSpecialization,
+            indigenousCommunity: row.indigenousCommunity ?? existing.indigenousCommunity,
+            ...(row.natureOfAppointment ? { natureOfAppointment: row.natureOfAppointment } : {}),
+            ...(row.fundingSource ? { fundingSource: row.fundingSource } : {}),
+          },
+        });
+        updatedTeacherIds.push(updated.id);
+      } else {
+        const created = await prisma.teacher.create({
+          data: {
+            employeeId: row.employeeId,
+            firstName: parsedName.firstName,
+            lastName: parsedName.lastName,
+            middleName: parsedName.middleName,
+            suffix: parsedName.suffix,
+            sex,
+            plantillaPosition: row.plantillaPosition,
+            natureOfAppointment: nature,
+            fundingSource: fund,
+            undergraduateDegree: row.undergraduateDegree,
+            postgraduateDegree: row.postgraduateDegree,
+            majorSpecialization: row.majorSpecialization,
+            minorSpecialization: row.minorSpecialization,
+            indigenousCommunity: row.indigenousCommunity,
+            isActive: true,
+            serviceStatus: "ACTIVE",
+          },
+        });
+        updatedTeacherIds.push(created.id);
+      }
+    }
   }
 
   return {
@@ -680,6 +829,145 @@ export async function commitSf7Import(
     skippedCount: skippedRows.length,
     updatedTeacherIds,
     skippedRows,
+  };
+}
+
+export interface Sf7DirectImportResult {
+  totalCount: number;
+  updatedCount: number;
+  createdCount: number;
+  skippedCount: number;
+  updatedTeacherIds: number[];
+}
+
+export async function directImportSf7(
+  buffer: Buffer,
+  source?: Sf7ImportSource,
+): Promise<Sf7DirectImportResult> {
+  const parsedRows: ParsedSf7Row[] = [];
+  const fileKind = detectImportFileKind(source);
+
+  if (fileKind === "CSV") {
+    parsedRows.push(...parsedRowsFromCsv(buffer));
+  } else {
+    const workbook = new ExcelJS.Workbook();
+    const arrayBuffer = buffer.buffer.slice(
+      buffer.byteOffset,
+      buffer.byteOffset + buffer.byteLength,
+    ) as ArrayBuffer;
+    await workbook.xlsx.load(arrayBuffer);
+    const worksheet = workbook.getWorksheet("School Form 7 (SF7)") ?? workbook.worksheets[0];
+    if (!worksheet) {
+      throw new Error("SF7 workbook has no worksheet.");
+    }
+
+    const startRow = findSf7DataStartRow(worksheet);
+    const lastRow = Math.min(worksheet.rowCount, startRow + MAX_IMPORT_ROWS);
+    for (let rowNumber = startRow; rowNumber <= lastRow; rowNumber += 1) {
+      const parsed = parsedRowFromWorksheet(worksheet.getRow(rowNumber), rowNumber);
+      if (parsed.employeeIdRaw || parsed.fullName) {
+        parsedRows.push(parsed);
+      }
+    }
+  }
+
+  if (parsedRows.length === 0) {
+    throw new Error(
+      "No personnel records found in the uploaded SF7 file. Please ensure rows have Employee Numbers and Names.",
+    );
+  }
+
+  const updatedTeacherIds: number[] = [];
+  let updatedCount = 0;
+  let createdCount = 0;
+  let skippedCount = 0;
+  const seenEmployeeIds = new Set<string>();
+
+  for (const sourceRow of parsedRows) {
+    const employeeId = parseEmployeeId(sourceRow.employeeIdRaw);
+    const fullName = upperText(sourceRow.fullName);
+
+    if (!employeeId || !fullName) {
+      skippedCount++;
+      continue;
+    }
+
+    if (seenEmployeeIds.has(employeeId)) {
+      skippedCount++;
+      continue;
+    }
+    seenEmployeeIds.add(employeeId);
+
+    const parsedName = parseTeacherName(fullName);
+    const fundingSource = mapFundingSource(sourceRow.fundingSource) ?? "NATIONAL";
+    const natureOfAppointment = mapNature(sourceRow.natureOfAppointment) ?? "REGULAR_PERMANENT";
+    const sex = parseSex(sourceRow.sex) ?? "FEMALE";
+    const plantillaPosition = upperText(sourceRow.plantillaPosition);
+    const undergraduateDegree = upperText(sourceRow.undergraduateDegree);
+    const postgraduateDegree = upperText(sourceRow.postgraduateDegree);
+    const majorSpecialization = upperText(sourceRow.majorSpecialization);
+    const minorSpecialization = upperText(sourceRow.minorSpecialization);
+    const indigenousCommunity = extractIndigenousCommunity(sourceRow.remarks);
+
+    const existing = await prisma.teacher.findUnique({
+      where: { employeeId },
+      select: { id: true },
+    });
+
+    if (existing) {
+      const updated = await prisma.teacher.update({
+        where: { id: existing.id },
+        data: {
+          firstName: parsedName.firstName,
+          lastName: parsedName.lastName,
+          middleName: parsedName.middleName,
+          suffix: parsedName.suffix,
+          plantillaPosition: plantillaPosition ?? undefined,
+          natureOfAppointment,
+          fundingSource,
+          sex,
+          undergraduateDegree: undergraduateDegree ?? undefined,
+          postgraduateDegree: postgraduateDegree ?? undefined,
+          majorSpecialization: majorSpecialization ?? undefined,
+          minorSpecialization: minorSpecialization ?? undefined,
+          indigenousCommunity: indigenousCommunity ?? undefined,
+          isActive: true,
+        },
+      });
+      updatedTeacherIds.push(updated.id);
+      updatedCount++;
+    } else {
+      const created = await prisma.teacher.create({
+        data: {
+          employeeId,
+          firstName: parsedName.firstName,
+          lastName: parsedName.lastName,
+          middleName: parsedName.middleName,
+          suffix: parsedName.suffix,
+          plantillaPosition,
+          natureOfAppointment,
+          fundingSource,
+          sex,
+          undergraduateDegree,
+          postgraduateDegree,
+          majorSpecialization,
+          minorSpecialization,
+          indigenousCommunity,
+          isActive: true,
+          serviceStatus: "ACTIVE",
+        },
+      });
+      updatedTeacherIds.push(created.id);
+      createdCount++;
+    }
+  }
+
+  return {
+    totalCount: updatedCount + createdCount,
+    updatedCount,
+    createdCount,
+    skippedCount,
+    updatedTeacherIds,
   };
 }
 

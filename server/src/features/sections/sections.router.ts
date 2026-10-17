@@ -7,6 +7,7 @@ import {
   updateSection,
   deleteSection,
   getSectionMasterlist,
+  bulkImportSf1,
   exportSectionSf1,
   previewSectionSf1Import,
   commitSectionSf1Import,
@@ -55,7 +56,9 @@ const sf1Upload = multer({
     const isXlsx =
       lowerMime ===
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
-      lowerName.endsWith(".xlsx");
+      lowerMime === "application/vnd.ms-excel" ||
+      lowerName.endsWith(".xlsx") ||
+      lowerName.endsWith(".xls");
 
     if (isXlsx) {
       callback(null, true);
@@ -163,6 +166,22 @@ router.post(
   validate(sf1ImportCommitSchema),
   staffIntakePhaseGuard,
   commitSectionSf1Import,
+);
+
+router.post(
+  "/sf1/import",
+  authenticate,
+  authorize("HEAD_REGISTRAR", "SYSTEM_ADMIN", ...gradeCoordinatorRoles),
+  sf1Upload.single("file"),
+  bulkImportSf1,
+);
+
+router.post(
+  "/:id/sf1/import",
+  authenticate,
+  authorize("HEAD_REGISTRAR", "SYSTEM_ADMIN", "CLASS_ADVISER", "TEACHER", ...gradeCoordinatorRoles),
+  sf1Upload.single("file"),
+  bulkImportSf1,
 );
 
 router.get(

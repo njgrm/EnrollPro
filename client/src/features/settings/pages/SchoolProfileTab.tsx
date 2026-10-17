@@ -26,7 +26,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/shared/ui/card";
-import { Badge } from "@/shared/ui/badge";
 import { Separator } from "@/shared/ui/separator";
 import {
   Form,
@@ -50,6 +49,7 @@ import {
   useUnsavedChanges,
 } from "@/shared/hooks/useUnsavedChanges";
 import { ConfirmationModal } from "@/shared/ui/confirmation-modal";
+import { DepEdBulkImportCard } from "../components/DepEdBulkImportCard";
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace("/api", "") || "";
 
@@ -556,6 +556,9 @@ export default function SchoolProfileTab() {
               </CardContent>
             </Card>
 
+
+            {/* DepEd Forms Bulk Import */}
+            <DepEdBulkImportCard />
 
             {/* Channels & Branding */}
             <Card>

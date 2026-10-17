@@ -59,6 +59,7 @@ import {
 } from "@/shared/ui/select";
 import { Button } from "@/shared/ui/button";
 import { ConfirmationModal } from "@/shared/ui/confirmation-modal";
+import { Sf7UploadModal } from "../components/Sf7UploadModal";
 
 
 import type {
@@ -237,6 +238,7 @@ export default function Teachers() {
   const [isSf7CommitLoading, setIsSf7CommitLoading] = useState(false);
   const [isSf7TemplateLoading, setIsSf7TemplateLoading] = useState(false);
   const [isSf7ExportLoading, setIsSf7ExportLoading] = useState(false);
+  const [isSf7UploadModalOpen, setIsSf7UploadModalOpen] = useState(false);
 
   const teachersQuery = useQuery({
     queryKey: [...queryKeys.teachersList(ayId), { ancillaryRoleFilter }],
@@ -1205,6 +1207,15 @@ export default function Teachers() {
             </DropdownMenuContent>
           </DropdownMenu>
           <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setIsSf7UploadModalOpen(true)}
+            className="h-9 font-bold tracking-wide rounded-sm border border-slate-300 hover:bg-slate-100 text-slate-700"
+          >
+            <UploadIcon className="w-4 h-4 mr-2 shrink-0" />
+            <span className="truncate">Import SF7 Masterlist</span>
+          </Button>
+          <Button
             onClick={() => {
               setViewingTeacher(null);
               setIsPanelOpen(true);
@@ -1456,6 +1467,14 @@ export default function Teachers() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Sf7UploadModal
+        open={isSf7UploadModalOpen}
+        onOpenChange={setIsSf7UploadModalOpen}
+        onSuccess={() => {
+          void invalidateTeacherQueries();
+        }}
+      />
     </div>
   );
 }

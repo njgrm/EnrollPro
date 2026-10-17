@@ -5,10 +5,11 @@ import { useNavigate } from "react-router";
 import {
   Plus,
   CalendarDays,
-  UserCheck,
   Pencil,
   Trash2,
+  Upload,
 } from "lucide-react";
+import { SectionSf1UploadModal } from "../components/SectionSf1UploadModal";
 import api from "@/shared/api/axiosInstance";
 import { useSettingsStore } from "@/store/settings.slice";
 import { useHistoricalReadOnly } from "@/shared/hooks/useHistoricalReadOnly";
@@ -29,21 +30,6 @@ import {
 } from "@/shared/ui/card";
 import { ConfirmationModal } from "@/shared/ui/confirmation-modal";
 import { SearchableCombobox } from "@/shared/ui/searchable-combobox";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/shared/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/shared/ui/table";
 import { Skeleton } from "@/shared/ui/skeleton";
 import {
   Tooltip,
@@ -57,7 +43,6 @@ import { useDelayedLoading } from "@/shared/hooks/useDelayedLoading";
 import { Badge } from "@/shared/ui/badge";
 import { motion } from "motion/react";
 import { cn, formatScpType } from "@/shared/lib/utils";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { useRealtimeRefresh } from "@/shared/hooks/useRealtimeRefresh";
 import {
   useUnsavedChanges,
@@ -259,6 +244,7 @@ function SectionCard({
   onEdit,
   onDelete,
   onViewMasterlist,
+  onUploadSf1,
   canMutate,
   scpTypeLabels,
   teachers,
@@ -274,6 +260,7 @@ function SectionCard({
   onEdit: () => void;
   onDelete: () => void;
   onViewMasterlist: () => void;
+  onUploadSf1?: (section: SectionItem) => void;
   canMutate: boolean;
   scpTypeLabels: Record<string, string>;
   teachers: Teacher[];
@@ -512,16 +499,40 @@ function SectionCard({
               </Button>
             </div>
           ) : (
-            <Button
-              className="w-full mt-4 font-bold"
-              variant="default"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (isCardDisabled) return;
-                onViewMasterlist();
-              }}>
-              Open SF1 Masterlist →
-            </Button>
+            <div className="flex items-center gap-2 mt-4">
+              <Button
+                className="flex-1 font-bold"
+                variant="default"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (isCardDisabled) return;
+                  onViewMasterlist();
+                }}>
+                Open SF1 Masterlist →
+              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="shrink-0 font-bold border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isCardDisabled) return;
+                        onUploadSf1?.(section);
+                      }}
+                    >
+                      <Upload className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="font-bold">Upload SF1 for {section.name}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           )}
         </div>
       </div>
@@ -579,6 +590,7 @@ export default function Homerooms() {
                 setDeleteName(s.name);
               }}
               onViewMasterlist={() => navigate(`/personnel/sections/view-masterlist/${s.id}`)}
+              onUploadSf1={() => setSf1UploadSection({ id: s.id, name: s.name, gradeLevel: glName })}
               canMutate={canMutate}
               isEosyClosing={systemPhase === "EOSY_CLOSING"}
             />
@@ -764,6 +776,13 @@ export default function Homerooms() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [deleteName, setDeleteName] = useState("");
   const [deleting, setDeleting] = useState(false);
+
+  // SF1 Section Upload Modal State
+  const [sf1UploadSection, setSf1UploadSection] = useState<{
+    id: number;
+    name: string;
+    gradeLevel: string;
+  } | null>(null);
 
   // Late Enrollee Modal State
 
@@ -1459,6 +1478,17 @@ export default function Homerooms() {
           onSuccess={fetchData}
         />
       )}
+
+      <SectionSf1UploadModal
+        open={Boolean(sf1UploadSection)}
+        onOpenChange={(open) => {
+          if (!open) setSf1UploadSection(null);
+        }}
+        section={sf1UploadSection}
+        onSuccess={() => {
+          void fetchData();
+        }}
+      />
     </div>
   );
 }

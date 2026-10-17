@@ -6,6 +6,7 @@ import { auditLog } from "../audit-logs/audit-logs.service.js";
 import { broadcastDomainInvalidation } from "../../lib/realtime-events.js";
 import {
   commitSf7Import,
+  directImportSf7,
   previewSf7Import,
   syncSf7FromAtlas,
 } from "./sf7.service.js";
@@ -89,6 +90,51 @@ export async function commitImport(req: Request, res: Response): Promise<void> {
         error instanceof Error
           ? error.message
           : "Could not commit the SF7 import.",
+    });
+  }
+}
+
+export async function directImport(req: Request, res: Response): Promise<void> {
+  try {
+    if (!req.file?.buffer) {
+      res.status(400).json({ message: "Upload one SF7 Excel file." });
+      return;
+    }
+
+    const result = await directImportSf7(req.file.buffer, {
+      fileName: req.file.originalname,
+      mimeType: req.file.mimetype,
+    });
+
+    await auditLog({
+      userId: req.user!.userId,
+      actionType: "SF7_IMPORT_COMMITTED",
+      description: `Bulk imported SF7 personnel. Total: ${result.totalCount}, Created: ${result.createdCount}, Updated: ${result.updatedCount}, Skipped: ${result.skippedCount}.`,
+      subjectType: "Teacher",
+      recordId: req.user!.userId,
+      req,
+    });
+
+    broadcastDomainInvalidation({
+      topics: ["teachers:list", "teachers:detail", "integration:hub"],
+      schoolYearId: req.schoolYearId,
+      teacherIds: result.updatedTeacherIds,
+    });
+
+    res.json({
+      success: true,
+      count: result.totalCount,
+      updatedCount: result.updatedCount,
+      createdCount: result.createdCount,
+      skippedCount: result.skippedCount,
+      message: `Success: ${result.totalCount} Personnel records imported (${result.createdCount} new, ${result.updatedCount} updated)`,
+    });
+  } catch (error: unknown) {
+    res.status(400).json({
+      message:
+        error instanceof Error
+          ? error.message
+          : "Could not import the SF7 file.",
     });
   }
 }
