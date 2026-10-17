@@ -228,13 +228,6 @@ export function PageUserManualDrawer() {
               </ul>
             </section>
 
-            {/* DepEd Compliance Callout */}
-            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3.5 text-xs text-muted-foreground flex items-start gap-2.5">
-              <ShieldCheck className="size-4 text-primary shrink-0 mt-0.5" />
-              <p className="leading-relaxed">
-                Workflows comply with Department of Education (DepEd) Order standards and Republic Act No. 10173 (Data Privacy Act of 2012).
-              </p>
-            </div>
           </div>
         </motion.aside>
       )}

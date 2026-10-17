@@ -262,7 +262,7 @@ export function DepEdBulkImportCard(): React.JSX.Element {
           <div className="h-10 w-10 shrink-0 bg-primary/10 text-primary rounded-lg flex items-center justify-center shadow-sm border border-primary/20">
             <FileSpreadsheet className="h-5 w-5" />
           </div>
-          <span className="break-words min-w-0 font-extrabold">DepEd Forms Bulk Import</span>
+          <span className="break-words min-w-0 font-extrabold">School Forms Bulk Import</span>
         </CardTitle>
       </CardHeader>
 
