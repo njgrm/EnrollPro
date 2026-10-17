@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from "react-router";
 import { useAuthStore } from "@/store/auth.slice";
 import type { AuthRole } from "@/store/auth.slice";
+import { isLoggingOut } from "@/shared/lib/logoutState";
 import Forbidden from "./Forbidden";
 import type { ReactNode } from "react";
 
@@ -11,6 +12,10 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ allowedRoles, allowedAncillaryRoles, children }: ProtectedRouteProps) {
+  if (isLoggingOut()) {
+    return null;
+  }
+
   const staffAuth = useAuthStore();
   const user = staffAuth.user;
   const hasSession = Boolean(staffAuth.user);

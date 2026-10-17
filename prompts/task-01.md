@@ -1,39 +1,49 @@
-# UI/UX Refactoring Prompt: Mobile-First Learner Profile (SF1 & SF9)
+# UI/UX & Feature Implementation Prompt: Grade Level Masterlist Export
 
-**Target System:** EnrollPro: EMEMHS Learner Information System  
-**Target Module:** Learner Profile (Student-facing / Guardian-facing Portal)  
-**Reference Images:** `image_015344.png`, `image_015349.png`, `image_015363.png`, `image_015365.png`  
+**Target System:** EnrollPro: Academic Institution's Digital Platform  
+**Target Module:** Section Assignment (Grade Level Tab)  
+**Reference Image:** `image_35fafe.jpg`  
 **Context:** Department of Education (DepEd) JHS Public School System  
 
 ---
 
-**Act as a Senior Frontend Developer and UI/UX Engineer.**
+Copy and paste the prompt below to instruct your AI agent or frontend/backend development team on how to execute this feature.
 
-Your task is to refactor the current Learner Profile interface into a strictly mobile-first, responsive architecture. Public school learners and guardians predominantly access portals via mobile devices, rendering the current rigid two-column desktop layout[cite: 15] and wide data tables[cite: 15, 17] unusable on smaller screens. 
+***
 
-Implement the following architectural and component-level improvements. **Crucial Constraint:** You must strictly reuse existing design system components (e.g., standard tabs, cards, dropdowns, sidepanels). Do not generate custom UI styling code, inline CSS, or bespoke utility class overrides. Focus on component orchestration and state architecture.
+**Act as a Senior UI/UX Engineer and Full-Stack Developer specializing in EdTech systems.**
 
-### 1. Layout Architecture & Full-Page Routing
-*   **Current State:** The interface uses a fixed left sidebar taking up roughly 30% of the screen[cite: 15, 17], forcing the main content into a constrained right-hand container. 
-*   **Refactoring:** Dismantle the two-column layout. Implement a stacked, single-column architecture for mobile viewports, scaling to a constrained max-width container on desktop. 
-*   **Routing Logic:** The current toggle between "HISTORICAL ACADEMIC RECORDS (SF9)" and "OFFICIAL LEARNER PROFILE (SF1)" relies on massive block buttons[cite: 15, 17]. Replace these with standard design system navigation tabs integrated with full-page routing (e.g., `/learner/profile/sf1` and `/learner/profile/sf9`). This ensures browser back-button compatibility and allows users to bookmark specific tabs.
+Your task is to implement a batch export feature (PDF and XLSX) for the finalized Grade Level Masterlist in the Section Assignment module. In a public DepEd high school environment, once the Grade Level Coordinator finishes allocating all learners to their respective sections, they need a consolidated master report of the entire grade level for distribution to Class Advisers and the Registrar.
 
-### 2. Mobile-First Learner Header & Sidepanel Integration
-*   **Current State:** The learner's photo, Name, LRN, Grade/Curriculum, and Official Class Adviser are stacked vertically in a massive sidebar[cite: 15, 17]. 
-*   **Refactoring:** 
-    *   Create a compact `<ProfileHeader />` component at the top of the page. Use a horizontal flex layout on mobile (Avatar on the left, Name and LRN on the right). 
-    *   Display only critical identifiers (Name, LRN, Grade - Section) in this header[cite: 15]. 
-    *   **Sidepanel Utilization:** Move the secondary administrative data, such as the "OFFICIAL CLASS ADVISER: TO BE ASSIGNED" status[cite: 15, 17], into a slide-out sidepanel or bottom sheet triggered by an "Advisory Details" action button. This reclaims primary screen real estate.
+Please implement the interface and data export logic using the following comprehensive guidelines:
 
-### 3. Refactoring SF9 (Historical Academic Records)
-*   **Current State:** Grades are displayed in a wide, traditional table format (Learning Areas, Term Ratings 1-3, Final Rating, Remarks)[cite: 15, 16], nested inside stacked accordions for each school year[cite: 16]. This will force horizontal scrolling on mobile and create a vertical "accordion overload."
-*   **Refactoring:**
-    *   **Dropdown Component:** Replace the stacked accordion list of school years (e.g., "GRADE 8 - MATAPAT", "GRADE 7 - AGUINALDO")[cite: 16] with a single, prominent Dropdown component labeled "Select Academic Year." Only one year's data should render at a time.
-    *   **Responsive Data Display:** Do not use standard `<table>` elements for mobile viewports. Re-architect the data into a list of `<GradeCard />` components. Each card should represent one Learning Area (e.g., "MATHEMATICS")[cite: 15, 16] and contain a responsive grid showing Q1, Q2, Q3, Q4, and the Final Rating. Switch to the traditional table view only at the `md` or `lg` breakpoint.
+### 1. UI Layout & Component Positioning
+*   **Location:** In the right-hand panel of the Section Assignment module, locate the "AVAILABLE SECTIONS" header[cite: 19]. Place a button group aligned to the right of this header (or immediately below it, replacing the placeholder text seen in the red box area)[cite: 19].
+*   **Component:** Use the existing design system's outlined button component with a trailing download icon (e.g., `<Button variant="outline" icon={<DownloadIcon />}>`). 
+*   **Buttons:** Create two separate buttons or a single "Export Grade Level" dropdown button containing two actions:
+    *   `Download Masterlist (PDF)`
+    *   `Download Masterlist (XLSX)`
+*   **Conditional Rendering (State Guard):** These export buttons must be **disabled** or hidden if there are still learners listed in the left-hand "LEARNERS READY FOR SECTIONING" panel[cite: 19]. They should only become active when the unassigned pool is empty (displaying "No pending unassigned learners")[cite: 19], indicating that the grade level's sectioning is finalized.
 
-### 4. Refactoring SF1 (Official Learner Profile)
-*   **Current State:** Learner identity, residency, and parent/guardian backgrounds are displayed using rigid, two-column table structures with heavy borders (e.g., "SEX | FEMALE")[cite: 17, 18]. 
-*   **Refactoring:**
-    *   Strip out the table structures. Utilize standard label-value pair components from the design system.
-    *   Group the data logically into distinct `<Card />` containers: "I. Learner Identity", "II. Current Residency", and "III. Parent/Guardian Background"[cite: 17, 18].
-    *   Use a responsive CSS grid layout within these cards: 1 column on mobile (label stacked above value) and 2 or 3 columns on desktop to maximize screen space without hardcoding rigid table cells.
+### 2. Export Data Mapping & DepEd Formatting Standards
+When generating the exported document, the backend/client-side generator must map the data according to standard DepEd sorting rules. 
+
+**Critical Scope Constraint:** Do *not* attempt to format this export as an official DepEd School Form 1 (SF1). This is an internal system masterlist. SF1 generation involves complex margins, biometric data, and specific DepEd boilerplate that is strictly outside the current system boundaries.
+
+**Data Sorting Rules (Must Apply to Both PDF & XLSX):**
+1.  **Group By:** Program Type (e.g., STE, BEC)[cite: 19], then by Section Name (e.g., BONIFACIO)[cite: 19] alphabetically.
+2.  **Sort By Sex:** Within each section, list all Male learners first, followed by Female learners (DepEd standard).
+3.  **Sort By Name:** Alphabetical order by Last Name within each sex grouping.
+
+### 3. XLSX (Excel) Structure Requirements
+Use a library like `xlsx` or `exceljs`.
+*   **Worksheets:** Create a single worksheet for the entire grade level.
+*   **Headers:** Include columns: `No.`, `LRN`, `Last Name`, `First Name`, `Middle Initial`, `Sex`, `Section`, `Program`, `Adviser`. Freeze the top header row.
+*   **Data Type Protection:** The `LRN` column must explicitly be formatted as `Text` (or pre-pended with a single quote ` ' ` during generation). LRNs are 12 digits long; standard Excel number formatting will convert them to scientific notation or truncate them, corrupting the data.
+
+### 4. PDF Structure Requirements
+Use a library like `jspdf` with `jspdf-autotable` or generate via backend HTML-to-PDF.
+*   **Document Header:** Include the school name (Enriqueta Montilla de Esteban Memorial High School), the module name (Grade [X] Section Assignment Masterlist), and the Academic Year[cite: 19].
+*   **Layout:** Use a clean, banded-row table format. 
+*   **Section Breaks:** Render a sub-header row spanning all columns every time the list transitions to a new section (e.g., a dark gray row reading: **SECTION: BONIFACIO | ADVISER: AGUILAR, CARLO MIGUEL**)[cite: 19].
+*   **Summary Footer:** At the absolute bottom of the document, generate a summary block displaying the total number of enrolled learners broken down by Program Type and Sex.

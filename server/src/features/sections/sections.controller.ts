@@ -25,6 +25,11 @@ import {
   isGradeLevelCoordinator,
   isGradeLevelWithinScope,
 } from "./grade-level-scope.service.js";
+import {
+  getGradeLevelMasterlistData,
+  generateGradeLevelMasterlistXlsx,
+  generateGradeLevelMasterlistPdf,
+} from "./grade-level-masterlist.service.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -1585,6 +1590,15 @@ export async function exportSectionSf1(
       throw new Error("SF1 template worksheet not found.");
     }
 
+    // Reset worksheet view so Excel opens at A1 in normal view rather than scrolled
+    ws.views = [
+      {
+        state: "normal",
+        activeCell: "A1",
+        showGridLines: true,
+      },
+    ];
+
     // Rule 1: Document Header Injection
     ws.getCell("F3").value = schoolSetting?.depedSchoolId ?? "";
     ws.getCell("T3").value = schoolSetting?.division ?? "";
@@ -1593,39 +1607,89 @@ export async function exportSectionSf1(
     ws.getCell("AE4").value = section.gradeLevel.name;
     ws.getCell("AM4").value = section.name;
 
-    // Clear rows 7 to 46 before populating to wipe out any sample data
-    for (let rowNum = 7; rowNum <= 46; rowNum++) {
-      const row = ws.getRow(rowNum);
-      row.eachCell({ includeEmpty: true }, (cell) => {
-        cell.value = null;
-      });
+    for (const addr of ["F3", "T3", "F4", "T4", "AE4", "AM4"]) {
+      const cell = ws.getCell(addr);
+      cell.alignment = {
+        vertical: "middle",
+        horizontal: "center",
+        wrapText: false,
+      };
     }
 
-    // Write Learner Rows & Stratify Gender (Rule 3 & Rule 4)
+    // Standardize and clear rows 7 to 46 with middle vertical and horizontal center alignment with no text wrapping
+    for (let rowNum = 7; rowNum <= 46; rowNum++) {
+      const row = ws.getRow(rowNum);
+      row.height = 25;
+      for (let c = 1; c <= 46; c++) {
+        const cell = row.getCell(c);
+        cell.value = null;
+        cell.alignment = {
+          vertical: "middle",
+          horizontal: "center",
+          wrapText: false,
+        };
+      }
+    }
+
+    // Helper to format a cell span across columns for a row
+    const writeCellSpan = (
+      rowNum: number,
+      startCol: number,
+      endCol: number,
+      value: string | number | null,
+      horizontal: "center" | "left" | "right" = "center",
+      isText = false,
+      isBold = false,
+    ) => {
+      const row = ws.getRow(rowNum);
+      row.height = 25;
+      for (let c = startCol; c <= endCol; c++) {
+        const cell = row.getCell(c);
+        if (c === startCol) {
+          cell.value = value;
+        }
+        cell.alignment = {
+          vertical: "middle",
+          horizontal,
+          wrapText: false,
+        };
+        if (isText) {
+          cell.numFmt = "@";
+        }
+        if (isBold) {
+          cell.font = {
+            ...cell.font,
+            bold: true,
+          };
+        }
+      }
+    };
+
+    // Write Learner Rows & Stratify Gender (Rule 3 & Rule 4) - all centered in the middle
     let r = 7;
 
     const writeLearnerRow = (l: LearnerRow, sexLabel: "M" | "F") => {
       const fullName = `${l.lastName.toUpperCase()}, ${l.firstName.toUpperCase()}${l.middleName ? " " + l.middleName.toUpperCase() : ""}`;
-      
-      ws.getCell(`A${r}`).value = l.lrn;
-      ws.getCell(`C${r}`).value = fullName;
-      ws.getCell(`G${r}`).value = sexLabel;
-      ws.getCell(`H${r}`).value = fmtDate(l.birthdate);
-      ws.getCell(`J${r}`).value = computeJuneAge(l.birthdate);
-      ws.getCell(`L${r}`).value = ""; // Rule 3: Leave Mother Tongue blank for JHS!
-      ws.getCell(`N${r}`).value = l.ipGroup;
-      ws.getCell(`O${r}`).value = l.religion;
-      ws.getCell(`P${r}`).value = l.houseStreet;
-      ws.getCell(`R${r}`).value = l.barangay;
-      ws.getCell(`U${r}`).value = l.municipality;
-      ws.getCell(`W${r}`).value = l.province;
-      ws.getCell(`AB${r}`).value = l.fatherName;
-      ws.getCell(`AF${r}`).value = l.motherName;
-      ws.getCell(`AK${r}`).value = l.guardianName;
-      ws.getCell(`AO${r}`).value = l.guardianRelationship;
-      ws.getCell(`AP${r}`).value = l.contactNumber;
-      ws.getCell(`AR${r}`).value = "";
-      ws.getCell(`AS${r}`).value = l.sf1Remarks;
+
+      writeCellSpan(r, 1, 2, l.lrn, "center", true);
+      writeCellSpan(r, 3, 6, fullName, "center");
+      writeCellSpan(r, 7, 7, sexLabel, "center");
+      writeCellSpan(r, 8, 9, fmtDate(l.birthdate), "center");
+      writeCellSpan(r, 10, 11, computeJuneAge(l.birthdate), "center");
+      writeCellSpan(r, 12, 13, "", "center"); // Rule 3: Leave Mother Tongue blank for JHS!
+      writeCellSpan(r, 14, 14, l.ipGroup, "center");
+      writeCellSpan(r, 15, 15, l.religion, "center");
+      writeCellSpan(r, 16, 17, l.houseStreet, "center");
+      writeCellSpan(r, 18, 20, l.barangay, "center");
+      writeCellSpan(r, 21, 22, l.municipality, "center");
+      writeCellSpan(r, 23, 27, l.province, "center");
+      writeCellSpan(r, 28, 31, l.fatherName, "center");
+      writeCellSpan(r, 32, 36, l.motherName, "center");
+      writeCellSpan(r, 37, 40, l.guardianName, "center");
+      writeCellSpan(r, 41, 41, l.guardianRelationship, "center");
+      writeCellSpan(r, 42, 43, l.contactNumber, "center", true);
+      writeCellSpan(r, 44, 44, "", "center");
+      writeCellSpan(r, 45, 46, l.sf1Remarks, "center");
       r++;
     };
 
@@ -1633,21 +1697,52 @@ export async function exportSectionSf1(
     males.forEach((l) => writeLearnerRow(l, "M"));
 
     // Male Total Row (Rule 4)
-    ws.getCell(`C${r}`).value = "<=== TOTAL MALE";
-    ws.getCell(`A${r}`).value = males.length;
+    writeCellSpan(r, 1, 2, males.length, "center", false, true);
+    writeCellSpan(r, 3, 6, "<=== TOTAL MALE", "center", false, true);
+    for (let c = 7; c <= 46; c++) {
+      const cell = ws.getRow(r).getCell(c);
+      cell.value = null;
+      cell.alignment = { vertical: "middle", horizontal: "center", wrapText: false };
+    }
     r++;
 
     // Females
     females.forEach((l) => writeLearnerRow(l, "F"));
 
     // Female Total Row (Rule 4)
-    ws.getCell(`C${r}`).value = "<=== TOTAL FEMALE";
-    ws.getCell(`A${r}`).value = females.length;
+    writeCellSpan(r, 1, 2, females.length, "center", false, true);
+    writeCellSpan(r, 3, 6, "<=== TOTAL FEMALE", "center", false, true);
+    for (let c = 7; c <= 46; c++) {
+      const cell = ws.getRow(r).getCell(c);
+      cell.value = null;
+      cell.alignment = { vertical: "middle", horizontal: "center", wrapText: false };
+    }
     r++;
 
     // Combined Total Row (Rule 4)
-    ws.getCell(`C${r}`).value = "<=== COMBINED";
-    ws.getCell(`A${r}`).value = allLearners.length;
+    writeCellSpan(r, 1, 2, allLearners.length, "center", false, true);
+    writeCellSpan(r, 3, 6, "<=== COMBINED", "center", false, true);
+    for (let c = 7; c <= 46; c++) {
+      const cell = ws.getRow(r).getCell(c);
+      cell.value = null;
+      cell.alignment = { vertical: "middle", horizontal: "center", wrapText: false };
+    }
+    r++;
+
+    // Clean up any remaining rows in data table area
+    for (let remainingRow = r; remainingRow <= 46; remainingRow++) {
+      const row = ws.getRow(remainingRow);
+      row.height = 25;
+      for (let c = 1; c <= 46; c++) {
+        const cell = row.getCell(c);
+        cell.value = null;
+        cell.alignment = {
+          vertical: "middle",
+          horizontal: "center",
+          wrapText: false,
+        };
+      }
+    }
 
     // Rule 5: Summary Statistics and Signature Block Injection (Rows 45-56)
     // Registered Counts Grid
@@ -1660,7 +1755,9 @@ export async function exportSectionSf1(
 
     // Signature Block Injection
     ws.getCell("AE47").value = adviserName.toUpperCase();
+    ws.getCell("AE47").alignment = { vertical: "middle", horizontal: "center", wrapText: false };
     ws.getCell("AN47").value = (schoolSetting?.schoolHeadName || "MYZA MAE PINEDA").toUpperCase();
+    ws.getCell("AN47").alignment = { vertical: "middle", horizontal: "center", wrapText: false };
 
     // Footer Provenance & Timestamp
     ws.getCell("AN55").value = "Generated thru EnrollPro";
@@ -1926,4 +2023,118 @@ export async function downloadSectionSf1Template(
   );
   const buffer = await workbook.xlsx.writeBuffer();
   res.send(Buffer.from(buffer));
+}
+
+export async function exportGradeLevelMasterlistXlsx(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const gradeLevelId = parseInt(String(req.params.gradeLevelId), 10);
+    if (!Number.isInteger(gradeLevelId) || gradeLevelId <= 0) {
+      res.status(400).json({ message: "Invalid grade level ID." });
+      return;
+    }
+
+    const canManage = await canManageSectionGrade(req, gradeLevelId);
+    if (!canManage) {
+      sendGradeScopeForbidden(res);
+      return;
+    }
+
+    const schoolYearId =
+      (req.query.schoolYearId ? Number(req.query.schoolYearId) : null) ??
+      req.schoolYearId ??
+      (
+        await prisma.schoolYear.findFirst({
+          where: { status: "ACTIVE" },
+          select: { id: true },
+        })
+      )?.id;
+
+    if (!schoolYearId) {
+      res.status(400).json({ message: "Active school year not found." });
+      return;
+    }
+
+    const masterlistData = await getGradeLevelMasterlistData(gradeLevelId, schoolYearId);
+    if (!masterlistData) {
+      res.status(404).json({ message: "Grade level masterlist data not found." });
+      return;
+    }
+
+    const workbook = await generateGradeLevelMasterlistXlsx(masterlistData);
+
+    const safeGradeName = masterlistData.gradeLevelName.replace(/[^a-zA-Z0-9_-]+/g, "_");
+    const safeSy = masterlistData.yearLabel.replace(/[^a-zA-Z0-9_-]+/g, "_");
+    const filename = `${safeGradeName}_Masterlist_${safeSy}.xlsx`;
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    res.send(Buffer.from(buffer));
+  } catch (error) {
+    console.error("Failed to export grade level masterlist XLSX:", error);
+    res.status(500).json({ message: "Failed to export grade level masterlist." });
+  }
+}
+
+export async function exportGradeLevelMasterlistPdf(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const gradeLevelId = parseInt(String(req.params.gradeLevelId), 10);
+    if (!Number.isInteger(gradeLevelId) || gradeLevelId <= 0) {
+      res.status(400).json({ message: "Invalid grade level ID." });
+      return;
+    }
+
+    const canManage = await canManageSectionGrade(req, gradeLevelId);
+    if (!canManage) {
+      sendGradeScopeForbidden(res);
+      return;
+    }
+
+    const schoolYearId =
+      (req.query.schoolYearId ? Number(req.query.schoolYearId) : null) ??
+      req.schoolYearId ??
+      (
+        await prisma.schoolYear.findFirst({
+          where: { status: "ACTIVE" },
+          select: { id: true },
+        })
+      )?.id;
+
+    if (!schoolYearId) {
+      res.status(400).json({ message: "Active school year not found." });
+      return;
+    }
+
+    const masterlistData = await getGradeLevelMasterlistData(gradeLevelId, schoolYearId);
+    if (!masterlistData) {
+      res.status(404).json({ message: "Grade level masterlist data not found." });
+      return;
+    }
+
+    const pdfBuffer = await generateGradeLevelMasterlistPdf(masterlistData);
+
+    const safeGradeName = masterlistData.gradeLevelName.replace(/[^a-zA-Z0-9_-]+/g, "_");
+    const safeSy = masterlistData.yearLabel.replace(/[^a-zA-Z0-9_-]+/g, "_");
+    const filename = `${safeGradeName}_Masterlist_${safeSy}.pdf`;
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
+
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error("Failed to export grade level masterlist PDF:", error);
+    res.status(500).json({ message: "Failed to export grade level masterlist PDF." });
+  }
 }

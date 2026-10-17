@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { setLoggingOut } from "@/shared/lib/logoutState";
 
 interface UserData {
   id: string;
@@ -56,9 +57,10 @@ export default function AdminLayout() {
   }, [navigate]);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    navigate("/login");
+    setLoggingOut(true);
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.href = "/personnel/login";
   };
 
   const getCurrentPageTitle = () => {

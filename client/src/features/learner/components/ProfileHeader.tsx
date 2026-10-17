@@ -76,7 +76,7 @@ export function ProfileHeader({ data }: ProfileHeaderProps) {
           </div>
 
           <div className="flex flex-col min-w-0">
-            <h2 className="text-base sm:text-lg lg:text-xl font-extrabold text-foreground uppercase tracking-tight truncate leading-tight">
+            <h2 className="text-base sm:text-lg lg:text-xl font-extrabold text-primary uppercase tracking-tight truncate leading-tight">
               {fullName}
             </h2>
             <span className="text-xs sm:text-sm font-bold mt-0.5">

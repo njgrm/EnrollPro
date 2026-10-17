@@ -20,6 +20,7 @@ import { cn } from "@/features/smart/lib/utils";
 import { ConfirmationModal } from "@/shared/ui/confirmation-modal";
 import { useTheme } from "@/features/smart/contexts/ThemeContext";
 import { SERVER_URL } from "@/features/smart/lib/api";
+import { setLoggingOut } from "@/shared/lib/logoutState";
 
 interface UserData {
   id: string;
@@ -117,19 +118,10 @@ export default function AdminLayout() {
   }, [navigate]);
 
   const handleLogout = () => {
+    setLoggingOut(true);
+    localStorage.clear();
     sessionStorage.clear();
-    Object.keys(localStorage).forEach((key) => {
-      if (
-        key.includes("filter") ||
-        key.includes("pagination") ||
-        key.includes("search") ||
-        key.includes("table") ||
-        key.includes("limit")
-      ) {
-        localStorage.removeItem(key);
-      }
-    });
-    navigate("/personnel/dashboard");
+    window.location.href = "/personnel/login";
   };
 
   const toggleSidebarCollapse = () => {

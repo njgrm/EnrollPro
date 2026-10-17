@@ -1,5 +1,6 @@
 import { Skeleton } from "@/shared/ui/skeleton";
 import { cn } from "@/shared/lib/utils";
+import { isLoggingOut } from "@/shared/lib/logoutState";
 
 export type SkeletonPageVariant =
   | "dashboard"
@@ -25,6 +26,7 @@ interface PageLoadingSkeletonProps extends SkeletonLayoutProps {
 }
 
 export function SkeletonPageHeader({ className }: SkeletonLayoutProps) {
+  if (isLoggingOut()) return null;
   return (
     <div
       className={cn(
@@ -51,6 +53,7 @@ export function MetricCardSkeleton({
   count?: number;
   className?: string;
 }) {
+  if (isLoggingOut()) return null;
   return (
     <div
       className={cn(
@@ -85,6 +88,7 @@ export function ToolbarSkeleton({
   controls?: number;
   className?: string;
 }) {
+  if (isLoggingOut()) return null;
   return (
     <div
       className={cn(
@@ -115,6 +119,7 @@ export function DataTableSkeleton({
   dense?: boolean;
   className?: string;
 }) {
+  if (isLoggingOut()) return null;
   return (
     <div
       className={cn(
@@ -191,6 +196,7 @@ export function CardGridSkeleton({
   count?: number;
   className?: string;
 }) {
+  if (isLoggingOut()) return null;
   return (
     <div
       className={cn(
@@ -234,6 +240,7 @@ export function FormSkeleton({
   sections?: number;
   className?: string;
 }) {
+  if (isLoggingOut()) return null;
   return (
     <div
       className={cn(
@@ -266,6 +273,7 @@ export function FormSkeleton({
 }
 
 export function TwoPanelSkeleton({ className }: SkeletonLayoutProps) {
+  if (isLoggingOut()) return null;
   return (
     <div
       className={cn(
@@ -334,6 +342,7 @@ export function TwoPanelSkeleton({ className }: SkeletonLayoutProps) {
 }
 
 export function DetailPanelSkeleton({ className }: SkeletonLayoutProps) {
+  if (isLoggingOut()) return null;
   return (
     <div
       className={cn(
@@ -358,6 +367,7 @@ export function DetailPanelSkeleton({ className }: SkeletonLayoutProps) {
 }
 
 export function ModalBodySkeleton({ className }: SkeletonLayoutProps) {
+  if (isLoggingOut()) return null;
   return (
     <div className={cn("p-4 space-y-4", className)}>
       <Skeleton className="h-6 w-48 rounded" />
@@ -371,6 +381,7 @@ export function ModalBodySkeleton({ className }: SkeletonLayoutProps) {
 }
 
 export function LearnerProfileSkeleton({ className }: SkeletonLayoutProps) {
+  if (isLoggingOut()) return null;
   return (
     <div
       className={cn(
@@ -419,10 +430,12 @@ export function LearnerProfileSkeleton({ className }: SkeletonLayoutProps) {
 }
 
 export function EnrollmentFormSkeleton({ className }: SkeletonLayoutProps) {
+  if (isLoggingOut()) return null;
   return <FormSkeleton sections={4} className={className} />;
 }
 
 export function DashboardSkeleton({ className }: SkeletonLayoutProps) {
+  if (isLoggingOut()) return null;
   return (
     <div
       className={cn(
@@ -470,6 +483,7 @@ export function DashboardSkeleton({ className }: SkeletonLayoutProps) {
 }
 
 export function RegistrySkeleton({ className }: SkeletonLayoutProps) {
+  if (isLoggingOut()) return null;
   return (
     <div
       className={cn(
@@ -485,6 +499,7 @@ export function RegistrySkeleton({ className }: SkeletonLayoutProps) {
 }
 
 export function SettingsSkeleton({ className }: SkeletonLayoutProps) {
+  if (isLoggingOut()) return null;
   return (
     <div
       className={cn(
@@ -521,6 +536,7 @@ export function SettingsSkeleton({ className }: SkeletonLayoutProps) {
 }
 
 export function BOSYSkeleton({ className }: SkeletonLayoutProps) {
+  if (isLoggingOut()) return null;
   return (
     <div
       className={cn(
@@ -556,6 +572,9 @@ export function PageLoadingSkeleton({
   className,
   variant = "generic",
 }: PageLoadingSkeletonProps) {
+  if (isLoggingOut()) {
+    return null;
+  }
   if (variant === "dashboard") {
     return <DashboardSkeleton className={className} />;
   }

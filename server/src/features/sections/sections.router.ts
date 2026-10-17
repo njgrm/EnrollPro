@@ -16,6 +16,8 @@ import {
   handoverAdviser,
   transferLearner,
   forfeitSlot,
+  exportGradeLevelMasterlistXlsx,
+  exportGradeLevelMasterlistPdf,
 } from "./sections.controller.js";
 import { authenticate } from "../../middleware/authenticate.js";
 import { authorize } from "../../middleware/authorize.js";
@@ -191,6 +193,20 @@ router.post(
   authenticate,
   authorize(...sectionManagerRoles),
   forfeitSlot,
+);
+
+router.get(
+  "/grade-level/:gradeLevelId/export/xlsx",
+  authenticate,
+  authorize(...sectionManagerRoles),
+  exportGradeLevelMasterlistXlsx,
+);
+
+router.get(
+  "/grade-level/:gradeLevelId/export/pdf",
+  authenticate,
+  authorize(...sectionManagerRoles),
+  exportGradeLevelMasterlistPdf,
 );
 
 export default router;

@@ -1,11 +1,15 @@
 import { cn } from '@/shared/lib/utils';
-import React from 'react';
+import type React from 'react';
+import { isLoggingOut } from '@/shared/lib/logoutState';
 
 function Skeleton({
 	className,
 	'aria-hidden': ariaHidden = true,
 	...props
 }: React.HTMLAttributes<HTMLDivElement>) {
+	if (isLoggingOut()) {
+		return null;
+	}
 	return (
 		<div
 			aria-hidden={ariaHidden}

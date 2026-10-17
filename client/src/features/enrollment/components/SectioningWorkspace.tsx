@@ -18,6 +18,9 @@ import {
   SlidersHorizontal,
   Maximize2,
   Minimize2,
+  Download,
+  FileDown,
+  FileSpreadsheet,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { Label } from "@/shared/ui/label";
@@ -736,6 +739,7 @@ export function SectioningWorkspace() {
   const autoAssignTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const prefersReducedMotion = useReducedMotion();
   const [isRightPaneFullscreen, setIsRightPaneFullscreen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [expandedSectionIds, setExpandedSectionIds] = useState<Set<number>>(
     new Set(),
   );
@@ -824,7 +828,7 @@ export function SectioningWorkspace() {
     useSettingsStore.getState().updateUiPreference("sectioningGradeId", id);
   }, []);
 
-  const { ayId } = useSchoolYearContext();
+  const { ayId, ayLabel } = useSchoolYearContext();
   const storageKey = `enrollpro_draft_placements_${ayId || "active"}`;
 
   const [draftPlacements, setDraftPlacements] = useState<Record<string, DraftPlacement>>(() => {
@@ -2241,6 +2245,51 @@ export function SectioningWorkspace() {
     }
   };
 
+  const handleExportGradeLevel = async (format: "pdf" | "xlsx") => {
+    if (!activeGradeLevelId) return;
+    setIsExporting(true);
+    try {
+      const response = await api.get(
+        `/sections/grade-level/${activeGradeLevelId}/export/${format}`,
+        {
+          responseType: "blob",
+          params: { schoolYearId: ayId },
+        },
+      );
+      const mimeType =
+        format === "pdf"
+          ? "application/pdf"
+          : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+      const blob = new Blob([response.data], { type: mimeType });
+      const currentGradeObj = gradeLevels.find((g) => String(g.id) === activeGradeLevelId);
+      const safeGrade = (currentGradeObj?.name || `Grade_${activeGradeLevelId}`).replace(/\s+/g, "_");
+      const safeSy = (ayLabel || "SY").replace(/\s+/g, "_").replace("/", "-");
+      const filename = `${safeGrade}_Masterlist_${safeSy}.${format}`;
+
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      window.URL.revokeObjectURL(url);
+      anchor.remove();
+
+      sileo.success({
+        title: "Export Ready",
+        description: `Successfully downloaded ${currentGradeObj?.name || "Grade Level"} Masterlist (${format.toUpperCase()}).`,
+      });
+    } catch (err: unknown) {
+      console.error("Grade level masterlist export error:", err);
+      sileo.error({
+        title: "Export Failed",
+        description: "Could not export the grade level masterlist. Please try again.",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (masterlistModalSectionId !== null) {
     return (
       <ViewMasterlist
@@ -2857,7 +2906,45 @@ export function SectioningWorkspace() {
                         : `Select section to assign ${selectedAppIds.length || "0"} ${selectedAppIds.length <= 1 ? "learner" : "learners"}.`}
                     </CardDescription>
                   </div>
-                  {isDesktopViewport && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    {currentGradePool.length === 0 && !draftPlacement && currentGradeSections.length > 0 && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={isExporting}
+                            className="font-bold text-xs uppercase tracking-normal gap-1.5 h-9"
+                          >
+                            {isExporting ? (
+                              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                            ) : (
+                              <Download className="h-4 w-4 text-primary" />
+                            )}
+                            Export Grade Level
+                            <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                          <DropdownMenuItem
+                            onClick={() => handleExportGradeLevel("pdf")}
+                            className="font-semibold text-xs cursor-pointer gap-2 py-2"
+                          >
+                            <FileDown className="h-4 w-4 text-primary" />
+                            Download Masterlist (PDF)
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleExportGradeLevel("xlsx")}
+                            className="font-semibold text-xs cursor-pointer gap-2 py-2"
+                          >
+                            <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                            Download Masterlist (XLSX)
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+
+                    {isDesktopViewport && (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -2891,6 +2978,7 @@ export function SectioningWorkspace() {
                     </TooltipProvider>
                   )}
                 </div>
+              </div>
 
                 {currentGradePool.length > 0 && (
                   <div className="flex flex-col items-center gap-1">

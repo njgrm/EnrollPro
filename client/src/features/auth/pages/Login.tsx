@@ -33,6 +33,7 @@ import api from "@/shared/api/axiosInstance";
 import { toastApiError } from "@/shared/hooks/useApiToast";
 import { useAuthStore } from "@/store/auth.slice";
 import { useSettingsStore, type SettingsState } from "@/store/settings.slice";
+import { setLoggingOut } from "@/shared/lib/logoutState";
 import type { Role } from "@enrollpro/shared";
 
 type AuthResponseUser = {
@@ -363,6 +364,10 @@ export default function Login() {
   const settings = useSettingsStore() as SchoolMetaSettings;
   const schoolName = settings.schoolName || "EnrollPro";
   const acronym = useMemo(() => getAcronym(settings.schoolName), [settings.schoolName]);
+
+  useEffect(() => {
+    setLoggingOut(false);
+  }, []);
 
   useEffect(() => {
     const code = reverseSsoErrorCode;

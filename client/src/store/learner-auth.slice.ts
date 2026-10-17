@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { setLoggingOut } from "@/shared/lib/logoutState";
 
 export interface LearnerUser {
   id: number;
@@ -19,9 +20,11 @@ interface LearnerAuthState {
   requiresPasswordReset: boolean;
   sessionExpired: boolean;
   isHydrated: boolean;
+  isLoggingOut: boolean;
   setAuth: (user: LearnerUser, token?: string | null) => void;
   setRequiresPasswordReset: (value: boolean) => void;
   clearAuth: () => void;
+  setIsLoggingOut: (isLoggingOut: boolean) => void;
   setSessionExpired: (expired: boolean) => void;
   setHydrated: () => void;
 }
@@ -34,9 +37,20 @@ export const useLearnerAuthStore = create<LearnerAuthState>()(
       requiresPasswordReset: false,
       sessionExpired: false,
       isHydrated: false,
-      setAuth: (user, token) => set({ user, token, requiresPasswordReset: false, sessionExpired: false }),
+      isLoggingOut: false,
+      setAuth: (user, token) => {
+        setLoggingOut(false);
+        set({ user, token, requiresPasswordReset: false, sessionExpired: false, isLoggingOut: false });
+      },
       setRequiresPasswordReset: (value) => set({ requiresPasswordReset: value }),
-      clearAuth: () => set({ user: null, token: null, requiresPasswordReset: false }),
+      clearAuth: () => {
+        setLoggingOut(true);
+        set({ user: null, token: null, requiresPasswordReset: false, isLoggingOut: true });
+      },
+      setIsLoggingOut: (isLoggingOut) => {
+        setLoggingOut(isLoggingOut);
+        set({ isLoggingOut });
+      },
       setSessionExpired: (expired) => set({ sessionExpired: expired }),
       setHydrated: () => set({ isHydrated: true }),
     }),

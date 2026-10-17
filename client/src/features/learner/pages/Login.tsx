@@ -22,7 +22,7 @@ import { Card, CardContent } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Checkbox } from "@/shared/ui/checkbox";
-import { Skeleton } from "@/shared/ui/skeleton";
+import { setLoggingOut } from "@/shared/lib/logoutState";
 import { Button } from "@/shared/ui/button";
 import api from "@/shared/api/axiosInstance";
 import { toastApiError } from "@/shared/hooks/useApiToast";
@@ -100,7 +100,7 @@ export default function LearnerLogin() {
   } = useLearnerAuthStore();
 
   const [publicConfig, setPublicConfig] = useState<PublicConfig>(DEFAULT_CONFIG);
-  const [configLoaded, setConfigLoaded] = useState(false);
+  const [configLoaded, setConfigLoaded] = useState(true);
   const [logoLoadFailed, setLogoLoadFailed] = useState(false);
 
   const [showPassword, setShowPassword] = useState(false);
@@ -138,6 +138,10 @@ export default function LearnerLogin() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    setLoggingOut(false);
   }, []);
 
   const apiBase = import.meta.env.VITE_API_URL?.replace("/api", "") || "";
@@ -284,38 +288,6 @@ export default function LearnerLogin() {
       return <Navigate to="/learner/change-password" state={{ isForcedReset: true }} replace />;
     }
     return <Navigate to="/learner/profile/sf9" replace />;
-  }
-
-  if (!configLoaded) {
-    return (
-      <div className="h-screen w-full flex flex-col lg:flex-row bg-background overflow-hidden">
-        <div className="hidden lg:flex lg:w-1/2 xl:w-[48%] h-full p-6 xl:p-10 bg-gradient-to-br from-primary via-primary/95 to-primary/90 text-primary-foreground flex-col justify-between">
-          <div className="space-y-4">
-            <Skeleton className="h-16 w-48 bg-white/10" />
-            <Skeleton className="h-6 w-72 bg-white/10" />
-          </div>
-          <div className="space-y-4">
-            <Skeleton className="h-8 w-64 bg-white/10" />
-            <Skeleton className="h-12 w-full max-w-md bg-white/10" />
-          </div>
-          <Skeleton className="h-5 w-64 bg-white/10" />
-        </div>
-        <div className="w-full lg:w-1/2 xl:w-[52%] h-full flex items-center justify-center p-4 sm:p-6 lg:p-8">
-          <Card className="w-full max-w-md rounded-2xl shadow-xl border p-6 space-y-6">
-            <div className="flex flex-col items-center space-y-3">
-              <Skeleton className="h-16 w-16 rounded-full" />
-              <Skeleton className="h-6 w-48" />
-              <Skeleton className="h-4 w-64" />
-            </div>
-            <div className="space-y-4 pt-2">
-              <Skeleton className="h-11 w-full rounded-xl" />
-              <Skeleton className="h-11 w-full rounded-xl" />
-              <Skeleton className="h-11 w-full rounded-xl" />
-            </div>
-          </Card>
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -533,9 +505,7 @@ export default function LearnerLogin() {
               <div className="text-center space-y-2">
                 {/* School Emblem Badge (School Logo Only) */}
                 <div className="flex justify-center pb-0.5">
-                  {!configLoaded ? (
-                    <Skeleton className="h-14 w-14 sm:h-16 sm:w-16 rounded-full" />
-                  ) : fullLogoUrl && !logoLoadFailed ? (
+                  {fullLogoUrl && !logoLoadFailed ? (
                     <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-background border border-border/80 shadow-md flex items-center justify-center p-1.5 ring-4 ring-primary/5 transition-transform hover:scale-105 duration-200">
                       <img
                         src={fullLogoUrl}
@@ -670,7 +640,7 @@ export default function LearnerLogin() {
                     <Checkbox
                       id="rememberMe"
                       checked={rememberMe}
-                      onCheckedChange={(checked) => setRememberMe(checked === true)}
+                      onCheckedChange={(checked: boolean | "indeterminate") => setRememberMe(checked === true)}
                       className="rounded-md data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                     />
                     <Label

@@ -17,6 +17,7 @@ import { getLearnerApi } from "@/shared/api/axiosInstance";
 import { Button } from "@/shared/ui/button";
 import { PageLoadingSkeleton } from "@/shared/components/PageLoadingSkeleton";
 import { ConfirmationModal } from "@/shared/ui/confirmation-modal";
+import { setLoggingOut, isLoggingOut } from "@/shared/lib/logoutState";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/shared/ui/tabs";
 import { ProfileHeader } from "@/features/learner/components/ProfileHeader";
 import { HistoricalAcademicRecords } from "@/features/learner/components/HistoricalAcademicRecords";
@@ -31,6 +32,7 @@ export default function LearnerDashboard() {
   const toggleTheme = useThemeStore((s) => s.toggleTheme);
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isLoggingOutState, setIsLoggingOutState] = useState(false);
 
   // Active tab synchronized with URL param
   const activeTab = tab === "sf1" ? "sf1" : "sf9";
@@ -110,24 +112,19 @@ export default function LearnerDashboard() {
   }, [location.state]);
 
   if (!user || !token) {
+    if (isLoggingOutState || isLoggingOut()) {
+      return null;
+    }
     return <Navigate to="/learner/login" replace />;
   }
 
   const handleLogout = () => {
+    setIsLoggingOutState(true);
+    setLoggingOut(true);
     clearAuth();
+    localStorage.clear();
     sessionStorage.clear();
-    Object.keys(localStorage).forEach((key) => {
-      if (
-        key.includes("filter") ||
-        key.includes("pagination") ||
-        key.includes("search") ||
-        key.includes("table") ||
-        key.includes("limit")
-      ) {
-        localStorage.removeItem(key);
-      }
-    });
-    navigate("/learner/login", { replace: true });
+    window.location.href = "/learner/login";
   };
 
   return (
@@ -367,6 +364,8 @@ export default function LearnerDashboard() {
         title="Sign Out"
         description="Are you sure you want to sign out of the learner information system?"
         confirmText="Sign Out"
+        loading={isLoggingOutState}
+        loadingText="Signing out..."
         onConfirm={handleLogout}
         variant="primary"
         icon={LogOut}

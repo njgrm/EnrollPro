@@ -73,6 +73,7 @@ import { Badge } from "@/shared/ui/badge";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { UserPhoto } from "@/shared/components/UserPhoto";
 import { Switch } from "@/shared/ui/switch";
+import { setLoggingOut, isLoggingOut } from "@/shared/lib/logoutState";
 
 import { useAuthStore } from "@/store/auth.slice";
 import { useSettingsStore } from "@/store/settings.slice";
@@ -125,6 +126,7 @@ function UserNav() {
   const { showTimeMachineWidget, setShowTimeMachineWidget } = useSettingsStore();
   const navigate = useNavigate();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isLoggingOutModal, setIsLoggingOutModal] = useState(false);
   const { confirmOrRun } = useUnsavedChangesPrompt();
 
 
@@ -141,6 +143,8 @@ function UserNav() {
   }, [user, setAuth]);
 
   const handleLogout = async () => {
+    setIsLoggingOutModal(true);
+    setLoggingOut(true);
     try {
       await api.post("/auth/logout");
     } catch {
@@ -148,18 +152,8 @@ function UserNav() {
     }
     // Clear persisted auth state (writes to localStorage immediately).
     clearAuth();
+    localStorage.clear();
     sessionStorage.clear();
-    Object.keys(localStorage).forEach((key) => {
-      if (
-        key.includes("filter") ||
-        key.includes("pagination") ||
-        key.includes("search") ||
-        key.includes("table") ||
-        key.includes("limit")
-      ) {
-        localStorage.removeItem(key);
-      }
-    });
     // Hard reload to the login page. This avoids the React 19 + Radix UI
     // ref-composition crash that occurs when the entire component tree
     // (with Tooltip/Dialog/Presence refs) unmounts via client-side navigation.
@@ -333,6 +327,8 @@ function UserNav() {
         title="Sign Out"
         description="Are you sure you want to sign out of your account?"
         confirmText="Sign Out"
+        loading={isLoggingOutModal}
+        loadingText="Signing out..."
         onConfirm={handleLogout}
         variant="primary"
         icon={LogOut}

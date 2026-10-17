@@ -4,6 +4,7 @@ import { createBrowserRouter, Navigate } from "react-router";
 import { useLocation } from "react-router";
 import { lazy, Suspense, type ComponentType, type LazyExoticComponent } from "react";
 import { PageLoadingSkeleton, type SkeletonPageVariant } from "@/shared/components/PageLoadingSkeleton";
+import { isLoggingOut } from "@/shared/lib/logoutState";
 
 import AuthLayout from "@/shared/layouts/AuthLayout";
 import AppLayout from "@/shared/layouts/AppLayout";
@@ -14,7 +15,7 @@ import MinimalLayout from "@/shared/layouts/MinimalLayout";
 import ProtectedRoute from "@/shared/components/ProtectedRoute";
 import NotFound from "@/shared/components/NotFound";
 
-const Login = lazy(() => import("@/features/auth/pages/Login"));
+import Login from "@/features/auth/pages/Login";
 const Dashboard = lazy(() => import("@/features/dashboard/pages/Index"));
 const ViewProgramRoster = lazy(() => import("@/features/dashboard/pages/ViewProgramRoster"));
 import LearnerLogin from "@/features/learner/pages/Login";
@@ -97,6 +98,15 @@ function getFallbackVariant(pathname: string): SkeletonPageVariant {
 
 function PageFallback() {
   const location = useLocation();
+  if (
+    isLoggingOut() ||
+    location.pathname === "/personnel/login" ||
+    location.pathname === "/learner/login" ||
+    location.pathname.startsWith("/personnel/login") ||
+    location.pathname.startsWith("/learner/login")
+  ) {
+    return null;
+  }
   return <PageLoadingSkeleton variant={getFallbackVariant(location.pathname)} />;
 }
 
@@ -185,7 +195,7 @@ export const router = createBrowserRouter([
         children: [
           {
             path: "/personnel/login",
-            element: renderLazyPage(Login),
+            element: <Login />,
           },
         ],
       },
