@@ -37,6 +37,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/shared/ui/data-table";
 import { DataTableColumnHeader } from "@/shared/ui/data-table-column-header";
 import { PaginationBar } from "@/shared/components/PaginationBar";
+import { usePaginationLimit } from "@/shared/hooks/usePaginationLimit";
 import { HybridDatePicker } from "@/shared/components/HybridDatePicker";
 import { useHeaderStore } from "@/store/header.slice";
 import { RegistrySkeleton } from "@/shared/components/PageLoadingSkeleton";
@@ -72,7 +73,7 @@ interface FilterMetadata {
   actors: { id: number; name: string; roles: string[] }[];
 }
 
-const PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE = 20;
 const AUDIT_LOG_REALTIME_TOPICS: RealtimeInvalidationTopic[] = [
   "audit-logs:list",
 ];
@@ -250,6 +251,9 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
   const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
 
   const [page, setPage] = useState(() => Number(searchParams.get("page")) || 1);
+  const [limit, setLimit] = usePaginationLimit(
+    Number(searchParams.get("limit")) || DEFAULT_PAGE_SIZE,
+  );
   const [total, setTotal] = useState(0);
   const [meta, setMeta] = useState({ criticalCount: 0, activeActors: 0 });
 
@@ -280,6 +284,13 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
     updateUrlParams({ page: newPage });
   };
 
+  const handleLimitChange = (newLimit: number) => {
+    setLimit(newLimit);
+    setPage(1);
+    setExpandedRowId(null);
+    updateUrlParams({ page: 1, limit: newLimit });
+  };
+
   const [filterMeta, setFilterMeta] = useState<FilterMetadata>({
     actionTypes: [],
     actors: [],
@@ -308,6 +319,7 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
     setDateFrom(from);
     setDateTo(to);
     setPage(1);
+    updateUrlParams({ dateFrom: from, dateTo: to, page: 1 });
   };
 
   useEffect(() => {
@@ -523,7 +535,7 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
   }, [actionType, actorId, canViewAllActivity, dateFrom, dateTo]);
 
   const fetchLogs = useCallback(
-    async (targetPage: number) => {
+    async (targetPage: number, targetLimit: number) => {
       setLoading(true);
       setForbidden(false);
       try {
@@ -531,13 +543,20 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
           params: {
             ...filterParams,
             page: targetPage,
-            limit: PAGE_SIZE,
+            limit: targetLimit,
           },
         });
 
-        setLogs(res.data.logs || []);
-        setTotal(res.data.total ?? 0);
+        const fetchedLogs = res.data.logs || [];
+        const fetchedTotal = res.data.total ?? 0;
+        setLogs(fetchedLogs);
+        setTotal(fetchedTotal);
         setMeta(res.data.meta || { criticalCount: 0, activeActors: 0 });
+
+        if (fetchedTotal > 0 && targetPage > Math.ceil(fetchedTotal / targetLimit)) {
+          setPage(1);
+          updateUrlParams({ page: 1 });
+        }
       } catch (err) {
         const status = (err as { response?: { status?: number } }).response
           ?.status;
@@ -552,19 +571,19 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
         setLoading(false);
       }
     },
-    [filterParams, selfOnly],
+    [filterParams, selfOnly, updateUrlParams],
   );
 
   useEffect(() => {
-    fetchLogs(page);
-  }, [fetchLogs, page]);
+    fetchLogs(page, limit);
+  }, [fetchLogs, page, limit]);
 
   const refreshAuditLogs = useCallback(() => {
-    void fetchLogs(page);
+    void fetchLogs(page, limit);
     if (canViewAllActivity || selfOnly) {
       void fetchFilterMeta();
     }
-  }, [canViewAllActivity, fetchFilterMeta, fetchLogs, page, selfOnly]);
+  }, [canViewAllActivity, fetchFilterMeta, fetchLogs, page, limit, selfOnly]);
 
   useRealtimeRefresh({
     topics: AUDIT_LOG_REALTIME_TOPICS,
@@ -651,7 +670,7 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
                   variant="outline"
                   size="sm"
                   className="font-bold text-sm h-8"
-                  onClick={() => fetchLogs(page)}
+                  onClick={() => fetchLogs(page, limit)}
                   disabled={loading}
                 >
                   <RefreshCw
@@ -691,6 +710,7 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
                     onValueChange={(val) => {
                       setActionType(val);
                       setPage(1);
+                      updateUrlParams({ actionType: val, page: 1 });
                     }}
                   >
                     <SelectTrigger className="h-9 font-bold text-sm sm:text-sm">
@@ -724,6 +744,7 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
                       onValueChange={(val) => {
                         setActorId(val);
                         setPage(1);
+                        updateUrlParams({ actorId: val, page: 1 });
                       }}
                     >
                       <SelectTrigger className="h-9 font-bold text-sm sm:text-sm">
@@ -756,6 +777,7 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
                     onChange={(val) => {
                       setDateFrom(val);
                       setPage(1);
+                      updateUrlParams({ dateFrom: val, page: 1 });
                     }}
                   />
                 </div>
@@ -769,6 +791,7 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
                     onChange={(val) => {
                       setDateTo(val);
                       setPage(1);
+                      updateUrlParams({ dateTo: val, page: 1 });
                     }}
                   />
                 </div>
@@ -987,9 +1010,9 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
               <PaginationBar
                 page={page}
                 total={total}
-                limit={PAGE_SIZE}
+                limit={limit}
                 onPageChange={handlePageChange}
-                onLimitChange={() => { }} // Fixed page size for scannability
+                onLimitChange={handleLimitChange}
                 itemName="Audit Records"
               />
             )}

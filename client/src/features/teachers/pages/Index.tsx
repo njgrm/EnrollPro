@@ -1174,11 +1174,11 @@ export default function Teachers() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64 font-bold">
               <DropdownMenuItem
-                disabled={isSf7PreviewLoading}
                 onSelect={(event) => {
                   event.preventDefault();
-                  sf7FileInputRef.current?.click();
+                  setIsSf7UploadModalOpen(true);
                 }}
+                className="cursor-pointer"
               >
                 <UploadIcon className="w-4 h-4 mr-2" />
                 Upload SF7 Roster
@@ -1189,6 +1189,7 @@ export default function Teachers() {
                   event.preventDefault();
                   handleDownloadSf7Template();
                 }}
+                className="cursor-pointer"
               >
                 <DownloadIcon className="w-4 h-4 mr-2" />
                 Download Blank Template
@@ -1200,21 +1201,13 @@ export default function Teachers() {
                   event.preventDefault();
                   handleExportSf7ComplianceReport();
                 }}
+                className="cursor-pointer"
               >
                 <FileSpreadsheetIcon className="w-4 h-4 mr-2" />
                 Export Compliance Report
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => setIsSf7UploadModalOpen(true)}
-            className="h-9 font-bold tracking-wide rounded-sm border border-slate-300 hover:bg-slate-100 text-slate-700"
-          >
-            <UploadIcon className="w-4 h-4 mr-2 shrink-0" />
-            <span className="truncate">Import SF7 Masterlist</span>
-          </Button>
           <Button
             onClick={() => {
               setViewingTeacher(null);

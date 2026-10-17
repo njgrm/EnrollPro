@@ -77,21 +77,33 @@ export function PaginationBar({
         <div className="hidden sm:block h-4 w-px bg-border shrink-0" />
         <div className="flex items-center gap-2 whitespace-nowrap">
           <span>Rows per page:</span>
-          <Select
-            value={String(limit)}
-            onValueChange={(val: string) => {
-              onLimitChange(Number(val));
-            }}>
-            <SelectTrigger className="h-8 w-22 text-sm font-bold border-2 focus:ring-0">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="25">25</SelectItem>
-              <SelectItem value="50">50</SelectItem>
-              <SelectItem value="100">100</SelectItem>
-              <SelectItem value="1000000">All</SelectItem>
-            </SelectContent>
-          </Select>
+          {(() => {
+            const baseOptions = [10, 20, 25, 50, 100];
+            const options = Array.from(
+              new Set([...(limit < 1000000 ? [limit] : []), ...baseOptions]),
+            ).sort((a, b) => a - b);
+
+            return (
+              <Select
+                value={String(limit)}
+                onValueChange={(val: string) => {
+                  onLimitChange(Number(val));
+                }}
+              >
+                <SelectTrigger className="h-8 w-22 text-sm font-bold border-2 focus:ring-0">
+                  <SelectValue>{limit >= 1000000 ? "All" : limit}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {options.map((opt) => (
+                    <SelectItem key={opt} value={String(opt)}>
+                      {opt}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="1000000">All</SelectItem>
+                </SelectContent>
+              </Select>
+            );
+          })()}
         </div>
       </div>
 

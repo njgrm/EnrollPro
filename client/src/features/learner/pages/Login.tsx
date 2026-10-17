@@ -383,10 +383,6 @@ export default function LearnerLogin() {
           </div>
         </div>
 
-        {/* Bottom: Institutional Motto */}
-        <div className="relative z-10 pt-3 border-t border-white/15 flex items-center justify-end text-white font-bold text-xs xl:text-sm">
-          <span>Region VI</span>
-        </div>
       </section>
 
       {/* 2. Right Pane: Form Container (Desktop & Mobile) */}
