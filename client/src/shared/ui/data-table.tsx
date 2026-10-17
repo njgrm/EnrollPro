@@ -174,6 +174,8 @@ function TableRowComponentInner<TData>(
             )}
             style={{ 
               width: cell.column.getSize(),
+              minWidth: cell.column.columnDef.minSize,
+              maxWidth: cell.column.columnDef.maxSize,
               left: isLeftPinned ? `${cell.column.getStart('left')}px` : undefined,
               right: isRightPinned ? `${cell.column.getAfter('right')}px` : undefined,
             }}>
@@ -294,7 +296,7 @@ export function DataTable<TData, TValue>({
       <div
         ref={containerRef}
         className={cn(
-          "relative flex-1 min-h-0 w-full",
+          "relative flex-1 min-h-0 w-full pb-3",
           disableScrolling ? "overflow-hidden" : "overflow-auto"
         )}
         style={containerHeight !== "100%" ? { maxHeight: containerHeight } : undefined}>

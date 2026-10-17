@@ -11,6 +11,9 @@ import {
   History,
   Activity,
   ChevronDown,
+  Bot,
+  User,
+  SlidersHorizontal,
 } from "lucide-react";
 import api from "@/shared/api/axiosInstance";
 import { useAuthStore } from "@/store/auth.slice";
@@ -317,9 +320,9 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
     () => [
       {
         accessorKey: "createdAt",
-        size: 160,
-        minSize: 140,
-        maxSize: 190,
+        size: 170,
+        minSize: 150,
+        maxSize: 200,
         meta: { skeletonClassName: "w-[140px] mx-auto", className: "text-center", headerClassName: "text-center" },
         header: ({ column }) => (
           <DataTableColumnHeader
@@ -329,8 +332,8 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
           />
         ),
         cell: ({ row }) => (
-          <div className="flex w-full justify-center py-3">
-            <span className="whitespace-nowrap text-base font-bold text-foreground">
+          <div className="flex w-full justify-center py-2.5">
+            <span className="whitespace-nowrap text-sm sm:text-sm font-semibold tabular-nums text-foreground">
               {formatTimestamp(row.original.createdAt)}
             </span>
           </div>
@@ -338,9 +341,9 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
       },
       {
         accessorKey: "user",
-        size: 250,
-        minSize: 200,
-        maxSize: 350,
+        size: 260,
+        minSize: 210,
+        maxSize: 360,
         meta: { skeletonClassName: "w-[150px]" },
         header: ({ column }) => (
           <DataTableColumnHeader
@@ -350,33 +353,54 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
         ),
         cell: ({ row }) => {
           const log = row.original;
-          return (
-            <div className="flex min-w-0 flex-col text-left py-3 pl-2">
-              <span className="text-base leading-tight font-bold text-foreground uppercase">
-                {log.user
-                  ? `${log.user.lastName}, ${log.user.firstName}`
-                  : "System / Guest"}
-              </span>
-              {log.user && (
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-sm font-bold text-foreground">
-                    ID: {log.user.id}
-                  </span>
-                  <span className="text-sm font-bold text-foreground">
-                    | {formatUserRole(log.user.roles?.[0])}
+
+          if (!log.user) {
+            return (
+              <div className="flex min-w-0 flex-col text-left py-2 pl-2">
+                <div className="flex items-center gap-1.5">
+                  <div className="flex size-5 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground border border-border/70">
+                    <Bot className="size-3.5" />
+                  </div>
+                  <span className="text-sm font-bold text-muted-foreground uppercase tracking-tight">
+                    System / Guest
                   </span>
                 </div>
-              )}
+                <span className="text-sm text-muted-foreground/80 pl-6.5 font-medium mt-0.5">
+                  Automated System Action
+                </span>
+              </div>
+            );
+          }
+
+          return (
+            <div className="flex min-w-0 flex-col text-left py-2 pl-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <div className="flex size-5 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary border border-primary/20">
+                  <User className="size-3.5" />
+                </div>
+                <span className="text-sm font-extrabold text-foreground uppercase tracking-tight truncate">
+                  {log.user.lastName}, {log.user.firstName}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 mt-0.5 pl-6.5 text-sm text-muted-foreground font-semibold truncate">
+                <span>ID: {log.user.employeeId || log.user.id}</span>
+                {log.user.roles?.[0] && (
+                  <>
+                    <span className="text-muted-foreground/40">•</span>
+                    <span className="truncate">{formatUserRole(log.user.roles[0])}</span>
+                  </>
+                )}
+              </div>
             </div>
           );
         },
       },
       {
         id: "systemModule",
-        size: 220,
-        minSize: 180,
-        maxSize: 260,
-        meta: { skeletonClassName: "w-[150px] mx-auto", className: "text-center", headerClassName: "text-center" },
+        size: 200,
+        minSize: 160,
+        maxSize: 250,
+        meta: { skeletonClassName: "w-[140px] mx-auto", className: "text-center", headerClassName: "text-center" },
         header: ({ column }) => (
           <DataTableColumnHeader
             column={column}
@@ -396,19 +420,31 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
           if (type === "Student") displayType = "Learner Directory";
           if (type === "User") displayType = "Personnel Management";
           if (type === "Section") displayType = "Section Assignment";
-          if (type === "Enrollmentapplication") displayType = "Enrollment Application";
 
-          let colorClass = "bg-slate-100 text-slate-800";
-          if (displayType === "School Profile Settings") colorClass = "bg-blue-100 text-blue-800";
-          if (displayType === "School Year") colorClass = "bg-indigo-100 text-indigo-800";
-          if (displayType === "Learner Directory") colorClass = "bg-slate-700 text-white";
-          if (displayType === "Enrollment" || displayType === "Enrollment Application") colorClass = "bg-emerald-100 text-emerald-800";
-          if (displayType === "Personnel Management") colorClass = "bg-violet-100 text-violet-800";
-          if (displayType === "Section Assignment") colorClass = "bg-amber-100 text-amber-800";
+          let badgeStyles = "bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700";
+          if (displayType === "School Profile Settings") {
+            badgeStyles = "bg-cyan-50 text-cyan-800 border-cyan-300 dark:bg-cyan-950/50 dark:text-cyan-300 dark:border-cyan-800";
+          } else if (displayType === "School Year") {
+            badgeStyles = "bg-indigo-50 text-indigo-800 border-indigo-300 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800";
+          } else if (displayType === "Learner Directory") {
+            badgeStyles = "bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800";
+          } else if (displayType === "Enrollment" || displayType === "Enrollment Application") {
+            badgeStyles = "bg-blue-50 text-blue-800 border-blue-300 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800";
+          } else if (displayType === "Personnel Management") {
+            badgeStyles = "bg-purple-50 text-purple-800 border-purple-300 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-800";
+          } else if (displayType === "Section Assignment") {
+            badgeStyles = "bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800";
+          }
 
           return (
-            <div className="flex w-full justify-center py-3">
-              <Badge className={cn("px-2.5 py-0.5 border-none", colorClass)}>
+            <div className="flex w-full justify-center py-2.5">
+              <Badge
+                variant="outline"
+                className={cn(
+                  "px-2.5 py-0.5 rounded-full text-sm font-bold uppercase tracking-wider",
+                  badgeStyles,
+                )}
+              >
                 {displayType}
               </Badge>
             </div>
@@ -417,9 +453,9 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
       },
       {
         id: "recordedAction",
-        size: 400,
-        minSize: 300,
-        maxSize: 600,
+        size: 420,
+        minSize: 320,
+        maxSize: 640,
         meta: { skeletonClassName: "w-[250px]" },
         header: ({ column }) => (
           <DataTableColumnHeader
@@ -438,11 +474,11 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
             description = description.replace("User null", userLabel ? `User ${userLabel}` : "User");
           }
           return (
-            <div className="flex min-w-0 flex-col text-left py-3 pl-2 leading-relaxed">
-              <span className="font-bold text-foreground block mb-0.5 uppercase">
+            <div className="flex min-w-0 flex-col text-left py-2 pl-2 leading-snug">
+              <span className="font-extrabold text-sm text-foreground uppercase tracking-tight block">
                 {actionLabel(action)}
               </span>
-              <span className="text-base text-foreground max-w-[400px] break-words block">
+              <span className="text-sm text-muted-foreground max-w-[460px] break-words block mt-0.5 leading-relaxed">
                 {description}
               </span>
             </div>
@@ -583,7 +619,7 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3.5 flex flex-col min-h-0 flex-1">
       {forbidden ? (
         <Card className="border-none shadow-sm">
           <CardContent className="py-10">
@@ -601,66 +637,108 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
         </Card>
       ) : (
         <>
-          <Card className="border-none shadow-sm">
-            <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-base font-bold uppercase text-foreground">
-                Search Filters
-              </CardTitle>
-              <div className="flex gap-2">
+          {/* ─── Search Filters ─── */}
+          <Card className="border border-border/80 shadow-xs bg-card">
+            <CardHeader className="p-3 sm:px-4 sm:py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 space-y-0 border-b border-border/50">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm sm:text-sm font-bold uppercase tracking-wider text-foreground">
+                  Search Filters
+                </CardTitle>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
                 <Button
                   variant="outline"
-                  className="font-bold text-base"
+                  size="sm"
+                  className="font-bold text-sm h-8"
                   onClick={() => fetchLogs(page)}
-                  disabled={loading}>
+                  disabled={loading}
+                >
                   <RefreshCw
-                    className={`h-4 w-4 mr-2 ${loading ? "" : ""}`}
+                    className={cn("h-3.5 w-3.5 mr-1.5", loading && "animate-spin")}
                   />
                   Refresh
                 </Button>
                 {canViewAllActivity && (
                   <Button
-                    className="font-bold text-base"
+                    size="sm"
+                    className="font-bold text-sm h-8 bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs"
                     onClick={handleExport}
-                    disabled={exporting}>
-                    <Download className="h-4 w-4 mr-2" />
+                    disabled={exporting}
+                  >
+                    <Download className="h-3.5 w-3.5 mr-1.5" />
                     {exporting ? "Exporting..." : "Download Activity Report"}
                   </Button>
                 )}
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-4">
-                <div className="space-y-2">
-                  <Label className="text-base font-bold uppercase st text-foreground">
+            <CardContent className="p-3 sm:p-4 space-y-2.5">
+              <div
+                className={cn(
+                  "grid gap-3",
+                  canViewAllActivity
+                    ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
+                    : "grid-cols-1 sm:grid-cols-3",
+                )}
+              >
+                <div className="space-y-1">
+                  <Label className="font-bold uppercase tracking-wider text-muted-foreground">
                     Action Category
                   </Label>
-                  <Select isFilter value={actionType} onValueChange={(val) => { setActionType(val); setPage(1); }}>
-                    <SelectTrigger className="font-bold text-base">
+                  <Select
+                    isFilter
+                    value={actionType}
+                    onValueChange={(val) => {
+                      setActionType(val);
+                      setPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="h-9 font-bold text-sm sm:text-sm">
                       <SelectValue placeholder="All Actions" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all" className="font-bold text-base">All Actions</SelectItem>
+                      <SelectItem value="all" className="font-bold text-sm sm:text-sm">
+                        All Actions
+                      </SelectItem>
                       {filterMeta.actionTypes.map((at) => (
-                        <SelectItem key={at} value={at} className="font-bold text-base">
+                        <SelectItem
+                          key={at}
+                          value={at}
+                          className="font-bold text-sm sm:text-sm"
+                        >
                           {actionLabel(at)}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+
                 {canViewAllActivity && (
-                  <div className="space-y-2">
-                    <Label className="text-base font-bold uppercase st text-foreground">
+                  <div className="space-y-1">
+                    <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
                       Actor Filter
                     </Label>
-                    <Select isFilter value={actorId} onValueChange={(val) => { setActorId(val); setPage(1); }}>
-                      <SelectTrigger className="font-bold text-base">
+                    <Select
+                      isFilter
+                      value={actorId}
+                      onValueChange={(val) => {
+                        setActorId(val);
+                        setPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="h-9 font-bold text-sm sm:text-sm">
                         <SelectValue placeholder="All Staff Members" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all" className="font-bold text-base">All Staff Members</SelectItem>
+                        <SelectItem value="all" className="font-bold text-sm sm:text-sm">
+                          All Staff Members
+                        </SelectItem>
                         {filterMeta.actors.map((actor) => (
-                          <SelectItem key={actor.id} value={actor.id.toString()} className="font-bold text-base">
+                          <SelectItem
+                            key={actor.id}
+                            value={actor.id.toString()}
+                            className="font-bold text-sm sm:text-sm"
+                          >
                             {actor.name} ({formatUserRole(actor.roles?.[0])})
                           </SelectItem>
                         ))}
@@ -668,8 +746,9 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
                     </Select>
                   </div>
                 )}
-                <div className="space-y-2">
-                  <Label className="text-base font-bold uppercase st text-foreground">
+
+                <div className="space-y-1">
+                  <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
                     Date From
                   </Label>
                   <HybridDatePicker
@@ -680,8 +759,9 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
                     }}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-base font-bold uppercase st text-foreground">
+
+                <div className="space-y-1">
+                  <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
                     Date To
                   </Label>
                   <HybridDatePicker
@@ -693,72 +773,107 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
                   />
                 </div>
               </div>
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pt-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-base font-bold uppercase text-foreground mr-2">Quick Presets:</span>
-                  <Button variant="outline" size="sm" className="h-8 text-base font-bold" onClick={() => handlePresetDate(0)}>Today</Button>
-                  <Button variant="outline" size="sm" className="h-8 text-base font-bold" onClick={() => handlePresetDate(7)}>Last 7 Days</Button>
-                  <Button variant="outline" size="sm" className="h-8 text-base font-bold" onClick={() => handlePresetDate(null)}>This Month</Button>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/50">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-sm font-bold uppercase tracking-wider text-muted-foreground mr-1">
+                    Quick Presets:
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2.5 text-sm font-bold rounded-md"
+                    onClick={() => handlePresetDate(0)}
+                  >
+                    Today
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2.5 text-sm font-bold rounded-md"
+                    onClick={() => handlePresetDate(7)}
+                  >
+                    Last 7 Days
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2.5 text-sm font-bold rounded-md"
+                    onClick={() => handlePresetDate(null)}
+                  >
+                    This Month
+                  </Button>
                 </div>
                 <Button
                   variant="ghost"
-                  className="font-bold text-base h-8"
+                  size="sm"
+                  className="h-7 text-sm font-bold text-muted-foreground hover:text-foreground"
                   onClick={() => {
                     setActionType("all");
                     setActorId("all");
                     setDateFrom("");
                     setDateTo("");
                     setPage(1);
-                  }}>
+                  }}
+                >
                   Clear Filters
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card className="border-none shadow-sm">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <History className="h-4 w-4 text-foreground" />
-                  <p className="text-base font-bold uppercase text-foreground">
+          {/* ─── Streamlined KPI Ribbon ─── */}
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+            <Card className="border border-border/80 shadow-xs bg-card py-2.5 px-3.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-foreground">
+                    <History className="size-3.5 text-foreground" />
+                  </div>
+                  <p className="text-base font-extrabold uppercase tracking-wider text-foreground truncate">
                     Total Events
                   </p>
                 </div>
-                <CardTitle className="text-3xl font-bold mb-4">
+                <span className="text-xl sm:text-2xl font-extrabold text-foreground tabular-nums">
                   <AnimatedNumber value={total} />
-                </CardTitle>
-              </CardHeader>
+                </span>
+              </div>
             </Card>
-            <Card className="border-none shadow-sm">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-amber-500" />
-                  <p className="text-base font-bold uppercase st text-foreground">
+
+            <Card className="border border-border/80 shadow-xs bg-card py-2.5 px-3.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-amber-50 text-amber-600 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
+                    <AlertTriangle className="size-3.5 text-amber-600" />
+                  </div>
+                  <p className="text-base font-extrabold uppercase tracking-wider text-muted-foreground truncate">
                     Critical Alerts
                   </p>
                 </div>
-                <CardTitle className="text-3xl font-bold  text-amber-600">
+                <span className="text-xl sm:text-2xl font-extrabold text-amber-600 tabular-nums">
                   <AnimatedNumber value={meta.criticalCount} />
-                </CardTitle>
-              </CardHeader>
+                </span>
+              </div>
             </Card>
-            <Card className="border-none shadow-sm">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-primary" />
-                  <p className="text-base font-bold uppercase st text-primary">
+
+            <Card className="border border-border/80 shadow-xs bg-card py-2.5 px-3.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary border border-primary/20">
+                    <Activity className="size-3.5 text-primary" />
+                  </div>
+                  <p className="text-base font-extrabold uppercase tracking-wider text-primary truncate">
                     Active Actors
                   </p>
                 </div>
-                <CardTitle className="text-3xl font-bold  flex items-center gap-2 text-primary">
+                <span className="text-xl sm:text-2xl font-extrabold text-primary tabular-nums">
                   {meta.activeActors}
-                </CardTitle>
-              </CardHeader>
+                </span>
+              </div>
             </Card>
           </div>
 
-          <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden h-[calc(100vh-250px)] min-h-[500px] flex flex-col">
+          <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden flex-1 min-h-[460px] flex flex-col">
             <DataTable
               columns={columns}
               data={logs}

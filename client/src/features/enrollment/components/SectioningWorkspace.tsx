@@ -2928,16 +2928,17 @@ export function SectioningWorkspace() {
                         <DropdownMenuContent align="end" className="w-56">
                           <DropdownMenuItem
                             onClick={() => handleExportGradeLevel("pdf")}
-                            className="font-semibold text-xs cursor-pointer gap-2 py-2"
+                            className="font-bold text-xs cursor-pointer gap-2 py-2 group group-hover:bg-primary group-hover:text-primary-foreground"
                           >
-                            <FileDown className="h-4 w-4 text-primary" />
+                            <FileDown className="h-4 w-4 text-primary group-hover:text-primary-foreground" />
                             Download Masterlist (PDF)
                           </DropdownMenuItem>
+
                           <DropdownMenuItem
                             onClick={() => handleExportGradeLevel("xlsx")}
-                            className="font-semibold text-xs cursor-pointer gap-2 py-2"
+                            className="font-bold text-xs cursor-pointer gap-2 py-2 group group-hover:bg-primary group-hover:text-primary-foreground"
                           >
-                            <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                            <FileSpreadsheet className="h-4 w-4 text-emerald-600 group-hover:text-primary-foreground" />
                             Download Masterlist (XLSX)
                           </DropdownMenuItem>
                         </DropdownMenuContent>

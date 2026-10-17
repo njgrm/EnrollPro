@@ -8,7 +8,6 @@ import {
   ShieldAlert,
   Smartphone,
   User as UserIcon,
-  UserRoundPen,
   Users,
   BookOpen,
 } from "lucide-react";
@@ -27,7 +26,6 @@ import {
 } from "@enrollpro/shared";
 import type { Teacher, TeacherSchedulePeriod } from "../types";
 import { formatTeacherName } from "../utils";
-import { TeacherDetailPanel } from "../components/TeacherDetailPanel";
 
 const ROLE_LABEL_MAP: Record<string, string> = {
   SYSTEM_ADMIN: "System Admin",
@@ -120,8 +118,6 @@ export default function PersonnelProfile() {
   const [teacher, setTeacher] = useState<TeacherProfileResponse["teacher"] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isEditPanelOpen, setIsEditPanelOpen] = useState(false);
-  const [refreshCount, setRefreshCount] = useState(0);
 
   const canEdit = useMemo(() => {
     return (
@@ -147,7 +143,7 @@ export default function PersonnelProfile() {
 
   useEffect(() => {
     fetchProfile();
-  }, [fetchProfile, refreshCount]);
+  }, [fetchProfile]);
 
   const formatAncillaryRole = (role: string) => {
     const match = DEPED_TEACHER_ANCILLARY_ROLE_OPTIONS.find((opt) => opt.value === role);
@@ -218,7 +214,7 @@ export default function PersonnelProfile() {
           className="font-bold uppercase text-sm"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
-          {canEdit ? "Back to Personnel Directory" : "Back to Previous Page"}
+          Back to Previous Page
         </Button>
       </div>
 
@@ -288,34 +284,7 @@ export default function PersonnelProfile() {
                 </div>
               </div>
 
-              {/* Right Side: Action Button (Admin/Principal Edit) */}
-              {canEdit && (
-                <div className="shrink-0 ml-4 hidden sm:flex flex-col gap-2">
-                  <Button
-                    variant="outline"
-                    className="font-bold text-sm h-9 px-4 uppercase border-primary text-primary hover:bg-primary hover:text-primary-foreground shadow-sm rounded-md transition-all active:scale-[0.98] w-full justify-start cursor-pointer"
-                    onClick={() => setIsEditPanelOpen(true)}
-                  >
-                    <UserRoundPen className="mr-2 h-4 w-4 shrink-0" />
-                    Edit Profile
-                  </Button>
-                </div>
-              )}
             </div>
-
-            {/* Mobile Edit Button */}
-            {canEdit && (
-              <div className="mt-4 sm:hidden flex flex-col gap-2 w-full">
-                <Button
-                  variant="outline"
-                  className="font-bold text-sm h-9 px-4 uppercase border-primary text-primary hover:bg-primary hover:text-primary-foreground shadow-sm rounded-md transition-all active:scale-[0.98] w-full cursor-pointer"
-                  onClick={() => setIsEditPanelOpen(true)}
-                >
-                  <UserRoundPen className="mr-2 h-4 w-4 shrink-0" />
-                  Edit Profile
-                </Button>
-              </div>
-            )}
 
             {/* Position & Contact Number Row */}
             <div className="mt-6 mb-4">
@@ -753,19 +722,6 @@ export default function PersonnelProfile() {
           </div>
         </div>
       </div>
-
-      {/* ─── Admin/Principal Edit Drawer ─── */}
-      {canEdit && (
-        <TeacherDetailPanel
-          open={isEditPanelOpen}
-          teacher={teacher}
-          onOpenChange={setIsEditPanelOpen}
-          onSaveSuccess={() => {
-            setIsEditPanelOpen(false);
-            setRefreshCount((c) => c + 1);
-          }}
-        />
-      )}
     </div>
   );
 }

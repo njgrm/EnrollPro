@@ -8,7 +8,7 @@ import {
 } from "react";
 import { usePaginationLimit } from '@/shared/hooks/usePaginationLimit';
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
-import { useNavigate, useSearchParams } from "react-router";
+import { useNavigate } from "react-router";
 import {
   Search,
   Eye,
@@ -16,7 +16,6 @@ import {
   BadgeAlert,
   FileBadge2,
   Fingerprint,
-  FilterXIcon,
   AlertTriangle,
   SlidersHorizontal,
   CalendarDays,
@@ -37,8 +36,6 @@ import { Textarea } from "@/shared/ui/textarea";
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
 import {
@@ -80,14 +77,12 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
 import { Label } from "@/shared/ui/label";
-import { Sheet, SheetContent } from "@/shared/ui/sheet";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/shared/ui/tabs";
 import { Skeleton } from "@/shared/ui/skeleton";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { DataTable } from "@/shared/ui/data-table";
 import { DataTableColumnHeader } from "@/shared/ui/data-table-column-header";
 import {
-  StudentDetailPanel,
   type StudentDetail as PanelStudentDetail,
   type StudentDropoutPayload,
   type StudentTransferOutPayload,
@@ -104,7 +99,6 @@ import { useResizablePanel } from "@/shared/hooks/useResizablePanel";
 import { useDebouncedSearch } from "@/shared/hooks/useDebouncedSearch";
 import type { EosyStatus } from "@enrollpro/shared";
 import { queryKeys } from "@/shared/lib/queryKeys";
-import { useUnsavedChangesPrompt } from "@/shared/hooks/useUnsavedChanges";
 import { useRealtimeRefresh } from "@/shared/hooks/useRealtimeRefresh";
 interface Student {
   id: number;
@@ -290,7 +284,6 @@ const getInitials = (firstName?: string | null, lastName?: string | null): strin
 };
 
 export default function Students() {
-  const { confirmOrRun } = useUnsavedChangesPrompt();
   const navigate = useNavigate();
   const requestedTab = useSettingsStore((s) => s.uiPreferences.studentsTab);
   const activeTab: StudentTab = VALID_TABS.includes(
@@ -1057,14 +1050,15 @@ export default function Students() {
         {
           id: "lastName",
           accessorKey: "lastName",
-          size: 350,
-          minSize: 260,
-          maxSize: 500,
-          meta: { skeletonClassName: "w-[200px]" },
+          size: 340,
+          minSize: 280,
+          maxSize: 480,
+          meta: { skeletonClassName: "w-[200px]", headerClassName: "whitespace-nowrap" },
           header: ({ column }) => (
             <DataTableColumnHeader
               column={column}
               title="LEARNER NAME"
+              className="whitespace-nowrap"
             />
           ),
           cell: ({ row }) => {
@@ -1103,15 +1097,15 @@ export default function Students() {
         {
           id: "gradeLevel",
           accessorKey: "gradeLevel",
-          size: 180,
-          minSize: 150,
-          maxSize: 180,
-          meta: { skeletonClassName: "w-[120px] mx-auto", className: "text-center", headerClassName: "text-center" },
+          size: 220,
+          minSize: 200,
+          maxSize: 260,
+          meta: { skeletonClassName: "w-[120px] mx-auto", className: "text-center whitespace-nowrap", headerClassName: "text-center whitespace-nowrap" },
           header: ({ column }) => (
             <DataTableColumnHeader
               column={column}
               title="GRADE LEVEL & SECTION"
-              className="justify-center [&_button]:!m-0 text-center"
+              className="justify-center [&_button]:!m-0 text-center whitespace-nowrap"
             />
           ),
           cell: ({ row }) => (
@@ -1183,15 +1177,15 @@ export default function Students() {
         {
           id: "curriculumProgram",
           accessorKey: "learningProgram",
-          size: 160,
-          minSize: 150,
-          maxSize: 180,
-          meta: { skeletonClassName: "w-[140px] mx-auto", className: "text-center", headerClassName: "text-center" },
+          size: 190,
+          minSize: 180,
+          maxSize: 220,
+          meta: { skeletonClassName: "w-[140px] mx-auto", className: "text-center whitespace-nowrap", headerClassName: "text-center whitespace-nowrap" },
           header: ({ column }) => (
             <DataTableColumnHeader
               column={column}
               title="Curricular Program"
-              className="justify-center [&_button]:!m-0"
+              className="justify-center [&_button]:!m-0 whitespace-nowrap"
             />
           ),
           cell: ({ row }) => {
@@ -1228,15 +1222,15 @@ export default function Students() {
         },
         {
           id: "actions",
-          size: 150,
-          minSize: 140,
-          maxSize: 170,
-          meta: { className: "text-center hover:bg-transparent", headerClassName: "text-center" },
+          size: 160,
+          minSize: 150,
+          maxSize: 180,
+          meta: { className: "text-center hover:bg-transparent whitespace-nowrap", headerClassName: "text-center whitespace-nowrap" },
           header: ({ column }) => (
             <DataTableColumnHeader
               column={column}
               title="Actions"
-              className="justify-center [&_button]:!m-0"
+              className="justify-center [&_button]:!m-0 whitespace-nowrap"
             />
           ),
           cell: ({ row }) => (
@@ -1732,7 +1726,7 @@ export default function Students() {
               )}
             </div>
 
-            <div className="hidden md:block flex-1 overflow-auto bg-muted/5 relative min-h-0">
+            <div className="hidden md:block flex-1 overflow-x-auto overflow-y-auto bg-muted/5 relative min-h-0 w-full">
               <DataTable<Student, unknown>
                 columns={columns}
                 data={students}

@@ -73,7 +73,7 @@ import { Badge } from "@/shared/ui/badge";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { UserPhoto } from "@/shared/components/UserPhoto";
 import { Switch } from "@/shared/ui/switch";
-import { setLoggingOut, isLoggingOut } from "@/shared/lib/logoutState";
+import { setLoggingOut } from "@/shared/lib/logoutState";
 
 import { useAuthStore } from "@/store/auth.slice";
 import { useSettingsStore } from "@/store/settings.slice";
@@ -102,6 +102,7 @@ import {
 } from "@/shared/ui/tooltip";
 import { AccessibilityMenu } from "@/shared/components/AccessibilityMenu";
 import { SystemDateTimeMenu } from "@/shared/components/SystemDateTimeMenu";
+import { PageUserManualTrigger, PageUserManualDrawer } from "@/shared/components/PageUserManual";
 import { useAccessibility } from "@/shared/hooks/useAccessibility";
 import { NoSchoolYearState } from "@/shared/components/NoSchoolYearState";
 import { HistoricalBanner } from "../components/HistoricalBanner";
@@ -1345,9 +1346,12 @@ export default function AppLayout({ children }: { children?: ReactNode }) {
             <ActiveTermBadge />
             <SYSwitcher />
 
-            <div className="hidden lg:flex items-center gap-1 border-x px-1.5 sm:px-3 h-8">
-              <AccessibilityMenu />
-              <SystemDateTimeMenu />
+            <div className="flex items-center gap-1 border-x px-1.5 sm:px-3 h-8">
+              <div className="hidden lg:flex items-center gap-1">
+                <AccessibilityMenu />
+                <SystemDateTimeMenu />
+              </div>
+              <PageUserManualTrigger />
             </div>
 
           </div>
@@ -1382,6 +1386,9 @@ export default function AppLayout({ children }: { children?: ReactNode }) {
           <SchoolYearTransitionLoader targetLabel={switchingToSchoolYearLabel} />
         )}
       </AnimatePresence>
+
+      {/* Contextual Page-Level User Manual */}
+      <PageUserManualDrawer />
     </SidebarProvider>
   );
 }

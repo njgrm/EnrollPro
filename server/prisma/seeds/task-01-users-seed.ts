@@ -125,7 +125,7 @@ export const seedUsers = async () => {
           postgraduateDegree: "NONE",
           majorSpecialization: userData.departmentCode === 'SCI' ? 'SCIENCE' : (userData.departmentCode === 'MAPEH' ? 'MAPEH' : 'GENERAL'),
           minorSpecialization: "NONE",
-          indigenousCommunity: "NOT_APPLICABLE",
+          indigenousCommunity: "NOT APPLICABLE",
           natureOfAppointment: "REGULAR_PERMANENT",
           fundingSource: "NATIONAL",
           ancillaryRoles: userData.ancillaryRoles

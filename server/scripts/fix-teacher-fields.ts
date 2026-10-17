@@ -52,7 +52,7 @@ async function fixTeacherFields() {
           major = teacher.department.name.toUpperCase();
         }
 
-        const indigenousCommunity = teacher.indigenousCommunity || "NOT_APPLICABLE";
+        const indigenousCommunity = (teacher.indigenousCommunity === "NOT_APPLICABLE" || !teacher.indigenousCommunity) ? "NOT APPLICABLE" : teacher.indigenousCommunity;
         
         await prisma.teacher.update({
           where: { id: teacher.id },

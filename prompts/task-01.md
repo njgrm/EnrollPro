@@ -1,49 +1,25 @@
-# UI/UX & Feature Implementation Prompt: Grade Level Masterlist Export
+# UI/UX Refactoring Prompt: Remove Redundant Page Header
 
-**Target System:** EnrollPro: Academic Institution's Digital Platform  
-**Target Module:** Section Assignment (Grade Level Tab)  
-**Reference Image:** `image_35fafe.jpg`  
-**Context:** Department of Education (DepEd) JHS Public School System  
+**Target System:** EnrollPro: DepEd Junior High School System  
+**Target Module:** System Administration - System Activity Logs  
+**Reference Images:** `image_fb4742.jpg`, `image_fb479f.jpg`  
 
 ---
 
-Copy and paste the prompt below to instruct your AI agent or frontend/backend development team on how to execute this feature.
+**Act as a Frontend Developer and UI/UX Engineer.**
 
-***
+Your task is to optimize the vertical screen space on the "System Activity Logs" page. Public school administrators and IT personnel often view these extensive audit trails on smaller, lower-resolution monitors. Currently, valuable screen real estate is being wasted by a redundant inner page header[cite: 42]. 
 
-**Act as a Senior UI/UX Engineer and Full-Stack Developer specializing in EdTech systems.**
+Please implement the following layout adjustments:
 
-Your task is to implement a batch export feature (PDF and XLSX) for the finalized Grade Level Masterlist in the Section Assignment module. In a public DepEd high school environment, once the Grade Level Coordinator finishes allocating all learners to their respective sections, they need a consolidated master report of the entire grade level for distribution to Class Advisers and the Registrar.
+### 1. Remove the Redundant Inner Header
+*   **The Issue:** Inside the main white content container, there is a large text block displaying "SYSTEM ACTIVITY LOGS" followed by a subtitle reading "Forensic audit trail and system activity logs across institutional modules"[cite: 42]. This is completely redundant because the exact same title ("SYSTEM ACTIVITY LOGS") is already permanently visible in the top global navigation bar[cite: 42].
+*   **The Fix:** Completely delete this inner header text and its associated container (`div` wrapper). 
 
-Please implement the interface and data export logic using the following comprehensive guidelines:
+### 2. Shift Content and Adjust Padding
+*   **The Issue:** Removing the header will leave an awkward empty gap above the filter controls.
+*   **The Fix:** Shift the entire "SEARCH FILTERS" block (containing the Action Category, Actor Filter, and Date selectors) up to the top of the main content container[cite: 42, 43]. 
+*   **Padding Check:** Ensure that the top padding of the main white container matches the standard spacing of your existing design system so the filter bar doesn't sit uncomfortably flush against the gray background.
 
-### 1. UI Layout & Component Positioning
-*   **Location:** In the right-hand panel of the Section Assignment module, locate the "AVAILABLE SECTIONS" header[cite: 19]. Place a button group aligned to the right of this header (or immediately below it, replacing the placeholder text seen in the red box area)[cite: 19].
-*   **Component:** Use the existing design system's outlined button component with a trailing download icon (e.g., `<Button variant="outline" icon={<DownloadIcon />}>`). 
-*   **Buttons:** Create two separate buttons or a single "Export Grade Level" dropdown button containing two actions:
-    *   `Download Masterlist (PDF)`
-    *   `Download Masterlist (XLSX)`
-*   **Conditional Rendering (State Guard):** These export buttons must be **disabled** or hidden if there are still learners listed in the left-hand "LEARNERS READY FOR SECTIONING" panel[cite: 19]. They should only become active when the unassigned pool is empty (displaying "No pending unassigned learners")[cite: 19], indicating that the grade level's sectioning is finalized.
-
-### 2. Export Data Mapping & DepEd Formatting Standards
-When generating the exported document, the backend/client-side generator must map the data according to standard DepEd sorting rules. 
-
-**Critical Scope Constraint:** Do *not* attempt to format this export as an official DepEd School Form 1 (SF1). This is an internal system masterlist. SF1 generation involves complex margins, biometric data, and specific DepEd boilerplate that is strictly outside the current system boundaries.
-
-**Data Sorting Rules (Must Apply to Both PDF & XLSX):**
-1.  **Group By:** Program Type (e.g., STE, BEC)[cite: 19], then by Section Name (e.g., BONIFACIO)[cite: 19] alphabetically.
-2.  **Sort By Sex:** Within each section, list all Male learners first, followed by Female learners (DepEd standard).
-3.  **Sort By Name:** Alphabetical order by Last Name within each sex grouping.
-
-### 3. XLSX (Excel) Structure Requirements
-Use a library like `xlsx` or `exceljs`.
-*   **Worksheets:** Create a single worksheet for the entire grade level.
-*   **Headers:** Include columns: `No.`, `LRN`, `Last Name`, `First Name`, `Middle Initial`, `Sex`, `Section`, `Program`, `Adviser`. Freeze the top header row.
-*   **Data Type Protection:** The `LRN` column must explicitly be formatted as `Text` (or pre-pended with a single quote ` ' ` during generation). LRNs are 12 digits long; standard Excel number formatting will convert them to scientific notation or truncate them, corrupting the data.
-
-### 4. PDF Structure Requirements
-Use a library like `jspdf` with `jspdf-autotable` or generate via backend HTML-to-PDF.
-*   **Document Header:** Include the school name (Enriqueta Montilla de Esteban Memorial High School), the module name (Grade [X] Section Assignment Masterlist), and the Academic Year[cite: 19].
-*   **Layout:** Use a clean, banded-row table format. 
-*   **Section Breaks:** Render a sub-header row spanning all columns every time the list transitions to a new section (e.g., a dark gray row reading: **SECTION: BONIFACIO | ADVISER: AGUILAR, CARLO MIGUEL**)[cite: 19].
-*   **Summary Footer:** At the absolute bottom of the document, generate a summary block displaying the total number of enrolled learners broken down by Program Type and Sex.
+### 3. Verify Expanded Row Integrity
+*   **The Fix:** After shifting the layout upward, verify that the table's accordion expansion still functions correctly. When an administrator clicks to expand a log, the "DETAILED CHANGES" panel (showing "Modified Field", "Changed From", "Changed To", and the "NETWORK SECURITY FOOTPRINT")[cite: 43] must render smoothly without any layout shifting or overlapping with the newly repositioned filter bar.
