@@ -4,7 +4,35 @@ export interface UserManualData {
   keyProcesses: string[];
 }
 
+export const DASHBOARD_ENROLLMENT_MANUAL: UserManualData = {
+  pageTitle: "Dashboard (Enrollment Phase)",
+  overview:
+    "During the beginning of the school year, the Dashboard acts as the main control center. It gives the School Head and Registrar a quick, real-time view of the school's enrollment status, class section sizes, and missing SF1 (School Form 1) data.",
+  keyProcesses: [
+    "**1. Monitor Total Enrollment:** Look at the top red panel and the Grade Level table to track the total number of New, Continuing, Transferee, and Balik-Aral learners from Grade 7 to 10.",
+    "**2. Use Quick Actions:** Click the shortcut buttons to immediately start a `Walk-In SCP Admission`, a `Walk-In Enrollment`, or to `Auto Assign Sections` without navigating through the side menu.",
+    "**3. Check Class Section Capacity:** Monitor the colored progress bars to see how many learners are assigned to specific sections (like Grade 7 - Luna or Grade 8 - Makabansa) and ensure they do not exceed the DepEd 40-learner limit.",
+    "**4. Fix SF1 Data Errors:** Use the \"SF1 Learner Information Check\" panel to easily spot learners with an invalid LRN, missing birthdate, missing mother tongue, or incomplete addresses.",
+  ],
+};
+
+export const DASHBOARD_EOSY_MANUAL: UserManualData = {
+  pageTitle: "Dashboard (EOSY Closing)",
+  overview:
+    "During the End of School Year (EOSY) Closing phase, enrollment is locked. The Dashboard transforms into a monitoring tool to track the finalization of learner grades, promotion outcomes, and the completion of official DepEd school forms before the system rollover.",
+  keyProcesses: [
+    "**1. Track Rollover Readiness:** Scroll down to the `Rollover Readiness Checklist`. Monitor the progress bars for Grades 7 to 10 to see how many class sections are fully finalized and if their EOSY grades have been successfully synchronized.",
+    "**2. Process Pending Sections:** Check the `Sections Awaiting Final Review` card. Click the `Review Class Sections ->` shortcut to manage classes that have not yet submitted their final general averages or promotion statuses.",
+    "**3. Resolve Incomplete Records:** Look at the `Incomplete Learner Results` card. Click `Review Final Grade Records ->` to identify and fix learners who are missing subject grades or lack the required documents for promotion.",
+    "**4. Manage Academic Deficiencies:** Check the `Learners Needing Review` card. This helps you quickly identify learners who may need to attend summer remedial classes before they can be officially promoted or retained.",
+  ],
+};
+
 export const USER_MANUAL_REGISTRY: Record<string, UserManualData> = {
+  Dashboard: DASHBOARD_ENROLLMENT_MANUAL,
+  "Dashboard (Enrollment Phase)": DASHBOARD_ENROLLMENT_MANUAL,
+  "Dashboard (EOSY Closing)": DASHBOARD_EOSY_MANUAL,
+
   "Learner Directory": {
     pageTitle: "Learner Directory",
     overview:
@@ -104,19 +132,6 @@ export const USER_MANUAL_REGISTRY: Record<string, UserManualData> = {
       "**Verify Academic Qualifications:** Check undergraduate degrees, majors, minor specializations, and postgraduate academic attainment.",
       "**Review Assigned Advisory & Schedules:** Check assigned advisory homerooms, teaching department affiliations, and ancillary assignments.",
       "**Return to Directory:** Click the `Back to Previous Page` button to return to the active personnel list.",
-    ],
-  },
-
-  Dashboard: {
-    pageTitle: "Dashboard",
-    overview:
-      "The Dashboard is the main control center for the School Head, Registrar, and System Admin. It gives a quick, real-time view of the school's enrollment status, class section sizes, and missing SF1 (School Form 1) data for the current school year.",
-    keyProcesses: [
-      "**Monitor Total Enrollment:** Look at the top red panel and the Grade Level table to track the total number of New, Continuing, Transferee, and Balik-Aral learners from Grade 7 to 10.",
-      "**Use Quick Actions:** Click the shortcut buttons to immediately start a `Walk-In SCP Admission`, a `Walk-In Enrollment`, or to `Auto Assign Sections` without navigating through the side menu.",
-      "**View Program Rosters:** Check the \"Learners by Curricular Program\" area to see learner totals for BEC (Basic Education Curriculum) and STE (Science, Technology, and Engineering). Click `View Roster` to jump straight to their lists.",
-      "**Check Class Section Capacity:** Monitor the colored progress bars to see how many learners are assigned to specific sections (like Grade 7 - Luna or Grade 8 - Makabansa) and ensure they do not exceed the 40-learner limit.",
-      "**Fix SF1 Data Errors:** Use the \"SF1 Learner Information Check\" panel to easily spot learners with an invalid LRN, missing birthdate, missing mother tongue, or incomplete addresses. Click `Review Learner Directory` to fix these records before generating official DepEd forms.",
     ],
   },
 
@@ -244,14 +259,35 @@ export const USER_MANUAL_REGISTRY: Record<string, UserManualData> = {
 };
 
 /**
- * Resolves the user manual data for a given page title or route.
+ * Resolves the user manual data for a given page title, route, and active school year phase.
+ * Dynamically switches content for the Dashboard based on the active SCHOOL YEAR PHASE STATUS.
  * Falls back to an extensible DepEd-compliant manual if the specific page is not in the registry.
  */
 export function resolveUserManual(
   pageTitle: string | null | undefined,
-  _pathname?: string,
+  pathname?: string,
+  systemPhase?: string | null,
 ): UserManualData {
   const normalizedTitle = pageTitle?.trim() || "EnrollPro";
+  const lower = normalizedTitle.toLowerCase();
+  const cleanPath = pathname?.split("?")[0] || "";
+
+  const isDashboard =
+    lower === "dashboard" ||
+    lower.startsWith("dashboard (") ||
+    lower.includes("dashboard") ||
+    cleanPath === "/" ||
+    cleanPath === "/dashboard" ||
+    cleanPath === "/personnel/dashboard";
+
+  // Dynamic Dashboard Manual based on active SCHOOL YEAR PHASE STATUS
+  if (isDashboard) {
+    if (systemPhase === "EOSY_CLOSING") {
+      return DASHBOARD_EOSY_MANUAL;
+    }
+    // "OFFICIAL_ENROLLMENT", "CLASSES_ONGOING", or other enrollment phases
+    return DASHBOARD_ENROLLMENT_MANUAL;
+  }
 
   // Check direct lookup in the registry
   if (USER_MANUAL_REGISTRY[normalizedTitle]) {
@@ -259,7 +295,6 @@ export function resolveUserManual(
   }
 
   // Check case-insensitive match
-  const lower = normalizedTitle.toLowerCase();
   for (const [key, value] of Object.entries(USER_MANUAL_REGISTRY)) {
     if (key.toLowerCase() === lower) {
       return value;

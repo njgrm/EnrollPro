@@ -1,10 +1,11 @@
 import { useEffect, useMemo, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { BookOpen, CircleHelp, ShieldCheck, X } from "lucide-react";
+import { BookOpen, CircleHelp, X } from "lucide-react";
 import { useLocation } from "react-router";
 import { resolvePageTitle } from "@/shared/hooks/usePageTitle";
 import { useHeaderStore } from "@/store/header.slice";
+import { useSettingsStore } from "@/store/settings.slice";
 import { useUserManualStore } from "@/store/userManual.slice";
 import { resolveUserManual, type UserManualData } from "@/shared/constants/userManuals";
 import { useResizablePanel } from "@/shared/hooks/useResizablePanel";
@@ -93,6 +94,7 @@ export function PageUserManualDrawer() {
   const { isOpen, closeManual } = useUserManualStore();
   const location = useLocation();
   const customHeaderTitle = useHeaderStore((s) => s.title);
+  const systemPhase = useSettingsStore((s) => s.systemPhase);
 
   const { panelPercentage, isDesktopViewport, startResizing } = useResizablePanel(30, {
     storageKey: "page-user-manual-drawer",
@@ -107,8 +109,10 @@ export function PageUserManualDrawer() {
   }, [customHeaderTitle, location.pathname, location.search]);
 
   const manualData: UserManualData = useMemo(() => {
-    return resolveUserManual(currentPageTitle, location.pathname);
-  }, [currentPageTitle, location.pathname]);
+    return resolveUserManual(currentPageTitle, location.pathname, systemPhase);
+  }, [currentPageTitle, location.pathname, systemPhase]);
+
+  const displayTitle = manualData.pageTitle.replace(/^USER MANUAL:\s*/i, "");
 
   // Close on Escape key
   useEffect(() => {
@@ -143,7 +147,7 @@ export function PageUserManualDrawer() {
               : undefined
           }
           role="complementary"
-          aria-label={`User Manual: ${manualData.pageTitle}`}
+          aria-label={`User Manual: ${displayTitle}`}
         >
           {/* Left Resize Handle */}
           <div
@@ -162,7 +166,7 @@ export function PageUserManualDrawer() {
                 <BookOpen className="size-4" />
               </div>
               <h2 className="font-extrabold text-sm sm:text-base uppercase tracking-tight text-foreground truncate">
-                User Manual: {manualData.pageTitle}
+                User Manual: {displayTitle}
               </h2>
             </div>
             <button
@@ -233,7 +237,7 @@ export function PageUserManualDrawer() {
       )}
     </AnimatePresence>
   );
-
+      
   if (typeof document === "undefined") {
     return drawerContent;
   }
