@@ -6,7 +6,7 @@ import { queryKeys } from "@/shared/lib/queryKeys";
 import {
   CheckCircle2, XCircle, AlertCircle, Trash2,
   Loader2, Search, SlidersHorizontal, Plus, Clock, AlertTriangle, Eye,
-  Maximize2, Minimize2, RefreshCw
+  Maximize2, Minimize2, RefreshCw, ChevronLeft
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
@@ -190,9 +190,19 @@ export function VerificationWorkspace() {
   const isTransfereeOnlyCoordinator =
     coordinatorGradeOrder !== null && coordinatorGradeOrder > 7;
 
-  const { panelPercentage, isDesktopViewport, startResizingRight } = useResizablePanel(35, {
+  const { panelPercentage, startResizingRight } = useResizablePanel(35, {
     storageKey: "enrollment-verification-pane",
   });
+
+  const [windowWidth, setWindowWidth] = useState(
+    typeof window !== "undefined" ? window.innerWidth : 1200,
+  );
+  useEffect(() => {
+    const onResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  const isDesktop = windowWidth >= 1024;
 
   const [processing, setProcessing] = useState(false);
   const [selectedAppId, setSelectedAppId] = useState<number | null>(null);
@@ -1118,17 +1128,17 @@ export function VerificationWorkspace() {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col md:flex-row min-h-0 bg-background relative overflow-hidden">
+        <div className="flex-1 flex flex-col lg:flex-row min-h-0 bg-background relative overflow-hidden">
           {/* LEFT PANE */}
           <div 
             className={cn(
-              "flex flex-col border-r border-border min-h-0 bg-card text-card-foreground flex-shrink-0 w-full md:w-auto",
+              "flex flex-col border-r border-border min-h-0 bg-card text-card-foreground flex-shrink-0 w-full lg:w-auto",
               "transition-[right,box-shadow] duration-300 ease-in-out",
-              isDesktopViewport && "absolute inset-y-0 left-0",
+              isDesktop ? "absolute inset-y-0 left-0" : selectedAppId !== null ? "hidden" : "flex w-full h-full",
               expandedPane === "LEFT" ? "z-[60] shadow-2xl" : "z-10",
             )}
             style={
-              isDesktopViewport
+              isDesktop
                 ? {
                     right:
                       expandedPane === "LEFT"
@@ -1138,7 +1148,7 @@ export function VerificationWorkspace() {
                 : undefined
             }
           >
-            {isDesktopViewport && (
+            {isDesktop && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -1205,7 +1215,7 @@ export function VerificationWorkspace() {
                   }
                 ] as const;
 
-                const isNarrow = isDesktopViewport && panelPercentage < 35;
+                const isNarrow = isDesktop && panelPercentage < 35;
 
                 return (
                   <div className={cn("grid h-10 w-full divide-x divide-gray-200", deficientCount > 0 ? "grid-cols-4" : "grid-cols-3")}>
@@ -1386,11 +1396,11 @@ export function VerificationWorkspace() {
           <div
             onMouseDown={startResizingRight}
             className={cn(
-              "hidden md:flex absolute inset-y-0 w-[12px] -translate-x-1/2 cursor-col-resize z-50 hover:bg-primary/20 transition-opacity items-center justify-center group bg-transparent shrink-0",
+              "hidden lg:flex absolute inset-y-0 w-[12px] -translate-x-1/2 cursor-col-resize z-50 hover:bg-primary/20 transition-opacity items-center justify-center group bg-transparent shrink-0",
               expandedPane && "pointer-events-none opacity-0",
             )}
             style={
-              isDesktopViewport
+              isDesktop
                 ? {
                     left: `clamp(350px, ${panelPercentage}vw, 800px)`,
                   }
@@ -1405,11 +1415,11 @@ export function VerificationWorkspace() {
             className={cn(
               "@container/verification flex-1 flex flex-col min-h-0 overflow-hidden bg-card text-card-foreground relative",
               "transition-[left,box-shadow] duration-300 ease-in-out",
-              isDesktopViewport && "absolute inset-y-0 right-0",
+              isDesktop ? "absolute inset-y-0 right-0" : selectedAppId === null ? "hidden" : "flex w-full h-full",
               expandedPane === "RIGHT" ? "z-[60] shadow-2xl" : "z-0",
             )}
             style={
-              isDesktopViewport
+              isDesktop
                 ? {
                     left:
                       expandedPane === "RIGHT"
@@ -1418,7 +1428,22 @@ export function VerificationWorkspace() {
                   }
                 : undefined
             }>
-            {isDesktopViewport && (
+            {/* Mobile / Tablet Back to List Button */}
+            {!isDesktop && (
+              <div className="p-2.5 sm:p-3 border-b border-border bg-muted/30 flex items-center gap-2 shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedAppId(null)}
+                  className="font-bold text-foreground hover:text-primary gap-1.5 h-10 px-3 shadow-xs"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span>Back to Learner List</span>
+                </Button>
+              </div>
+            )}
+            {isDesktop && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>

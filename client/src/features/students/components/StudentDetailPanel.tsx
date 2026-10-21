@@ -485,7 +485,7 @@ export function StudentDetailPanel({
   const [defaultPasswordInput, setDefaultPasswordInput] = useState("");
   const [isOtherMotherTongue, setIsOtherMotherTongue] = useState(false);
 
-  const showSkeleton = useDelayedLoading(loading);
+  const _showSkeleton = useDelayedLoading(loading);
   const isJhsCompleter = student?.learnerStatus === "JHS_COMPLETER";
 
   const fetchStudent = useCallback(async () => {
@@ -1007,7 +1007,7 @@ export function StudentDetailPanel({
   const displaySchoolYear = isJhsCompleter && jhsRecord
     ? jhsRecord.schoolYear
     : student.schoolYear;
-  const displayGraduationDate = isJhsCompleter && jhsRecord?.completedAt
+  const _displayGraduationDate = isJhsCompleter && jhsRecord?.completedAt
     ? formatDate(jhsRecord.completedAt)
     : formatDate(student.updatedAt);
 
@@ -1057,7 +1057,7 @@ export function StudentDetailPanel({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-full p-2 text-primary-foreground hover:bg-primary-foreground/20 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-foreground focus:ring-offset-2 disabled:pointer-events-none"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full p-2 text-primary-foreground hover:bg-primary-foreground/20 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-foreground focus:ring-offset-2 disabled:pointer-events-none cursor-pointer"
               >
                 <X strokeWidth={3} className="h-5 w-5" />
                 <span className="sr-only">Close</span>

@@ -98,6 +98,7 @@ export const seedUsers = async () => {
 
       const randomPhotoNum = Math.floor(Math.random() * 100);
       const teacherPhoto = userData.sex === 'MALE' ? `https://randomuser.me/api/portraits/men/${randomPhotoNum}.jpg` : `https://randomuser.me/api/portraits/women/${randomPhotoNum}.jpg`;
+      const userMajor = userData.departmentCode === 'SCI' ? 'GENERAL SCIENCE' : (userData.departmentCode === 'MAPEH' ? 'MAPEH' : 'GENERAL EDUCATION');
       const teacher = await prisma.teacher.upsert({
         where: { employeeId: userData.employeeId },
         update: {
@@ -105,7 +106,12 @@ export const seedUsers = async () => {
           departments: {
             connect: { id: dept.id }
           },
-          majorSpecialization: userData.departmentCode === 'SCI' ? 'SCIENCE' : (userData.departmentCode === 'MAPEH' ? 'MAPEH' : 'GENERAL'),
+          specialization: userMajor,
+          bachelorMajor: userMajor,
+          bachelorMinor: null,
+          postgraduateDegree: null,
+          majorSpecialization: null,
+          minorSpecialization: null,
           ancillaryRoles: userData.ancillaryRoles
         },
         create: {
@@ -121,10 +127,13 @@ export const seedUsers = async () => {
             connect: { id: dept.id }
           },
           personnelType: "TEACHING",
+          specialization: userMajor,
           undergraduateDegree: "BACHELOR OF SECONDARY EDUCATION",
-          postgraduateDegree: "NONE",
-          majorSpecialization: userData.departmentCode === 'SCI' ? 'SCIENCE' : (userData.departmentCode === 'MAPEH' ? 'MAPEH' : 'GENERAL'),
-          minorSpecialization: "NONE",
+          bachelorMajor: userMajor,
+          bachelorMinor: null,
+          postgraduateDegree: null,
+          majorSpecialization: null,
+          minorSpecialization: null,
           indigenousCommunity: "NOT APPLICABLE",
           natureOfAppointment: "REGULAR_PERMANENT",
           fundingSource: "NATIONAL",

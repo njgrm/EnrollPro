@@ -28,6 +28,7 @@ import {
   LoaderCircle,
   Clock,
   FolderOpen,
+  X,
 } from "lucide-react";
 import type {
   CompanionSsoCatalogItem,
@@ -52,6 +53,7 @@ import {
   SidebarSeparator,
   SidebarTrigger,
 } from "@/shared/ui/sidebar";
+import { useSidebar } from "@/shared/ui/use-sidebar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -558,6 +560,7 @@ const NavItem = memo(function NavItem({
   const { selectedAccentHsl } = useSettingsStore();
   const navigate = useNavigate();
   const { confirmOrRun } = useUnsavedChangesPrompt();
+  const { isMobile, setOpenMobile } = useSidebar();
   const accentHsl = selectedAccentHsl;
 
   const handleNavigationClick = useCallback(
@@ -574,11 +577,21 @@ const NavItem = memo(function NavItem({
       }
 
       event.preventDefault();
-      if (pathname === to) return;
+      if (pathname === to) {
+        if (isMobile) {
+          setOpenMobile(false);
+        }
+        return;
+      }
 
-      confirmOrRun(() => navigate(to));
+      confirmOrRun(() => {
+        if (isMobile) {
+          setOpenMobile(false);
+        }
+        navigate(to);
+      });
     },
-    [confirmOrRun, navigate, to, pathname],
+    [confirmOrRun, navigate, to, pathname, isMobile, setOpenMobile],
   );
 
   let isActive = pathname === to;
@@ -915,7 +928,14 @@ function AppSidebar() {
     CompanionSystem | null
   >(null);
   const { confirmOrRun } = useUnsavedChangesPrompt();
+  const { isMobile, setOpenMobile } = useSidebar();
   const pathname = location.pathname;
+
+  useEffect(() => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  }, [pathname, isMobile, setOpenMobile]);
 
   useEffect(() => {
     let active = true;
@@ -998,12 +1018,26 @@ function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       {/* ΓöÇΓöÇ Header: School Identity ΓöÇΓöÇ */}
-      <SidebarHeader className="h-20 justify-center transition-all duration-300 ease-in-out group-data-[state=expanded]:px-4 group-data-[state=collapsed]:px-1.5">
+      <SidebarHeader
+        className={cn(
+          "justify-center transition-all duration-300 ease-in-out group-data-[state=expanded]:px-3 group-data-[state=collapsed]:px-1.5",
+          isMobile
+            ? "min-h-14 h-auto py-2.5 px-3 overflow-visible"
+            : "h-14 overflow-hidden"
+        )}
+      >
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="flex items-center transition-all duration-300 ease-in-out group-data-[state=expanded]:gap-3 group-data-[state=collapsed]:gap-0 group-data-[state=collapsed]:justify-center">
+            <div
+              className={cn(
+                "flex items-center transition-all duration-300 ease-in-out",
+                isMobile
+                  ? "gap-2.5 justify-between"
+                  : "group-data-[state=expanded]:gap-2.5 group-data-[state=collapsed]:gap-0 group-data-[state=collapsed]:justify-center"
+              )}
+            >
               {logoUrl ? (
-                <div className="flex aspect-square size-12 items-center justify-center rounded-lg overflow-hidden shrink-0 border bg-muted p-1">
+                <div className="flex aspect-square size-9 items-center justify-center rounded-lg overflow-hidden shrink-0 border bg-muted p-0.5">
                   <img
                     src={`${API_BASE}${logoUrl}`}
                     alt="Logo"
@@ -1015,21 +1049,56 @@ function AppSidebar() {
                   <School className="size-5 text-primary" />
                 </div>
               )}
-              <div className="grid flex-1 text-left leading-tight overflow-hidden transition-all duration-100 ease-in-out group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:m-0">
-                {schoolName ? (
-                  <span className="font-extrabold leading-[1.1] uppercase text-primary block text-wrap">
-                    {schoolName}
-                  </span>
-                ) : (
-                  <Skeleton className="h-4 w-28 my-0.5" />
-                )}
-              </div>
+
+              {isMobile ? (
+                <div className="flex-1 min-w-0 text-left">
+                  {schoolName ? (
+                    <span className="text-sm font-extrabold leading-tight uppercase text-primary tracking-tight whitespace-normal break-words block cursor-default select-none">
+                      {schoolName}
+                    </span>
+                  ) : (
+                    <Skeleton className="h-4 w-28 my-0.5" />
+                  )}
+                </div>
+              ) : (
+                <div className="overflow-hidden transition-[width,opacity] duration-300 ease-in-out group-data-[state=collapsed]:w-0 group-data-[state=collapsed]:opacity-0 group-data-[state=expanded]:w-[205px] group-data-[state=expanded]:opacity-100">
+                  <div className="w-[205px] shrink-0 text-left">
+                    {schoolName ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="text-sm font-extrabold leading-tight uppercase text-primary tracking-tight whitespace-normal break-words block cursor-default select-none py-2">
+                              {schoolName}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="right">
+                            {schoolName}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : (
+                      <Skeleton className="h-4 w-28 my-0.5" />
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {isMobile && (
+                <button
+                  type="button"
+                  onClick={() => setOpenMobile(false)}
+                  className="size-8 shrink-0 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
+                  aria-label="Close sidebar"
+                >
+                  <X className="size-4" />
+                </button>
+              )}
             </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarSeparator />
+      <SidebarSeparator className="mx-0 bg-border/60" />
 
       {/* ── Navigation ── */}
       <SidebarContent>
@@ -1328,9 +1397,18 @@ export default function AppLayout({ children }: { children?: ReactNode }) {
             className="mr-2 h-4!"
           />
           {title && (
-            <h1 className="text-sm sm:text-base md:text-xl font-extrabold text-foreground tracking-tight leading-none truncate max-w-[120px] sm:max-w-[240px] md:max-w-none mr-2 sm:mr-4 uppercase">
-              {title}
-            </h1>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <h1 className="text-sm sm:text-base md:text-xl font-extrabold text-foreground tracking-tight leading-none truncate max-w-[120px] sm:max-w-[240px] md:max-w-none mr-2 sm:mr-4 uppercase cursor-default">
+                    {title}
+                  </h1>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" align="start">
+                  {title}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
           <div className="flex items-center gap-2">
             {isHistoricalReadOnly ? (

@@ -422,19 +422,19 @@ function SectionCard({
       <div className="mt-auto space-y-4">
         <div className="flex items-center border-t border-border/50 pt-4">
           <div className="flex items-center gap-2 w-full">
-            <div className={cn("flex w-full min-w-0 pr-2", isEosyClosing ? "flex-row justify-between items-center" : "flex-col")}>
-              <span className={cn("font-bold uppercase text-foreground", isEosyClosing ? "text-sm" : "mb-0.5")}>
+            <div className={cn("flex w-full min-w-0", isEosyClosing ? "flex-row justify-between items-center" : "flex-col")}>
+              <span className={cn("font-bold uppercase text-foreground", isEosyClosing ? "text-sm" : "mb-1 text-xs text-muted-foreground")}>
                 Adviser:
               </span>
               {canMutate ? (
-                <div onClick={(e) => e.stopPropagation()} className="w-full -ml-2">
+                <div onClick={(e) => e.stopPropagation()} className="w-full">
                   <SearchableCombobox
                     items={comboboxItems}
                     value={selectedAdviser}
                     onChange={(val) => onDraftAdviserChange?.(val, initialAdviser)}
                     placeholder="UNASSIGNED"
                     searchPlaceholder="Search adviser..."
-                    className={cn("!h-7 !min-h-0 !px-2 !py-5 border-primary hover:bg-muted bg-transparent shadow-none focus:ring-0 font-bold uppercase truncate", !section.advisingTeacher && "text-foreground")}
+                    className={cn("w-full h-11 sm:h-8 sm:min-h-0 px-3 sm:px-2 border-primary hover:bg-muted bg-transparent shadow-none focus:ring-0 font-bold uppercase truncate", !section.advisingTeacher && "text-foreground")}
                   />
                 </div>
               ) : (

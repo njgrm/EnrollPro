@@ -727,9 +727,24 @@ function AnimatedCount({ from, to, animate }: { from: number; to: number; animat
 
 export function SectioningWorkspace() {
   const { isHistoricalReadOnly } = useHistoricalReadOnly();
-  const { panelPercentage, isDesktopViewport, startResizingRight } = useResizablePanel(45, {
+  const { panelPercentage, startResizingRight } = useResizablePanel(45, {
     storageKey: "sectioning-workspace-pane",
   });
+
+  const [windowWidth, setWindowWidth] = useState(
+    typeof window !== "undefined" ? window.innerWidth : 1200,
+  );
+  useEffect(() => {
+    const onResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const isMobile = windowWidth < 768;
+  const isTablet = windowWidth >= 768 && windowWidth < 1024;
+  const isDesktop = windowWidth >= 1024;
+
+  const [mobileSectioningView, setMobileSectioningView] = useState<"queue" | "sections">("queue");
 
   const [sections, setSections] = useState<SectionSummary[]>([]);
   const [pool, setPool] = useState<PoolLearner[]>([]);
@@ -2465,7 +2480,41 @@ export function SectioningWorkspace() {
       {/* ── Workspace ── */}
       <PageTransition key={activeGradeLevelId} className="flex-1 flex flex-col min-h-0 w-full overflow-hidden">
         <Card className="flex flex-col flex-1 min-h-0 h-full shadow-sm border-none bg-card overflow-hidden">
-          <div className="relative flex flex-1 min-h-0 w-full overflow-hidden">
+          {/* Mobile Segment Switcher */}
+          {isMobile && (
+            <div className="p-2 border-b border-border bg-muted/40 flex items-center justify-center shrink-0">
+              <div className="grid grid-cols-2 w-full gap-1 p-1 bg-background rounded-lg border border-border">
+                <button
+                  type="button"
+                  onClick={() => setMobileSectioningView("queue")}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-bold uppercase rounded-md transition-all",
+                    mobileSectioningView === "queue"
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Users className="h-4 w-4" />
+                  <span>Queue ({filteredPool.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMobileSectioningView("sections")}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-bold uppercase rounded-md transition-all",
+                    mobileSectioningView === "sections"
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                  <span>Sections ({displayedRosters.length})</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className={cn("relative flex flex-1 min-h-0 w-full overflow-hidden", isTablet && "flex-col overflow-y-auto")}>
             <AnimatePresence>
               {finalizingProgress && (
                 <FinalizingSectionLoader
@@ -2480,12 +2529,15 @@ export function SectioningWorkspace() {
             {/* LEFT PANE: UNSECTIONED POOL */}
             <div
               className={cn(
-                "flex-1 flex flex-col h-full overflow-y-auto border-r border-border bg-card text-card-foreground sm:flex-none transition-[width,opacity] duration-300 ease-linear",
+                "flex flex-col border-r border-border bg-card text-card-foreground transition-[width,opacity] duration-300 ease-linear",
                 autoAssignPhase !== "idle" && "pointer-events-none opacity-55",
+                isDesktop && "absolute inset-y-0 left-0 overflow-y-auto sm:flex-none",
+                isTablet && "w-full min-h-[440px] max-h-[520px] overflow-y-auto border-b border-r-0 shrink-0",
+                isMobile && (mobileSectioningView === "queue" ? "w-full h-full overflow-y-auto flex-1" : "hidden"),
               )}
               aria-busy={autoAssignPhase !== "idle"}
               style={
-                isDesktopViewport ? { width: `${panelPercentage}vw` } : undefined
+                isDesktop ? { width: `${panelPercentage}vw` } : undefined
               }
             >
               <CardHeader className="border-b border-border bg-muted/20">
@@ -2865,10 +2917,20 @@ export function SectioningWorkspace() {
             {/* DRAG HANDLE */}
             <div
               onMouseDown={startResizingRight}
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize sectioning panes"
               className={cn(
-                "relative w-[1px] cursor-col-resize z-50 hover:bg-primary/50 transition-opacity hidden sm:flex flex-col justify-center group shrink-0 bg-border",
+                "hidden lg:flex absolute inset-y-0 w-[12px] -translate-x-1/2 cursor-col-resize z-50 hover:bg-primary/20 transition-opacity items-center justify-center group bg-transparent shrink-0",
                 isRightPaneFullscreen && "pointer-events-none opacity-0",
               )}
+              style={
+                isDesktop
+                  ? {
+                      left: `calc(${panelPercentage}vw + 1px)`,
+                    }
+                  : undefined
+              }
             >
               <div className="absolute left-[-3px] right-[-3px] top-0 bottom-0 z-10" />
               <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-8 w-1.5 rounded-full bg-muted-foreground/30 group-hover:bg-primary/70 shadow-sm z-20" />
@@ -2877,13 +2939,15 @@ export function SectioningWorkspace() {
             {/* RIGHT PANE: AVAILABLE SECTIONS */}
             <div
               className={cn(
-                "@container/section-pane flex-1 flex flex-col h-full overflow-hidden bg-card text-card-foreground min-w-0 relative",
+                "@container/section-pane flex-1 flex flex-col min-w-0 bg-card text-card-foreground",
                 "transition-[left,box-shadow] duration-300 ease-in-out",
-                isDesktopViewport && "absolute inset-y-0 right-0",
+                isDesktop && "absolute inset-y-0 right-0 overflow-hidden",
                 isRightPaneFullscreen && "z-[60] shadow-2xl",
+                isTablet && "w-full flex-1 overflow-y-auto min-h-[500px]",
+                isMobile && (mobileSectioningView === "sections" ? "w-full h-full overflow-y-auto flex-1" : "hidden"),
               )}
               style={
-                isDesktopViewport
+                isDesktop
                   ? {
                     left: isRightPaneFullscreen
                       ? "0"
@@ -2945,7 +3009,7 @@ export function SectioningWorkspace() {
                       </DropdownMenu>
                     )}
 
-                    {isDesktopViewport && (
+                    {isDesktop && (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>

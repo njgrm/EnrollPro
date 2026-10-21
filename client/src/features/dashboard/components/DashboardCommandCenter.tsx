@@ -84,7 +84,7 @@ export function DashboardSummaryRibbon({
   return (
     <section
       aria-label="School operations summary"
-      className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
     >
       {SUMMARY_ITEMS.map((item) => {
         const _Icon = item.icon
@@ -640,9 +640,9 @@ export function Sf1CompliancePanel({
 
   return (
     <Card className="group flex h-full flex-col border-slate-200 bg-card shadow-sm">
-      <CardHeader className="flex flex-row items-start justify-between gap-4 pb-3">
+      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3">
         <div className="flex items-center gap-2">
-          <CardTitle className="text-xl font-extrabold">
+          <CardTitle className="text-lg sm:text-xl font-extrabold">
             SF1 Learner Information Check
           </CardTitle>
           <TooltipProvider>
@@ -659,7 +659,7 @@ export function Sf1CompliancePanel({
         </div>
         <span
           className={cn(
-            "rounded-md px-2.5 py-1 text-base font-bold",
+            "rounded-md px-2.5 py-1 text-sm sm:text-base font-bold shrink-0",
             isComplete
               ? "bg-emerald-50 text-emerald-700"
               : "bg-amber-50 text-amber-800",
@@ -668,16 +668,16 @@ export function Sf1CompliancePanel({
           {isComplete ? "Records Complete" : `${compliance.affectedLearners} Learners`}
         </span>
       </CardHeader>
-      <CardContent className="flex flex-1 flex-col">
+      <CardContent className="flex flex-1 flex-col p-4 sm:p-6">
         <div className="flex flex-col space-y-2">
           {items.map(([label, value]) => {
             const hasLearners = value.count > 0;
             const itemInner = (
               <>
-                <span className="font-bold text-foreground">{label}</span>
+                <span className="font-bold text-foreground text-sm sm:text-base">{label}</span>
                 <span
                   className={cn(
-                    "font-black text-2xl",
+                    "font-black text-xl sm:text-2xl shrink-0",
                     hasLearners ? "text-destructive" : "text-primary",
                   )}
                 >
@@ -689,7 +689,7 @@ export function Sf1CompliancePanel({
             if (!hasLearners) {
               return (
                 <div key={label}>
-                  <div className="flex h-[76px] items-center justify-between gap-4 rounded-md border border-slate-100 px-3 py-2.5 text-base">
+                  <div className="flex min-h-[56px] sm:h-[76px] items-center justify-between gap-3 rounded-md border border-slate-100 px-3 py-2 text-sm sm:text-base">
                     {itemInner}
                   </div>
                 </div>
@@ -698,10 +698,10 @@ export function Sf1CompliancePanel({
 
             return (
               <Popover key={label}>
-                <PopoverTrigger className="flex h-[76px] w-full items-center justify-between gap-4 rounded-md border border-slate-100 px-3 py-2.5 text-base cursor-pointer hover:bg-slate-50 transition-colors">
+                <PopoverTrigger className="flex min-h-[56px] sm:h-[76px] w-full items-center justify-between gap-3 rounded-md border border-slate-100 px-3 py-2 text-sm sm:text-base cursor-pointer hover:bg-slate-50 transition-colors">
                   {itemInner}
                 </PopoverTrigger>
-                <PopoverContent className="w-80 max-h-[300px] overflow-y-auto p-4" align="start">
+                <PopoverContent className="w-[calc(100vw-2rem)] sm:w-80 max-h-[300px] overflow-y-auto p-4" align="start">
                   <h4 className="font-bold mb-3">{label}</h4>
                   <ul className="space-y-2">
                     {value.learners.map((learner, idx) => (

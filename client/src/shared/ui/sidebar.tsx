@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { PanelLeft } from 'lucide-react';
+import { Menu, PanelLeft } from 'lucide-react';
 
 import { Button } from '@/shared/ui/button';
 import {
@@ -10,6 +10,7 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from '@/shared/ui/tooltip';
+import { Sheet, SheetContent } from '@/shared/ui/sheet';
 import { cn } from '@/shared/lib/utils';
 import { SidebarContext, useSidebar } from '@/shared/ui/use-sidebar';
 
@@ -38,8 +39,24 @@ const SidebarProvider = React.forwardRef<
 		},
 		ref,
 	) => {
-		const [_open, _setOpen] = React.useState(defaultOpen);
-		const open = openProp ?? _open;
+		const [width, setWidth] = React.useState<number>(
+			typeof window !== 'undefined' ? window.innerWidth : 1200,
+		);
+		const [openMobile, setOpenMobile] = React.useState(false);
+		const [_open, _setOpen] = React.useState<boolean | undefined>(undefined);
+
+		React.useEffect(() => {
+			const handleResize = () => setWidth(window.innerWidth);
+			window.addEventListener('resize', handleResize);
+			return () => window.removeEventListener('resize', handleResize);
+		}, []);
+
+		const isMobile = width < 768;
+		const isTablet = width >= 768 && width < 1024;
+
+		// Default open state: tablet defaults to collapsed (false), desktop to defaultOpen or true
+		const open = openProp ?? (_open !== undefined ? _open : isTablet ? false : defaultOpen);
+
 		const setOpen = React.useCallback(
 			(value: boolean | ((value: boolean) => boolean)) => {
 				const openState = typeof value === 'function' ? value(open) : value;
@@ -54,8 +71,12 @@ const SidebarProvider = React.forwardRef<
 		);
 
 		const toggleSidebar = React.useCallback(() => {
-			setOpen((o) => !o);
-		}, [setOpen]);
+			if (isMobile) {
+				setOpenMobile((o) => !o);
+			} else {
+				setOpen((o) => !o);
+			}
+		}, [isMobile, setOpen]);
 
 		React.useEffect(() => {
 			const handleKeyDown = (event: KeyboardEvent) => {
@@ -74,8 +95,17 @@ const SidebarProvider = React.forwardRef<
 		const state = open ? 'expanded' : 'collapsed';
 
 		const contextValue = React.useMemo<SidebarContext>(
-			() => ({ state, open, setOpen, toggleSidebar }),
-			[state, open, setOpen, toggleSidebar],
+			() => ({
+				state,
+				open,
+				setOpen,
+				openMobile,
+				setOpenMobile,
+				isMobile,
+				isTablet,
+				toggleSidebar,
+			}),
+			[state, open, setOpen, openMobile, setOpenMobile, isMobile, isTablet, toggleSidebar],
 		);
 
 		return (
@@ -124,7 +154,7 @@ const Sidebar = React.forwardRef<
 		},
 		ref,
 	) => {
-		const { state } = useSidebar();
+		const { state, isMobile, openMobile, setOpenMobile } = useSidebar();
 
 		if (collapsible === 'none') {
 			return (
@@ -139,6 +169,31 @@ const Sidebar = React.forwardRef<
 				>
 					{children}
 				</div>
+			);
+		}
+
+		if (isMobile) {
+			return (
+				<Sheet open={openMobile} onOpenChange={setOpenMobile}>
+					<SheetContent
+						data-sidebar="sidebar"
+						data-mobile="true"
+						side={side}
+						showClose={false}
+						className={cn(
+							"w-[300px] max-w-[85vw] p-0 bg-sidebar text-sidebar-foreground border-r border-sidebar-border focus:outline-none",
+							className,
+						)}
+						style={{
+							"--sidebar-width": SIDEBAR_WIDTH,
+						} as React.CSSProperties}
+						{...props}
+					>
+						<div className="flex h-full w-full flex-col bg-sidebar overflow-hidden">
+							{children}
+						</div>
+					</SheetContent>
+				</Sheet>
 			);
 		}
 
@@ -208,7 +263,7 @@ const SidebarTrigger = React.forwardRef<
 	React.ComponentRef<typeof Button>,
 	React.ComponentProps<typeof Button>
 >(({ className, onClick, ...props }, ref) => {
-	const { toggleSidebar } = useSidebar();
+	const { toggleSidebar, isMobile } = useSidebar();
 
 	return (
 		<Button
@@ -216,14 +271,17 @@ const SidebarTrigger = React.forwardRef<
 			data-sidebar='trigger'
 			variant='ghost'
 			size='icon'
-			className={cn('h-7 w-7', className)}
+			className={cn(
+				'h-8 w-8 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 sm:h-7 sm:w-7',
+				className,
+			)}
 			onClick={(event) => {
 				onClick?.(event);
 				toggleSidebar();
 			}}
 			{...props}
 		>
-			<PanelLeft />
+			{isMobile ? <Menu className="h-5 w-5" /> : <PanelLeft className="h-4 w-4" />}
 			<span className='sr-only'>Toggle Sidebar</span>
 		</Button>
 	);

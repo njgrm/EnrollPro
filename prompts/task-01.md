@@ -1,40 +1,34 @@
-# UI/UX & Full-Stack Implementation Prompt: SF1 & SF7 Bulk Import System
+# UI/UX Refactoring Prompt: Account Activation Screen
 
 **Target System:** EnrollPro: DepEd Junior High School System  
-**Target Modules:** System Configuration, Personnel Directory, Class Sections  
-**Reference Files:** `image_076c02.jpg`, `blank_sf1.xlsx`, `School Form 7 (SF7) School Personnel Assignment List and Basic Profile.xlsx`  
+**Target Module:** First-Time Login / Account Activation Screen  
+**Reference Image:** `image_14a4cd.jpg` (or the provided reference)
 
 ---
 
-**Act as a Senior Full-Stack Engineer and UI/UX Designer.**
+**Act as a Senior UI/UX Engineer and Frontend Developer.**
 
-Your task is to implement a bulk data import system for official DepEd School Forms (SF1 and SF7). This feature will allow System Administrators to rapidly seed the database at the Beginning of the School Year (BOSY) without manual data entry.
+Your task is to refactor the "Activate Official Account" screen. While the layout is clean, it currently suffers from a brand mismatch and a few significant UX flaws regarding form validation. We need to elevate this to a professional, enterprise-grade interface that strictly follows the established EnrollPro design system.
 
-Please implement the interface, data mapping, and routing logic using the following guidelines:
+Implement the following UI/UX improvements:
 
-### 1. UI Placement: System Configuration (Primary Hub)
-*   **Location:** Navigate to the `System Configuration` page, under the `SCHOOL PROFILE` tab[cite: 49].
-*   **New Component:** Below the "Special Curricular Program (SCP) Configuration" card[cite: 49], create a new full-width card titled **"DepEd Forms Bulk Import"**.
-*   **Design:** Inside this card, create two distinct drag-and-drop upload zones (side-by-side using CSS Grid/Flexbox):
-    *   **Zone A (SF1):** Titled "Upload School Form 1 (Learner Register)". Accept only `.xlsx` and `.xls`.
-    *   **Zone B (SF7):** Titled "Upload School Form 7 (Personnel List)". Accept only `.xlsx` and `.xls`.
-*   **Feedback:** Add a progress bar component that appears during the upload, transitioning to a green success banner displaying the total rows successfully parsed (e.g., "Success: 40 Learners imported").
+### 1. Align with the EnrollPro Brand Identity
+*   **The Problem:** The current screen uses a generic blue grid background and a bright blue button[cite: 52]. This breaks consistency with the rest of the EnrollPro system, which uses a distinct maroon/dark red primary color palette (representing typical DepEd institutional colors).
+*   **The Fix:** 
+    *   Change the primary button color from blue to the established EnrollPro dark red/maroon.
+    *   Replace the generic blue grid background with a softer, more professional institutional background (e.g., an off-white or very subtle gray geometric pattern, similar to the main dashboard background).
+    *   Change the shield icon at the top to match the brand colors.
 
-### 2. Contextual UI Shortcuts (Module Level)
-To improve user experience, add quick-access import triggers in the target modules:
-*   **Personnel Directory:** Add a ghost button or dropdown option labeled `Import SF7 Masterlist` immediately to the left of the solid red `+ ADD PERSONNEL` button. Clicking this opens a standard file upload modal.
-*   **Class Sections:** Inside each section card (e.g., "BONIFACIO"), add a small upload icon next to the "Open SF1 Masterlist" button. Clicking this opens a modal specifically to upload an SF1 just for that section.
+### 2. Fix the Password Requirements UX (Interactive Checkboxes)
+*   **The Problem:** The "SECURITY REQUIREMENTS" box uses actual HTML checkbox inputs (`<input type="checkbox">`)[cite: 52]. This is a severe UX anti-pattern because checkboxes imply user interaction. Users might try to click them, causing confusion.
+*   **The Fix:** Replace the interactive checkboxes with passive, dynamic status icons (e.g., a small gray dot or a red "x"). As the user types their password, use JavaScript to evaluate the string. When a requirement is met, smoothly transition the corresponding icon to a green checkmark (`✓`) and change the text color from gray to a darker, success-indicating shade.
 
-### 3. Backend Data Parsing & Routing Logic (SF7)
-When a user uploads `School Form 7 (SF7) School Personnel Assignment List and Basic Profile.xlsx`:
-*   **Handling Merged Headers:** DepEd Excel templates contain merged cells in the top 4-5 rows. Configure the backend parser (e.g., Pandas or SheetJS) to skip the visual headers and target the actual data rows.
-*   **Data Extraction:** Extract the `Employee No.`, `Name of Personnel`, `Position/Designation`, and `Nature of Appointment/Employment Status`.
-*   **Data Insertion:** Insert these records directly into the **Personnel Directory** database table. Ensure `Employee No.` is used as the unique identifier to prevent duplicate profiles if the file is re-uploaded.
+### 3. Enhance Input Field Usability
+*   **The Problem:** The "New Password" field has an eye icon to toggle visibility, but the "Confirm New Password" field is missing it[cite: 52]. Users frequently make typos in the confirmation field and need to see what they typed.
+*   **The Fix:** 
+    *   Add the password visibility toggle (eye icon) to the "Confirm New Password" field.
+    *   Ensure both input fields have a distinct `:focus` ring (using the primary maroon brand color) so users know exactly which field is active.
 
-### 4. Backend Data Parsing & Routing Logic (SF1)
-When a user uploads `blank_sf1.xlsx`:
-*   **Header Metadata:** Extract the `Grade Level` and `Section` from the spreadsheet's header block (usually found in rows 2-3).
-*   **Data Extraction:** Extract the `LRN (12-digit)`, `Name`, `Sex`, `Birth Date`, and `Mother Tongue` from the data rows.
-*   **Dual Insertion (Routing):** 
-    1.  Insert all extracted students into the global **Learner Directory** database table using the LRN as the unique primary key.
-    2.  Automatically insert these learners into the specific **Class Section** identified in the spreadsheet header, marking their status as "Enrolled."
+### 4. Implement Error Prevention (Button State)
+*   **The Problem:** The "Activate Account & Enter System" button appears fully active by default[cite: 52].
+*   **The Fix:** Apply a disabled state (`opacity-50`, `cursor-not-allowed`) to the primary button. The button must remain disabled until the JavaScript validation confirms that all five security requirements (8 characters, uppercase, number, special character, and matching passwords) are successfully met.

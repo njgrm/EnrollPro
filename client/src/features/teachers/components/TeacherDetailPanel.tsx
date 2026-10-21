@@ -828,6 +828,7 @@ export const TeacherDetailPanel = memo(function TeacherDetailPanel({
       <Dialog open={open} onOpenChange={handleCloseAttempt}>
         <DialogContent
           aria-describedby={undefined}
+          closeClassName="top-7 sm:top-8 -translate-y-1/2"
           onPointerDownOutside={(e) => {
             if (hasUnsavedChanges) {
               e.preventDefault();
@@ -861,7 +862,7 @@ export const TeacherDetailPanel = memo(function TeacherDetailPanel({
 
           <div className="flex-1 flex flex-col h-full overflow-hidden bg-background rounded-md">
             {/* ─── Header ─── */}
-            <DialogHeader className="flex flex-row items-center justify-between p-3 sm:p-4 border-b shrink-0 bg-primary font-bold text-left space-y-0 mt-0">
+            <DialogHeader className="flex flex-row items-center justify-between p-3 sm:p-4 h-14 sm:h-16 border-b shrink-0 bg-primary font-bold text-left space-y-0 mt-0">
               <div>
                 <DialogTitle className="text-base sm:text-lg text-primary-foreground font-bold uppercase flex items-center gap-2">
                   {isAdding ? "New Personnel Profile" : "Personnel Profile"}

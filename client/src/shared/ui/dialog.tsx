@@ -102,6 +102,7 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 interface DialogContentProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
   showClose?: boolean;
+  closeClassName?: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -110,7 +111,7 @@ const MotionDialogContent = motion.create(DialogPrimitive.Content as any) as any
 const DialogContent = React.forwardRef<
   React.ComponentRef<typeof DialogPrimitive.Content>,
   DialogContentProps
->(({ className, children, showClose = true, ...props }, ref) => {
+>(({ className, children, showClose = true, closeClassName, ...props }, ref) => {
   const { open } = React.useContext(DialogContext);
   const ready = useDeferredMount();
 
@@ -138,8 +139,9 @@ const DialogContent = React.forwardRef<
             {children}
             {showClose ? (
               <DialogPrimitive.Close className={cn(
-                "absolute right-4 top-3 rounded-full p-2 text-primary-foreground bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))] focus:ring-offset-2 disabled:pointer-events-none",
+                "absolute right-4 top-3 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full p-2 text-primary-foreground bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))] focus:ring-offset-2 disabled:pointer-events-none cursor-pointer",
                 motionClassNames.closeButton,
+                closeClassName,
               )}>
                 <X strokeWidth={3} className="h-5 w-5" />
                 <span className="sr-only">Close</span>

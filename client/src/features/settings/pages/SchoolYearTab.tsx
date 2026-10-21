@@ -892,7 +892,7 @@ export default function SchoolYearTab() {
   };
 
   if (loading) {
-    return <SettingsSkeleton />;
+    return <SettingsSkeleton hideTabs />;
   }
 
   const activePhase = selectedPhase ?? systemPhase ?? "OFFICIAL_ENROLLMENT";

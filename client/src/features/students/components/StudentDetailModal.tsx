@@ -32,7 +32,7 @@ export function StudentDetailModal(props: Props) {
           e.preventDefault();
           confirmOrRun(props.onClose);
         }}
-        className="p-0 flex flex-col h-[90vh] md:h-[95vh] border overflow-visible w-full sm:w-auto sm:max-w-none max-w-[95vw]"
+        className="p-0 flex flex-col h-[100dvh] sm:h-[90vh] md:h-[95vh] rounded-none sm:rounded-lg border overflow-visible w-full sm:w-auto sm:max-w-none max-w-full sm:max-w-[95vw]"
         style={isDesktopViewport ? { width: `${panelPercentage}vw` } : undefined}
       >
         {/* Left Resize Handle */}

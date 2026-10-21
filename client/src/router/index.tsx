@@ -24,9 +24,7 @@ const Enrollment = lazy(() => import("@/features/enrollment/pages/Index"));
 const EosyUpdating = lazy(() => import("@/features/enrollment/pages/EosyIndex"));
 const Students = lazy(() => import("@/features/students/pages/Index"));
 const Profile = lazy(() => import("@/features/students/pages/Profile"));
-const ChangePassword = lazy(
-  () => import("@/features/auth/components/ChangePasswordModal"),
-);
+import ChangePassword from "@/features/auth/components/ChangePasswordModal";
 const AuditLogs = lazy(() => import("@/features/audit-logs/pages/Index"));
 const MyActivity = lazy(
   () => import("@/features/audit-logs/pages/MyActivity"),
@@ -102,8 +100,14 @@ function PageFallback() {
     isLoggingOut() ||
     location.pathname === "/personnel/login" ||
     location.pathname === "/learner/login" ||
+    location.pathname === "/change-password" ||
+    location.pathname === "/learner/change-password" ||
+    location.pathname === "/learner/setup-password" ||
     location.pathname.startsWith("/personnel/login") ||
-    location.pathname.startsWith("/learner/login")
+    location.pathname.startsWith("/learner/login") ||
+    location.pathname.startsWith("/change-password") ||
+    location.pathname.startsWith("/learner/change-password") ||
+    location.pathname.startsWith("/learner/setup-password")
   ) {
     return null;
   }
@@ -136,11 +140,11 @@ export const router = createBrowserRouter([
           },
           {
             path: "/learner/change-password",
-            element: renderLazyPage(ChangePassword),
+            element: <ChangePassword />,
           },
           {
             path: "/learner/setup-password",
-            element: renderLazyPage(ChangePassword),
+            element: <ChangePassword />,
           },
           {
             path: "/learner/portal",
@@ -176,7 +180,7 @@ export const router = createBrowserRouter([
           },
           {
             path: "/change-password",
-            element: renderLazyPage(ChangePassword),
+            element: <ChangePassword />,
           },
           {
             path: "/track-application",

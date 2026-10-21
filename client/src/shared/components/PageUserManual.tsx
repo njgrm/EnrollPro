@@ -98,6 +98,7 @@ export function PageUserManualDrawer() {
 
   const { panelPercentage, isDesktopViewport, startResizing } = useResizablePanel(30, {
     storageKey: "page-user-manual-drawer",
+    minDesktopWidth: 1024,
   });
 
   const currentPageTitle = useMemo(() => {
@@ -128,56 +129,87 @@ export function PageUserManualDrawer() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, closeManual]);
 
+  // Lock body scroll when user manual is open on mobile & tablet
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen]);
+
   const drawerContent = (
     <AnimatePresence>
       {isOpen && (
-        <motion.aside
-          initial={{ x: "100%", opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          exit={{ x: "100%", opacity: 0 }}
-          transition={{ type: "spring", stiffness: 340, damping: 32 }}
-          className="fixed inset-y-0 right-0 z-50 w-full bg-background border-l border-border shadow-[-10px_0_30px_rgba(0,0,0,0.18)] flex flex-col overflow-visible"
-          style={
-            isDesktopViewport
-              ? {
-                  width: `${panelPercentage}vw`,
-                  minWidth: "320px",
-                  maxWidth: "90vw",
-                }
-              : undefined
-          }
-          role="complementary"
-          aria-label={`User Manual: ${displayTitle}`}
-        >
-          {/* Left Resize Handle */}
-          <div
-            onMouseDown={startResizing}
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="Resize user manual panel"
-            className="absolute left-[-4px] top-0 bottom-0 w-[8px] cursor-col-resize z-50 hover:bg-primary/30 transition-colors hidden sm:flex items-center justify-center group rounded-l-md select-none"
-          >
-            <div className="h-8 w-1.5 rounded-full bg-muted-foreground/20 group-hover:bg-primary/50" />
-          </div>
-          {/* ─── Sticky Header ─── */}
-          <div className="flex items-center justify-between px-5 py-3.5 border-b border-border bg-card/90 backdrop-blur-md sticky top-0 z-10 shrink-0">
-            <div className="flex items-center gap-2.5 min-w-0 pr-2">
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary border border-primary/20">
-                <BookOpen className="size-4" />
-              </div>
-              <h2 className="font-extrabold text-sm sm:text-base uppercase tracking-tight text-foreground truncate">
-                User Manual: {displayTitle}
-              </h2>
-            </div>
-            <button
-              type="button"
+        <>
+          {/* Backdrop on mobile and tablet */}
+          {!isDesktopViewport && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               onClick={closeManual}
-              className="rounded-full p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer shrink-0"
-              aria-label="Close user manual"
-            >
-              <X className="size-4" />
-            </button>
-          </div>
+              className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs"
+              aria-hidden="true"
+            />
+          )}
+          <motion.aside
+            initial={isDesktopViewport ? { x: "100%", opacity: 0 } : { y: "100%", opacity: 0 }}
+            animate={isDesktopViewport ? { x: 0, opacity: 1 } : { y: 0, opacity: 1 }}
+            exit={isDesktopViewport ? { x: "100%", opacity: 0 } : { y: "100%", opacity: 0 }}
+            transition={{ type: "spring", stiffness: 340, damping: 32 }}
+            className={cn(
+              "fixed z-50 bg-background flex flex-col",
+              isDesktopViewport
+                ? "inset-y-0 right-0 border-l border-border shadow-[-10px_0_30px_rgba(0,0,0,0.18)] overflow-visible"
+                : "inset-0 w-full h-full overflow-hidden shadow-2xl"
+            )}
+            style={
+              isDesktopViewport
+                ? {
+                    width: `${panelPercentage}vw`,
+                    minWidth: "320px",
+                    maxWidth: "90vw",
+                  }
+                : undefined
+            }
+            role="dialog"
+            aria-modal="true"
+            aria-label={`User Manual: ${displayTitle}`}
+          >
+            {/* Left Resize Handle (Desktop Only) */}
+            {isDesktopViewport && (
+              <div
+                onMouseDown={startResizing}
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Resize user manual panel"
+                className="absolute left-[-4px] top-0 bottom-0 w-[8px] cursor-col-resize z-50 hover:bg-primary/30 transition-colors flex items-center justify-center group rounded-l-md select-none"
+              >
+                <div className="h-8 w-1.5 rounded-full bg-muted-foreground/20 group-hover:bg-primary/50" />
+              </div>
+            )}
+            {/* ─── Sticky Header ─── */}
+            <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-border bg-card/90 backdrop-blur-md sticky top-0 z-10 shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                <div className="flex size-9 sm:size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary border border-primary/20">
+                  <BookOpen className="size-4.5 sm:size-4" />
+                </div>
+                <h2 className="font-extrabold text-sm sm:text-base uppercase tracking-tight text-foreground truncate">
+                  User Manual: {displayTitle}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={closeManual}
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full p-2 text-foreground bg-muted hover:bg-muted/80 transition-colors cursor-pointer shrink-0"
+                aria-label="Close user manual"
+              >
+                <X className="size-5 sm:size-4.5" />
+              </button>
+            </div>
 
           {/* ─── Scrollable Content Area ─── */}
           <div className="flex-1 overflow-y-auto p-5 space-y-6">
@@ -233,7 +265,22 @@ export function PageUserManualDrawer() {
             </section>
 
           </div>
+
+          {/* ─── Mobile/Tablet Sticky Dismiss Footer ─── */}
+          {!isDesktopViewport && (
+            <div className="p-4 border-t border-border bg-card shrink-0">
+              <button
+                type="button"
+                onClick={closeManual}
+                className="w-full min-h-[44px] flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground font-bold text-sm shadow hover:bg-primary/90 transition-colors cursor-pointer"
+              >
+                <X className="size-4.5" />
+                Close User Manual
+              </button>
+            </div>
+          )}
         </motion.aside>
+        </>
       )}
     </AnimatePresence>
   );

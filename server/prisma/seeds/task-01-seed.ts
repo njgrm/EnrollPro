@@ -28,6 +28,17 @@ const DEPARTMENTS = [
 ];
 const POSITIONS = ['TEACHER I', 'TEACHER II', 'TEACHER III', 'MASTER TEACHER I', 'MASTER TEACHER II'];
 
+const DEPARTMENT_MAJOR_MAP: Record<string, { major: string; minor: string | null }> = {
+  MATH: { major: "MATHEMATICS", minor: null },
+  SCI: { major: "GENERAL SCIENCE", minor: null },
+  ENG: { major: "ENGLISH", minor: null },
+  FIL: { major: "FILIPINO", minor: null },
+  AP: { major: "ARALING PANLIPUNAN", minor: null },
+  ESP: { major: "ESP", minor: null },
+  MAPEH: { major: "MAPEH", minor: null },
+  TLE: { major: "TLE", minor: null }
+};
+
 const ANCILLARY_ROLES_POOL = [
   "LIS COORDINATOR",
   "ICT COORDINATOR",
@@ -243,8 +254,10 @@ export const seedDatabase = async () => {
       const day = (i % 28) + 1;
       const birthdate = new Date(year, month, day);
       
-      const departmentName = DEPARTMENTS[i % DEPARTMENTS.length].name;
-      const majorSpecialization = departmentName;
+      const deptCode = DEPARTMENTS[i % DEPARTMENTS.length].code;
+      const specializationConfig = DEPARTMENT_MAJOR_MAP[deptCode] || { major: "MATHEMATICS", minor: null };
+      const bachelorMajor = specializationConfig.major;
+      const bachelorMinor = specializationConfig.minor;
       
       const randomPhotoNum = i % 100;
       const teacherPhoto = prismaSex === Sex.MALE 
@@ -264,26 +277,20 @@ export const seedDatabase = async () => {
           plantillaPosition,
           designation: "CLASS ADVISER",
           departments: {
-            connect: { id: deptMap[DEPARTMENTS[i % DEPARTMENTS.length].code] }
+            connect: { id: deptMap[deptCode] }
           },
           birthdate,
           personnelType: "TEACHING",
+          specialization: bachelorMajor,
           undergraduateDegree: "BACHELOR OF SECONDARY EDUCATION",
-          postgraduateDegree: "NONE",
-          majorSpecialization,
-          minorSpecialization: "NONE",
+          bachelorMajor,
+          bachelorMinor,
+          postgraduateDegree: null,
+          majorSpecialization: null,
+          minorSpecialization: null,
           indigenousCommunity: "NOT APPLICABLE",
           natureOfAppointment: "REGULAR_PERMANENT",
-          fundingSource: "NATIONAL",
-          postgraduateDegrees: {
-            create: [
-              {
-                degree: "MASTER OF ARTS IN EDUCATION",
-                major: majorSpecialization,
-                minor: "NONE"
-              }
-            ]
-          }
+          fundingSource: "NATIONAL"
         }
       });
       teachers.push(teacher);

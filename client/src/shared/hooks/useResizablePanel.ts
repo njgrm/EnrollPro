@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 interface ResizablePanelOptions {
   centered?: boolean;
   storageKey?: string;
+  minDesktopWidth?: number;
 }
 
 const MIN_PANEL_PERCENTAGE = 20;
@@ -46,12 +47,12 @@ export function useResizablePanel(
 
   useEffect(() => {
     const checkViewport = () => {
-      setIsDesktopViewport(window.innerWidth >= 640);
+      setIsDesktopViewport(window.innerWidth >= (options?.minDesktopWidth ?? 640));
     };
     checkViewport();
     window.addEventListener("resize", checkViewport);
     return () => window.removeEventListener("resize", checkViewport);
-  }, []);
+  }, [options?.minDesktopWidth]);
 
   const createResizeHandler = useCallback((side: "left" | "right") => {
     return (mouseDownEvent: React.MouseEvent) => {

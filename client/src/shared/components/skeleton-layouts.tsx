@@ -498,36 +498,111 @@ export function RegistrySkeleton({ className }: SkeletonLayoutProps) {
   );
 }
 
-export function SettingsSkeleton({ className }: SkeletonLayoutProps) {
+interface SettingsSkeletonProps extends SkeletonLayoutProps {
+  hideTabs?: boolean;
+}
+
+export function SettingsSkeleton({ className, hideTabs = false }: SettingsSkeletonProps) {
   if (isLoggingOut()) return null;
   return (
     <div
       className={cn(
-        "space-y-6 max-w-6xl mx-auto p-4 sm:p-6 w-full flex-1",
+        "flex flex-1 h-full w-full min-h-0 flex-col space-y-6",
         className,
       )}
     >
-      <SkeletonPageHeader />
-      <div className="flex gap-2 border-b border-border pb-2 overflow-x-auto">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-10 w-36 rounded-lg" />
-        ))}
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-4">
-          <div className="p-6 rounded-xl border border-border bg-card space-y-4 shadow-sm">
-            <Skeleton className="h-6 w-48 rounded" />
-            <Skeleton className="h-4 w-full rounded" />
-            <div className="space-y-3 pt-4">
-              <Skeleton className="h-12 w-full rounded-lg" />
-              <Skeleton className="h-12 w-full rounded-lg" />
+      {/* 1. Exact 2-Tab Segmented Bar */}
+      {!hideTabs && (
+        <div className="w-full flex flex-col sm:flex-row h-auto gap-1 mb-4 p-1 bg-muted border border-border rounded-xl relative shadow-sm">
+          <div className="w-full sm:flex-1 py-2 px-3 rounded-lg bg-primary/20 flex items-center justify-center">
+            <Skeleton className="h-5 w-32 rounded bg-primary/30" />
+          </div>
+          <div className="w-full sm:flex-1 py-2 px-3 rounded-lg flex items-center justify-center">
+            <Skeleton className="h-5 w-48 rounded" />
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-8 min-w-0">
+        {/* 2. School Identity Card */}
+        <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+          <div className="flex flex-col space-y-1.5 p-6">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-10 w-10 shrink-0 rounded-lg" />
+              <Skeleton className="h-6 w-36 rounded" />
+            </div>
+          </div>
+          <div className="p-6 pt-0">
+            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-4 w-28 rounded" />
+                  <Skeleton className="h-10 w-full rounded-md" />
+                </div>
+              ))}
             </div>
           </div>
         </div>
-        <div className="space-y-4">
-          <div className="p-6 rounded-xl border border-border bg-card space-y-4 shadow-sm">
-            <Skeleton className="h-5 w-32 rounded" />
-            <Skeleton className="h-28 w-full rounded-lg" />
+
+        {/* 3. Special Curricular Program (SCP) Configuration Card */}
+        <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+          <div className="flex flex-col space-y-1.5 p-6">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-10 w-10 shrink-0 rounded-lg" />
+              <Skeleton className="h-6 w-72 rounded" />
+            </div>
+          </div>
+          <div className="p-6 pt-0 space-y-6">
+            <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="p-4 rounded-xl border border-border bg-card space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <Skeleton className="h-6 w-12 rounded" />
+                      <Skeleton className="h-3 w-36 rounded" />
+                    </div>
+                    <Skeleton className="h-6 w-11 rounded-full" />
+                  </div>
+                  <div className="space-y-2 pt-2">
+                    <Skeleton className="h-4 w-28 rounded" />
+                    <Skeleton className="h-10 w-full rounded-md" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* 4. Official Communication Channels & Branding Card */}
+        <div className="rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+          <div className="flex flex-col space-y-1.5 p-6">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-10 w-10 shrink-0 rounded-lg" />
+              <Skeleton className="h-6 w-80 rounded" />
+            </div>
+          </div>
+          <div className="p-6 pt-0 space-y-6">
+            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-4 w-32 rounded" />
+                  <Skeleton className="h-10 w-full rounded-md" />
+                </div>
+              ))}
+            </div>
+            <div className="h-px bg-border my-6" />
+            <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+              <div className="space-y-3">
+                <Skeleton className="h-5 w-40 rounded" />
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <Skeleton className="h-24 w-24 rounded-lg shrink-0" />
+                  <div className="space-y-3 flex-1 w-full">
+                    <Skeleton className="h-10 w-32 rounded-md" />
+                    <Skeleton className="h-4 w-52 rounded" />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

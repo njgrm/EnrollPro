@@ -68,6 +68,8 @@ export interface DataTableProps<TData, TValue> {
   isHeaderRow?: (row: TData) => boolean;
   renderHeaderRow?: (row: TData, columnsCount: number, style?: React.CSSProperties) => ReactNode;
   striped?: boolean;
+  renderMobileCard?: (row: TData, index: number) => ReactNode;
+  disableMobileCardTransformation?: boolean;
 }
 
 interface TableRowComponentProps<TData> {
@@ -166,7 +168,7 @@ function TableRowComponentInner<TData>(
             key={cell.id}
             className={cn(
               dense ? "py-1.5 px-2" : "p-3",
-              "first:pl-6 last:pr-6",
+              "first:pl-6 last:pr-6 whitespace-nowrap",
               meta?.className,
               isPinned ? "sticky bg-inherit z-10" : "",
               isLeftPinned ? "shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] dark:shadow-slate-800" : "",
@@ -192,6 +194,80 @@ const TableRowComponent = React.forwardRef(TableRowComponentInner) as <TData>(
     ref?: React.ForwardedRef<HTMLTableRowElement>;
   },
 ) => React.ReactElement;
+
+function DefaultMobileCard<TData>({
+  row,
+  onRowClick,
+  getRowClassName,
+}: {
+  row: Row<TData>;
+  onRowClick?: (data: TData) => void;
+  getRowClassName?: (row: TData) => string;
+}) {
+  const visibleCells = row.getVisibleCells();
+  const dataCells = visibleCells.filter((c) => {
+    const id = c.column.id.toLowerCase();
+    return id !== "select" && id !== "selection";
+  });
+
+  const actionCell = dataCells.find((c) => {
+    const id = c.column.id.toLowerCase();
+    return id.includes("action") || id === "manage" || id === "profile";
+  });
+
+  const contentCells = dataCells.filter((c) => c !== actionCell);
+  const headerCell = contentCells[0];
+  const detailCells = contentCells.slice(1);
+
+  return (
+    <div
+      onClick={(e) => {
+        if (onRowClick && !isInteractiveRowTarget(e.target)) {
+          onRowClick(row.original);
+        }
+      }}
+      className={cn(
+        "rounded-lg border border-border bg-card p-4 text-card-foreground shadow-xs transition-colors space-y-3",
+        onRowClick && "cursor-pointer hover:border-primary/50 active:bg-muted/40",
+        getRowClassName?.(row.original),
+      )}
+    >
+      {headerCell && (
+        <div className="font-extrabold text-base text-foreground leading-snug">
+          {flexRender(headerCell.column.columnDef.cell, headerCell.getContext())}
+        </div>
+      )}
+
+      {detailCells.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm pt-2 border-t border-border/50">
+          {detailCells.map((cell) => {
+            const header = cell.column.columnDef.header;
+            let headerText = cell.column.id.replace(/_/g, " ").toUpperCase();
+            if (typeof header === "string") {
+              headerText = header;
+            }
+            return (
+              <div key={cell.id} className="flex flex-col gap-0.5 min-w-0">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground truncate">
+                  {headerText}
+                </span>
+                <div className="text-foreground font-medium text-sm break-words">
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {actionCell && (
+        <div className="pt-2 border-t border-border flex w-full [&>button]:w-full [&>a]:w-full [&_button]:w-full">
+          {flexRender(actionCell.column.columnDef.cell, actionCell.getContext())}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function DataTable<TData, TValue>({
   columns,
@@ -227,6 +303,8 @@ export function DataTable<TData, TValue>({
   isHeaderRow,
   renderHeaderRow,
   striped = true,
+  renderMobileCard,
+  disableMobileCardTransformation = false,
   meta,
 }: DataTableProps<TData, TValue>) {
   const [internalSorting, setInternalSorting] = useState<SortingState>([]);
@@ -293,10 +371,59 @@ export function DataTable<TData, TValue>({
         "rounded-md border overflow-hidden max-w-full flex flex-col h-full relative",
         className,
       )}>
+      {/* Mobile Card View (< md) */}
+      {!disableMobileCardTransformation && (
+        <div className="block md:hidden overflow-y-auto p-3 space-y-3 flex-1 min-h-0">
+          {showLoadingRows ? (
+            <div className="min-h-[260px] flex flex-col items-center justify-center p-6 space-y-3">
+              <Loader2 className="w-8 h-8 text-primary animate-spin" />
+              <p className="text-sm font-bold text-muted-foreground">Loading records...</p>
+            </div>
+          ) : !forceEmptyState && !suppressEmptyDuringDelayedLoading && rows.length > 0 ? (
+            rows.map((row, index) => {
+              if (renderMobileCard) {
+                return (
+                  <div
+                    key={row.id}
+                    onClick={(e) => {
+                      if (onRowClick && !isInteractiveRowTarget(e.target)) {
+                        onRowClick(row.original);
+                      }
+                    }}
+                    className={cn(
+                      "rounded-lg border border-border bg-card p-4 text-card-foreground shadow-xs transition-colors",
+                      onRowClick && "cursor-pointer hover:border-primary/50 active:bg-muted/40",
+                      getRowClassName?.(row.original),
+                    )}
+                  >
+                    {renderMobileCard(row.original, index)}
+                  </div>
+                );
+              }
+
+              return (
+                <DefaultMobileCard
+                  key={row.id}
+                  row={row}
+                  onRowClick={onRowClick}
+                  getRowClassName={getRowClassName}
+                />
+              );
+            })
+          ) : (
+            <div className="min-h-[160px] flex items-center justify-center p-6 text-center text-sm font-bold text-muted-foreground">
+              {noResultsMessage}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Desktop & Tablet Table View (>= md, or always if disableMobileCardTransformation is true) */}
       <div
         ref={containerRef}
         className={cn(
-          "relative flex-1 min-h-0 w-full pb-3",
+          disableMobileCardTransformation ? "flex flex-1" : "hidden md:flex flex-1",
+          "relative min-h-0 w-full pb-3 flex-col",
           disableScrolling ? "overflow-hidden" : "overflow-auto"
         )}
         style={containerHeight !== "100%" ? { maxHeight: containerHeight } : undefined}>
@@ -485,7 +612,7 @@ export function DataTable<TData, TValue>({
       {!showLoadingRows && !forceEmptyState && !suppressEmptyDuringDelayedLoading && rows.length === 0 && (
         <div
           className={cn(
-            "absolute inset-x-0 bottom-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-[2px]",
+            "hidden md:flex absolute inset-x-0 bottom-0 z-20 items-center justify-center bg-background/80 backdrop-blur-[2px]",
             dense ? "top-8" : "top-11"
           )}
         >

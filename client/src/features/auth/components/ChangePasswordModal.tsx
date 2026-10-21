@@ -11,16 +11,15 @@ import {
   Lock,
   Eye,
   EyeOff,
-  CheckSquare,
-  Square,
+  CheckCircle2,
   AlertCircle,
 } from "lucide-react";
 import { sileo } from "sileo";
 import api, { getLearnerApi } from "@/shared/api/axiosInstance";
 import { useAuthStore } from "@/store/auth.slice";
-
-import { useSettingsStore } from "@/store/settings.slice";
 import { useLearnerAuthStore } from "@/store/learner-auth.slice";
+import { useSettingsStore } from "@/store/settings.slice";
+import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -112,6 +111,7 @@ export function ChangePasswordForm({
 }: ChangePasswordFormProps) {
   const [showPw, setShowPw] = useState(false);
   const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
 
   const schema = useMemo(() => createSchema(requireCurrentPassword), [requireCurrentPassword]);
 
@@ -134,6 +134,7 @@ export function ChangePasswordForm({
     defaultValues,
   });
 
+  const currentPasswordValue = useWatch({ control, name: "currentPassword", defaultValue: "" });
   const newPasswordValue = useWatch({ control, name: "newPassword", defaultValue: "" });
   const confirmPasswordValue = useWatch({ control, name: "confirmPassword", defaultValue: "" });
 
@@ -141,6 +142,16 @@ export function ChangePasswordForm({
     const sub = watch(() => { if (error) setError(null); });
     return () => sub.unsubscribe();
   }, [watch, error, setError]);
+
+  const allRequirementsMet = useMemo(() => {
+    const minLen = newPasswordValue.length >= 8;
+    const hasUpper = /[A-Z]/.test(newPasswordValue);
+    const hasNum = /[0-9]/.test(newPasswordValue);
+    const hasSpecial = /[^A-Za-z0-9]/.test(newPasswordValue);
+    const matches = newPasswordValue.length > 0 && newPasswordValue === confirmPasswordValue;
+    const currentValid = !requireCurrentPassword || Boolean(currentPasswordValue?.trim());
+    return minLen && hasUpper && hasNum && hasSpecial && matches && currentValid;
+  }, [newPasswordValue, confirmPasswordValue, currentPasswordValue, requireCurrentPassword]);
 
   const newPasswordInvalid = useMemo(
     () => newPasswordValue.length > 0 && (
@@ -184,14 +195,19 @@ export function ChangePasswordForm({
                 id="currentPassword"
                 type={showCurrentPw ? "text" : "password"}
                 placeholder="••••••••••••"
-                className={`font-bold h-12 pl-10 pr-10 bg-muted/30 border-border rounded-xl ${errors.currentPassword ? "border-destructive/50 focus-visible:ring-destructive/20" : ""}`}
+                className={cn(
+                  "font-bold h-12 pl-10 pr-10 bg-muted/30 border-border rounded-xl transition-all",
+                  "focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20",
+                  errors.currentPassword && "border-destructive/50 focus-visible:ring-destructive/20"
+                )}
                 {...register("currentPassword")}
               />
               <button
                 type="button"
                 onClick={() => setShowCurrentPw(!showCurrentPw)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                tabIndex={-1}>
+                tabIndex={-1}
+                aria-label={showCurrentPw ? "Hide current password" : "Show current password"}>
                 {showCurrentPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
@@ -207,14 +223,19 @@ export function ChangePasswordForm({
               id="newPassword"
               type={showPw ? "text" : "password"}
               placeholder="••••••••••••"
-              className={`font-bold h-12 pl-10 pr-10 bg-muted/30 border-border rounded-xl ${newPasswordInvalid ? "border-destructive/50 focus-visible:ring-destructive/20" : ""}`}
+              className={cn(
+                "font-extrabold h-12 pl-10 pr-10 bg-muted/30 border-border rounded-xl transition-all",
+                "focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20",
+                newPasswordInvalid && "border-destructive/50 focus-visible:ring-destructive/20"
+              )}
               {...register("newPassword")}
             />
             <button
               type="button"
               onClick={() => setShowPw(!showPw)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              tabIndex={-1}>
+              tabIndex={-1}
+              aria-label={showPw ? "Hide password" : "Show password"}>
               {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
@@ -227,11 +248,23 @@ export function ChangePasswordForm({
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
             <Input
               id="confirmPassword"
-              type={showPw ? "text" : "password"}
+              type={showConfirmPw ? "text" : "password"}
               placeholder="••••••••••••"
-              className={`font-bold h-12 pl-10 bg-muted/30 border-border focus-visible:ring-4 focus-visible:ring-primary/15 rounded-xl ${confirmPasswordInvalid ? "border-destructive/50 focus-visible:ring-destructive/20" : ""}`}
+              className={cn(
+                "font-extrabold h-12 pl-10 pr-10 bg-muted/30 border-border rounded-xl transition-all",
+                "focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20",
+                confirmPasswordInvalid && "border-destructive/50 focus-visible:ring-destructive/20"
+              )}
               {...register("confirmPassword")}
             />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPw(!showConfirmPw)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              tabIndex={-1}
+              aria-label={showConfirmPw ? "Hide confirm password" : "Show confirm password"}>
+              {showConfirmPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
           </div>
           <AnimatedError error={errors.confirmPassword?.message as string || errors.confirmPassword as unknown as string} />
         </div>
@@ -263,20 +296,20 @@ export function ChangePasswordForm({
             </Button>
             <Button
               type="submit"
-              className="w-1/2 h-12 font-bold text-base leading-tight rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-primary to-accent hover:from-primary/95 hover:to-accent/95 text-primary-foreground"
-              disabled={loading}>
+              className="w-1/2 h-12 font-bold text-base leading-tight rounded-xl shadow-md hover:shadow-lg transition-all duration-300 bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+              disabled={loading || !allRequirementsMet}>
               {loading ? (
-                <><Loader2 className="mr-2 h-5 w-5 " />{loadingLabel}</>
+                <><Loader2 className="mr-2 h-5 w-5 animate-spin" />{loadingLabel}</>
               ) : submitLabel}
             </Button>
           </div>
         ) : (
           <Button
             type="submit"
-            className="w-full h-12 font-bold text-base leading-tight rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-primary to-accent hover:from-primary/95 hover:to-accent/95 text-primary-foreground"
-            disabled={loading}>
+            className="w-full h-12 font-bold text-base leading-tight rounded-xl shadow-md hover:shadow-lg transition-all duration-300 bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+            disabled={loading || !allRequirementsMet}>
             {loading ? (
-              <><Loader2 className="mr-2 h-5 w-5 " />{loadingLabel}</>
+              <><Loader2 className="mr-2 h-5 w-5 animate-spin" />{loadingLabel}</>
             ) : submitLabel}
           </Button>
         )}
@@ -309,21 +342,26 @@ export const SecurityRequirements = memo(function SecurityRequirements({
   ];
 
   return (
-    <div className="rounded-xl bg-muted/50 p-4 border border-muted-foreground/10 space-y-3">
-      <p className="font-bold uppercase  text-foreground text-base">
+    <div className="rounded-xl bg-muted/40 p-4 border border-border space-y-3">
+      <p className="font-bold uppercase tracking-wider text-muted-foreground text-sm">
         Security Requirements
       </p>
-      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5">
         {rules.map((r) => (
           <li
             key={r.label}
-            className={`flex items-center gap-2 text-base leading-tight font-bold transition-colors ${r.pass ? "text-emerald-600" : "text-foreground"}`}>
+            className={cn(
+              "flex items-center gap-2.5 text-sm leading-tight transition-all duration-200",
+              r.pass
+                ? "text-emerald-700 dark:text-emerald-400 font-bold"
+                : "text-muted-foreground font-semibold"
+            )}>
             {r.pass ? (
-              <CheckSquare className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
             ) : (
-              <Square className="h-3.5 w-3.5 shrink-0 opacity-50" />
+              <span className="h-2 w-2 rounded-full bg-muted-foreground/40 shrink-0 mx-1" />
             )}
-            {r.label}
+            <span>{r.label}</span>
           </li>
         ))}
       </ul>
@@ -336,6 +374,8 @@ export default function ChangePassword() {
   const learnerAuth = useLearnerAuthStore();
   const { accentForeground } = useSettingsStore();
   const navigate = useNavigate();
+
+  const strokeColor = accentForeground === "0 0% 0%" ? "000000" : "ffffff";
 
   const [searchParams] = useSearchParams();
   const origin = searchParams.get("origin");
@@ -350,8 +390,6 @@ export default function ChangePassword() {
       ? false
       : Boolean(learnerAuth.user);
   const auth = isLearner ? learnerAuth : staffAuth;
-
-  const strokeColor = accentForeground === "0 0% 0%" ? "000000" : "ffffff";
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -525,22 +563,22 @@ export default function ChangePassword() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="relative z-10 w-full max-w-3xl">
-        <Card className="shadow-2xl border-none">
-          <CardHeader className="space-y-1 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-inner">
-              <ShieldCheck className="h-8 w-8" />
+        className="relative z-10 w-full max-w-2xl py-8">
+        <Card className="shadow-2xl border border-border bg-card">
+          <CardHeader className="space-y-1.5 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20 shadow-inner">
+              <ShieldCheck className="h-8 w-8 text-primary" />
             </div>
-            <CardTitle className="text-3xl font-bold ">
+            <CardTitle className="text-3xl font-extrabold text-foreground">
               {isExternalHandoff ? "Replace Default Password" : "Activate Official Account"}
             </CardTitle>
-            <CardDescription className="text-base">
+            <CardDescription className="text-base text-muted-foreground">
               {isExternalHandoff
                 ? "Your account is using the default password. Set a private password before returning to SMART, AIMS, or ATLAS."
                 : "Please replace the initial access key provided by the Registrar with your own private password."}
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 px-8">
+          <CardContent className="space-y-4 px-6 sm:px-8">
             <ChangePasswordForm
               onSubmit={handleSubmit}
               loading={loading}

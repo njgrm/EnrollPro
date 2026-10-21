@@ -37,6 +37,10 @@ interface ParsedSf7Row {
   degree: string | null;
   undergraduateDegree: string | null;
   postgraduateDegree: string | null;
+  bachelorMajor: string | null;
+  bachelorMinor: string | null;
+  postgraduateMajor: string | null;
+  postgraduateMinor: string | null;
   majorSpecialization: string | null;
   minorSpecialization: string | null;
   assignmentText: string | null;
@@ -236,6 +240,128 @@ function splitDegrees(value: string | null): {
   };
 }
 
+function splitMajors(value: string | null): {
+  bachelorMajor: string | null;
+  postgraduateMajor: string | null;
+} {
+  const text = upperText(value);
+  if (!text) return { bachelorMajor: null, postgraduateMajor: null };
+  const parts = text
+    .split(/\s*(?:\/|;|\+|\n)\s*/)
+    .map((part) => cleanText(part))
+    .filter((part): part is string => Boolean(part));
+  return {
+    bachelorMajor: parts[0] ?? null,
+    postgraduateMajor: parts.slice(1).join(" / ") || null,
+  };
+}
+
+function splitMinors(value: string | null): {
+  bachelorMinor: string | null;
+  postgraduateMinor: string | null;
+} {
+  const text = upperText(value);
+  if (!text) return { bachelorMinor: null, postgraduateMinor: null };
+  const parts = text
+    .split(/\s*(?:\/|;|\+|\n)\s*/)
+    .map((part) => cleanText(part))
+    .filter((part): part is string => Boolean(part));
+  return {
+    bachelorMinor: parts[0] ?? null,
+    postgraduateMinor: parts.slice(1).join(" / ") || null,
+  };
+}
+
+interface DepartmentPatternRule {
+  code: string;
+  match: (text: string) => boolean;
+}
+
+const DEPARTMENT_PATTERNS: DepartmentPatternRule[] = [
+  {
+    code: "MATH",
+    match: (t) => /\b(MATH|MATHEMATICS|ALGEBRA|GEOMETRY|STATISTICS|CALCULUS|TRIGONOMETRY|NUMERACY)\b/i.test(t),
+  },
+  {
+    code: "SCI",
+    match: (t) => {
+      const isNonNaturalScience = /\b(SOCIAL SCIENCE|POLITICAL SCIENCE|COMPUTER SCIENCE|SPORTS SCIENCE)\b/i.test(t);
+      const hasNaturalScience = /\b(GENERAL SCIENCE|NATURAL SCIENCE|EARTH SCIENCE|PHYSICAL SCIENCE|PHYSICAL SCIENCES|INTEGRATED SCIENCE|BIOLOGY|BIOLOGICAL|CHEMISTRY|PHYSICS)\b/i.test(t);
+      return (!isNonNaturalScience || hasNaturalScience) && /\b(SCIENCE|SCIENCES|SCI|BIOLOGY|BIOLOGICAL|CHEMISTRY|PHYSICS)\b/i.test(t);
+    },
+  },
+  {
+    code: "ENG",
+    match: (t) =>
+      /\b(ENG|ENGLISH|LITERATURE|READING|LITERACY|JOURNALISM|MASS COMM|MASS COMMUNICATION)\b/i.test(t) ||
+      (/\bCOMMUNICATION ARTS\b/i.test(t) && !/\bFILIPINO\b/i.test(t)),
+  },
+  {
+    code: "FIL",
+    match: (t) => /\b(FIL|FILIPINO|PANITIKAN|TAGALOG)\b/i.test(t),
+  },
+  {
+    code: "AP",
+    match: (t) =>
+      /\b(AP|ARALING PANLIPUNAN|SOCIAL STUDIES|SOCIAL SCIENCE|HISTORY|HISTORICAL|KASAYSAYAN|POLITICAL SCIENCE|POLSCI|ECONOMICS|SOCIOLOGY|GEOGRAPHY|ASIAN STUDIES)\b/i.test(t),
+  },
+  {
+    code: "ESP",
+    match: (t) =>
+      /\b(ESP|EDUKASYON SA PAGPAPAKATAO|VALUES|VALUES EDUCATION|PHILOSOPHY|ETHICS|GUIDANCE|COUNSELING|PSYCHOLOGY|THEOLOGY|RELIGIOUS EDUCATION)\b/i.test(t),
+  },
+  {
+    code: "MAPEH",
+    match: (t) => {
+      const isTleOrCommArts = /\b(INDUSTRIAL ARTS|AGRI-FISHERY ARTS|COMMUNICATION ARTS|LIBERAL ARTS)\b/i.test(t);
+      const hasMapehKeywords = /\b(MAPEH|MUSIC|PHYSICAL EDUCATION|P\.?E\.?|HEALTH|SPORTS|BPED|BPE|DANCE|ART EDUCATION)\b/i.test(t);
+      return hasMapehKeywords || (!isTleOrCommArts && /\b(ART|ARTS|FINE ARTS)\b/i.test(t));
+    },
+  },
+  {
+    code: "TLE",
+    match: (t) =>
+      /\b(TLE|TVL|TECHNOLOGY AND LIVELIHOOD|TECHNICAL VOCATIONAL|VOCATIONAL|HOME ECONOMICS|H\.?E\.?|AGRI-FISHERY|AGRICULTURE|AGRICULTURAL|FISHERIES|AFA|INDUSTRIAL ARTS|I\.?A\.?|ICT|COMPUTER|INFORMATION TECHNOLOGY|INFORMATION AND COMMUNICATIONS|DRAFTING|ELECTRONICS|ELECTRICAL|COOKERY|CULINARY|FOOD TRADES|GARMENTS|COSMETOLOGY|AUTOMOTIVE)\b/i.test(t),
+  },
+  {
+    code: "GEN",
+    match: (t) => /\b(GEN|GENERAL EDUCATION|ELEMENTARY EDUCATION|BEED)\b/i.test(t),
+  },
+];
+
+function resolveDepartmentIdsFromMajors(
+  bachelorMajor: string | null,
+  postgraduateMajor: string | null,
+  allDepartments: Array<{ id: number; code: string; name: string }>,
+): number[] {
+  const matchedCodes = new Set<string>();
+
+  const matchMajor = (majorText: string | null) => {
+    if (!majorText) return;
+    const text = cleanText(majorText)?.toUpperCase();
+    if (!text) return;
+
+    for (const dept of allDepartments) {
+      if (text === dept.code.toUpperCase() || text === dept.name.toUpperCase()) {
+        matchedCodes.add(dept.code.toUpperCase());
+      }
+    }
+
+    for (const rule of DEPARTMENT_PATTERNS) {
+      if (rule.match(text)) {
+        matchedCodes.add(rule.code);
+      }
+    }
+  };
+
+  matchMajor(bachelorMajor);
+  matchMajor(postgraduateMajor);
+
+  return allDepartments
+    .filter((dept) => matchedCodes.has(dept.code.toUpperCase()))
+    .map((dept) => dept.id);
+}
+
 function extractIndigenousCommunity(remarks: string | null): string | null {
   if (!remarks) return null;
   const match = remarks.match(/(?:IP|INDIGENOUS|ETHNIC(?:\s+GROUP)?)[:\s-]+([^;,\n]+)/i);
@@ -329,6 +455,18 @@ function parseSchedulePeriodsFromValues(values: {
 function parsedRowFromWorksheet(row: ExcelJS.Row, rowNumber: number): ParsedSf7Row {
   const degree = cellText(row, 8);
   const degreeParts = splitDegrees(degree);
+  const rawMajor = cellText(row, 9);
+  const col10Major = cellText(row, 10);
+  const majorParts = splitMajors(rawMajor);
+  const bachelorMajor = majorParts.bachelorMajor ?? (col10Major && col10Major !== rawMajor ? rawMajor : null);
+  const postgraduateMajor = majorParts.postgraduateMajor ?? (col10Major && col10Major !== rawMajor ? col10Major : null);
+
+  const rawMinor = cellText(row, 11);
+  const col12Minor = cellText(row, 12);
+  const minorParts = splitMinors(rawMinor);
+  const bachelorMinor = minorParts.bachelorMinor ?? (col12Minor && col12Minor !== rawMinor ? rawMinor : null);
+  const postgraduateMinor = minorParts.postgraduateMinor ?? (col12Minor && col12Minor !== rawMinor ? col12Minor : null);
+
   const remarks = cellText(row, 18);
   return {
     rowNumber,
@@ -341,8 +479,12 @@ function parsedRowFromWorksheet(row: ExcelJS.Row, rowNumber: number): ParsedSf7R
     degree,
     undergraduateDegree: degreeParts.undergraduateDegree,
     postgraduateDegree: degreeParts.postgraduateDegree,
-    majorSpecialization: cellText(row, 9),
-    minorSpecialization: cellText(row, 11),
+    bachelorMajor: bachelorMajor ?? majorParts.bachelorMajor,
+    postgraduateMajor: postgraduateMajor ?? majorParts.postgraduateMajor,
+    bachelorMinor: bachelorMinor ?? minorParts.bachelorMinor,
+    postgraduateMinor: postgraduateMinor ?? minorParts.postgraduateMinor,
+    majorSpecialization: rawMajor,
+    minorSpecialization: rawMinor,
     assignmentText: cellText(row, 13),
     dayText: cellLines(row, 14).join("\n"),
     startTimeText: cellLines(row, 15).join("\n"),
@@ -375,6 +517,22 @@ function parsedRowsFromCsv(buffer: Buffer): ParsedSf7Row[] {
       "Subject",
     ]);
 
+    const rawMajor = csvValue(record, ["Major / Specialization", "Major", "Specialization"]);
+    const majorParts = splitMajors(rawMajor);
+    const bachelorMajor =
+      csvValue(record, ["Bachelor Major", "Undergraduate Major", "BS Major", "BSE Major"]) ??
+      majorParts.bachelorMajor;
+    const postgraduateMajor =
+      csvValue(record, ["Postgraduate Major", "Post Graduate Major", "Masteral Major", "Doctoral Major"]) ??
+      majorParts.postgraduateMajor;
+
+    const rawMinor = csvValue(record, ["Minor", "Minor Specialization"]);
+    const minorParts = splitMinors(rawMinor);
+    const bachelorMinor =
+      csvValue(record, ["Bachelor Minor", "Undergraduate Minor"]) ?? minorParts.bachelorMinor;
+    const postgraduateMinor =
+      csvValue(record, ["Postgraduate Minor", "Post Graduate Minor"]) ?? minorParts.postgraduateMinor;
+
     return {
       rowNumber: index + 2,
       employeeIdRaw: csvValue(record, ["Employee No", "Employee Number", "Employee ID", "TIN", "Employee No / TIN"]),
@@ -398,8 +556,12 @@ function parsedRowsFromCsv(buffer: Buffer): ParsedSf7Row[] {
         csvValue(record, ["Undergraduate Degree", "Bachelor Degree"]) ?? degreeParts.undergraduateDegree,
       postgraduateDegree:
         csvValue(record, ["Postgraduate Degree", "Graduate Degree", "Post Graduate"]) ?? degreeParts.postgraduateDegree,
-      majorSpecialization: csvValue(record, ["Major / Specialization", "Major", "Specialization"]),
-      minorSpecialization: csvValue(record, ["Minor", "Minor Specialization"]),
+      bachelorMajor: bachelorMajor ?? majorParts.bachelorMajor,
+      postgraduateMajor: postgraduateMajor ?? majorParts.postgraduateMajor,
+      bachelorMinor: bachelorMinor ?? minorParts.bachelorMinor,
+      postgraduateMinor: postgraduateMinor ?? minorParts.postgraduateMinor,
+      majorSpecialization: rawMajor,
+      minorSpecialization: rawMinor,
       assignmentText,
       dayText,
       startTimeText,
@@ -466,7 +628,11 @@ function buildPreviewRows(
         plantillaPosition: upperText(sourceRow.plantillaPosition),
         natureOfAppointment,
         undergraduateDegree: upperText(sourceRow.undergraduateDegree),
+        bachelorMajor: upperText(sourceRow.bachelorMajor),
+        bachelorMinor: upperText(sourceRow.bachelorMinor),
         postgraduateDegree: upperText(sourceRow.postgraduateDegree),
+        postgraduateMajor: upperText(sourceRow.postgraduateMajor),
+        postgraduateMinor: upperText(sourceRow.postgraduateMinor),
         majorSpecialization: upperText(sourceRow.majorSpecialization),
         minorSpecialization: upperText(sourceRow.minorSpecialization),
         assignmentText: upperText(sourceRow.assignmentText),
@@ -738,6 +904,9 @@ export async function commitSf7Import(
 ): Promise<Sf7ImportCommitResponse> {
   const updatedTeacherIds: number[] = [];
   const skippedRows: Sf7ImportCommitResponse["skippedRows"] = [];
+  const allDepartments = await prisma.department.findMany({
+    select: { id: true, code: true, name: true },
+  });
 
   for (const row of input.rows) {
     if (!row.employeeId && !row.teacherId) {
@@ -762,20 +931,48 @@ export async function commitSf7Import(
     const fund = row.fundingSource ?? "NATIONAL";
     const sex = row.sex ?? "FEMALE";
 
+    const majorParts = splitMajors(row.majorSpecialization);
+    const minorParts = splitMinors(row.minorSpecialization);
+    const bachelorMajor = upperText(row.bachelorMajor ?? majorParts.bachelorMajor);
+    const postgraduateMajor = upperText(row.postgraduateMajor ?? majorParts.postgraduateMajor);
+    const bachelorMinor = upperText(row.bachelorMinor ?? minorParts.bachelorMinor);
+    const postgraduateMinor = upperText(row.postgraduateMinor ?? minorParts.postgraduateMinor);
+    const specialization = bachelorMajor ?? upperText(row.majorSpecialization);
+
+    const deptIds = resolveDepartmentIdsFromMajors(bachelorMajor, postgraduateMajor, allDepartments);
+
     if (row.teacherId) {
       const updated = await prisma.teacher.update({
         where: { id: row.teacherId },
         data: {
           plantillaPosition: row.plantillaPosition,
           undergraduateDegree: row.undergraduateDegree,
+          bachelorMajor: bachelorMajor ?? undefined,
+          bachelorMinor: bachelorMinor ?? undefined,
+          specialization: specialization ?? undefined,
           postgraduateDegree: row.postgraduateDegree,
-          majorSpecialization: row.majorSpecialization,
-          minorSpecialization: row.minorSpecialization,
+          majorSpecialization: postgraduateMajor ?? row.majorSpecialization,
+          minorSpecialization: postgraduateMinor ?? row.minorSpecialization,
           indigenousCommunity: row.indigenousCommunity,
+          ...(deptIds.length > 0 ? { departments: { set: deptIds.map((id) => ({ id })) } } : {}),
           ...(row.natureOfAppointment ? { natureOfAppointment: row.natureOfAppointment } : {}),
           ...(row.fundingSource ? { fundingSource: row.fundingSource } : {}),
         },
       });
+
+      if (row.postgraduateDegree) {
+        await prisma.teacherPostgraduateDegree.deleteMany({ where: { teacherId: row.teacherId } });
+        await prisma.teacherPostgraduateDegree.create({
+          data: {
+            teacherId: row.teacherId,
+            degree: row.postgraduateDegree,
+            major: postgraduateMajor,
+            minor: postgraduateMinor,
+            sortOrder: 0,
+          },
+        });
+      }
+
       updatedTeacherIds.push(updated.id);
     } else if (row.employeeId) {
       // Check if teacher exists by employeeId
@@ -789,14 +986,32 @@ export async function commitSf7Import(
           data: {
             plantillaPosition: row.plantillaPosition ?? existing.plantillaPosition,
             undergraduateDegree: row.undergraduateDegree ?? existing.undergraduateDegree,
+            bachelorMajor: bachelorMajor ?? existing.bachelorMajor,
+            bachelorMinor: bachelorMinor ?? existing.bachelorMinor,
+            specialization: specialization ?? existing.specialization,
             postgraduateDegree: row.postgraduateDegree ?? existing.postgraduateDegree,
-            majorSpecialization: row.majorSpecialization ?? existing.majorSpecialization,
-            minorSpecialization: row.minorSpecialization ?? existing.minorSpecialization,
+            majorSpecialization: (postgraduateMajor ?? row.majorSpecialization) ?? existing.majorSpecialization,
+            minorSpecialization: (postgraduateMinor ?? row.minorSpecialization) ?? existing.minorSpecialization,
             indigenousCommunity: row.indigenousCommunity ?? existing.indigenousCommunity,
+            ...(deptIds.length > 0 ? { departments: { set: deptIds.map((id) => ({ id })) } } : {}),
             ...(row.natureOfAppointment ? { natureOfAppointment: row.natureOfAppointment } : {}),
             ...(row.fundingSource ? { fundingSource: row.fundingSource } : {}),
           },
         });
+
+        if (row.postgraduateDegree) {
+          await prisma.teacherPostgraduateDegree.deleteMany({ where: { teacherId: existing.id } });
+          await prisma.teacherPostgraduateDegree.create({
+            data: {
+              teacherId: existing.id,
+              degree: row.postgraduateDegree,
+              major: postgraduateMajor,
+              minor: postgraduateMinor,
+              sortOrder: 0,
+            },
+          });
+        }
+
         updatedTeacherIds.push(updated.id);
       } else {
         const created = await prisma.teacher.create({
@@ -811,12 +1026,28 @@ export async function commitSf7Import(
             natureOfAppointment: nature,
             fundingSource: fund,
             undergraduateDegree: row.undergraduateDegree,
+            bachelorMajor,
+            bachelorMinor,
+            specialization,
             postgraduateDegree: row.postgraduateDegree,
-            majorSpecialization: row.majorSpecialization,
-            minorSpecialization: row.minorSpecialization,
+            majorSpecialization: postgraduateMajor ?? row.majorSpecialization,
+            minorSpecialization: postgraduateMinor ?? row.minorSpecialization,
             indigenousCommunity: row.indigenousCommunity,
             isActive: true,
             serviceStatus: "ACTIVE",
+            departments: deptIds.length > 0 ? { connect: deptIds.map((id) => ({ id })) } : undefined,
+            postgraduateDegrees: row.postgraduateDegree
+              ? {
+                  create: [
+                    {
+                      degree: row.postgraduateDegree,
+                      major: postgraduateMajor,
+                      minor: postgraduateMinor,
+                      sortOrder: 0,
+                    },
+                  ],
+                }
+              : undefined,
           },
         });
         updatedTeacherIds.push(created.id);
@@ -882,6 +1113,9 @@ export async function directImportSf7(
   let createdCount = 0;
   let skippedCount = 0;
   const seenEmployeeIds = new Set<string>();
+  const allDepartments = await prisma.department.findMany({
+    select: { id: true, code: true, name: true },
+  });
 
   for (const sourceRow of parsedRows) {
     const employeeId = parseEmployeeId(sourceRow.employeeIdRaw);
@@ -905,8 +1139,18 @@ export async function directImportSf7(
     const plantillaPosition = upperText(sourceRow.plantillaPosition);
     const undergraduateDegree = upperText(sourceRow.undergraduateDegree);
     const postgraduateDegree = upperText(sourceRow.postgraduateDegree);
-    const majorSpecialization = upperText(sourceRow.majorSpecialization);
-    const minorSpecialization = upperText(sourceRow.minorSpecialization);
+    const rawMajor = upperText(sourceRow.majorSpecialization);
+    const majorParts = splitMajors(rawMajor);
+    const rawMinor = upperText(sourceRow.minorSpecialization);
+    const minorParts = splitMinors(rawMinor);
+
+    const bachelorMajor = upperText(sourceRow.bachelorMajor ?? majorParts.bachelorMajor);
+    const postgraduateMajor = upperText(sourceRow.postgraduateMajor ?? majorParts.postgraduateMajor);
+    const bachelorMinor = upperText(sourceRow.bachelorMinor ?? minorParts.bachelorMinor);
+    const postgraduateMinor = upperText(sourceRow.postgraduateMinor ?? minorParts.postgraduateMinor);
+    const specialization = bachelorMajor ?? rawMajor;
+
+    const deptIds = resolveDepartmentIdsFromMajors(bachelorMajor, postgraduateMajor, allDepartments);
     const indigenousCommunity = extractIndigenousCommunity(sourceRow.remarks);
 
     const existing = await prisma.teacher.findUnique({
@@ -927,13 +1171,31 @@ export async function directImportSf7(
           fundingSource,
           sex,
           undergraduateDegree: undergraduateDegree ?? undefined,
+          bachelorMajor: bachelorMajor ?? undefined,
+          bachelorMinor: bachelorMinor ?? undefined,
+          specialization: specialization ?? undefined,
           postgraduateDegree: postgraduateDegree ?? undefined,
-          majorSpecialization: majorSpecialization ?? undefined,
-          minorSpecialization: minorSpecialization ?? undefined,
+          majorSpecialization: postgraduateMajor ?? rawMajor ?? undefined,
+          minorSpecialization: postgraduateMinor ?? rawMinor ?? undefined,
           indigenousCommunity: indigenousCommunity ?? undefined,
           isActive: true,
+          ...(deptIds.length > 0 ? { departments: { set: deptIds.map((id) => ({ id })) } } : {}),
         },
       });
+
+      if (postgraduateDegree) {
+        await prisma.teacherPostgraduateDegree.deleteMany({ where: { teacherId: existing.id } });
+        await prisma.teacherPostgraduateDegree.create({
+          data: {
+            teacherId: existing.id,
+            degree: postgraduateDegree,
+            major: postgraduateMajor,
+            minor: postgraduateMinor,
+            sortOrder: 0,
+          },
+        });
+      }
+
       updatedTeacherIds.push(updated.id);
       updatedCount++;
     } else {
@@ -949,12 +1211,28 @@ export async function directImportSf7(
           fundingSource,
           sex,
           undergraduateDegree,
+          bachelorMajor,
+          bachelorMinor,
+          specialization,
           postgraduateDegree,
-          majorSpecialization,
-          minorSpecialization,
+          majorSpecialization: postgraduateMajor ?? rawMajor,
+          minorSpecialization: postgraduateMinor ?? rawMinor,
           indigenousCommunity,
           isActive: true,
           serviceStatus: "ACTIVE",
+          departments: deptIds.length > 0 ? { connect: deptIds.map((id) => ({ id })) } : undefined,
+          postgraduateDegrees: postgraduateDegree
+            ? {
+                create: [
+                  {
+                    degree: postgraduateDegree,
+                    major: postgraduateMajor,
+                    minor: postgraduateMinor,
+                    sortOrder: 0,
+                  },
+                ],
+              }
+            : undefined,
         },
       });
       updatedTeacherIds.push(created.id);
