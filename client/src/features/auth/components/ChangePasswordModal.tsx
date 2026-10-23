@@ -20,6 +20,7 @@ import { useAuthStore } from "@/store/auth.slice";
 import { useLearnerAuthStore } from "@/store/learner-auth.slice";
 import { useSettingsStore } from "@/store/settings.slice";
 import { cn } from "@/shared/lib/utils";
+import { getHomeRoute } from "../utils/auth-routes";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -508,7 +509,6 @@ export default function ChangePassword() {
           description: "Your new password has been set. You can now access the system.",
         });
 
-        const { getHomeRoute } = await import("@/features/auth/pages/Login");
         const finalHome = getHomeRoute(res.data.user);
         navigate(finalHome, { replace: true });
       }

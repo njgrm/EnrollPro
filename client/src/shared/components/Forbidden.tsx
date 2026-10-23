@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { Lock } from "lucide-react";
 import { useAuthStore } from "@/store/auth.slice";
-import { getHomeRoute } from "@/features/auth/pages/Login";
+import { getHomeRoute } from "@/features/auth/utils/auth-routes";
 
 export default function Forbidden() {
   const navigate = useNavigate();
