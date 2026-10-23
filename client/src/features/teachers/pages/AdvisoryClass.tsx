@@ -21,7 +21,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
 import { UserPhoto } from "@/shared/components/UserPhoto";
-import { PageLoadingSkeleton } from "@/shared/components/PageLoadingSkeleton";
+import { AdvisoryClassSkeleton } from "@/shared/components/PageLoadingSkeleton";
 import {
   Table,
   TableBody,
@@ -30,13 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/ui/table";
-import {
-  Dialog,
-  DialogContent,
-} from "@/shared/ui/dialog";
-import { StudentDetailPanel } from "@/features/students/components/StudentDetailPanel";
 import { StudentDetailModal } from "@/features/students/components/StudentDetailModal";
-import { useRetainedSheetValue } from "@/shared/hooks/useRetainedSheetValue";
 import { useSchoolYearContext } from "@/shared/hooks/useSchoolYearContext";
 import { useHeaderStore } from "@/store/header.slice";
 import { PageTransition } from "@/shared/components/PageTransition";
@@ -83,7 +77,6 @@ interface AdvisoryResponse {
 export default function AdvisoryClass() {
   const { ayLabel } = useSchoolYearContext();
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
-  const retainedStudentId = useRetainedSheetValue(selectedStudentId);
   const [exportingSf1, setExportingSf1] = useState(false);
 
   const { data, isLoading: loading, refetch } = useQuery({
@@ -264,7 +257,7 @@ export default function AdvisoryClass() {
   }, [section, setTitle]);
 
   if (loading) {
-    return <PageLoadingSkeleton variant="registry" />;
+    return <AdvisoryClassSkeleton />;
   }
 
   if (!section) {

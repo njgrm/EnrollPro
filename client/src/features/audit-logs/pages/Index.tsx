@@ -40,7 +40,7 @@ import { PaginationBar } from "@/shared/components/PaginationBar";
 import { usePaginationLimit } from "@/shared/hooks/usePaginationLimit";
 import { HybridDatePicker } from "@/shared/components/HybridDatePicker";
 import { useHeaderStore } from "@/store/header.slice";
-import { RegistrySkeleton } from "@/shared/components/PageLoadingSkeleton";
+import { AuditLogsSkeleton } from "@/shared/components/PageLoadingSkeleton";
 
 interface AuditUser {
   id: number;
@@ -634,7 +634,7 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
   }, [selfOnly, setTitle]);
 
   if (!forbidden && loading && logs.length === 0) {
-    return <RegistrySkeleton />;
+    return <AuditLogsSkeleton />;
   }
 
   return (

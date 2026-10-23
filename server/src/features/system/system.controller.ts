@@ -114,8 +114,22 @@ export async function getPublicConfig(
       globalDefaultPassword: "DepEd2026!",
       activeSchoolYear: "2026-2027",
       systemPhase: "OFFICIAL_ENROLLMENT",
+      termFormat: "TRIMESTER",
     })
     return
+  }
+
+  let activeSchoolYear = setting.activeSchoolYear
+  if (!activeSchoolYear && setting.activeSchoolYearId) {
+    activeSchoolYear = await prisma.schoolYear.findUnique({
+      where: { id: setting.activeSchoolYearId },
+    })
+  }
+  if (!activeSchoolYear) {
+    activeSchoolYear = await prisma.schoolYear.findFirst({
+      where: { status: "ACTIVE" },
+      orderBy: { id: "desc" },
+    })
   }
 
   const schoolName = setting.schoolName || "EnrollPro"
@@ -135,8 +149,9 @@ export async function getPublicConfig(
     region: setting.region,
     division: setting.division,
     globalDefaultPassword: setting.globalDefaultPassword,
-    activeSchoolYear: setting.activeSchoolYear?.yearLabel ?? "2026-2027",
+    activeSchoolYear: activeSchoolYear?.yearLabel ?? "2026-2027",
     systemPhase: setting.systemPhase ?? "OFFICIAL_ENROLLMENT",
+    termFormat: activeSchoolYear?.termFormat ?? "TRIMESTER",
   })
 }
 

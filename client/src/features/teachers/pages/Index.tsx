@@ -19,7 +19,7 @@ import { cn, getGradeLevelBadgeStyles, formatGradeLevel, getGradeLevelButtonStyl
 import { useHeaderStore } from "@/store/header.slice";
 import { useAuthStore } from "@/store/auth.slice";
 import { useRealtimeRefresh } from "@/shared/hooks/useRealtimeRefresh";
-import { RegistrySkeleton } from "@/shared/components/PageLoadingSkeleton";
+import { TeachersDirectorySkeleton } from "@/shared/components/PageLoadingSkeleton";
 
 import {
   SearchIcon,
@@ -1131,7 +1131,7 @@ export default function Teachers() {
   }, [setTitle]);
 
   if (teachersQuery.isPending && !teachersQuery.data) {
-    return <RegistrySkeleton />;
+    return <TeachersDirectorySkeleton />;
   }
 
   return (

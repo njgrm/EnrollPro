@@ -17,11 +17,9 @@ import {
 } from "lucide-react";
 import api from "@/shared/api/axiosInstance";
 import { toastApiError } from "@/shared/hooks/useApiToast";
-import { useDelayedLoading } from "@/shared/hooks/useDelayedLoading";
 import { Button } from "@/shared/ui/button";
-import { PageLoadingSkeleton } from "@/shared/components/PageLoadingSkeleton";
+import { SystemHealthSkeleton } from "@/shared/components/PageLoadingSkeleton";
 import { Badge } from "@/shared/ui/badge";
-import { Skeleton } from "@/shared/ui/skeleton";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/shared/ui/data-table";
 import { useHeaderStore } from "@/store/header.slice";
@@ -190,7 +188,7 @@ export default function SystemHealth() {
   }, [setTitle]);
 
   if (loading || !health || !stats) {
-    return <PageLoadingSkeleton />;
+    return <SystemHealthSkeleton />;
   }
 
   return (

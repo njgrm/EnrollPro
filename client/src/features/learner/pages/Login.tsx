@@ -42,6 +42,7 @@ interface PublicConfig {
   globalDefaultPassword: string | null;
   activeSchoolYear?: string | null;
   systemPhase?: string | null;
+  termFormat?: "TRIMESTER" | "QUARTERS" | null;
 }
 
 interface LearnerResponse {
@@ -72,6 +73,7 @@ const DEFAULT_CONFIG: PublicConfig = {
   globalDefaultPassword: "DepEd2026!",
   activeSchoolYear: "2026-2027",
   systemPhase: "OFFICIAL_ENROLLMENT",
+  termFormat: "TRIMESTER",
 };
 
 function formatPhaseLabel(phase?: string | null): string {
@@ -100,7 +102,7 @@ export default function LearnerLogin() {
   } = useLearnerAuthStore();
 
   const [publicConfig, setPublicConfig] = useState<PublicConfig>(DEFAULT_CONFIG);
-  const [configLoaded, setConfigLoaded] = useState(true);
+  const [_configLoaded, setConfigLoaded] = useState(true);
   const [logoLoadFailed, setLogoLoadFailed] = useState(false);
 
   const [showPassword, setShowPassword] = useState(false);
@@ -362,7 +364,7 @@ export default function LearnerLogin() {
               Welcome to the Learner Portal
             </h1>
             <p className="text-white text-xs xl:text-sm leading-relaxed max-w-lg">
-              Securely access your official school records, track your quarterly grades, and view your class assignments in one centralized platform.
+              Securely access your official school records, track your {publicConfig.termFormat === "TRIMESTER" ? "termly" : "quarterly"} grades, and view your class assignments in one centralized platform.
             </p>
           </div>
 

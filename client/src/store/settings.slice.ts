@@ -61,6 +61,7 @@ export interface SettingsState {
     | "CLOSED"
     | "OVERRIDE";
   systemPhase: "OFFICIAL_ENROLLMENT" | "CLASSES_ONGOING" | "EOSY_CLOSING" | null;
+  termFormat: "TRIMESTER" | "QUARTERS" | null;
   systemStatus:
     | "ACTIVE"
     | "ARCHIVED";
@@ -165,6 +166,7 @@ export const useSettingsStore = create<SettingsState>()(
       currentSystemDateReceivedAt: null,
       enrollmentPhase: "CLOSED",
       systemPhase: null,
+      termFormat: "TRIMESTER",
       systemStatus: "ACTIVE",
       globalDefaultPassword: "DepEd2026!",
       viewingSchoolYearId: null,

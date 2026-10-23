@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
-import { RegistrySkeleton } from "@/shared/components/PageLoadingSkeleton";
+import { EosySkeleton } from "@/shared/components/PageLoadingSkeleton";
 import { PreFlightBlockerModal } from "@/features/enrollment/components/PreFlightBlockerModal";
 import { EosyOverrideModal } from "@/features/enrollment/components/EosyOverrideModal";
 import { AtomicRolloverDialog } from "@/features/settings/components/AtomicRolloverDialog";
@@ -1706,7 +1706,7 @@ export default function EosyUpdating() {
   }
 
   if (isInitialLoad || (Boolean(ayId && activeTab) && recordsQuery.isPending && !recordsQuery.data)) {
-    return <RegistrySkeleton />;
+    return <EosySkeleton />;
   }
 
   return (

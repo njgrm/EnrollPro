@@ -1023,7 +1023,7 @@ function AppSidebar() {
           "justify-center transition-all duration-300 ease-in-out group-data-[state=expanded]:px-3 group-data-[state=collapsed]:px-1.5",
           isMobile
             ? "min-h-14 h-auto py-2.5 px-3 overflow-visible"
-            : "h-14 overflow-hidden"
+            : "min-h-14 h-auto py-2.5 group-data-[state=collapsed]:h-14 group-data-[state=collapsed]:py-0 overflow-hidden"
         )}
       >
         <SidebarMenu>
@@ -1051,7 +1051,7 @@ function AppSidebar() {
               )}
 
               {isMobile ? (
-                <div className="flex-1 min-w-0 text-left">
+                <div className="flex-1 min-w-0 text-left flex items-center">
                   {schoolName ? (
                     <span className="text-sm font-extrabold leading-tight uppercase text-primary tracking-tight whitespace-normal break-words block cursor-default select-none">
                       {schoolName}
@@ -1061,13 +1061,13 @@ function AppSidebar() {
                   )}
                 </div>
               ) : (
-                <div className="overflow-hidden transition-[width,opacity] duration-300 ease-in-out group-data-[state=collapsed]:w-0 group-data-[state=collapsed]:opacity-0 group-data-[state=expanded]:w-[205px] group-data-[state=expanded]:opacity-100">
-                  <div className="w-[205px] shrink-0 text-left">
+                <div className="overflow-hidden transition-[width,opacity] duration-300 ease-in-out group-data-[state=collapsed]:w-0 group-data-[state=collapsed]:opacity-0 group-data-[state=expanded]:w-[205px] group-data-[state=expanded]:opacity-100 flex items-center">
+                  <div className="w-[205px] shrink-0 text-left flex items-center">
                     {schoolName ? (
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="text-sm font-extrabold leading-tight uppercase text-primary tracking-tight whitespace-normal break-words block cursor-default select-none py-2">
+                            <span className="text-sm font-extrabold leading-tight uppercase text-primary tracking-tight whitespace-normal break-words block cursor-default select-none">
                               {schoolName}
                             </span>
                           </TooltipTrigger>

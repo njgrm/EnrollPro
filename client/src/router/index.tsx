@@ -50,46 +50,46 @@ const EarlyRegistrationMasterlist = lazy(() => import("@/features/admission/page
 
 function getFallbackVariant(pathname: string): SkeletonPageVariant {
   if (pathname === "/dashboard" || pathname === "/personnel/dashboard") return "dashboard";
+  if (pathname === "/personnel/admin/system") return "systemHealth";
+  if (pathname === "/personnel/teacher/advisory") return "advisory";
+  if (pathname === "/sections" || pathname === "/personnel/sections") return "homerooms";
+  if (pathname.includes("program-roster") || pathname.includes("view-masterlist")) return "roster";
+  if (pathname === "/personnel/eosy" || pathname.includes("eosy")) return "eosy";
+  if (pathname === "/personnel/learner-enrollment" || pathname.includes("bosy")) return "bosy";
+  if (pathname === "/personnel/learner-admission") return "learnerAdmission";
+  if (pathname === "/personnel/help") return "help";
+  if (pathname === "/personnel/profile" || pathname.startsWith("/personnel/profile/")) return "personnelProfile";
+  if (pathname.startsWith("/personnel/learner/") || pathname.startsWith("/learner/profile")) return "learnerProfile";
+  if (pathname === "/personnel/early-registration-masterlist") return "earlyRegistration";
+  if (pathname === "/personnel/directory" || pathname === "/personnel") return "teachersDirectory";
+  if (pathname === "/learners" || pathname === "/personnel/learners") return "studentsMasterlist";
   if (
-    pathname === "/learners" ||
-    pathname === "/personnel/learners" ||
-    pathname === "/personnel" ||
-    pathname === "/personnel/directory" ||
     pathname === "/audit-logs" ||
     pathname === "/personnel/audit-logs" ||
-    pathname.includes("masterlist") ||
-    pathname.includes("eosy")
+    pathname === "/personnel/my-activity"
   ) {
-    return "registry";
+    return "auditLogs";
   }
-  if (pathname === "/enrollment") {
-    return "enrollmentForm";
-  }
+  if (pathname === "/early-registration") return "earlyRegistrationOnline";
+  if (pathname === "/enrollment") return "enrollmentOnline";
+  if (pathname === "/scp-admission") return "scpAdmissionOnline";
+  if (pathname === "/track-application") return "trackApplicationOnline";
+  if (pathname === "/monitor") return "monitorOnline";
   if (
-    pathname === "/learner-enrollment" ||
-    pathname === "/personnel/learner-enrollment" ||
     pathname === "/section-assignment" ||
     pathname === "/personnel/section-assignment" ||
     pathname.includes("sectioning")
   ) {
     return "twoPanel";
   }
-  if (
-    pathname === "/sections" ||
-    pathname === "/personnel/sections" ||
-    pathname === "/integration"
-  ) {
+  if (pathname === "/integration") {
     return "cardGrid";
   }
   if (
     pathname === "/settings" ||
-    pathname === "/personnel/settings" ||
-    pathname.includes("profile")
+    pathname === "/personnel/settings"
   ) {
     return "settings";
-  }
-  if (pathname.includes("bosy")) {
-    return "bosy";
   }
   return "generic";
 }

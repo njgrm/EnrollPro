@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, startTransition } from "react";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
-import { RegistrySkeleton } from "@/shared/components/PageLoadingSkeleton";
+import { EarlyRegistrationSkeleton } from "@/shared/components/PageLoadingSkeleton";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { DataTable } from "@/shared/ui/data-table";
@@ -364,7 +364,7 @@ export default function EarlyRegistrationMasterlist() {
   ];
 
   if (isFetching && applications.length === 0) {
-    return <RegistrySkeleton />;
+    return <EarlyRegistrationSkeleton />;
   }
 
   return (

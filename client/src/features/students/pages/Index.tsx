@@ -27,7 +27,7 @@ import { useAuthStore } from "@/store/auth.slice";
 import { toastApiError } from "@/shared/hooks/useApiToast";
 import { HybridDatePicker } from "@/shared/components/HybridDatePicker";
 import { useHeaderStore } from "@/store/header.slice";
-import { RegistrySkeleton } from "@/shared/components/PageLoadingSkeleton";
+import { StudentsMasterlistSkeleton } from "@/shared/components/PageLoadingSkeleton";
 
 import { sileo } from "sileo";
 import { Button } from "@/shared/ui/button";
@@ -1792,7 +1792,7 @@ export default function Students() {
   }
 
   if (studentsQuery.isPending && !studentsQuery.data) {
-    return <RegistrySkeleton />;
+    return <StudentsMasterlistSkeleton />;
   }
 
   return (

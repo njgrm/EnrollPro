@@ -224,7 +224,7 @@ export function ChangePasswordForm({
               type={showPw ? "text" : "password"}
               placeholder="••••••••••••"
               className={cn(
-                "font-extrabold h-12 pl-10 pr-10 bg-muted/30 border-border rounded-xl transition-all",
+                "font-bold h-12 pl-10 pr-10 bg-muted/30 border-border rounded-xl transition-all",
                 "focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20",
                 newPasswordInvalid && "border-destructive/50 focus-visible:ring-destructive/20"
               )}
@@ -251,7 +251,7 @@ export function ChangePasswordForm({
               type={showConfirmPw ? "text" : "password"}
               placeholder="••••••••••••"
               className={cn(
-                "font-extrabold h-12 pl-10 pr-10 bg-muted/30 border-border rounded-xl transition-all",
+                "font-bold h-12 pl-10 pr-10 bg-muted/30 border-border rounded-xl transition-all",
                 "focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20",
                 confirmPasswordInvalid && "border-destructive/50 focus-visible:ring-destructive/20"
               )}

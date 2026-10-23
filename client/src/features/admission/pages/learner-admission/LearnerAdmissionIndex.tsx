@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router"
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query"
-import { RegistrySkeleton } from "@/shared/components/PageLoadingSkeleton"
+import { LearnerAdmissionSkeleton } from "@/shared/components/PageLoadingSkeleton"
 import { queryKeys } from "@/shared/lib/queryKeys"
 import type { ColumnDef } from "@tanstack/react-table"
 import { ClipboardCheck, Loader2, Search, SlidersHorizontal, Info, Lock, MoreHorizontal, Plus, X } from "lucide-react"
@@ -1012,7 +1012,7 @@ export default function LearnerAdmissionIndex() {
   }
 
   if (isFetching && applicants.length === 0) {
-    return <RegistrySkeleton />
+    return <LearnerAdmissionSkeleton />
   }
 
   return (

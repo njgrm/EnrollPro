@@ -15,6 +15,20 @@ export {
   SettingsSkeleton,
   BOSYSkeleton,
   EnrollmentFormSkeleton,
+  SystemHealthSkeleton,
+  AdvisoryClassSkeleton,
+  RosterSkeleton,
+  PersonnelProfileSkeleton,
+  HelpSkeleton,
+  EosySkeleton,
+  LearnerAdmissionSkeleton,
+  HomeroomsSkeleton,
+  TeachersDirectorySkeleton,
+  StudentsMasterlistSkeleton,
+  EarlyRegistrationSkeleton,
+  AuditLogsSkeleton,
+  OnlineAdmissionSkeleton,
+  OnlineTrackStatusSkeleton,
 } from "@/shared/components/skeleton-layouts";
 
 export type { SkeletonPageVariant } from "@/shared/components/skeleton-layouts";

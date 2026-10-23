@@ -204,6 +204,7 @@ export async function getPublicSettings(
       activeCorrection,
       systemDateOverride: getSystemDateOverrideRaw(),
       isTimeMachineEnabled: settings.isTimeMachineEnabled,
+      termFormat: contextSy?.termFormat ?? activeSy?.termFormat ?? "TRIMESTER",
     });
   } catch (error) {
     console.error("[Settings Controller] Error in getPublicSettings:", error);
