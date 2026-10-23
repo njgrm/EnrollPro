@@ -2,6 +2,7 @@ import axios from "axios";
 import { sileo } from "sileo";
 import { useAuthStore } from "@/store/auth.slice";
 import { useLearnerAuthStore } from "@/store/learner-auth.slice";
+import { clearClientSessionPreservingPreferences } from "@/shared/lib/logoutState";
 
 import { useSettingsStore } from "@/store/settings.slice";
 import { getMockedSystemDate } from "@/shared/lib/utils";
@@ -127,8 +128,7 @@ api.interceptors.response.use(
       const hadStaffSession = !!useAuthStore.getState().user;
       if (hadStaffSession) {
         useAuthStore.getState().clearAuth();
-        localStorage.clear();
-        sessionStorage.clear();
+        clearClientSessionPreservingPreferences();
         if (code === "TOKEN_EXPIRED" && !_sessionExpiredHandled) {
           _sessionExpiredHandled = true;
           useAuthStore.getState().setSessionExpired(true);
@@ -155,8 +155,7 @@ api.interceptors.response.use(
       const hadLearnerSession = !!useLearnerAuthStore.getState().token;
       if (hadLearnerSession && !hadStaffSession) {
         useLearnerAuthStore.getState().clearAuth();
-        localStorage.clear();
-        sessionStorage.clear();
+        clearClientSessionPreservingPreferences();
         if (code === "TOKEN_EXPIRED" && !_sessionExpiredHandled) {
           _sessionExpiredHandled = true;
           useLearnerAuthStore.getState().setSessionExpired(true);

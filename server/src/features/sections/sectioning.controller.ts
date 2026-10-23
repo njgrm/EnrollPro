@@ -10,6 +10,7 @@ import {
   isGradeLevelWithinScope,
 } from "./grade-level-scope.service.js";
 import { ensureLearnerUserAccount } from "../learner/learner.service.js";
+import { createBackendDraftPlacement } from "./services/draft-sectioning.service.js";
 
 const INACTIVE_EOSY_STATUSES: EosyStatus[] = [
   EosyStatus.TRANSFERRED_OUT,
@@ -926,6 +927,187 @@ export async function commitDraft(req: Request, res: Response) {
     return res.status(500).json({
       message: "Could not commit the draft sectioning placements.",
     });
+  }
+}
+
+/**
+ * POST /api/sectioning/generate-draft
+ * High-performance server-side draft placement generation.
+ * Offloads sorting, academic ranking, and gender-balanced snake drafting to the server.
+ */
+export async function generateDraft(req: Request, res: Response) {
+  try {
+    const {
+      gradeLevelId,
+      enableHomogeneousSections = false,
+      homogeneousSectionCount = 1,
+      heterogeneousRoundRobin = true,
+      topBecHeterogeneousRoundRobin = true,
+    } = req.body as {
+      gradeLevelId: number;
+      enableHomogeneousSections?: boolean;
+      homogeneousSectionCount?: number;
+      heterogeneousRoundRobin?: boolean;
+      topBecHeterogeneousRoundRobin?: boolean;
+    };
+
+    if (!gradeLevelId) {
+      return res.status(400).json({ message: "gradeLevelId is required." });
+    }
+
+    const schoolYearId = req.schoolYearId;
+    if (!schoolYearId) {
+      return res.status(400).json({ message: "Active school year required." });
+    }
+
+    const scopedGradeLevelIds = await getSectionManagementGradeScope(req);
+    if (scopedGradeLevelIds?.length === 0 || !isGradeLevelWithinScope(scopedGradeLevelIds, gradeLevelId)) {
+      return res.status(403).json({ message: "You are not authorized to manage Section Assignment for this grade level." });
+    }
+
+    // 1. Fetch sections summary for this gradeLevelId
+    const sections = await prisma.section.findMany({
+      where: {
+        schoolYearId,
+        gradeLevelId,
+      },
+      include: {
+        enrollmentRecords: {
+          select: {
+            id: true,
+            isDraft: true,
+            learner: { select: { sex: true } },
+          },
+        },
+        advisers: {
+          where: { status: "ACTIVE" },
+          include: { teacher: { select: { firstName: true, lastName: true } } },
+        },
+        gradeLevel: {
+          select: {
+            name: true,
+            displayOrder: true,
+          },
+        },
+      },
+      orderBy: [
+        { sortOrder: "asc" },
+        { name: "asc" },
+      ],
+    });
+
+    const sectionSummaries = sections.map((sec) => {
+      const activeRecords = sec.enrollmentRecords.filter((r) => !r.isDraft);
+      const draftRecords = sec.enrollmentRecords.filter((r) => r.isDraft);
+      const boys = activeRecords.filter((r) => r.learner.sex === "MALE").length;
+      const girls = activeRecords.filter((r) => r.learner.sex === "FEMALE").length;
+      const draftBoys = draftRecords.filter((r) => r.learner.sex === "MALE").length;
+      const draftGirls = draftRecords.filter((r) => r.learner.sex === "FEMALE").length;
+
+      return {
+        id: sec.id,
+        name: sec.name,
+        gradeLevel: sec.gradeLevel.name,
+        gradeLevelOrder: sec.gradeLevel.displayOrder,
+        gradeLevelId: sec.gradeLevelId,
+        sortOrder: sec.sortOrder,
+        maxCapacity: sec.maxCapacity,
+        currentCount: activeRecords.length,
+        boys,
+        girls,
+        adviser: sec.advisers[0]?.teacher
+          ? `${sec.advisers[0].teacher.lastName}, ${sec.advisers[0].teacher.firstName}`
+          : "Unassigned",
+        programType: sec.programType as ApplicantType,
+        isHomogeneous: sec.isHomogeneous,
+        draftCount: draftRecords.length,
+        draftBoys,
+        draftGirls,
+      };
+    });
+
+    // 2. Fetch full pool (including draft assigned) for this gradeLevelId
+    const applications = await prisma.enrollmentApplication.findMany({
+      where: {
+        schoolYearId,
+        gradeLevelId,
+        status: { in: ["READY_FOR_SECTIONING", "PENDING_CONFIRMATION", "OFFICIALLY_ENROLLED"] },
+      },
+      include: {
+        enrollmentRecord: {
+          select: { sectionId: true, isDraft: true },
+        },
+        learner: {
+          select: {
+            lrn: true,
+            firstName: true,
+            lastName: true,
+            middleName: true,
+            studentPhoto: true,
+            sex: true,
+            isBalikAral: true,
+            previousGenAve: true,
+            enrollmentRecords: {
+              where: {
+                schoolYearId: { not: schoolYearId },
+                finalAverage: { not: null },
+              },
+              orderBy: { schoolYearId: "desc" },
+              take: 1,
+              select: { finalAverage: true },
+            },
+          },
+        },
+        gradeLevel: { select: { name: true, displayOrder: true } },
+        previousSchool: { select: { generalAverage: true } },
+      },
+      orderBy: { learner: { lastName: "asc" } },
+    });
+
+    const pool = applications.map((app) => ({
+      applicationId: app.id,
+      lrn: app.learner.lrn,
+      firstName: app.learner.firstName,
+      lastName: app.learner.lastName,
+      middleName: app.learner.middleName,
+      studentPhoto: app.learner.studentPhoto,
+      sex: app.learner.sex as "MALE" | "FEMALE",
+      genAve:
+        app.learner.enrollmentRecords?.[0]?.finalAverage ??
+        app.previousSchool?.generalAverage ??
+        app.learner.previousGenAve ??
+        null,
+      status: app.status,
+      gradeLevel: app.gradeLevel.name,
+      gradeLevelId: app.gradeLevelId,
+      duplicateFlag: app.duplicateFlag,
+      learnerType: app.learnerType,
+      isBalikAral: app.learner.isBalikAral,
+      applicantType: app.applicantType as ApplicantType,
+      assignedProgram: app.assignedProgram as ApplicantType | null,
+      programType: (app.assignedProgram || app.applicantType) as ApplicantType,
+      academicStatus: app.academicStatus,
+      draftSectionId: app.enrollmentRecord?.isDraft ? app.enrollmentRecord.sectionId : undefined,
+      isFinalized: Boolean(app.enrollmentRecord && !app.enrollmentRecord.isDraft),
+      finalizedSectionId: app.enrollmentRecord && !app.enrollmentRecord.isDraft ? app.enrollmentRecord.sectionId : undefined,
+    }));
+
+    // Run pure allocation algorithm on backend server
+    const draft = createBackendDraftPlacement({
+      gradeLevelId,
+      learners: pool,
+      sections: sectionSummaries,
+      enableHomogeneousSections,
+      homogeneousSectionCount,
+      heterogeneousRoundRobin,
+      topBecHeterogeneousRoundRobin,
+      schoolYearId,
+    });
+
+    return res.json({ success: true, draft });
+  } catch (error) {
+    console.error("generateDraft failed:", error);
+    return res.status(500).json({ message: "Failed to generate draft placement on server." });
   }
 }
 

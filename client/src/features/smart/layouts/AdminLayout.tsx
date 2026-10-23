@@ -20,7 +20,7 @@ import { cn } from "@/features/smart/lib/utils";
 import { ConfirmationModal } from "@/shared/ui/confirmation-modal";
 import { useTheme } from "@/features/smart/contexts/ThemeContext";
 import { SERVER_URL } from "@/features/smart/lib/api";
-import { setLoggingOut } from "@/shared/lib/logoutState";
+import { setLoggingOut, clearClientSessionPreservingPreferences } from "@/shared/lib/logoutState";
 
 interface UserData {
   id: string;
@@ -119,8 +119,7 @@ export default function AdminLayout() {
 
   const handleLogout = () => {
     setLoggingOut(true);
-    localStorage.clear();
-    sessionStorage.clear();
+    clearClientSessionPreservingPreferences();
     window.location.href = "/personnel/login";
   };
 

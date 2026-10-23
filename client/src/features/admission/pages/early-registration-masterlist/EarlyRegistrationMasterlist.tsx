@@ -17,6 +17,7 @@ import { Badge } from "@/shared/ui/badge";
 import { PaginationBar } from "@/shared/components/PaginationBar";
 import { usePaginationLimit } from "@/shared/hooks/usePaginationLimit";
 import { useRealtimeRefresh } from "@/shared/hooks/useRealtimeRefresh";
+import { useDebouncedSearch } from "@/shared/hooks/useDebouncedSearch";
 import { DataTableColumnHeader } from "@/shared/ui/data-table-column-header";
 import { EarlyRegistrationReviewModal } from "./EarlyRegistrationReviewModal";
 import { StudentDetailModal } from "@/features/students/components/StudentDetailModal";
@@ -87,7 +88,15 @@ export default function EarlyRegistrationMasterlist() {
   const setTitle = useHeaderStore((state: { setTitle: (title: string | null) => void }) => state.setTitle);
   const [selectedTab, setSelectedTab] = useState<"7" | "8-10">("7");
   const [filterTab, setFilterTab] = useState<"pending" | "enrolled" | "cancelled" | "all">("pending");
-  const [searchTerm, setSearchTerm] = useState("");
+  const {
+    inputValue: searchInput,
+    setInputValue: setSearchInput,
+    activeFilter: debouncedSearch,
+  } = useDebouncedSearch("", 400);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
   const [sorting, setSorting] = useState<SortingState>([{ id: "applicant", desc: false }]);
   const [selectedApplicationId, setSelectedApplicationId] = useState<number | null>(null);
   const [viewingLearnerId, setViewingLearnerId] = useState<number | null>(null);
@@ -153,14 +162,15 @@ export default function EarlyRegistrationMasterlist() {
   });
 
   const baseFilteredData = useMemo(() => {
+    if (!debouncedSearch) return applications;
+    const q = debouncedSearch.toLowerCase().trim();
     return applications.filter((app) => {
-      const q = searchTerm.toLowerCase();
       const learner = app.learner;
       const fullName = `${learner.firstName} ${learner.lastName}`.toLowerCase();
       const lrn = learner.lrn || "";
       return fullName.includes(q) || lrn.includes(q);
     });
-  }, [applications, searchTerm]);
+  }, [applications, debouncedSearch]);
 
   const filteredData = useMemo(() => {
     return baseFilteredData.filter((app) => {
@@ -460,13 +470,8 @@ export default function EarlyRegistrationMasterlist() {
                 <Input
                   placeholder="SEARCH LRN, FIRST NAME, LAST NAME..."
                   className="w-full h-12 pl-10 pr-12 bg-white border-gray-300 shadow-sm transition-shadow focus-visible:ring-primary uppercase font-bold"
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    startTransition(() => {
-                      setPage(1);
-                    });
-                  }}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                 />
               </div>
             </div>

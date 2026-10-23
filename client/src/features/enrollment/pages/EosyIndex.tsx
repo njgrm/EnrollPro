@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "motion/react";
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { EosySkeleton } from "@/shared/components/PageLoadingSkeleton";
 import { PreFlightBlockerModal } from "@/features/enrollment/components/PreFlightBlockerModal";
@@ -57,10 +57,17 @@ import { useSettingsStore } from "@/store/settings.slice";
 import { useHistoricalReadOnly } from "@/shared/hooks/useHistoricalReadOnly";
 import { useHeaderStore } from "@/store/header.slice";
 import { useDelayedLoading } from "@/shared/hooks/useDelayedLoading";
+import { useDebouncedSearch } from "@/shared/hooks/useDebouncedSearch";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/shared/ui/data-table";
 import { DataTableColumnHeader } from "@/shared/ui/data-table-column-header";
-import { cn, getGradeLevelBadgeStyles, formatSectionProgramLabel } from "@/shared/lib/utils";
+import {
+  cn,
+  getGradeLevelBadgeStyles,
+  formatSectionProgramLabel,
+  getGradeLevelSolidBgStyles,
+  getGradeLevelActiveTabStyles,
+} from "@/shared/lib/utils";
 import type { EosyStatus } from "@enrollpro/shared";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/shared/ui/tooltip";
 import { Badge } from "@/shared/ui/badge";
@@ -392,6 +399,57 @@ function GeofencingPopover({
   );
 }
 
+interface EosySearchInputProps {
+  onSearchChange: (query: string) => void;
+  activeFilterCount: number;
+  isFilterPopoverOpen: boolean;
+  setIsFilterPopoverOpen: (open: boolean) => void;
+  children: React.ReactNode;
+}
+
+const EosySearchInput = React.memo(function EosySearchInput({
+  onSearchChange,
+  activeFilterCount,
+  isFilterPopoverOpen,
+  setIsFilterPopoverOpen,
+  children,
+}: EosySearchInputProps) {
+  const {
+    inputValue,
+    setInputValue,
+    activeFilter,
+  } = useDebouncedSearch("", 400);
+
+  useEffect(() => {
+    onSearchChange(activeFilter);
+  }, [activeFilter, onSearchChange]);
+
+  return (
+    <div className="relative">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <Input
+        placeholder="Search LRN, first name, last name..."
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value.toUpperCase())}
+        className="w-full h-12 pl-10 pr-12 bg-white border-gray-300 shadow-sm transition-shadow focus-visible:ring-primary uppercase font-bold"
+      />
+      <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
+        <PopoverTrigger asChild>
+          <button className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center h-10 w-10 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-md transition-colors">
+            <SlidersHorizontal className="h-5 w-5" />
+            {activeFilterCount > 0 && (
+              <span className="absolute top-2 right-2 flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-red-500 rounded-full shadow-sm">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+        </PopoverTrigger>
+        {children}
+      </Popover>
+    </div>
+  );
+});
+
 export default function EosyUpdating() {
   const queryClient = useQueryClient();
   const {
@@ -433,7 +491,10 @@ export default function EosyUpdating() {
     if (eosyStatusFilter !== "ALL") count++;
     return count;
   }, [sectionFilter, eosyStatusFilter]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const handleSearchChange = useCallback((query: string) => {
+    setDebouncedSearchQuery(query);
+  }, []);
 
   const [finalizeModalOpen, setFinalizeModalOpen] = useState(false);
   const [preFlightModalOpen, setPreFlightModalOpen] = useState(false);
@@ -1024,8 +1085,8 @@ export default function EosyUpdating() {
       });
     }
 
-    if (searchQuery.trim() !== "") {
-      const q = searchQuery.toLowerCase().replace(/,/g, '').trim();
+    if (debouncedSearchQuery.trim() !== "") {
+      const q = debouncedSearchQuery.toLowerCase().replace(/,/g, '').trim();
       list = list.filter(r => {
         const learner = r.enrollmentApplication?.learner;
         if (!learner) return false;
@@ -1075,7 +1136,7 @@ export default function EosyUpdating() {
     });
 
     return sortedList;
-  }, [records, sectionFilter, eosyStatusFilter, searchQuery]);
+  }, [records, sectionFilter, eosyStatusFilter, debouncedSearchQuery]);
 
   const suppressEmptyState = loadingRecords && !showSkeleton && filteredRecords.length === 0;
 
@@ -1719,27 +1780,44 @@ export default function EosyUpdating() {
         <Tabs value={activeTab} onValueChange={guardedSetActiveTab} className="flex flex-col">
           <div className="flex items-center gap-4 mb-4 flex-shrink-0">
             <TabsList className="flex-1 flex flex-wrap sm:flex-nowrap h-auto gap-1 p-1 bg-muted border border-border rounded-xl relative shadow-sm">
-              {gradeLevels.map((gl) => (
-                <TabsTrigger
-                  key={gl.id}
-                  value={String(gl.id)}
-                  disabled={syncingSmart}
-                  className={cn(
-                    "flex-1 min-w-25 font-bold transition-all relative z-10 data-[state=active]:bg-transparent data-[state=active]:shadow-none rounded-lg"
-                  )}
-                >
-                  {activeTab === String(gl.id) && (
-                    <motion.div
-                      layoutId="enrollment-eosy-grade-pill"
-                      className="absolute inset-0 bg-primary shadow-sm rounded-lg"
-                      transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
-                    />
-                  )}
-                  <span className={cn("relative z-20 text-base font-bold uppercase", activeTab === String(gl.id) ? "text-primary-foreground" : "text-foreground")}>
-                    {gl.name.replace(/grade\s*/i, "Grade ")}
-                  </span>
-                </TabsTrigger>
-              ))}
+              {gradeLevels.map((gl) => {
+                const isActive = activeTab === String(gl.id);
+                return (
+                  <TabsTrigger
+                    key={gl.id}
+                    value={String(gl.id)}
+                    disabled={syncingSmart}
+                    className={cn(
+                      "flex-1 min-w-32 font-bold transition-all relative z-10 rounded-lg uppercase text-base data-[state=active]:shadow-sm",
+                      getGradeLevelActiveTabStyles(gl.name),
+                      isActive
+                        ? getGradeLevelSolidBgStyles(gl.name)
+                        : "data-[state=inactive]:bg-transparent text-foreground",
+                      syncingSmart && "opacity-40 cursor-not-allowed bg-muted/20",
+                    )}
+                  >
+                    {isActive && (
+                      <motion.div
+                        layoutId="enrollment-eosy-grade-pill"
+                        className={cn(
+                          "absolute inset-0 shadow-sm rounded-lg",
+                          getGradeLevelSolidBgStyles(gl.name),
+                        )}
+                        transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
+                      />
+                    )}
+                    <span
+                      className={cn(
+                        "relative z-20 uppercase text-base font-bold transition-colors",
+                        isActive
+                          ? "text-white font-extrabold"
+                          : "text-foreground",
+                      )}>
+                      {gl.name.replace(/grade\s*/i, "Grade ")}
+                    </span>
+                  </TabsTrigger>
+                );
+              })}
             </TabsList>
 
             {!isHistoricalReadOnly && isRolloverReady && (
@@ -1793,105 +1871,91 @@ export default function EosyUpdating() {
                       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 w-full">
                         {/* Left Side Actions */}
                         <div className="flex-1 w-full min-w-[200px]">
-                          <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              placeholder="Search LRN, first name, last name..."
-                              value={searchQuery}
-                              onChange={(e) => setSearchQuery(e.target.value.toUpperCase())}
-                              className="w-full h-12 pl-10 pr-12 bg-white border-gray-300 shadow-sm transition-shadow focus-visible:ring-primary uppercase font-bold"
-                            />
-                            <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
-                              <PopoverTrigger asChild>
-                                <button className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center h-10 w-10 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-md transition-colors">
-                                  <SlidersHorizontal className="h-5 w-5" />
-                                  {activeFilterCount > 0 && (
-                                    <span className="absolute top-2 right-2 flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-red-500 rounded-full shadow-sm">
-                                      {activeFilterCount}
-                                    </span>
-                                  )}
-                                </button>
-                              </PopoverTrigger>
-                              <PopoverContent align="end" className="w-[320px] p-0 shadow-xl border-border bg-card">
-                                <div className="p-4 border-b">
-                                  <h4 className="text-lg font-bold">Filter Learners</h4>
+                          <EosySearchInput
+                            onSearchChange={handleSearchChange}
+                            activeFilterCount={activeFilterCount}
+                            isFilterPopoverOpen={isFilterPopoverOpen}
+                            setIsFilterPopoverOpen={setIsFilterPopoverOpen}
+                          >
+                            <PopoverContent align="end" className="w-[320px] p-0 shadow-xl border-border bg-card">
+                              <div className="p-4 border-b">
+                                <h4 className="text-lg font-bold">Filter Learners</h4>
+                              </div>
+                              <div className="p-4 space-y-4 flex flex-col">
+                                <div className="space-y-1.5">
+                                  <Label className="text-sm text-muted-foreground uppercase">Section & Adviser</Label>
+                                  <Select
+                                    isFilter
+                                    value={localSectionFilter}
+                                    onValueChange={setLocalSectionFilter}
+                                  >
+                                    <SelectTrigger className="h-10 w-full leading-tight font-bold transition-colors">
+                                      <SelectValue placeholder="All Sections" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="ALL" className="font-bold cursor-pointer">All Sections</SelectItem>
+                                      {sectionGroups.map(([groupName, secs]) => (
+                                        <SelectGroup key={groupName}>
+                                          <SelectLabel className="font-bold text-foreground uppercase text-sm tracking-wider bg-muted/30 py-1.5 px-2">{groupName}</SelectLabel>
+                                          {secs.map(sec => (
+                                            <SelectItem key={sec} value={sec} className="font-bold pl-6">{sec}</SelectItem>
+                                          ))}
+                                        </SelectGroup>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
                                 </div>
-                                <div className="p-4 space-y-4 flex flex-col">
-                                  <div className="space-y-1.5">
-                                    <Label className="text-sm text-muted-foreground uppercase">Section & Adviser</Label>
-                                    <Select
-                                      isFilter
-                                      value={localSectionFilter}
-                                      onValueChange={setLocalSectionFilter}
-                                    >
-                                      <SelectTrigger className="h-10 w-full leading-tight font-bold transition-colors">
-                                        <SelectValue placeholder="All Sections" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="ALL" className="font-bold cursor-pointer">All Sections</SelectItem>
-                                        {sectionGroups.map(([groupName, secs]) => (
-                                          <SelectGroup key={groupName}>
-                                            <SelectLabel className="font-bold text-foreground uppercase text-sm tracking-wider bg-muted/30 py-1.5 px-2">{groupName}</SelectLabel>
-                                            {secs.map(sec => (
-                                              <SelectItem key={sec} value={sec} className="font-bold pl-6">{sec}</SelectItem>
-                                            ))}
-                                          </SelectGroup>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                  <div className="space-y-1.5">
-                                    <Label className="text-sm text-muted-foreground uppercase">EOSY Status</Label>
-                                    <Select
-                                      isFilter
-                                      value={localEosyStatusFilter}
-                                      onValueChange={setLocalEosyStatusFilter}
-                                    >
-                                      <SelectTrigger className="h-10 w-full leading-tight font-bold transition-colors">
-                                        <SelectValue placeholder="All Statuses" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="ALL" className="font-bold cursor-pointer">All Statuses</SelectItem>
-                                        <SelectItem value="ACTION_REQUIRED" className="font-bold cursor-pointer">ACTION REQUIRED</SelectItem>
-                                        <SelectItem value="PROMOTED" className="font-bold cursor-pointer">PROMOTED</SelectItem>
-                                        <SelectItem value="PROMOTED_TO_BEC" className="font-bold cursor-pointer">PROMOTED (TO BEC)</SelectItem>
-                                        <SelectItem value="CONDITIONALLY_PROMOTED" className="font-bold cursor-pointer">CONDITIONALLY PROMOTED</SelectItem>
-                                        <SelectItem value="RETAINED" className="font-bold cursor-pointer">RETAINED</SelectItem>
-                                        <SelectItem value="DROPPED_OUT" className="font-bold cursor-pointer">DROPPED OUT</SelectItem>
-                                        <SelectItem value="TRANSFERRED_OUT" className="font-bold cursor-pointer">TRANSFERRED OUT</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
+                                <div className="space-y-1.5">
+                                  <Label className="text-sm text-muted-foreground uppercase">EOSY Status</Label>
+                                  <Select
+                                    isFilter
+                                    value={localEosyStatusFilter}
+                                    onValueChange={setLocalEosyStatusFilter}
+                                  >
+                                    <SelectTrigger className="h-10 w-full leading-tight font-bold transition-colors">
+                                      <SelectValue placeholder="All Statuses" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="ALL" className="font-bold cursor-pointer">All Statuses</SelectItem>
+                                      <SelectItem value="ACTION_REQUIRED" className="font-bold cursor-pointer">ACTION REQUIRED</SelectItem>
+                                      <SelectItem value="PROMOTED" className="font-bold cursor-pointer">PROMOTED</SelectItem>
+                                      <SelectItem value="PROMOTED_TO_BEC" className="font-bold cursor-pointer">PROMOTED (TO BEC)</SelectItem>
+                                      <SelectItem value="CONDITIONALLY_PROMOTED" className="font-bold cursor-pointer">CONDITIONALLY PROMOTED</SelectItem>
+                                      <SelectItem value="RETAINED" className="font-bold cursor-pointer">RETAINED</SelectItem>
+                                      <SelectItem value="DROPPED_OUT" className="font-bold cursor-pointer">DROPPED OUT</SelectItem>
+                                      <SelectItem value="TRANSFERRED_OUT" className="font-bold cursor-pointer">TRANSFERRED OUT</SelectItem>
+                                    </SelectContent>
+                                  </Select>
                                 </div>
+                              </div>
 
-                                <div className="p-3 border-t bg-gray-50 flex items-center justify-end gap-2 rounded-b-md">
-                                  <Button
-                                    variant="ghost"
-                                    onClick={() => {
-                                      setLocalSectionFilter("ALL");
-                                      setSectionFilter("ALL");
-                                      setLocalEosyStatusFilter("ALL");
-                                      setEosyStatusFilter("ALL");
-                                      setIsFilterPopoverOpen(false);
-                                    }}
-                                    className="font-bold text-gray-600 hover:text-gray-900"
-                                  >
-                                    Clear All
-                                  </Button>
-                                  <Button
-                                    onClick={() => {
-                                      setSectionFilter(localSectionFilter);
-                                      setEosyStatusFilter(localEosyStatusFilter);
-                                      setIsFilterPopoverOpen(false);
-                                    }}
-                                    className="font-bold bg-primary hover:bg-primary/90 text-white"
-                                  >
-                                    Apply Filters
-                                  </Button>
-                                </div>
-                              </PopoverContent>
-                            </Popover>
-                          </div>
+                              <div className="p-3 border-t bg-gray-50 flex items-center justify-end gap-2 rounded-b-md">
+                                <Button
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setLocalSectionFilter("ALL");
+                                    setSectionFilter("ALL");
+                                    setLocalEosyStatusFilter("ALL");
+                                    setEosyStatusFilter("ALL");
+                                    setIsFilterPopoverOpen(false);
+                                  }}
+                                  className="font-bold text-gray-600 hover:text-gray-900"
+                                >
+                                  Clear All
+                                </Button>
+                                <Button
+                                  onClick={() => {
+                                    setSectionFilter(localSectionFilter);
+                                    setEosyStatusFilter(localEosyStatusFilter);
+                                    setIsFilterPopoverOpen(false);
+                                  }}
+                                  className="font-bold bg-primary hover:bg-primary/90 text-white"
+                                >
+                                  Apply Filters
+                                </Button>
+                              </div>
+                            </PopoverContent>
+                          </EosySearchInput>
                         </div>
 
                         <div className="flex flex-wrap items-center gap-3 shrink-0">

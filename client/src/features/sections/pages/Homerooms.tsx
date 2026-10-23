@@ -42,7 +42,15 @@ import { useDelayedLoading } from "@/shared/hooks/useDelayedLoading";
 
 import { Badge } from "@/shared/ui/badge";
 import { motion } from "motion/react";
-import { cn, formatScpType } from "@/shared/lib/utils";
+import {
+  cn,
+  formatScpType,
+  getGradeLevelBadgeStyles,
+  getGradeLevelSolidBgStyles,
+  getGradeLevelSolidButtonStyles,
+  getGradeLevelButtonStyles,
+  getGradeLevelActiveTabStyles,
+} from "@/shared/lib/utils";
 import { useRealtimeRefresh } from "@/shared/hooks/useRealtimeRefresh";
 import {
   useUnsavedChanges,
@@ -239,8 +247,11 @@ interface MasterlistLearner {
 }
 
 
+
+
 function SectionCard({
   section,
+  glName,
   onEdit,
   onDelete,
   onViewMasterlist,
@@ -257,6 +268,7 @@ function SectionCard({
   isEosyClosing,
 }: {
   section: SectionItem;
+  glName?: string;
   onEdit: () => void;
   onDelete: () => void;
   onViewMasterlist: () => void;
@@ -311,10 +323,11 @@ function SectionCard({
   return (
     <div
       className={cn(
-        "rounded-lg border bg-card p-5 space-y-4 flex flex-col h-full transition-colors group",
+        "rounded-xl border p-5 space-y-4 flex flex-col h-full transition-all group shadow-xs",
+        getGradeLevelBadgeStyles(glName),
         isCardDisabled
           ? ""
-          : "hover:border-primary/40 cursor-pointer"
+          : "hover:shadow-md hover:border-current/60 cursor-pointer"
       )}
       onClick={isCardDisabled ? undefined : onViewMasterlist}
       role={isCardDisabled ? "presentation" : "button"}
@@ -327,7 +340,7 @@ function SectionCard({
       }}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="font-bold text-foreground uppercase">
+          <p className="font-extrabold text-foreground uppercase tracking-tight text-lg">
             {toTitleCase(section.name)}
           </p>
           {section.programType !== "REGULAR" && (
@@ -336,7 +349,7 @@ function SectionCard({
                 <TooltipTrigger asChild>
                   <Badge
                     variant="outline"
-                    className="mt-1 text-sm font-bold uppercase cursor-help">
+                    className="mt-1 text-sm font-bold uppercase cursor-help bg-white/80 dark:bg-card/80">
                     {scpTypeLabels[section.programType] ?? section.programType}
                   </Badge>
                 </TooltipTrigger>
@@ -354,7 +367,7 @@ function SectionCard({
                 <TooltipTrigger asChild>
                   <Badge
                     variant="outline"
-                    className="mt-1 text-sm font-bold uppercase bg-blue-50 text-blue-700 border-blue-200 cursor-help">
+                    className="mt-1 text-sm font-bold uppercase bg-white/80 dark:bg-card/80 text-blue-700 border-blue-200 cursor-help">
                     Top BEC Section
                   </Badge>
                 </TooltipTrigger>
@@ -420,7 +433,7 @@ function SectionCard({
       </div>
 
       <div className="mt-auto space-y-4">
-        <div className="flex items-center border-t border-border/50 pt-4">
+        <div className="flex items-center border-t border-current/15 pt-4">
           <div className="flex items-center gap-2 w-full">
             <div className={cn("flex w-full min-w-0", isEosyClosing ? "flex-row justify-between items-center" : "flex-col")}>
               <span className={cn("font-bold uppercase text-foreground", isEosyClosing ? "text-sm" : "mb-1 text-xs text-muted-foreground")}>
@@ -434,7 +447,10 @@ function SectionCard({
                     onChange={(val) => onDraftAdviserChange?.(val, initialAdviser)}
                     placeholder="UNASSIGNED"
                     searchPlaceholder="Search adviser..."
-                    className={cn("w-full h-11 sm:h-8 sm:min-h-0 px-3 sm:px-2 border-primary hover:bg-muted bg-transparent shadow-none focus:ring-0 font-bold uppercase truncate", !section.advisingTeacher && "text-foreground")}
+                    className={cn(
+                      "w-full h-11 sm:h-8 sm:min-h-0 px-3 sm:px-2 bg-white/90 dark:bg-card border-current/30 hover:bg-white focus:ring-0 font-bold uppercase truncate shadow-none",
+                      !section.advisingTeacher && "text-foreground"
+                    )}
                   />
                 </div>
               ) : (
@@ -452,7 +468,7 @@ function SectionCard({
           </div>
         </div>
 
-        <div className="space-y-1.5 border-t border-border/50 pt-4">
+        <div className="space-y-1.5 border-t border-current/15 pt-4">
           <div className="flex items-center justify-between font-bold">
             <span className="text-foreground uppercase">
               Enrolled
@@ -461,7 +477,7 @@ function SectionCard({
               {section.enrolledCount} / {section.maxCapacity} ({pct}%)
             </span>
           </div>
-          <div className="h-2 rounded-full bg-muted overflow-hidden">
+          <div className="h-2 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
             <div
               className={cn(
                 "h-full rounded-full transition-all duration-500",
@@ -480,7 +496,7 @@ function SectionCard({
           {hasPendingAdviserChange ? (
             <div className="flex items-center gap-2 mt-4 w-full">
               <Button
-                className="flex-1 font-bold"
+                className="flex-1 font-bold bg-white/90 dark:bg-card"
                 variant="outline"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -489,8 +505,7 @@ function SectionCard({
                 Cancel
               </Button>
               <Button
-                className="flex-1 font-bold"
-                variant="default"
+                className={cn("flex-1 font-bold", getGradeLevelSolidButtonStyles(glName))}
                 onClick={(e) => {
                   e.stopPropagation();
                   onAdviserChange(selectedAdviser);
@@ -501,8 +516,7 @@ function SectionCard({
           ) : (
             <div className="flex items-center gap-2 mt-4">
               <Button
-                className="flex-1 font-bold"
-                variant="default"
+                className={cn("flex-1 font-bold shadow-xs", getGradeLevelSolidButtonStyles(glName))}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (isCardDisabled) return;
@@ -517,7 +531,10 @@ function SectionCard({
                       type="button"
                       variant="outline"
                       size="icon"
-                      className="shrink-0 font-bold border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                      className={cn(
+                        "shrink-0 font-bold bg-white/90 dark:bg-card shadow-xs",
+                        getGradeLevelButtonStyles(glName),
+                      )}
                       onClick={(e) => {
                         e.stopPropagation();
                         if (isCardDisabled) return;
@@ -576,6 +593,7 @@ export default function Homerooms() {
             <SectionCard
               key={s.id}
               section={s}
+              glName={glName}
               teachers={teachers}
               onAdviserChange={(val) => handleInlineAdviserChange(s, val)}
               draftAdviserId={draftAdvisers[s.id]}
@@ -1218,9 +1236,9 @@ export default function Homerooms() {
             {["GRADE 7", "GRADE 8", "GRADE 9", "GRADE 10"].map((g, i) => (
               <div key={g} className="flex-1 min-w-32 py-2 px-3 flex items-center justify-center relative">
                 {i === 0 && (
-                  <div className="absolute inset-0 bg-primary shadow-sm rounded-lg" />
+                  <div className={cn("absolute inset-0 shadow-sm rounded-lg", getGradeLevelSolidBgStyles(g))} />
                 )}
-                <span className={cn("relative z-20 font-bold uppercase text-base", i === 0 ? "text-primary-foreground" : "text-foreground")}>{g}</span>
+                <span className={cn("relative z-20 font-bold uppercase text-base", i === 0 ? "text-white" : "text-foreground")}>{g}</span>
               </div>
             ))}
           </TabsList>
@@ -1229,9 +1247,7 @@ export default function Homerooms() {
             <Card className="border-border shadow-sm">
               <CardHeader className="flex flex-col items-center justify-between pb-6 gap-4">
                 <div>
-                  <CardTitle className="text-2xl font-extrabold uppercase text-transparent bg-muted rounded-md select-none animate-pulse">
-                    GRADE 7
-                  </CardTitle>
+                  <Skeleton className="h-11 w-44 rounded-xl" />
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -1346,29 +1362,41 @@ export default function Homerooms() {
           onValueChange={setActiveGradeId}
           className="w-full">
           <TabsList className="w-full flex flex-wrap sm:flex-nowrap h-auto gap-1 mb-4 p-1 bg-muted border border-border rounded-xl relative shadow-sm">
-            {groups.map((g) => (
-              <TabsTrigger
-                key={g.gradeLevelId}
-                value={String(g.gradeLevelId)}
-                className="flex-1 min-w-32 font-bold transition-all relative z-10 data-[state=active]:bg-transparent data-[state=active]:shadow-none rounded-lg">
-                {activeGradeId === String(g.gradeLevelId) && (
-                  <motion.div
-                    layoutId="grade-active-pill"
-                    className="absolute inset-0 bg-primary shadow-sm rounded-lg"
-                    transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
-                  />
-                )}
-                <span
+            {groups.map((g) => {
+              const isActive = activeGradeId === String(g.gradeLevelId);
+              return (
+                <TabsTrigger
+                  key={g.gradeLevelId}
+                  value={String(g.gradeLevelId)}
                   className={cn(
-                    "relative z-20 uppercase text-base",
-                    activeGradeId === String(g.gradeLevelId)
-                      ? "text-primary-foreground"
-                      : "text-foreground",
+                    "flex-1 min-w-32 font-bold transition-all relative z-10 rounded-lg uppercase text-base data-[state=active]:shadow-sm",
+                    getGradeLevelActiveTabStyles(g.gradeLevelName),
+                    isActive
+                      ? getGradeLevelSolidBgStyles(g.gradeLevelName)
+                      : "data-[state=inactive]:bg-transparent text-foreground",
                   )}>
-                  {g.gradeLevelName}
-                </span>
-              </TabsTrigger>
-            ))}
+                  {isActive && (
+                    <motion.div
+                      layoutId="grade-active-pill"
+                      className={cn(
+                        "absolute inset-0 shadow-sm rounded-lg",
+                        getGradeLevelSolidBgStyles(g.gradeLevelName),
+                      )}
+                      transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
+                    />
+                  )}
+                  <span
+                    className={cn(
+                      "relative z-20 uppercase text-base font-bold transition-colors",
+                      isActive
+                        ? "text-white font-extrabold"
+                        : "text-foreground",
+                    )}>
+                    {g.gradeLevelName}
+                  </span>
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
 
           <div className="w-full">
@@ -1386,7 +1414,14 @@ export default function Homerooms() {
                       <CardHeader className="flex flex-col items-center justify-between pb-6 gap-4">
                         <div>
                           <CardTitle className="text-2xl font-extrabold uppercase">
-                            {g.gradeLevelName}
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-2xl font-extrabold uppercase px-6 py-1.5 rounded-xl border shadow-xs tracking-wide",
+                                getGradeLevelBadgeStyles(g.gradeLevelName),
+                              )}>
+                              {g.gradeLevelName}
+                            </Badge>
                           </CardTitle>
                         </div>
                       </CardHeader>

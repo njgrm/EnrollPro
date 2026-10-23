@@ -20,6 +20,7 @@ import { useHeaderStore } from "@/store/header.slice";
 import { useAuthStore } from "@/store/auth.slice";
 import { useRealtimeRefresh } from "@/shared/hooks/useRealtimeRefresh";
 import { TeachersDirectorySkeleton } from "@/shared/components/PageLoadingSkeleton";
+import { useDebouncedSearch } from "@/shared/hooks/useDebouncedSearch";
 
 import {
   SearchIcon,
@@ -67,7 +68,7 @@ import type {
   TeacherDesignationFilter,
 } from "../types";
 
-import { formatAdvisorySectionSummary, formatTeacherName } from "../utils";
+import { formatTeacherName } from "../utils";
 import {
   DEPED_TEACHER_ANCILLARY_ROLE_OPTIONS,
   DEPED_TEACHER_DEPARTMENT_OPTIONS,
@@ -141,39 +142,6 @@ function formatSf7MatchStatus(status: Sf7ImportPreviewResponse["rows"][number]["
   return "No Matching Personnel";
 }
 
-function normalizeSearchText(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toUpperCase()
-    .replace(/[^A-Z0-9\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function buildTeacherSearchIndex(teacher: Teacher): string {
-  const middleInitial = teacher.middleName?.trim()
-    ? `${teacher.middleName.trim().charAt(0)}.`
-    : "";
-  const fullNameWithInitial = `${teacher.lastName}, ${teacher.firstName}${middleInitial ? ` ${middleInitial}` : ""}`;
-  const fullNameWithMiddle = `${teacher.lastName}, ${teacher.firstName}${teacher.middleName ? ` ${teacher.middleName}` : ""}`;
-
-  return normalizeSearchText(
-    [
-      formatTeacherName(teacher),
-      fullNameWithInitial,
-      fullNameWithMiddle,
-      `${teacher.firstName} ${teacher.middleName ?? ""} ${teacher.lastName}`,
-      teacher.employeeId ?? "",
-      teacher.contactNumber ?? "",
-      (teacher.departments || []).join(", "),
-      teacher.specialization ?? "",
-      teacher.designation?.advisorySection?.name ?? "",
-      teacher.designation?.advisorySection?.gradeLevelName ?? "",
-      ...(teacher.designation?.ancillaryRoles || []),
-    ].join(" "),
-  );
-}
 
 export default function Teachers() {
   const { activeSchoolYearId, viewingSchoolYearId } = useSettingsStore();
@@ -191,7 +159,12 @@ export default function Teachers() {
     },
   });
 
-  const [activeFilter, setActiveFilter] = useState("");
+  const {
+    inputValue: searchInput,
+    setInputValue: setSearchInput,
+    activeFilter: debouncedSearch,
+  } = useDebouncedSearch("", 400);
+
   const [personnelTypeFilter, setPersonnelTypeFilter] = useState<"all" | "TEACHING" | "NON_TEACHING">("all");
   const [designationFilter, setDesignationFilter] = useState<TeacherDesignationFilter>("all");
   const [ancillaryRoleFilter, setAncillaryRoleFilter] = useState<string>("all");
@@ -241,10 +214,36 @@ export default function Teachers() {
   const [isSf7UploadModalOpen, setIsSf7UploadModalOpen] = useState(false);
 
   const teachersQuery = useQuery({
-    queryKey: [...queryKeys.teachersList(ayId), { ancillaryRoleFilter }],
+    queryKey: [
+      ...queryKeys.teachersList(ayId),
+      {
+        page,
+        limit,
+        search: debouncedSearch,
+        personnelType: personnelTypeFilter,
+        designation: designationFilter,
+        ancillary_role: ancillaryRoleFilter,
+        department: departmentFilter,
+        metric: activeMetric,
+        sortBy,
+        sortOrder,
+      },
+    ],
     queryFn: async () => {
       const res = await api.get("/teachers", {
-        params: { ...(ayId ? { schoolYearId: ayId } : {}), ...(ancillaryRoleFilter !== "all" ? { ancillary_role: ancillaryRoleFilter } : {}) },
+        params: {
+          ...(ayId ? { schoolYearId: ayId } : {}),
+          page,
+          limit,
+          ...(debouncedSearch ? { search: debouncedSearch } : {}),
+          ...(personnelTypeFilter !== "all" ? { personnelType: personnelTypeFilter } : {}),
+          ...(designationFilter !== "all" ? { designation: designationFilter } : {}),
+          ...(ancillaryRoleFilter !== "all" ? { ancillary_role: ancillaryRoleFilter } : {}),
+          ...(departmentFilter !== "all" ? { department: departmentFilter } : {}),
+          ...(activeMetric !== "total" ? { metric: activeMetric } : {}),
+          sortBy,
+          sortOrder,
+        },
       });
 
       return {
@@ -254,6 +253,28 @@ export default function Teachers() {
           classOpeningDate?: string | null;
           classEndDate?: string | null;
         } | null,
+        pagination: (res.data.pagination || {
+          page: 1,
+          limit: 50,
+          total: 0,
+          totalPages: 1,
+        }) as {
+          page: number;
+          limit: number;
+          total: number;
+          totalPages: number;
+        },
+        metrics: (res.data.metrics || {
+          total: 0,
+          active: 0,
+          inactive: 0,
+          advisers: 0,
+        }) as {
+          total: number;
+          active: number;
+          inactive: number;
+          advisers: number;
+        },
       };
     },
     enabled: Boolean(ayId),
@@ -266,49 +287,16 @@ export default function Teachers() {
   const loading = teachersQuery.isPending || teachersQuery.isFetching;
 
   const availableDesignationFilters = useMemo<DesignationFilterOption[]>(() => {
-    const roles = new Set<string>();
-    let hasSubjectTeacher = false;
-
-    for (const teacher of teachers) {
-      if (
-        !teacher.userAccount?.roles ||
-        teacher.userAccount.roles.length === 0
-      ) {
-        hasSubjectTeacher = true;
-      } else {
-        for (const role of teacher.userAccount.roles) {
-          roles.add(role);
-        }
-      }
-    }
-
-    const ROLE_LABELS: Record<string, string> = {
-      SYSTEM_ADMIN: "System Admin",
-      PRINCIPAL: "School Head",
-      HEAD_REGISTRAR: "Head Registrar",
-      CLASS_ADVISER: "Class Adviser",
-      TEACHER: "Teacher",
-      MRF: "MRF Coordinator",
-    };
-
-    const options: DesignationFilterOption[] = [];
-
-    for (const role of Array.from(roles).sort((a, b) => a.localeCompare(b))) {
-      options.push({
-        value: role,
-        label: ROLE_LABELS[role] || role,
-      });
-    }
-
-    if (hasSubjectTeacher) {
-      options.push({
-        value: "SUBJECT_TEACHER",
-        label: "Subject Teacher",
-      });
-    }
-
-    return options;
-  }, [teachers]);
+    return [
+      { value: "CLASS_ADVISER", label: "Class Adviser" },
+      { value: "TEACHER", label: "Teacher" },
+      { value: "SUBJECT_TEACHER", label: "Subject Teacher" },
+      { value: "HEAD_REGISTRAR", label: "Head Registrar" },
+      { value: "MRF", label: "MRF Coordinator" },
+      { value: "PRINCIPAL", label: "School Head" },
+      { value: "SYSTEM_ADMIN", label: "System Admin" },
+    ];
+  }, []);
 
   const invalidateTeacherQueries = useCallback(async () => {
     await Promise.all([
@@ -432,7 +420,7 @@ export default function Teachers() {
   // Reset page when filters or limit change
   useEffect(() => {
     setPage(1);
-  }, [activeFilter, personnelTypeFilter, designationFilter, ancillaryRoleFilter, departmentFilter, activeMetric, limit]);
+  }, [debouncedSearch, personnelTypeFilter, designationFilter, ancillaryRoleFilter, departmentFilter, activeMetric, limit]);
 
   // eSF7 profile panel handles individual field changes internally
 
@@ -484,150 +472,7 @@ export default function Teachers() {
     }
   }, [requestedEmployeeId, teachers, user]);
 
-  const filteredTeachers = useMemo(() => {
-    const normalizedSearch = normalizeSearchText(activeFilter);
-
-    return teachers.filter((teacher) => {
-      const matchesSearch =
-        !normalizedSearch ||
-        buildTeacherSearchIndex(teacher).includes(normalizedSearch);
-
-      const matchesPersonnelType = (() => {
-        if (personnelTypeFilter === "all") return true;
-        const isTeaching =
-          teacher.personnelType === "TEACHING" ||
-          (!teacher.personnelType &&
-            (teacher.plantillaPosition?.toUpperCase().includes("TEACHER") ||
-              teacher.plantillaPosition?.toUpperCase().includes("INSTRUCTOR") ||
-              teacher.plantillaPosition?.toUpperCase().includes("PRINCIPAL") ||
-              teacher.plantillaPosition?.toUpperCase().includes("PROFESSOR")));
-        return personnelTypeFilter === "TEACHING" ? isTeaching : !isTeaching;
-      })();
-
-      const matchesDesignation =
-        designationFilter === "all" ||
-        (designationFilter === "SUBJECT_TEACHER"
-          ? !teacher.userAccount?.roles ||
-          teacher.userAccount.roles.length === 0
-          : teacher.userAccount?.roles?.includes(designationFilter));
-
-      const matchesDepartment =
-        departmentFilter === "all" ||
-        (teacher.departments || []).some(
-          (d) => d.toUpperCase() === departmentFilter.toUpperCase()
-        );
-
-      const matchesAncillaryRole =
-        ancillaryRoleFilter === "all" ||
-        getPersonnelAncillaryRoles(teacher).includes(ancillaryRoleFilter);
-
-      const matchesActiveMetric =
-        activeMetric === "total" ||
-        (activeMetric === "active" && teacher.isActive) ||
-        (activeMetric === "inactive" && !teacher.isActive) ||
-        (activeMetric === "advisers" && !!teacher.userAccount?.roles?.includes("CLASS_ADVISER"));
-
-      return (
-        matchesSearch &&
-        matchesPersonnelType &&
-        matchesDesignation &&
-        matchesAncillaryRole &&
-        matchesDepartment &&
-        matchesActiveMetric
-      );
-    });
-  }, [
-    teachers,
-    activeFilter,
-    personnelTypeFilter,
-    designationFilter,
-    ancillaryRoleFilter,
-    departmentFilter,
-    activeMetric,
-  ]);
-
-  const sortedTeachers = useMemo(() => {
-    const sorted = [...filteredTeachers];
-    const desc = sortOrder === "desc";
-
-    const serviceStatusLabelsLocal: Record<string, string> = {
-      ACTIVE: "Active",
-      ON_LEAVE: "On Leave",
-      TRANSFERRED: "Transferred",
-      RETIRED_RESIGNED: "Retired/Resigned",
-      DROPPED_FROM_ROLLS: "Dropped from Rolls",
-    };
-
-    function getJobTitleLocal(t: Teacher): string {
-      if (t.plantillaPosition) {
-        const romanNumerals = new Set(["I", "II", "III", "IV", "V", "VI"]);
-        return t.plantillaPosition
-          .toLocaleLowerCase()
-          .split(" ")
-          .filter(Boolean)
-          .map((word) => {
-            const upperWord = word.toLocaleUpperCase();
-            if (romanNumerals.has(upperWord)) return upperWord;
-            if (upperWord === "MRF") return upperWord;
-            return `${word.charAt(0).toLocaleUpperCase()}${word.slice(1)}`;
-          })
-          .join(" ");
-      }
-      const roles = t.userAccount?.roles || [];
-      if (roles.includes("SYSTEM_ADMIN")) return "System Admin";
-      if (roles.includes("PRINCIPAL")) return "School Head";
-      if (roles.includes("HEAD_REGISTRAR")) return "Registrar";
-      return "Subject Teacher";
-    }
-
-    sorted.sort((a, b) => {
-      // Always push inactive/on leave personnel to the bottom
-      const isActiveA = a.isActive ?? (a.serviceStatus === "ACTIVE" || !a.serviceStatus);
-      const isActiveB = b.isActive ?? (b.serviceStatus === "ACTIVE" || !b.serviceStatus);
-
-      if (isActiveA && !isActiveB) return -1;
-      if (!isActiveA && isActiveB) return 1;
-
-      let valA = "";
-      let valB = "";
-
-      if (sortBy === "lastName") {
-        valA = a.lastName + a.firstName;
-        valB = b.lastName + b.firstName;
-      } else if (sortBy === "plantillaPosition") {
-        valA = getJobTitleLocal(a);
-        valB = getJobTitleLocal(b);
-      } else if (sortBy === "department") {
-        valA = (a.departments && a.departments.length > 0) ? a.departments.join(", ") : "";
-        valB = (b.departments && b.departments.length > 0) ? b.departments.join(", ") : "";
-      } else if (sortBy === "advisoryClass") {
-        const advA = formatAdvisorySectionSummary(a.designation?.advisorySection);
-        const advB = formatAdvisorySectionSummary(b.designation?.advisorySection);
-        valA = advA !== "-" ? advA : "";
-        valB = advB !== "-" ? advB : "";
-      } else if (sortBy === "serviceStatus") {
-        const statusA = a.serviceStatus || "ACTIVE";
-        const statusB = b.serviceStatus || "ACTIVE";
-        valA = serviceStatusLabelsLocal[statusA] || statusA;
-        valB = serviceStatusLabelsLocal[statusB] || statusB;
-      } else if (sortBy === "portalStatus") {
-        valA = (a.userAccount?.isActive ?? a.isActive) ? "ACTIVE" : "LOCKED";
-        valB = (b.userAccount?.isActive ?? b.isActive) ? "ACTIVE" : "LOCKED";
-      }
-
-      if (valA < valB) return desc ? 1 : -1;
-      if (valA > valB) return desc ? -1 : 1;
-      return 0;
-    });
-
-    return sorted;
-  }, [filteredTeachers, sortBy, sortOrder]);
-
-  const paginatedTeachers = useMemo(() => {
-    const start = (page - 1) * limit;
-    const end = start + limit;
-    return sortedTeachers.slice(start, end);
-  }, [sortedTeachers, page, limit]);
+  const paginatedTeachers = teachers;
 
   const sorting = useMemo<SortingState>(
     () => [{ id: sortBy, desc: sortOrder === "desc" }],
@@ -930,8 +775,8 @@ export default function Teachers() {
             className="w-full h-12 pl-10 pr-12 bg-white border-gray-300 shadow-sm transition-shadow focus-visible:ring-primary uppercase font-bold"
             aria-label="Search faculty and staff"
             placeholder="Search name, employee ID, mobile number, subject area..."
-            value={activeFilter}
-            onChange={(e) => setActiveFilter(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
           />
           <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
             <PopoverTrigger asChild>
@@ -1072,7 +917,8 @@ export default function Teachers() {
       </div>
     ),
     [
-      activeFilter,
+      searchInput,
+      setSearchInput,
       localPersonnelTypeFilter,
       localDesignationFilter,
       localAncillaryRoleFilter,
@@ -1222,10 +1068,16 @@ export default function Teachers() {
 
         {/* Inline Metric Toolbar */}
         {(() => {
-          const totalCount = teachers.length;
-          const activeCount = teachers.filter((t) => t.isActive).length;
-          const inactiveCount = teachers.filter((t) => !t.isActive).length;
-          const classAdvisersCount = teachers.filter((t) => t.userAccount?.roles?.includes("CLASS_ADVISER")).length;
+          const metricsData = teachersQuery.data?.metrics ?? {
+            total: teachers.length,
+            active: teachers.filter((t) => t.isActive).length,
+            inactive: teachers.filter((t) => !t.isActive).length,
+            advisers: teachers.filter((t) => t.userAccount?.roles?.includes("CLASS_ADVISER")).length,
+          };
+          const totalCount = metricsData.total;
+          const activeCount = metricsData.active;
+          const inactiveCount = metricsData.inactive;
+          const classAdvisersCount = metricsData.advisers;
 
           const metrics = [
             { key: "total", title: "Total Personnel", value: totalCount },
@@ -1310,7 +1162,7 @@ export default function Teachers() {
         {/* Pagination Bar */}
         <PaginationBar
           page={page}
-          total={filteredTeachers.length}
+          total={teachersQuery.data?.pagination?.total ?? teachers.length}
           limit={limit}
           onPageChange={setPage}
           onLimitChange={setLimit}

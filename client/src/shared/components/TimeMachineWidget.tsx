@@ -5,14 +5,8 @@ import { Button } from "@/shared/ui/button";
 import { Clock } from "lucide-react";
 import { HybridDatePicker } from "@/shared/components/HybridDatePicker";
 import { useSettingsStore } from "@/store/settings.slice";
+import { readStoredHideFloatingIcon } from "@/shared/lib/floatingWidgetPreference";
 import { useAuthStore } from "@/store/auth.slice";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select";
 import {
   getMockedSystemDate,
   MOCKED_SYSTEM_DATE_ANCHOR_KEY,
@@ -20,11 +14,7 @@ import {
 } from "@/shared/lib/utils";
 import api from "@/shared/api/axiosInstance";
 import { sileo } from "sileo";
-const HOUR_OPTIONS = Array.from({ length: 12 }, (_, index) => String(index + 1));
-const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, index) =>
-  String(index).padStart(2, "0"),
-);
-const SECOND_OPTIONS = MINUTE_OPTIONS;
+
 const SYSTEM_DATE_SYNC_TIMEOUT_MS = 3_000;
 
 interface MockDateTimeParts {
@@ -59,7 +49,9 @@ export function TimeMachineWidget() {
   const { showTimeMachineWidget, hideTimeMachineFloatingIcon } = useSettingsStore();
   const location = useLocation();
 
-  if (!showTimeMachineWidget || hideTimeMachineFloatingIcon || location.pathname.startsWith("/learner")) {
+  const isHidden = hideTimeMachineFloatingIcon || readStoredHideFloatingIcon() === true;
+
+  if (!showTimeMachineWidget || isHidden || location.pathname.startsWith("/learner")) {
     return null;
   }
 

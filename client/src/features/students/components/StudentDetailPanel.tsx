@@ -2622,6 +2622,8 @@ export function StudentDetailPanel({
                   {previewFile?.type.startsWith('image/') ? (
                     <img 
                       src={previewFileUrl || ''} 
+                      loading="lazy"
+                      decoding="async"
                       className="max-w-full max-h-full object-contain rounded-md shadow-sm" 
                       alt="Preview" 
                     />

@@ -189,7 +189,36 @@ function TableRowComponentInner<TData>(
   );
 }
 
-const TableRowComponent = React.forwardRef(TableRowComponentInner) as <TData>(
+const TableRowComponent = React.memo(
+  React.forwardRef(TableRowComponentInner),
+  (prevProps, nextProps) => {
+    if (prevProps["data-index"] !== nextProps["data-index"]) return false;
+    if (prevProps.dense !== nextProps.dense) return false;
+    if (prevProps.striped !== nextProps.striped) return false;
+    if (prevProps.className !== nextProps.className) return false;
+    if (prevProps.row.getIsSelected() !== nextProps.row.getIsSelected()) return false;
+    if (prevProps.row.original !== nextProps.row.original) return false;
+    if (prevProps.style !== nextProps.style) {
+      if (!prevProps.style || !nextProps.style) return false;
+      if (
+        prevProps.style.height !== nextProps.style.height ||
+        prevProps.style.transform !== nextProps.style.transform ||
+        prevProps.style.top !== nextProps.style.top
+      ) {
+        return false;
+      }
+    }
+    const prevExpanded = prevProps.getRowAriaExpanded?.(prevProps.row.original);
+    const nextExpanded = nextProps.getRowAriaExpanded?.(nextProps.row.original);
+    if (prevExpanded !== nextExpanded) return false;
+
+    if (prevProps.onRowClick !== nextProps.onRowClick) return false;
+    if (prevProps.getRowClassName !== nextProps.getRowClassName) return false;
+    if (prevProps.isRowClickable !== nextProps.isRowClickable) return false;
+
+    return true;
+  },
+) as <TData>(
   props: TableRowComponentProps<TData> & {
     ref?: React.ForwardedRef<HTMLTableRowElement>;
   },

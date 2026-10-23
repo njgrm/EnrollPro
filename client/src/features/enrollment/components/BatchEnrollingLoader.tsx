@@ -120,7 +120,7 @@ export function BatchEnrollingLoader({
 
         <div className="mt-2 min-h-[2.5rem] flex flex-col items-center justify-center text-sm font-bold text-foreground">
           {isComplete ? (
-            <p className="text-muted-foreground text-xs font-semibold">
+            <p className="text-muted-foreground text-sm font-bold">
               Selected continuing learners have been officially enrolled for the upcoming school year.
             </p>
           ) : currentLearnerName ? (
@@ -130,13 +130,13 @@ export function BatchEnrollingLoader({
                 {currentLearnerName}
               </p>
               {currentLrn && (
-                <p className="text-xs font-bold text-muted-foreground">
+                <p className="text-sm font-bold text-muted-foreground">
                   LRN: {currentLrn}
                 </p>
               )}
             </div>
           ) : (
-            <p className="text-muted-foreground text-xs font-semibold">
+            <p className="text-muted-foreground text-sm font-bold">
               Applying official enrollment confirmations to selected learner records...
             </p>
           )}
@@ -150,7 +150,7 @@ export function BatchEnrollingLoader({
           />
         </div>
 
-        <p className="mt-3 text-sm font-bold text-foreground">
+        <p className="mt-3 text-sm font-bold">
           {isComplete ? totalLearners : completedLearners} of {totalLearners} continuing learners enrolled
         </p>
       </div>

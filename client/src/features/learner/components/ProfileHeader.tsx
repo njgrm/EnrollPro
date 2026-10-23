@@ -68,6 +68,8 @@ export function ProfileHeader({ data }: ProfileHeaderProps) {
               <img
                 src={data.sf1.studentPhoto}
                 alt="Learner Photo"
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -129,6 +131,8 @@ export function ProfileHeader({ data }: ProfileHeaderProps) {
                       <img
                         src={data.sf1.studentPhoto}
                         alt="Learner Photo"
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover"
                       />
                     ) : (

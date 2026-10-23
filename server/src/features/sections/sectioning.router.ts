@@ -5,6 +5,7 @@ import {
   assignBulk,
   commitDraft,
   saveDraft,
+  generateDraft,
 } from "./sectioning.controller.js";
 import { authenticate } from "../../middleware/authenticate.js";
 import { authorize } from "../../middleware/authorize.js";
@@ -31,5 +32,6 @@ router.get("/pool", getSectioningPool);
 router.post("/assign-bulk", staffIntakePhaseGuard, assignBulk);
 router.post("/commit-draft", staffIntakePhaseGuard, commitDraft);
 router.post("/save-draft", staffIntakePhaseGuard, saveDraft);
+router.post("/generate-draft", generateDraft);
 
 export default router;

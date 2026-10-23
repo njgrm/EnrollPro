@@ -17,7 +17,7 @@ import { getLearnerApi } from "@/shared/api/axiosInstance";
 import { Button } from "@/shared/ui/button";
 import { PageLoadingSkeleton } from "@/shared/components/PageLoadingSkeleton";
 import { ConfirmationModal } from "@/shared/ui/confirmation-modal";
-import { setLoggingOut, isLoggingOut } from "@/shared/lib/logoutState";
+import { setLoggingOut, isLoggingOut, clearClientSessionPreservingPreferences } from "@/shared/lib/logoutState";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/shared/ui/tabs";
 import { ProfileHeader } from "@/features/learner/components/ProfileHeader";
 import { HistoricalAcademicRecords } from "@/features/learner/components/HistoricalAcademicRecords";
@@ -122,8 +122,7 @@ export default function LearnerDashboard() {
     setIsLoggingOutState(true);
     setLoggingOut(true);
     clearAuth();
-    localStorage.clear();
-    sessionStorage.clear();
+    clearClientSessionPreservingPreferences();
     window.location.href = "/learner/login";
   };
 
@@ -207,6 +206,8 @@ export default function LearnerDashboard() {
               <img
                 src={data.schoolLogoUrl}
                 alt="School Seal"
+                loading="lazy"
+                decoding="async"
                 className="h-8 w-8 object-contain shrink-0"
               />
             ) : (

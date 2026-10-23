@@ -446,7 +446,7 @@ export default function SchoolProfileTab() {
                       <FormItem>
                         <FormLabel>School Name</FormLabel>
                         <FormControl>
-                          <Input className="font-bold uppercase" {...field} />
+                          <Input className="font-bold uppercase" placeholder="E.G. NEGROS OCCIDENTAL HIGH SCHOOL" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

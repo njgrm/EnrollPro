@@ -75,7 +75,7 @@ import { Badge } from "@/shared/ui/badge";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { UserPhoto } from "@/shared/components/UserPhoto";
 import { Switch } from "@/shared/ui/switch";
-import { setLoggingOut } from "@/shared/lib/logoutState";
+import { setLoggingOut, clearClientSessionPreservingPreferences } from "@/shared/lib/logoutState";
 
 import { useAuthStore } from "@/store/auth.slice";
 import { useSettingsStore } from "@/store/settings.slice";
@@ -155,8 +155,7 @@ function UserNav() {
     }
     // Clear persisted auth state (writes to localStorage immediately).
     clearAuth();
-    localStorage.clear();
-    sessionStorage.clear();
+    clearClientSessionPreservingPreferences();
     // Hard reload to the login page. This avoids the React 19 + Radix UI
     // ref-composition crash that occurs when the entire component tree
     // (with Tooltip/Dialog/Presence refs) unmounts via client-side navigation.
@@ -1041,6 +1040,8 @@ function AppSidebar() {
                   <img
                     src={`${API_BASE}${logoUrl}`}
                     alt="Logo"
+                    loading="lazy"
+                    decoding="async"
                     className="size-full object-contain"
                   />
                 </div>

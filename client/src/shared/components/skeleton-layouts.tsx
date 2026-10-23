@@ -1,5 +1,5 @@
 import { Skeleton } from "@/shared/ui/skeleton";
-import { cn } from "@/shared/lib/utils";
+import { cn, getGradeLevelSolidBgStyles } from "@/shared/lib/utils";
 import { isLoggingOut } from "@/shared/lib/logoutState";
 import AdmissionHeader from "@/features/admission/components/AdmissionHeader";
 import { useSettingsStore } from "@/store/settings.slice";
@@ -1483,8 +1483,21 @@ export function EosySkeleton({ className }: SkeletonLayoutProps) {
       <div className="flex items-center justify-between gap-4 mb-2">
         <div className="flex-1 flex gap-1 p-1 bg-muted border border-border rounded-xl">
           {["Grade 7", "Grade 8", "Grade 9", "Grade 10"].map((g, i) => (
-            <div key={g} className={cn("flex-1 py-2 px-3 rounded-lg flex items-center justify-center", i === 0 && "bg-primary/20")}>
-              <Skeleton className={cn("h-5 w-20 rounded", i === 0 && "bg-primary/30")} />
+            <div
+              key={g}
+              className={cn(
+                "flex-1 py-2 px-3 rounded-lg flex items-center justify-center relative",
+                i === 0 && getGradeLevelSolidBgStyles(g),
+              )}
+            >
+              <span
+                className={cn(
+                  "text-base font-bold uppercase",
+                  i === 0 ? "text-white font-extrabold" : "text-foreground/70",
+                )}
+              >
+                {g}
+              </span>
             </div>
           ))}
         </div>

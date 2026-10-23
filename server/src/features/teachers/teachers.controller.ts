@@ -257,11 +257,90 @@ export async function index(req: Request, res: Response) {
       : null;
 
     const ancillaryRole = normalizeAncillaryRoleFilter(req.query.ancillary_role);
-    const personnelType = req.query.personnelType ? normalizeOptionalUpperText(req.query.personnelType) : null;
+    const personnelType = req.query.personnelType && req.query.personnelType !== "all"
+      ? normalizeOptionalUpperText(req.query.personnelType)
+      : null;
+    const designation = req.query.designation && req.query.designation !== "all"
+      ? String(req.query.designation).trim()
+      : null;
+    const department = req.query.department && req.query.department !== "all"
+      ? String(req.query.department).trim()
+      : null;
+    const metric = typeof req.query.metric === "string" ? req.query.metric : "total";
+    const search = typeof req.query.search === "string" && req.query.search.trim() !== ""
+      ? req.query.search.trim()
+      : null;
+    const sortBy = typeof req.query.sortBy === "string" ? req.query.sortBy : "lastName";
+    const sortOrder = req.query.sortOrder === "desc" ? "desc" : "asc";
 
-    const whereClause: Prisma.TeacherWhereInput = {};
-    if (personnelType) {
-      whereClause.personnelType = personnelType;
+    const pageParam = req.query.page ? parseInt(req.query.page as string) : null;
+    const page = pageParam && !Number.isNaN(pageParam) ? Math.max(1, pageParam) : null;
+    const limitParam = req.query.limit ? parseInt(req.query.limit as string) : null;
+    const limit = limitParam && !Number.isNaN(limitParam) ? Math.min(100, Math.max(1, limitParam)) : 50;
+
+    const andConditions: Prisma.TeacherWhereInput[] = [];
+
+    if (personnelType === "TEACHING") {
+      andConditions.push({
+        OR: [
+          { personnelType: "TEACHING" },
+          {
+            personnelType: null,
+            OR: [
+              { plantillaPosition: { contains: "TEACHER", mode: "insensitive" } },
+              { plantillaPosition: { contains: "INSTRUCTOR", mode: "insensitive" } },
+              { plantillaPosition: { contains: "PRINCIPAL", mode: "insensitive" } },
+              { plantillaPosition: { contains: "PROFESSOR", mode: "insensitive" } },
+            ],
+          },
+        ],
+      });
+    } else if (personnelType === "NON_TEACHING") {
+      andConditions.push({
+        OR: [
+          { personnelType: "NON_TEACHING" },
+          {
+            personnelType: null,
+            NOT: {
+              OR: [
+                { plantillaPosition: { contains: "TEACHER", mode: "insensitive" } },
+                { plantillaPosition: { contains: "INSTRUCTOR", mode: "insensitive" } },
+                { plantillaPosition: { contains: "PRINCIPAL", mode: "insensitive" } },
+                { plantillaPosition: { contains: "PROFESSOR", mode: "insensitive" } },
+              ],
+            },
+          },
+        ],
+      });
+    }
+
+    if (department) {
+      andConditions.push({
+        departments: {
+          some: {
+            code: { equals: department, mode: "insensitive" },
+          },
+        },
+      });
+    }
+
+    if (designation) {
+      if (designation === "SUBJECT_TEACHER") {
+        andConditions.push({
+          OR: [
+            { user: null },
+            { user: { is: { roles: { isEmpty: true } } } },
+          ],
+        });
+      } else {
+        andConditions.push({
+          user: {
+            is: {
+              roles: { has: designation as Role },
+            },
+          },
+        });
+      }
     }
 
     if (ancillaryRole) {
@@ -284,8 +363,79 @@ export async function index(req: Request, res: Response) {
         roleConditions.push({ user: { is: { roles: { has: Role.HEAD_REGISTRAR } } } });
       }
 
-      whereClause.OR = roleConditions;
+      andConditions.push({ OR: roleConditions });
     }
+
+    const baseWhereWithoutMetric: Prisma.TeacherWhereInput =
+      andConditions.length > 0 ? { AND: andConditions } : {};
+
+    const [totalCount, activeCount, inactiveCount, advisersCount] = await Promise.all([
+      prisma.teacher.count({ where: baseWhereWithoutMetric }),
+      prisma.teacher.count({ where: { AND: [...andConditions, { isActive: true }] } }),
+      prisma.teacher.count({ where: { AND: [...andConditions, { isActive: false }] } }),
+      prisma.teacher.count({
+        where: {
+          AND: [
+            ...andConditions,
+            {
+              OR: [
+                { user: { is: { roles: { has: Role.CLASS_ADVISER } } } },
+                { teacherDesignations: { some: { isClassAdviser: true, ...(schoolYearId ? { schoolYearId } : {}) } } },
+              ],
+            },
+          ],
+        },
+      }),
+    ]);
+
+    const finalAndConditions = [...andConditions];
+
+    if (metric === "active") {
+      finalAndConditions.push({ isActive: true });
+    } else if (metric === "inactive") {
+      finalAndConditions.push({ isActive: false });
+    } else if (metric === "advisers") {
+      finalAndConditions.push({
+        OR: [
+          { user: { is: { roles: { has: Role.CLASS_ADVISER } } } },
+          { teacherDesignations: { some: { isClassAdviser: true, ...(schoolYearId ? { schoolYearId } : {}) } } },
+        ],
+      });
+    }
+
+    if (search) {
+      finalAndConditions.push({
+        OR: [
+          { firstName: { contains: search, mode: "insensitive" } },
+          { lastName: { contains: search, mode: "insensitive" } },
+          { middleName: { contains: search, mode: "insensitive" } },
+          { employeeId: { contains: search, mode: "insensitive" } },
+          { contactNumber: { contains: search, mode: "insensitive" } },
+          { specialization: { contains: search, mode: "insensitive" } },
+          { departments: { some: { code: { contains: search, mode: "insensitive" } } } },
+        ],
+      });
+    }
+
+    const whereClause: Prisma.TeacherWhereInput =
+      finalAndConditions.length > 0 ? { AND: finalAndConditions } : {};
+
+    const filteredTotal = await prisma.teacher.count({ where: whereClause });
+
+    const orderBy: Prisma.TeacherOrderByWithRelationInput[] = [
+      { isActive: "desc" },
+    ];
+    if (sortBy === "plantillaPosition") {
+      orderBy.push({ plantillaPosition: sortOrder }, { lastName: "asc" }, { firstName: "asc" });
+    } else if (sortBy === "serviceStatus") {
+      orderBy.push({ serviceStatus: sortOrder }, { lastName: "asc" }, { firstName: "asc" });
+    } else {
+      orderBy.push({ lastName: sortOrder }, { firstName: sortOrder });
+    }
+
+    const isPaginated = page !== null;
+    const skip = isPaginated ? (page - 1) * limit : undefined;
+    const take = isPaginated ? limit : undefined;
 
     const teachers = await prisma.teacher.findMany({
       where: whereClause,
@@ -313,7 +463,9 @@ export async function index(req: Request, res: Response) {
           },
         },
       },
-      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      orderBy,
+      ...(skip !== undefined ? { skip } : {}),
+      ...(take !== undefined ? { take } : {}),
     });
 
     const formatted = teachers.map((teacher) => {
@@ -415,7 +567,22 @@ export async function index(req: Request, res: Response) {
       }
     }
 
-    res.json({ teachers: formatted, scope: scopeData });
+    res.json({
+      teachers: formatted,
+      scope: scopeData,
+      pagination: {
+        page: page ?? 1,
+        limit: isPaginated ? limit : formatted.length,
+        total: filteredTotal,
+        totalPages: isPaginated ? Math.ceil(filteredTotal / limit) : 1,
+      },
+      metrics: {
+        total: totalCount,
+        active: activeCount,
+        inactive: inactiveCount,
+        advisers: advisersCount,
+      },
+    });
   } catch (error: unknown) {
     const err = error as Error;
     res.status(500).json({ message: err.message });

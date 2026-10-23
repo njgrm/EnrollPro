@@ -1,6 +1,10 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { queryClient } from "@/shared/lib/queryClient";
+import {
+  readStoredHideFloatingIcon,
+  writeStoredHideFloatingIcon,
+} from "@/shared/lib/floatingWidgetPreference";
 
 export interface PaletteColor {
   hsl: string;
@@ -194,7 +198,7 @@ export const useSettingsStore = create<SettingsState>()(
         studentProfileTab: "record",
       },
       showTimeMachineWidget: false,
-      hideTimeMachineFloatingIcon: false,
+      hideTimeMachineFloatingIcon: readStoredHideFloatingIcon() ?? false,
       updateUiPreference: (key, value) => 
         set((state) => ({
           uiPreferences: {
@@ -257,12 +261,19 @@ export const useSettingsStore = create<SettingsState>()(
         }, 2000);
       },
       setShowTimeMachineWidget: (show) => set({ showTimeMachineWidget: show }),
-      setHideTimeMachineFloatingIcon: (hide) => set({ hideTimeMachineFloatingIcon: hide }),
+      setHideTimeMachineFloatingIcon: (hide) => {
+        writeStoredHideFloatingIcon(hide);
+        set({ hideTimeMachineFloatingIcon: hide });
+      },
     }),
     {
       name: "enrollpro-settings",
       onRehydrateStorage: () => (state) => {
         state?.setHydrated();
+        const storedHide = readStoredHideFloatingIcon();
+        if (storedHide !== null && state && state.hideTimeMachineFloatingIcon !== storedHide) {
+          state.setHideTimeMachineFloatingIcon(storedHide);
+        }
       },
       // historicalCorrectionToken is ephemeral — never persist across page loads
       partialize: (state) => {

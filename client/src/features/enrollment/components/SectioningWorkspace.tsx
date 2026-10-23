@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useMemo, useRef } from "react";
+import { useCallback, useState, useEffect, useMemo, useRef, useTransition } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/shared/lib/queryKeys";
 import {
@@ -8,27 +8,14 @@ import {
   ChevronUp,
   ChevronDown,
   LayoutGrid,
-  Info,
   AlertTriangle,
-  Loader2,
   MoreHorizontal,
   MoveRight,
-  ArrowRightLeft,
   Trash2,
-  SlidersHorizontal,
-  Maximize2,
-  Minimize2,
-  Download,
-  FileDown,
-  FileSpreadsheet,
 } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
-import { Label } from "@/shared/ui/label";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import api from "@/shared/api/axiosInstance";
-import { useDebouncedSearch } from "@/shared/hooks/useDebouncedSearch";
 import { Button } from "@/shared/ui/button";
-import { Input } from "@/shared/ui/input";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import {
   Select,
@@ -44,7 +31,15 @@ import { Checkbox } from "@/shared/ui/checkbox";
 import { sileo } from "sileo";
 import { useHistoricalReadOnly } from "@/shared/hooks/useHistoricalReadOnly";
 import { useSchoolYearContext } from "@/shared/hooks/useSchoolYearContext";
-import { cn, SCP_LABELS, getGradeLevelBadgeStyles, formatGradeLevel, formatSectionProgramLabel } from "@/shared/lib/utils";
+import {
+  cn,
+  SCP_LABELS,
+  getGradeLevelBadgeStyles,
+  formatGradeLevel,
+  formatSectionProgramLabel,
+  getGradeLevelSolidBgStyles,
+  getGradeLevelActiveTabStyles,
+} from "@/shared/lib/utils";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { isAxiosError } from "axios";
 import {
@@ -73,12 +68,16 @@ import { ConfirmationModal } from "@/shared/ui/confirmation-modal";
 import ViewMasterlist from "@/features/sections/pages/ViewMasterlist";
 import { TwoPanelSkeleton } from "@/shared/components/PageLoadingSkeleton";
 import { PageTransition } from "@/shared/components/PageTransition";
-import { UserPhoto } from "@/shared/components/UserPhoto";
 import { useResizablePanel } from "@/shared/hooks/useResizablePanel";
 import { useRealtimeRefresh } from "@/shared/hooks/useRealtimeRefresh";
 import { useAuthStore } from "@/store/auth.slice";
 import { AutoAssignVisualizer } from "./AutoAssignVisualizer";
 import { FinalizingSectionLoader } from "./FinalizingSectionLoader";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { LearnerReadyRow } from "./LearnerReadyRow";
+import { WorkspaceSearchInput } from "./WorkspaceSearchInput";
+import { SectionCardsPane } from "./SectionCardsPane";
+import { runSectioningWithWorker } from "../services/runSectioningWithWorker";
 
 interface SectionSummary {
   id: number;
@@ -195,14 +194,40 @@ function InlineSectionTable({ sectionId, onMoveLearner, onRemoveLearner, onForfe
     queryFn: () => api.get<InlineMasterlistResponse>(`/sections/${sectionId}/masterlist`).then(r => r.data),
   });
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const learners = data?.learners ?? [];
+  const isVirtualized = learners.length > 8;
+
+  const rowVirtualizer = useVirtualizer({
+    count: isVirtualized ? learners.length : 0,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 58,
+    overscan: 5,
+  });
+
   if (isLoading) return <div className="p-4 text-center text-sm font-bold text-muted-foreground animate-pulse mt-4 border rounded-md">Loading learners...</div>;
   if (error || !data) return <div className="p-4 text-center text-sm font-bold text-destructive mt-4 border rounded-md">Failed to load learners</div>;
-  if (data.learners.length === 0) return <div className="p-4 text-center text-sm font-bold text-foreground mt-4 border rounded-md">No learners assigned yet.</div>;
+  if (learners.length === 0) return <div className="p-4 text-center text-sm font-bold text-foreground mt-4 border rounded-md">No learners assigned yet.</div>;
+
+  const virtualItems = isVirtualized ? rowVirtualizer.getVirtualItems() : [];
+  const totalSize = isVirtualized ? rowVirtualizer.getTotalSize() : 0;
+  const paddingTop = virtualItems.length > 0 ? virtualItems[0].start : 0;
+  const paddingBottom =
+    virtualItems.length > 0
+      ? totalSize - virtualItems[virtualItems.length - 1].end
+      : 0;
 
   return (
-    <div className="mt-4 overflow-x-auto rounded-md border bg-card cursor-default" onClick={(e) => e.stopPropagation()}>
+    <div
+      ref={scrollRef}
+      className={cn(
+        "mt-4 overflow-x-auto rounded-md border bg-card cursor-default",
+        isVirtualized && "max-h-[360px] overflow-y-auto relative",
+      )}
+      onClick={(e) => e.stopPropagation()}
+    >
       <table className="w-full text-left text-sm whitespace-nowrap">
-        <thead className="bg-muted text-foreground">
+        <thead className={cn("bg-muted text-foreground", isVirtualized && "sticky top-0 z-10 shadow-xs")}>
           <tr className="font-bold uppercase">
             <th className="p-3 font-bold">Learner</th>
             <th className="p-3 text-center font-bold">Sex</th>
@@ -212,72 +237,163 @@ function InlineSectionTable({ sectionId, onMoveLearner, onRemoveLearner, onForfe
           </tr>
         </thead>
         <tbody className="divide-y">
-          {data.learners.map((l, index) => (
-            <tr key={l.id} className={cn("hover:bg-muted/60 transition-colors", index % 2 === 0 ? "bg-background" : "bg-muted/50")}>
-              <td className="p-3">
-                <div className="flex flex-col">
-                  <span className="font-extrabold text-foreground uppercase">
-                    {l.lastName}, {l.firstName} {l.middleName?.charAt(0) ? `${l.middleName.charAt(0)}.` : ""}
-                  </span>
-                  <span className="text-sm mt-0.5">
-                    LRN:{l.lrn || "NO LRN"}
-                  </span>
-                </div>
-              </td>
-              <td className="p-2 text-center">
-                <Badge className={cn(
-                  "px-2",
-                  l.sex === "MALE" ? "bg-blue-600/10 text-blue-600 border-blue-600 border-2" : "bg-pink-600/10 text-pink-600 border-pink-600 border-2"
-                )}>
-                  {l.sex === "MALE" ? "M" : "F"}
-                </Badge>
-              </td>
-              <td className="p-2 text-center">
-                <Badge className={cn(
-                  "px-2 uppercase",
-                  l.status === "OFFICIALLY_ENROLLED" ? "bg-green-600 text-white hover:bg-green-600 border-green-600"
-                    : l.status === "PENDING_CONFIRMATION" ? "bg-amber-500 text-white hover:bg-amber-500 border-amber-500"
-                      : "bg-muted text-foreground border-muted hover:bg-muted"
-                )}>
-                  {l.status === "OFFICIALLY_ENROLLED" ? "Enrolled" : l.status === "PENDING_CONFIRMATION" ? "Pending Confirmation" : "Pre-Registered"}
-                </Badge>
-              </td>
-              <td className="p-3 text-center font-bold text-foreground">
-                {l.genAve?.toFixed(2) ?? "--"}
-              </td>
-              <td className="p-3 text-center">
-                {(onMoveLearner || onRemoveLearner) && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="z-[100]">
-                      {onMoveLearner && (
-                        <DropdownMenuItem onClick={() => onMoveLearner(l.enrollmentApplicationId, sectionId)}>
-                          <MoveRight className="mr-2 h-4 w-4" />
-                          Move to Section
-                        </DropdownMenuItem>
+          {isVirtualized ? (
+            <>
+              {paddingTop > 0 && (
+                <tr>
+                  <td colSpan={5} style={{ height: `${paddingTop}px` }} />
+                </tr>
+              )}
+              {virtualItems.map((virtualRow) => {
+                const l = learners[virtualRow.index];
+                if (!l) return null;
+                return (
+                  <tr
+                    key={l.id}
+                    className={cn(
+                      "hover:bg-muted/60 transition-colors",
+                      virtualRow.index % 2 === 0 ? "bg-background" : "bg-muted/50",
+                    )}
+                  >
+                    <td className="p-3">
+                      <div className="flex flex-col">
+                        <span className="font-extrabold text-foreground uppercase">
+                          {l.lastName}, {l.firstName} {l.middleName?.charAt(0) ? `${l.middleName.charAt(0)}.` : ""}
+                        </span>
+                        <span className="text-sm mt-0.5">
+                          LRN: {l.lrn || "NO LRN"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="p-2 text-center">
+                      <Badge className={cn(
+                        "px-2",
+                        l.sex === "MALE" ? "bg-blue-600/10 text-blue-600 border-blue-600 border-2" : "bg-pink-600/10 text-pink-600 border-pink-600 border-2"
+                      )}>
+                        {l.sex === "MALE" ? "M" : "F"}
+                      </Badge>
+                    </td>
+                    <td className="p-2 text-center">
+                      <Badge className={cn(
+                        "px-2 uppercase",
+                        l.status === "OFFICIALLY_ENROLLED" ? "bg-green-600 text-white hover:bg-green-600 border-green-600"
+                          : l.status === "PENDING_CONFIRMATION" ? "bg-amber-500 text-white hover:bg-amber-500 border-amber-500"
+                            : "bg-muted text-foreground border-muted hover:bg-muted"
+                      )}>
+                        {l.status === "OFFICIALLY_ENROLLED" ? "Enrolled" : l.status === "PENDING_CONFIRMATION" ? "Pending Confirmation" : "Pre-Registered"}
+                      </Badge>
+                    </td>
+                    <td className="p-3 text-center font-bold text-foreground">
+                      {l.genAve?.toFixed(2) ?? "--"}
+                    </td>
+                    <td className="p-3 text-center">
+                      {(onMoveLearner || onRemoveLearner || onForfeitSlot) && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="z-[100]">
+                            {onMoveLearner && (
+                              <DropdownMenuItem onClick={() => onMoveLearner(l.enrollmentApplicationId, sectionId)}>
+                                <MoveRight className="mr-2 h-4 w-4" />
+                                Move to Section
+                              </DropdownMenuItem>
+                            )}
+                            {onRemoveLearner && (
+                              <DropdownMenuItem onClick={() => onRemoveLearner(l.enrollmentApplicationId, sectionId)}>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Unassign Learner
+                              </DropdownMenuItem>
+                            )}
+                            {onForfeitSlot && (
+                              <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => onForfeitSlot(l.enrollmentApplicationId, sectionId)}>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Remove / Forfeit Slot
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       )}
-                      {onRemoveLearner && (
-                        <DropdownMenuItem onClick={() => onRemoveLearner(l.enrollmentApplicationId, sectionId)}>
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Unassign Learner
-                        </DropdownMenuItem>
-                      )}
-                      {onForfeitSlot && (
-                        <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => onForfeitSlot(l.enrollmentApplicationId, sectionId)}>
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Remove / Forfeit Slot
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </td>
-            </tr>
-          ))}
+                    </td>
+                  </tr>
+                );
+              })}
+              {paddingBottom > 0 && (
+                <tr>
+                  <td colSpan={5} style={{ height: `${paddingBottom}px` }} />
+                </tr>
+              )}
+            </>
+          ) : (
+            learners.map((l, index) => (
+              <tr key={l.id} className={cn("hover:bg-muted/60 transition-colors", index % 2 === 0 ? "bg-background" : "bg-muted/50")}>
+                <td className="p-3">
+                  <div className="flex flex-col">
+                    <span className="font-extrabold text-foreground uppercase">
+                      {l.lastName}, {l.firstName} {l.middleName?.charAt(0) ? `${l.middleName.charAt(0)}.` : ""}
+                    </span>
+                    <span className="text-sm mt-0.5">
+                      LRN: {l.lrn || "NO LRN"}
+                    </span>
+                  </div>
+                </td>
+                <td className="p-2 text-center">
+                  <Badge className={cn(
+                    "px-2",
+                    l.sex === "MALE" ? "bg-blue-600/10 text-blue-600 border-blue-600 border-2" : "bg-pink-600/10 text-pink-600 border-pink-600 border-2"
+                  )}>
+                    {l.sex === "MALE" ? "M" : "F"}
+                  </Badge>
+                </td>
+                <td className="p-2 text-center">
+                  <Badge className={cn(
+                    "px-2 uppercase",
+                    l.status === "OFFICIALLY_ENROLLED" ? "bg-green-600 text-white hover:bg-green-600 border-green-600"
+                      : l.status === "PENDING_CONFIRMATION" ? "bg-amber-500 text-white hover:bg-amber-500 border-amber-500"
+                        : "bg-muted text-foreground border-muted hover:bg-muted"
+                  )}>
+                    {l.status === "OFFICIALLY_ENROLLED" ? "Enrolled" : l.status === "PENDING_CONFIRMATION" ? "Pending Confirmation" : "Pre-Registered"}
+                  </Badge>
+                </td>
+                <td className="p-3 text-center font-bold text-foreground">
+                  {l.genAve?.toFixed(2) ?? "--"}
+                </td>
+                <td className="p-3 text-center">
+                  {(onMoveLearner || onRemoveLearner || onForfeitSlot) && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="z-[100]">
+                        {onMoveLearner && (
+                          <DropdownMenuItem onClick={() => onMoveLearner(l.enrollmentApplicationId, sectionId)}>
+                            <MoveRight className="mr-2 h-4 w-4" />
+                            Move to Section
+                          </DropdownMenuItem>
+                        )}
+                        {onRemoveLearner && (
+                          <DropdownMenuItem onClick={() => onRemoveLearner(l.enrollmentApplicationId, sectionId)}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Unassign Learner
+                          </DropdownMenuItem>
+                        )}
+                        {onForfeitSlot && (
+                          <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => onForfeitSlot(l.enrollmentApplicationId, sectionId)}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Remove / Forfeit Slot
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </td>
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
     </div>
@@ -523,7 +639,7 @@ const loadDraftPlacementFromServer = (
   };
 };
 
-const createDraftPlacement = (
+const _createDraftPlacement = (
   gradeLevelId: number,
   learners: PoolLearner[],
   sections: SectionSummary[],
@@ -699,27 +815,9 @@ const createDraftPlacement = (
     unplacedLearners,
   };
 };
-function AnimatedCount({ from, to, animate }: { from: number; to: number; animate: boolean }) {
-  const [value, setValue] = useState(animate ? from : to);
-
-  useEffect(() => {
-    if (!animate) return;
-
-    const startedAt = performance.now();
-    let frame = 0;
-    const tick = (now: number) => {
-      const progress = Math.min((now - startedAt) / 400, 1);
-      setValue(Math.round(from + (to - from) * (1 - (1 - progress) ** 3)));
-      if (progress < 1) frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [animate, from, to]);
-
-  return <>{animate ? value : to}</>;
-}
 
 export function SectioningWorkspace() {
+  const [, startTransition] = useTransition();
   const { isHistoricalReadOnly } = useHistoricalReadOnly();
   const { panelPercentage, startResizingRight } = useResizablePanel(45, {
     storageKey: "sectioning-workspace-pane",
@@ -1263,7 +1361,34 @@ export function SectioningWorkspace() {
     (sectionsInitialLoading || poolInitialLoading || gradeLevelsLoading) &&
     !isHistoricalReadOnly;
 
-  const [selectedAppIds, setSelectedAppIds] = useState<number[]>([]);
+  const [selectedAppIds, setSelectedAppIds] = useState<Set<number>>(() => new Set());
+
+  const handleToggleSelect = useCallback((applicationId: number) => {
+    startTransition(() => {
+      setSelectedAppIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(applicationId)) {
+          next.delete(applicationId);
+        } else {
+          next.add(applicationId);
+        }
+        return next;
+      });
+    });
+  }, [startTransition]);
+
+  const handleClearSelection = useCallback(() => {
+    startTransition(() => {
+      setSelectedAppIds(new Set());
+    });
+  }, [startTransition]);
+
+  const handleSelectAll = useCallback((ids: number[]) => {
+    startTransition(() => {
+      setSelectedAppIds(new Set(ids));
+    });
+  }, [startTransition]);
+
   const [highlightedLearnerId, setHighlightedLearnerId] = useState<number | null>(null);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -1317,30 +1442,28 @@ export function SectioningWorkspace() {
   };
 
   const [filterProgram, setFilterProgram] = useState<string>("all");
-  const [localFilterProgram, setLocalFilterProgram] = useState<string>("all");
-  const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
-
-  useEffect(() => {
-    if (isFilterPopoverOpen) {
-      setLocalFilterProgram(filterProgram);
-    }
-  }, [isFilterPopoverOpen, filterProgram]);
-
-  const activeFilterCount = useMemo(() => {
-    let count = 0;
-    if (filterProgram !== "all") count++;
-    return count;
-  }, [filterProgram]);
-
-  const {
-    inputValue: searchQuery,
-    setInputValue: setSearchQuery,
-    activeFilter: activeSearchQuery,
-  } = useDebouncedSearch();
+  const [activeSearchQuery, setActiveSearchQuery] = useState("");
   const [targetSectionId, setTargetSectionId] = useState<number | null>(null);
 
+  const handleSelectTargetSection = useCallback((sectionId: number) => {
+    startTransition(() => {
+      setTargetSectionId(sectionId);
+    });
+  }, [startTransition]);
+
+  const handleToggleExpandedSection = useCallback((sectionId: number) => {
+    startTransition(() => {
+      setExpandedSectionIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(sectionId)) next.delete(sectionId);
+        else next.add(sectionId);
+        return next;
+      });
+    });
+  }, [startTransition]);
+
   useEffect(() => {
-    setSelectedAppIds([]);
+    setSelectedAppIds(new Set());
     setDraftMoveAction(null);
     justCommittedRef.current = false;
   }, [activeGradeLevelId]);
@@ -1368,7 +1491,7 @@ export function SectioningWorkspace() {
 
     return () => clearTimeout(handler);
   }, [draftPlacement, isHistoricalReadOnly]);
-  const _isLockedIn = selectedAppIds.length > 0 || isDraftActive;
+  const _isLockedIn = selectedAppIds.size > 0 || isDraftActive;
 
   const currentGradeSections = useMemo(() => {
     if (!activeGradeLevelId) return [];
@@ -1430,7 +1553,7 @@ export function SectioningWorkspace() {
     [draftPlacement],
   );
   const selectedAllowedPrograms = useMemo(() => {
-    const selectedLearners = currentGradePool.filter((learner) => selectedAppIds.includes(learner.applicationId));
+    const selectedLearners = currentGradePool.filter((learner) => selectedAppIds.has(learner.applicationId));
     if (selectedLearners.length === 0) return new Set<ApplicantType>();
 
     let commonAllowed: ApplicantType[] | null = null;
@@ -1533,15 +1656,199 @@ export function SectioningWorkspace() {
     activeSearchQuery,
   ]);
 
+  type VirtualLeftPaneItem =
+    | { type: "header"; id: string; title: string }
+    | { type: "learner"; id: number; learner: PoolLearner };
+
+  const flatLeftPaneItems: VirtualLeftPaneItem[] = useMemo(() => {
+    const becLearners = filteredAndSortedPool.filter((l) => l.programType === "REGULAR");
+
+    const scpGroupsMap = new Map<string, PoolLearner[]>();
+    filteredAndSortedPool.forEach((l) => {
+      if (l.programType !== "REGULAR") {
+        if (!scpGroupsMap.has(l.programType)) scpGroupsMap.set(l.programType, []);
+        scpGroupsMap.get(l.programType)!.push(l);
+      }
+    });
+
+    const getProgramTitle = (pt: string) => {
+      const label = SCP_LABELS[pt];
+      const acronym = SCP_SHORT_LABELS[pt as keyof typeof SCP_SHORT_LABELS];
+      if (label && acronym) return `${label} (${acronym})`;
+      return label || pt;
+    };
+
+    const scpGroups = Array.from(scpGroupsMap.entries())
+      .sort(([a], [b]) => {
+        const order = {
+          SCIENCE_TECHNOLOGY_AND_ENGINEERING: 1,
+          SPECIAL_PROGRAM_IN_THE_ARTS: 2,
+          SPECIAL_PROGRAM_IN_SPORTS: 3,
+        } as Record<string, number>;
+        return (order[a] || 4) - (order[b] || 4);
+      })
+      .map(([programType, learners]) => ({
+        title: getProgramTitle(programType),
+        learners,
+      }));
+
+    const groups = [
+      ...scpGroups,
+      { title: "Basic Education Curriculum (BEC)", learners: becLearners },
+    ].filter((g) => g.learners.length > 0);
+
+    const items: VirtualLeftPaneItem[] = [];
+    for (const group of groups) {
+      items.push({ type: "header", id: `header-${group.title}`, title: group.title });
+      for (const l of group.learners) {
+        items.push({ type: "learner", id: l.applicationId, learner: l });
+      }
+    }
+    return items;
+  }, [filteredAndSortedPool]);
+
+  const leftPaneScrollRef = useRef<HTMLDivElement>(null);
+
+  const leftPaneVirtualizer = useVirtualizer({
+    count: flatLeftPaneItems.length,
+    getScrollElement: () => leftPaneScrollRef.current,
+    estimateSize: (index) => (flatLeftPaneItems[index]?.type === "header" ? 44 : 84),
+    overscan: 10,
+  });
+
+  const leftVirtualItems = leftPaneVirtualizer.getVirtualItems();
+  const leftTotalSize = leftPaneVirtualizer.getTotalSize();
+  const leftPaddingTop = leftVirtualItems.length > 0 ? leftVirtualItems[0].start : 0;
+  const leftPaddingBottom =
+    leftVirtualItems.length > 0
+      ? leftTotalSize - leftVirtualItems[leftVirtualItems.length - 1].end
+      : 0;
+
+  const findDraftLearner = useCallback(
+    (applicationId: number) => {
+      if (!draftPlacement) return null;
+      for (const roster of draftPlacement.rosters) {
+        const learner = roster.learners.find(
+          (item) => item.applicationId === applicationId,
+        );
+        if (learner) return learner;
+      }
+      return null;
+    },
+    [draftPlacement],
+  );
+
+  const displayedRosters = useMemo(() => {
+    return currentGradeSections.map((section) => {
+      if (draftPlacement) {
+        const existingRoster = draftPlacement.rosters.find(
+          (r) => r.section.id === section.id,
+        );
+        if (existingRoster) {
+          return {
+            ...existingRoster,
+            section,
+          };
+        }
+        return buildRoster(section, []);
+      }
+      return {
+        section,
+        learners: [],
+        genderCounts: {
+          boys: section.draftCount ? (section.draftBoys ?? section.boys) : section.boys,
+          girls: section.draftCount ? (section.draftGirls ?? section.girls) : section.girls,
+        },
+        totalCount: section.draftCount ? section.draftCount : section.currentCount,
+        newCount: 0,
+        isOverCapacity: (section.draftCount || section.currentCount) > section.maxCapacity,
+      };
+    });
+  }, [currentGradeSections, draftPlacement]);
+
+  const draftSectionInfoByApplicationId = useMemo(() => {
+    return new Map<number, { sectionId: number; sectionName: string }>(
+      draftPlacement?.rosters.flatMap((roster) =>
+        roster.learners.map((learner) => [
+          learner.applicationId,
+          { sectionId: roster.section.id, sectionName: roster.section.name },
+        ] as const),
+      ) ?? [],
+    );
+  }, [draftPlacement]);
+
+  const selectedDraftLearner = useMemo(() => {
+    return draftMoveAction
+      ? findDraftLearner(draftMoveAction.learnerApplicationId)
+      : null;
+  }, [draftMoveAction, findDraftLearner]);
+
+  const compatibleMoveSections = useMemo(() => {
+    if (!selectedDraftLearner || !draftPlacement) return [];
+    return (
+      draftPlacement.rosters.filter(
+        (roster) =>
+          roster.section.id !== selectedDraftLearner.sectionId &&
+          getAllowedSectionProgramsForPlacement(selectedDraftLearner).includes(
+            roster.section.programType,
+          ),
+      ) ?? []
+    );
+  }, [selectedDraftLearner, draftPlacement]);
+
+  const normalMoveSourceSection = useMemo(() => {
+    return normalMoveAction
+      ? (currentGradeSections.find((s) => s.id === normalMoveAction.fromSectionId) ?? null)
+      : null;
+  }, [normalMoveAction, currentGradeSections]);
+
+  const normalMoveDestinationSections = useMemo(() => {
+    return normalMoveAction && normalMoveSourceSection
+      ? currentGradeSections.filter(
+          (s) =>
+            s.id !== normalMoveAction.fromSectionId &&
+            s.programType === normalMoveSourceSection.programType,
+        )
+      : [];
+  }, [normalMoveAction, normalMoveSourceSection, currentGradeSections]);
+
+  const groupedCompatibleSwapLearners = useMemo(() => {
+    if (!selectedDraftLearner || !draftPlacement) return [];
+    return (
+      draftPlacement.rosters
+        .filter((roster) =>
+          getAllowedSectionProgramsForPlacement(selectedDraftLearner).includes(
+            roster.section.programType,
+          ),
+        )
+        .map((roster) => ({
+          sectionName: roster.section.name,
+          programType: roster.section.programType,
+          learners: roster.learners
+            .filter(
+              (learner) =>
+                learner.applicationId !== selectedDraftLearner.applicationId,
+            )
+            .sort((a, b) => {
+              const nameA = `${a.lastName}, ${a.firstName}`;
+              const nameB = `${b.lastName}, ${b.firstName}`;
+              return nameA.localeCompare(nameB);
+            }),
+        }))
+        .filter((group) => group.learners.length > 0)
+        .sort((a, b) => a.sectionName.localeCompare(b.sectionName)) ?? []
+    );
+  }, [selectedDraftLearner, draftPlacement]);
+
   const assignLearners = async () => {
-    if (!targetSectionId || selectedAppIds.length === 0) return;
+    if (!targetSectionId || selectedAppIds.size === 0) return;
 
     const assignedSectionId = targetSectionId;
     setProcessing(true);
     try {
       await api.post("/sectioning/assign-bulk", {
         sectionId: assignedSectionId,
-        applicationIds: selectedAppIds,
+        applicationIds: Array.from(selectedAppIds),
       });
 
       const sectionName = currentGradeSections.find(
@@ -1549,9 +1856,9 @@ export function SectioningWorkspace() {
       )?.name;
       sileo.success({
         title: "Assignment Successful",
-        description: `Assigned ${selectedAppIds.length} learners to ${sectionName}.`,
+        description: `Assigned ${selectedAppIds.size} learners to ${sectionName}.`,
       });
-      setSelectedAppIds([]);
+      setSelectedAppIds(new Set());
       setTargetSectionId(null);
       await Promise.all([
         queryClient.invalidateQueries({
@@ -1578,50 +1885,50 @@ export function SectioningWorkspace() {
     }
   };
 
-  const assignSelectedToDraftSection = (sectionId: number) => {
-    if (!draftPlacement || selectedAppIds.length === 0) return;
+  const assignSelectedToDraftSection = useCallback((sectionId: number) => {
+    if (!draftPlacement || selectedAppIds.size === 0) return;
 
     const s = draftPlacement.rosters.find((r) => r.section.id === sectionId)?.section;
     if (!s) return;
 
-    setDraftPlacement((current) => {
-      if (!current) return current;
+    startTransition(() => {
+      setDraftPlacement((current) => {
+        if (!current) return current;
 
-      const movingLearners = current.unplacedLearners.filter((l) =>
-        selectedAppIds.includes(l.applicationId)
-      );
-      const remainingUnplaced = current.unplacedLearners.filter(
-        (l) => !selectedAppIds.includes(l.applicationId)
-      );
+        const movingLearners = current.unplacedLearners.filter((l) =>
+          selectedAppIds.has(l.applicationId)
+        );
+        const remainingUnplaced = current.unplacedLearners.filter(
+          (l) => !selectedAppIds.has(l.applicationId)
+        );
 
-      const rosters = current.rosters.map((roster) => {
-        if (roster.section.id !== sectionId) return roster;
+        const rosters = current.rosters.map((roster) => {
+          if (roster.section.id !== sectionId) return roster;
 
-        const newLearners: DraftLearnerPlacement[] = [
-          ...roster.learners,
-          ...movingLearners.map((l) => ({
-            ...l,
-            sectionId,
-            isOverridden: true,
-            isNew: true,
-          })),
-        ];
+          const newLearners: DraftLearnerPlacement[] = [
+            ...roster.learners,
+            ...movingLearners.map((l) => ({
+              ...l,
+              sectionId,
+              isOverridden: true,
+              isNew: true,
+            })),
+          ];
 
-        return buildRoster(roster.section, newLearners);
+          return buildRoster(roster.section, newLearners);
+        });
+
+        return {
+          ...current,
+          unplacedLearners: remainingUnplaced,
+          rosters,
+        };
       });
 
-      return {
-        ...current,
-        unplacedLearners: remainingUnplaced,
-        rosters,
-      };
+      setSelectedAppIds(new Set());
+      setTargetSectionId(null);
     });
-
-    // Capacity warning removed as requested.
-
-    setSelectedAppIds([]);
-    setTargetSectionId(null);
-  };
+  }, [draftPlacement, selectedAppIds, startTransition]);
 
   useEffect(() => {
     if (
@@ -1662,13 +1969,13 @@ export function SectioningWorkspace() {
 
       setDraftPlacement(draft);
       setExpandedSectionIds(new Set(populatedSectionIds));
-      setSelectedAppIds([]);
+      setSelectedAppIds(new Set());
       setTargetSectionId(null);
       setAllowCapacityOverride(false);
     }
   }, [currentGradePool, currentGradeSections, draftPlacement, activeGradeLevelId, poolInitialLoading, sectionsInitialLoading, setDraftPlacement, ayId]);
 
-  const generateDraftPlacement = async () => {
+  const generateDraftPlacement = useCallback(async () => {
     if (!activeGradeLevelId || autoAssignPhase !== "idle" || processing) return;
 
     justCommittedRef.current = false;
@@ -1683,102 +1990,114 @@ export function SectioningWorkspace() {
       );
       const previousRosters = draftPlacement?.rosters;
 
-      const loadingTimer = setTimeout(() => {
-        try {
-          const newDraft = createDraftPlacement(
-            Number(activeGradeLevelId),
-            fullPool,
-            currentGradeSections,
+      let newDraft: DraftPlacement | null = null;
+
+      // Option A (Preferred): Backend server endpoint
+      try {
+        const backendRes = await api.post<{ success?: boolean; draft?: DraftPlacement } & Partial<DraftPlacement>>(
+          "/sectioning/generate-draft",
+          {
+            gradeLevelId: Number(activeGradeLevelId),
+            sections: currentGradeSections.map((s) => ({
+              id: s.id,
+              name: s.name,
+              maxCapacity: s.maxCapacity,
+              programType: s.programType,
+            })),
             enableHomogeneousSections,
             homogeneousSectionCount,
             heterogeneousRoundRobin,
             topBecHeterogeneousRoundRobin,
-            previousRosters,
-            ayId ?? undefined,
-          );
-
-          setDraftPlacement(newDraft);
-          const populatedSectionIds = newDraft.rosters
-            .filter((roster) => roster.learners.length > 0)
-            .map((roster) => roster.section.id);
-          setExpandedSectionIds(new Set(populatedSectionIds));
-
-          setSelectedAppIds([]);
-          setTargetSectionId(null);
-          setAllowCapacityOverride(false);
-          setAutoAssignPhase("resolving");
-
-          const resolutionTimer = setTimeout(() => {
-            setAutoAssignPhase("idle");
-            sileo.success({
-              title: "Draft sections generated successfully.",
-              description: "Please review the temporary rosters.",
-            });
-          }, prefersReducedMotion ? 0 : 600);
-          autoAssignTimers.current.push(resolutionTimer);
-        } catch {
-          setAutoAssignPhase("idle");
-          sileo.error({
-            title: "Auto assignment failed",
-            description: "Could not generate temporary sections. Please try again.",
-          });
+            academicYearId: ayId ?? undefined,
+          },
+        );
+        const candidateDraft = backendRes.data?.draft ?? (backendRes.data?.rosters ? (backendRes.data as unknown as DraftPlacement) : null);
+        if (candidateDraft && Array.isArray(candidateDraft.rosters)) {
+          newDraft = candidateDraft;
         }
-      }, prefersReducedMotion ? 0 : 300);
-      autoAssignTimers.current.push(loadingTimer);
-    } catch {
+      } catch (backendErr) {
+        console.warn("Backend draft generation endpoint unavailable, falling back to Web Worker:", backendErr);
+      }
+
+      // Option B: Web Worker offloading (if backend unavailable or offline)
+      if (!newDraft) {
+        newDraft = await runSectioningWithWorker({
+          gradeLevelId: Number(activeGradeLevelId),
+          learners: fullPool,
+          sections: currentGradeSections,
+          enableHomogeneousSections,
+          homogeneousSectionCount,
+          heterogeneousRoundRobin,
+          topBecHeterogeneousRoundRobin,
+          previousRosters,
+          academicYearId: ayId ?? undefined,
+        });
+      }
+
+      setDraftPlacement(newDraft);
+      const populatedSectionIds = newDraft.rosters
+        .filter((roster) => roster.learners.length > 0)
+        .map((roster) => roster.section.id);
+      setExpandedSectionIds(new Set(populatedSectionIds));
+
+      setSelectedAppIds(new Set());
+      setTargetSectionId(null);
+      setAllowCapacityOverride(false);
+      setAutoAssignPhase("resolving");
+
+      const resolutionTimer = setTimeout(() => {
+        setAutoAssignPhase("idle");
+        sileo.success({
+          title: "Draft sections generated successfully.",
+          description: "Please review the temporary rosters.",
+        });
+      }, prefersReducedMotion ? 0 : 600);
+      autoAssignTimers.current.push(resolutionTimer);
+    } catch (err) {
+      console.error("Auto assignment failed", err);
       setAutoAssignPhase("idle");
       sileo.error({
         title: "Auto assignment failed",
-        description: "Failed to fetch learners for sectioning. Please try again.",
+        description: "Could not generate temporary sections. Please try again.",
       });
     }
-  };
+  }, [
+    activeGradeLevelId,
+    autoAssignPhase,
+    processing,
+    draftPlacement?.rosters,
+    currentGradeSections,
+    enableHomogeneousSections,
+    homogeneousSectionCount,
+    heterogeneousRoundRobin,
+    topBecHeterogeneousRoundRobin,
+    ayId,
+    prefersReducedMotion,
+  ]);
 
-
-
-  const toggleExpandedSection = (sectionId: number) => {
-    setExpandedSectionIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(sectionId)) next.delete(sectionId);
-      else next.add(sectionId);
-      return next;
-    });
-  };
-
-  const findDraftLearner = (applicationId: number) => {
-    if (!draftPlacement) return null;
-    for (const roster of draftPlacement.rosters) {
-      const learner = roster.learners.find(
-        (item) => item.applicationId === applicationId,
-      );
-      if (learner) return learner;
-    }
-    return null;
-  };
-
-  const openMoveDialog = (
+  const openMoveDialog = useCallback((
     learnerApplicationId: number,
     fromSectionId: number,
   ) => {
     setDraftMoveAction({ type: "MOVE", learnerApplicationId, fromSectionId });
     setMoveDestinationSectionId("");
-  };
+  }, []);
 
-  const openNormalMoveDialog = (
+  const openNormalMoveDialog = useCallback((
     learnerApplicationId: number,
     fromSectionId: number,
   ) => {
     setNormalMoveAction({ learnerApplicationId, fromSectionId });
     setMoveDestinationSectionId("");
-  };
+  }, []);
 
-  const openSwapDialog = (
+  const openSwapDialog = useCallback((
     learnerApplicationId: number,
     fromSectionId: number,
   ) => {
     setDraftMoveAction({ type: "SWAP", learnerApplicationId, fromSectionId });
     setSwapApplicationId("");
-  };
+  }, []);
 
   const executeMove = () => {
     if (!draftPlacement || !draftMoveAction || draftMoveAction.type !== "MOVE")
@@ -1883,12 +2202,12 @@ export function SectioningWorkspace() {
     }
   };
 
-  const openRemoveDialog = (
+  const openRemoveDialog = useCallback((
     learnerApplicationId: number,
     fromSectionId: number,
   ) => {
     setNormalRemoveAction({ learnerApplicationId, fromSectionId });
-  };
+  }, []);
 
   const executeNormalRemove = async () => {
     if (!normalRemoveAction) return;
@@ -1928,12 +2247,12 @@ export function SectioningWorkspace() {
     }
   };
 
-  const openForfeitDialog = (
+  const openForfeitDialog = useCallback((
     learnerApplicationId: number,
     fromSectionId: number,
   ) => {
     setForfeitAction({ learnerApplicationId, fromSectionId });
-  };
+  }, []);
 
   const executeForfeit = async () => {
     if (!forfeitAction) return;
@@ -2233,7 +2552,7 @@ export function SectioningWorkspace() {
       setMoveDestinationSectionId("");
       setSwapApplicationId("");
       setAllowCapacityOverride(false);
-      setSelectedAppIds([]);
+      setSelectedAppIds(new Set());
       setTargetSectionId(null);
       await Promise.all([
         queryClient.invalidateQueries({
@@ -2310,6 +2629,42 @@ export function SectioningWorkspace() {
     }
   };
 
+  const toggleRightPaneFullscreen = useCallback(() => {
+    setIsRightPaneFullscreen((current) => !current);
+  }, []);
+
+  const handleTriggerReRun = useCallback(() => {
+    if (sections.some((s) => s.currentCount > 0)) {
+      setReRunWarningOpen(true);
+    } else {
+      generateDraftPlacement();
+    }
+  }, [sections, generateDraftPlacement]);
+
+  const handleDiscardDraft = useCallback(() => {
+    startTransition(() => {
+      setDraftPlacement(null);
+      setSelectedAppIds(new Set());
+      setTargetSectionId(null);
+    });
+    sileo.info({
+      title: "Draft discarded",
+      description: "Returned to official class sections.",
+    });
+  }, [startTransition, setDraftPlacement]);
+
+  const renderInlineSectionTable = useCallback(
+    (sectionId: number) => (
+      <InlineSectionTable
+        sectionId={sectionId}
+        onMoveLearner={!isHistoricalReadOnly ? openNormalMoveDialog : undefined}
+        onRemoveLearner={!isHistoricalReadOnly ? openRemoveDialog : undefined}
+        onForfeitSlot={!isHistoricalReadOnly ? openForfeitDialog : undefined}
+      />
+    ),
+    [isHistoricalReadOnly, openNormalMoveDialog, openRemoveDialog, openForfeitDialog],
+  );
+
   if (masterlistModalSectionId !== null) {
     return (
       <ViewMasterlist
@@ -2346,83 +2701,6 @@ export function SectioningWorkspace() {
       </Card>
     );
   }
-  const displayedRosters = currentGradeSections.map((section) => {
-    if (draftPlacement) {
-      const existingRoster = draftPlacement.rosters.find(
-        (r) => r.section.id === section.id
-      );
-      if (existingRoster) {
-        return {
-          ...existingRoster,
-          section,
-        };
-      }
-      return buildRoster(section, []);
-    }
-    return {
-      section,
-      learners: [],
-      genderCounts: {
-        boys: section.draftCount ? (section.draftBoys ?? section.boys) : section.boys,
-        girls: section.draftCount ? (section.draftGirls ?? section.girls) : section.girls,
-      },
-      totalCount: section.draftCount ? section.draftCount : section.currentCount,
-      newCount: 0,
-      isOverCapacity: (section.draftCount || section.currentCount) > section.maxCapacity,
-    };
-  });
-
-  const selectedDraftLearner = draftMoveAction
-    ? findDraftLearner(draftMoveAction.learnerApplicationId)
-    : null;
-  const compatibleMoveSections = selectedDraftLearner
-    ? (draftPlacement?.rosters.filter(
-      (roster) =>
-        roster.section.id !== selectedDraftLearner.sectionId &&
-        getAllowedSectionProgramsForPlacement(selectedDraftLearner).includes(
-          roster.section.programType,
-        ),
-    ) ?? [])
-    : [];
-  const normalMoveSourceSection = normalMoveAction
-    ? currentGradeSections.find(s => s.id === normalMoveAction.fromSectionId)
-    : null;
-
-  const normalMoveDestinationSections = normalMoveAction && normalMoveSourceSection
-    ? currentGradeSections.filter((s) => s.id !== normalMoveAction.fromSectionId && s.programType === normalMoveSourceSection.programType)
-    : [];
-  const groupedCompatibleSwapLearners = selectedDraftLearner
-    ? (draftPlacement?.rosters
-      .filter((roster) =>
-        getAllowedSectionProgramsForPlacement(selectedDraftLearner).includes(
-          roster.section.programType,
-        )
-      )
-      .map((roster) => ({
-        sectionName: roster.section.name,
-        programType: roster.section.programType,
-        learners: roster.learners
-          .filter(
-            (learner) =>
-              learner.applicationId !== selectedDraftLearner.applicationId
-          )
-          .sort((a, b) => {
-            const nameA = `${a.lastName}, ${a.firstName}`;
-            const nameB = `${b.lastName}, ${b.firstName}`;
-            return nameA.localeCompare(nameB);
-          }),
-      }))
-      .filter((group) => group.learners.length > 0)
-      .sort((a, b) => a.sectionName.localeCompare(b.sectionName)) ?? [])
-    : [];
-  const draftSectionInfoByApplicationId = new Map<number, { sectionId: number; sectionName: string }>(
-    draftPlacement?.rosters.flatMap((roster) =>
-      roster.learners.map((learner) => [
-        learner.applicationId,
-        { sectionId: roster.section.id, sectionName: roster.section.name },
-      ] as const),
-    ) ?? [],
-  );
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] w-full overflow-hidden">
@@ -2430,55 +2708,63 @@ export function SectioningWorkspace() {
         value={activeGradeLevelId}
         onValueChange={(val) => {
           if (autoAssignPhase !== "idle" || commitProcessing || Boolean(finalizingProgress)) return;
-          if (isDraftActive) {
-            setActiveGradeLevelId(val);
-            return;
-          }
+          startTransition(() => {
+            if (isDraftActive) {
+              setActiveGradeLevelId(val);
+              return;
+            }
 
-          if (selectedAppIds.length === 0) {
-            setActiveGradeLevelId(val);
-          }
+            if (selectedAppIds.size === 0) {
+              setActiveGradeLevelId(val);
+            }
+          });
         }}
       >
-        <TabsList className="w-full flex flex-wrap sm:flex-nowrap h-auto gap-1 mb-4 bg-muted border border-border rounded-xl relative shadow-sm">
-          {gradeLevels.map((g) => (
-            <TabsTrigger
-              key={g.id}
-              value={String(g.id)}
-              disabled={
-                commitProcessing ||
-                Boolean(finalizingProgress) ||
-                (selectedAppIds.length > 0 &&
-                  !isDraftActive &&
-                  activeGradeLevelId !== String(g.id))
-              }
-              className={cn(
-                "flex-1 min-w-25 font-bold transition-all relative z-10 data-[state=active]:bg-transparent data-[state=active]:shadow-none rounded-md",
-                (commitProcessing ||
-                  Boolean(finalizingProgress) ||
-                  (selectedAppIds.length > 0 &&
-                    !isDraftActive &&
-                    activeGradeLevelId !== String(g.id))) &&
-                  "opacity-40 cursor-not-allowed bg-muted/20",
-              )}>
-              {activeGradeLevelId === String(g.id) && (
-                <motion.div
-                  layoutId="enrollment-grade-pill"
-                  className="absolute inset-0 bg-primary shadow-sm rounded-md"
-                  transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
-                />
-              )}
-              <span
+        <TabsList className="w-full flex flex-wrap sm:flex-nowrap h-auto gap-1 mb-4 p-1 bg-muted border border-border rounded-xl relative shadow-sm">
+          {gradeLevels.map((g) => {
+            const isActive = activeGradeLevelId === String(g.id);
+            const isDisabled =
+              commitProcessing ||
+              Boolean(finalizingProgress) ||
+              (selectedAppIds.size > 0 &&
+                !isDraftActive &&
+                !isActive);
+
+            return (
+              <TabsTrigger
+                key={g.id}
+                value={String(g.id)}
+                disabled={isDisabled}
                 className={cn(
-                  "relative z-20 text-base uppercase",
-                  activeGradeLevelId === String(g.id)
-                    ? "text-primary-foreground"
-                    : "text-foreground",
+                  "flex-1 min-w-32 font-bold transition-all relative z-10 rounded-lg uppercase text-base data-[state=active]:shadow-sm",
+                  getGradeLevelActiveTabStyles(g.name),
+                  isActive
+                    ? getGradeLevelSolidBgStyles(g.name)
+                    : "data-[state=inactive]:bg-transparent text-foreground",
+                  isDisabled && "opacity-40 cursor-not-allowed bg-muted/20",
                 )}>
-                {g.name.replace(/grade\s*/i, "Grade ")}
-              </span>
-            </TabsTrigger>
-          ))}
+                {isActive && (
+                  <motion.div
+                    layoutId="enrollment-grade-pill"
+                    className={cn(
+                      "absolute inset-0 shadow-sm rounded-lg",
+                      getGradeLevelSolidBgStyles(g.name),
+                    )}
+                    transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
+                  />
+                )}
+                <span
+                  className={cn(
+                    "relative z-20 uppercase text-base font-bold transition-colors",
+                    isActive
+                      ? "text-white font-extrabold"
+                      : "text-foreground",
+                  )}>
+                  {g.name.replace(/grade\s*/i, "Grade ")}
+                </span>
+              </TabsTrigger>
+            );
+          })}
         </TabsList>
       </Tabs>
 
@@ -2536,7 +2822,7 @@ export function SectioningWorkspace() {
               className={cn(
                 "flex flex-col border-r border-border bg-card text-card-foreground transition-[width,opacity] duration-300 ease-linear",
                 autoAssignPhase !== "idle" && "pointer-events-none opacity-55",
-                isDesktop && "absolute inset-y-0 left-0 overflow-y-auto sm:flex-none",
+                isDesktop && "absolute inset-y-0 left-0 sm:flex-none",
                 isTablet && "w-full min-h-[440px] max-h-[520px] overflow-y-auto border-b border-r-0 shrink-0",
                 isMobile && (mobileSectioningView === "queue" ? "w-full h-full overflow-y-auto flex-1" : "hidden"),
               )}
@@ -2568,88 +2854,21 @@ export function SectioningWorkspace() {
                         : "Unassigned Walk-ins, Transferees, and Late Enrollees"}
                     </CardDescription>
                   </div>
-                  {selectedAppIds.length > 0 && (
+                  {selectedAppIds.size > 0 && (
                     <Badge
                       variant="outline"
                       className="font-bold bg-background border-border">
-                      {selectedAppIds.length} Selected
+                      {selectedAppIds.size} Selected
                     </Badge>
                   )}
                 </div>
-                <div className="flex gap-2 mt-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      placeholder="Search LRN, first name, last name..."
-                      className="w-full h-12 pl-10 pr-12 bg-white border-gray-300 shadow-sm transition-shadow focus-visible:ring-primary uppercase font-bold"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                    <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
-                      <PopoverTrigger asChild>
-                        <button className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center h-10 w-10 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-md transition-colors">
-                          <SlidersHorizontal className="h-5 w-5" />
-                          {activeFilterCount > 0 && (
-                            <span className="absolute top-2 right-2 flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-red-500 rounded-full shadow-sm">
-                              {activeFilterCount}
-                            </span>
-                          )}
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent align="end" className="w-[320px] p-0 shadow-xl border-border bg-card">
-                        <div className="p-4 border-b">
-                          <h4 className="text-lg font-bold">Filter Learners</h4>
-                        </div>
-                        <div className="p-4 space-y-4 flex flex-col">
-                          <div className="space-y-1.5">
-                            <Label className="text-sm text-muted-foreground uppercase">Program Type</Label>
-                            <Select
-                              isFilter
-                              value={localFilterProgram}
-                              onValueChange={setLocalFilterProgram}
-                            >
-                              <SelectTrigger className="h-10 w-full leading-tight font-bold transition-colors">
-                                <SelectValue placeholder="All Programs" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="all" className="leading-tight font-bold">All Programs</SelectItem>
-                                <SelectItem value="REGULAR" className="leading-tight font-bold">Basic Education Curriculum</SelectItem>
-                                <SelectItem value="SCIENCE_TECHNOLOGY_AND_ENGINEERING" className="leading-tight font-bold">SCIENCE, TECHNOLOGY, AND ENGINEERING</SelectItem>
-                                <SelectItem value="SPECIAL_PROGRAM_IN_THE_ARTS" className="leading-tight font-bold">Special Program in the Arts</SelectItem>
-                                <SelectItem value="SPECIAL_PROGRAM_IN_SPORTS" className="leading-tight font-bold">Special Program in Sports</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
-                        <div className="p-3 border-t bg-gray-50 flex items-center justify-end gap-2 rounded-b-md">
-                          <Button
-                            variant="ghost"
-                            onClick={() => {
-                              setLocalFilterProgram("all");
-                              setFilterProgram("all");
-                              setIsFilterPopoverOpen(false);
-                            }}
-                            className="font-bold text-gray-600 hover:text-gray-900"
-                          >
-                            Clear All
-                          </Button>
-                          <Button
-                            onClick={() => {
-                              setFilterProgram(localFilterProgram);
-                              setIsFilterPopoverOpen(false);
-                            }}
-                            className="font-bold bg-primary hover:bg-primary/90 text-white"
-                          >
-                            Apply Filters
-                          </Button>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
+                <WorkspaceSearchInput
+                  onSearchChange={setActiveSearchQuery}
+                  filterProgram={filterProgram}
+                  onFilterProgramChange={setFilterProgram}
+                />
               </CardHeader>
-              <div className="p-0 relative flex-1 overflow-x-auto">
+              <div ref={leftPaneScrollRef} className="p-0 relative flex-1 overflow-auto max-h-[calc(100vh-270px)]">
                 <table className="w-full text-left border-collapse whitespace-nowrap">
                   <thead className="sticky top-0 bg-muted z-20 border-b border-border shadow-sm">
                     <tr className="uppercase h-14">
@@ -2657,7 +2876,7 @@ export function SectioningWorkspace() {
                         <Checkbox
                           className="border-primary/50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
                           checked={
-                            selectedAppIds.length === filteredPool.length &&
+                            selectedAppIds.size === filteredPool.length &&
                             filteredPool.length > 0
                           }
                           disabled={
@@ -2672,7 +2891,7 @@ export function SectioningWorkspace() {
                                 selectedAllowedPrograms?.size > 0
                                   ? Array.from(selectedAllowedPrograms)[0]
                                   : null;
-                              setSelectedAppIds(
+                              handleSelectAll(
                                 filteredPool
                                   .filter(
                                     (l) =>
@@ -2681,7 +2900,9 @@ export function SectioningWorkspace() {
                                   )
                                   .map((l) => l.applicationId)
                               );
-                            } else setSelectedAppIds([]);
+                            } else {
+                              handleClearSelection();
+                            }
                           }}
                         />
                       </th>
@@ -2721,189 +2942,61 @@ export function SectioningWorkspace() {
                         </td>
                       </tr>
                     ) : (
-                      (() => {
-                        const becLearners = filteredAndSortedPool.filter(l => l.programType === "REGULAR");
-
-                        const scpGroupsMap = new Map<string, typeof filteredAndSortedPool>();
-                        filteredAndSortedPool.forEach(l => {
-                          if (l.programType !== "REGULAR") {
-                            if (!scpGroupsMap.has(l.programType)) scpGroupsMap.set(l.programType, []);
-                            scpGroupsMap.get(l.programType)!.push(l);
-                          }
-                        });
-
-                        const getProgramTitle = (pt: string) => {
-                          const label = SCP_LABELS[pt];
-                          const acronym = SCP_SHORT_LABELS[pt as keyof typeof SCP_SHORT_LABELS];
-                          if (label && acronym) return `${label} (${acronym})`;
-                          return label || pt;
-                        };
-
-                        const scpGroups = Array.from(scpGroupsMap.entries())
-                          .sort(([a], [b]) => {
-                            const order = { SCIENCE_TECHNOLOGY_AND_ENGINEERING: 1, SPECIAL_PROGRAM_IN_THE_ARTS: 2, SPECIAL_PROGRAM_IN_SPORTS: 3 } as Record<string, number>;
-                            return (order[a] || 4) - (order[b] || 4);
-                          })
-                          .map(([programType, learners]) => ({
-                            title: getProgramTitle(programType),
-                            learners
-                          }));
-
-                        const groups = [
-                          ...scpGroups,
-                          { title: "Basic Education Curriculum (BEC)", learners: becLearners }
-                        ].filter(g => g.learners.length > 0);
-
-                        return groups.flatMap((group) => {
-                          const headerRow = (
-                            <tr key={`header-${group.title}`}>
-                              <td colSpan={3} className="sticky top-14 z-10 py-2.5 px-4 bg-muted/95 backdrop-blur-sm text-center font-bold text-foreground uppercase tracking-wider border-y shadow-sm">
-                                {group.title}
-                              </td>
-                            </tr>
-                          );
-
-                          const learnerRows = group.learners.map((l) => {
-                            const isSelected = selectedAppIds.includes(
-                              l.applicationId,
-                            );
-                            const draftInfo = draftSectionInfoByApplicationId.get(l.applicationId);
-                            const isDraftPlaced = Boolean(draftPlacement && draftInfo);
-                            const draftSectionName = draftInfo?.sectionName;
-                            const draftTargetSectionId = draftInfo?.sectionId;
-
-                            const isDisabled =
-                              isDraftActive ||
-                              autoAssignPhase !== "idle" ||
-                              (selectedAllowedPrograms?.size > 0 &&
-                                !selectedAllowedPrograms?.has(l.programType));
-
+                      <>
+                        {leftPaddingTop > 0 && (
+                          <tr>
+                            <td colSpan={3} style={{ height: `${leftPaddingTop}px` }} />
+                          </tr>
+                        )}
+                        {leftVirtualItems.map((virtualRow) => {
+                          const item = flatLeftPaneItems[virtualRow.index];
+                          if (!item) return null;
+                          if (item.type === "header") {
                             return (
-                              <tr
-                                key={l.applicationId}
-                                onClick={() => {
-                                  if (isDraftPlaced && draftTargetSectionId) {
-                                    handleFocusDraftLearner(l.applicationId, draftTargetSectionId);
-                                    return;
-                                  }
-                                  if (isDisabled) return;
-                                  setSelectedAppIds((prev) =>
-                                    prev.includes(l.applicationId)
-                                      ? prev.filter((id) => id !== l.applicationId)
-                                      : [...prev, l.applicationId],
-                                  );
-                                }}
-                                title={
-                                  isDraftPlaced
-                                    ? `Assigned to ${draftSectionName} (Draft). Click to view in Temporary Class Lists.`
-                                    : undefined
-                                }
-                                className={cn(
-                                  "group transition-[opacity,transform,background-color] duration-300",
-                                  isDraftPlaced
-                                    ? "opacity-80 hover:opacity-100 bg-muted/20 cursor-pointer"
-                                    : isDisabled
-                                    ? "cursor-not-allowed"
-                                    : "cursor-pointer",
-                                  autoAssignPhase === "resolving" &&
-                                    isDraftPlaced &&
-                                    "scale-[0.99] opacity-80",
-                                  isSelected && "bg-primary/5 hover:bg-primary/10",
-                                )}>
+                              <tr key={item.id} data-index={virtualRow.index}>
                                 <td
-                                  className="p-4"
-                                  onClick={(e) => e.stopPropagation()}>
-                                  {isDraftPlaced ? (
-                                    <span
-                                      className="inline-flex cursor-not-allowed"
-                                      title={`Assigned to draft section: ${draftSectionName}`}>
-                                      <Checkbox
-                                        checked={false}
-                                        disabled={true}
-                                        aria-label={`Assigned to draft section ${draftSectionName}`}
-                                      />
-                                    </span>
-                                  ) : (
-                                    <Checkbox
-                                      checked={isSelected}
-                                      disabled={isDisabled}
-                                      onCheckedChange={(checked) => {
-                                        if (isDisabled) return;
-                                        setSelectedAppIds((prev) =>
-                                          checked
-                                            ? [...prev, l.applicationId]
-                                            : prev.filter(
-                                              (id) => id !== l.applicationId,
-                                            ),
-                                        );
-                                      }}
-                                    />
-                                  )}
-                                </td>
-                                <td className="p-4">
-                                  <div className="flex items-center gap-4">
-                                    <UserPhoto
-                                      photo={l.studentPhoto}
-                                      containerClassName="w-12 h-12 rounded-full shadow-sm border shrink-0 border-2 border-primary"
-                                      className="w-full h-full object-cover"
-                                      alt={`${l.firstName} ${l.lastName}`}
-                                    />
-                                    <div className="flex flex-col">
-                                      <span className="font-extrabold text-foreground uppercase flex items-center">
-                                        {l.lastName}, {l.firstName}{" "}
-                                        {l.middleName?.charAt(0)
-                                          ? `${l.middleName.charAt(0)}.`
-                                          : ""}
-                                        {l.duplicateFlag && (
-                                          <Badge
-                                            variant="destructive"
-                                            className="text-sm px-1 py-0 h-4">
-                                            DUPLICATE DETECTED - RESOLVE OVER COUNTER
-                                          </Badge>
-                                        )}
-                                      </span>
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="text-sm font-bold uppercase text-foreground">
-                                          {l.lrn || "NO LRN"}
-                                        </span>
-                                        <Badge
-                                          className={cn(
-                                            "px-2",
-                                            l.sex === "MALE" ? "bg-blue-600/10 text-blue-600 border-blue-600 border-2" : "bg-pink-600/10 text-pink-600 border-pink-600 border-2"
-                                          )}>
-                                          {l.sex === "MALE" ? "M" : "F"}
-                                        </Badge>
-                                        {l.programType === "LATE_ENROLLEE" && (
-                                          <Badge
-                                            variant="outline"
-                                            className="text-sm uppercase font-bold bg-amber-100 text-amber-700 border-amber-500 border-2">
-                                            {SCP_SHORT_LABELS[l.programType] ?? l.programType}
-                                          </Badge>
-                                        )}
-                                      </div>
-                                      {isDraftPlaced && (
-                                        <span className="text-sm font-bold uppercase text-amber-700 dark:text-amber-400 text-left flex items-center gap-1.5">
-                                          <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                                          Section: {draftSectionName} (Draft)
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="p-4 font-bold text-foreground">
-                                  {l.genAve ? (
-                                    l.genAve.toFixed(2)
-                                  ) : (
-                                    <span className="text-foreground">--</span>
-                                  )}
+                                  colSpan={3}
+                                  className="sticky top-14 z-10 py-2.5 px-4 bg-muted/95 backdrop-blur-sm text-center font-bold text-foreground uppercase tracking-wider border-y shadow-sm"
+                                >
+                                  {item.title}
                                 </td>
                               </tr>
                             );
-                          });
+                          }
+                          const l = item.learner;
+                          const isSelected = selectedAppIds.has(l.applicationId);
+                          const draftInfo = draftSectionInfoByApplicationId.get(l.applicationId);
+                          const isDraftPlaced = Boolean(draftPlacement && draftInfo);
+                          const draftSectionName = draftInfo?.sectionName;
+                          const draftTargetSectionId = draftInfo?.sectionId;
 
-                          return [headerRow, ...learnerRows];
-                        });
-                      })()
+                          const isDisabled =
+                            isDraftActive ||
+                            autoAssignPhase !== "idle" ||
+                            (selectedAllowedPrograms?.size > 0 &&
+                              !selectedAllowedPrograms?.has(l.programType));
+
+                          return (
+                            <LearnerReadyRow
+                              key={l.applicationId}
+                              learner={l}
+                              isSelected={isSelected}
+                              isDisabled={isDisabled}
+                              isDraftPlaced={isDraftPlaced}
+                              draftSectionName={draftSectionName}
+                              draftTargetSectionId={draftTargetSectionId}
+                              autoAssignPhase={autoAssignPhase}
+                              onToggleSelect={handleToggleSelect}
+                              onFocusDraftLearner={handleFocusDraftLearner}
+                            />
+                          );
+                        })}
+                        {leftPaddingBottom > 0 && (
+                          <tr>
+                            <td colSpan={3} style={{ height: `${leftPaddingBottom}px` }} />
+                          </tr>
+                        )}
+                      </>
                     )}
                   </tbody>
                 </table>
@@ -2933,550 +3026,48 @@ export function SectioningWorkspace() {
             </div>
 
             {/* RIGHT PANE: AVAILABLE SECTIONS */}
-            <div
-              className={cn(
-                "@container/section-pane flex-1 flex flex-col min-w-0 bg-card text-card-foreground",
-                "transition-[left,box-shadow] duration-300 ease-in-out",
-                isDesktop && "absolute inset-y-0 right-0 overflow-hidden",
-                isRightPaneFullscreen && "z-[60] shadow-2xl",
-                isTablet && "w-full flex-1 overflow-y-auto min-h-[500px]",
-                isMobile && (mobileSectioningView === "sections" ? "w-full h-full overflow-y-auto flex-1" : "hidden"),
-              )}
-              style={
-                isDesktop
-                  ? {
-                    left: isRightPaneFullscreen
-                      ? "0"
-                      : `calc(${panelPercentage}vw + 1px)`,
-                  }
-                  : undefined
-              }>
-              <CardHeader className="border-b border-border bg-muted/20">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 space-y-1">
-                    <CardTitle className="text-lg font-extrabold uppercase flex items-center gap-2 text-foreground">
-                      <LayoutGrid className="h-5 w-5 text-primary" />
-                      {draftPlacement
-                        ? "TEMPORARY CLASS LISTS"
-                        : "Available Sections"}
-                    </CardTitle>
-                    <CardDescription className="text-foreground text-sm">
-                      {draftPlacement
-                        ? "Please review the temporary assignments before creating the official lists"
-                        : `Select section to assign ${selectedAppIds.length || "0"} ${selectedAppIds.length <= 1 ? "learner" : "learners"}.`}
-                    </CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {currentGradePool.length === 0 && !draftPlacement && currentGradeSections.length > 0 && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={isExporting}
-                            className="font-bold text-xs uppercase tracking-normal gap-1.5 h-9"
-                          >
-                            {isExporting ? (
-                              <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                            ) : (
-                              <Download className="h-4 w-4 text-primary" />
-                            )}
-                            Export Grade Level
-                            <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56">
-                          <DropdownMenuItem
-                            onClick={() => handleExportGradeLevel("pdf")}
-                            className="font-bold text-xs cursor-pointer gap-2 py-2 group group-hover:bg-primary group-hover:text-primary-foreground"
-                          >
-                            <FileDown className="h-4 w-4 text-primary group-hover:text-primary-foreground" />
-                            Download Masterlist (PDF)
-                          </DropdownMenuItem>
-
-                          <DropdownMenuItem
-                            onClick={() => handleExportGradeLevel("xlsx")}
-                            className="font-bold text-xs cursor-pointer gap-2 py-2 group group-hover:bg-primary group-hover:text-primary-foreground"
-                          >
-                            <FileSpreadsheet className="h-4 w-4 text-emerald-600 group-hover:text-primary-foreground" />
-                            Download Masterlist (XLSX)
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-
-                    {isDesktop && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        title={
-                          isRightPaneFullscreen
-                            ? "Restore split pane"
-                            : "Expand section list"
-                        }
-                        aria-label={
-                          isRightPaneFullscreen
-                            ? "Restore split pane"
-                            : "Expand section list"
-                        }
-                        aria-pressed={isRightPaneFullscreen}
-                        onClick={() =>
-                          setIsRightPaneFullscreen((current) => !current)
-                        }
-                        className="shrink-0">
-                        {isRightPaneFullscreen ? (
-                          <Minimize2 className="h-5 w-5" />
-                        ) : (
-                          <Maximize2 className="h-5 w-5" />
-                        )}
-                      </Button>
-                    )}
-                </div>
-              </div>
-
-                {currentGradePool.length > 0 && (
-                  <div className="flex flex-col items-center gap-1">
-                    <Button
-                      size="sm"
-                      variant="default"
-                      disabled={
-                        processing ||
-                        autoAssignPhase !== "idle" ||
-                        isHistoricalReadOnly
-                      }
-                      onClick={() => {
-                        if (sections.some(s => s.currentCount > 0)) {
-                          setReRunWarningOpen(true);
-                        } else {
-                          generateDraftPlacement();
-                        }
-                      }}
-                      className="w-full font-bold text-base uppercase tracking-normal gap-2 rounded-md">
-                      {autoAssignPhase !== "idle" && <Loader2 className="h-4 w-4 animate-spin" />}
-                      {autoAssignPhase !== "idle" ? "Running Sectioning Algorithm..." : "RE-RUN SECTIONING ALGORITHM"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={autoAssignPhase !== "idle"}
-                      onClick={() => setAutoAssignConfirmOpen(true)}
-                      className="h-auto px-2 text-sm font-bold text-primary hover:text-primary">
-                      <Info className="h-3.5 w-3.5" />
-                      How does the system place learners?
-                    </Button>
-                  </div>
-                )}
-              </CardHeader>
-              <div className="p-4 space-y-3 relative flex-1 overflow-y-auto">
-                {displayedRosters.length === 0 ? (
-                  <div className="h-full flex items-center justify-center flex-col gap-3 text-foreground">
-                    <Info className="h-8 w-8" />
-                    <span className="font-bold text-base leading-tight">
-                      No sections defined for this grade.
-                    </span>
-                  </div>
-                ) : (
-                  (() => {
-                    const scpRosters = displayedRosters
-                      .filter((r) => r.section.programType !== "REGULAR")
-                      .filter(
-                        (r) =>
-                          draftPlacement ||
-                          selectedAllowedPrograms?.size === 0 ||
-                          selectedAllowedPrograms?.has(r.section.programType)
-                      );
-
-                    const scpRostersByProgram = new Map<string, typeof scpRosters>();
-                    scpRosters.forEach(r => {
-                      if (!scpRostersByProgram.has(r.section.programType)) scpRostersByProgram.set(r.section.programType, []);
-                      scpRostersByProgram.get(r.section.programType)!.push(r);
-                    });
-
-                    const getProgramTitle = (pt: string) => {
-                      const label = SCP_LABELS[pt];
-                      const acronym = SCP_SHORT_LABELS[pt as keyof typeof SCP_SHORT_LABELS];
-                      if (label && acronym) return `${label} (${acronym})`;
-                      return label || pt;
-                    };
-
-                    const scpGroups = Array.from(scpRostersByProgram.entries())
-                      .sort(([a], [b]) => {
-                        const order = { SCIENCE_TECHNOLOGY_AND_ENGINEERING: 1, SPECIAL_PROGRAM_IN_THE_ARTS: 2, SPECIAL_PROGRAM_IN_SPORTS: 3 } as Record<string, number>;
-                        return (order[a] || 4) - (order[b] || 4);
-                      })
-                      .map(([programType, rosters]) => ({
-                        title: getProgramTitle(programType),
-                        rosters: rosters.sort((a, b) => a.section.name.localeCompare(b.section.name))
-                      }));
-
-                    return [
-                      ...scpGroups,
-                      {
-                        title: "Basic Education Curriculum (BEC)",
-                        rosters: displayedRosters
-                          .filter((r) => r.section.programType === "REGULAR")
-                          .filter(
-                            (r) =>
-                              draftPlacement ||
-                              selectedAllowedPrograms?.size === 0 ||
-                              selectedAllowedPrograms?.has(r.section.programType)
-                          )
-                          .sort((a, b) => {
-                            if (selectedAllowedPrograms?.has("REGULAR") || selectedAllowedPrograms?.size === 0) {
-                              if (a.section.isHomogeneous && !b.section.isHomogeneous) return -1;
-                              if (!a.section.isHomogeneous && b.section.isHomogeneous) return 1;
-                            }
-                            return a.section.name.localeCompare(b.section.name);
-                          }),
-                      },
-                    ]
-                      .filter((group) => group.rosters.length > 0)
-                      .map((group, groupIdx) => (
-                        <div
-                          key={group.title}
-                          className={cn("space-y-3", groupIdx > 0 && "mt-6")}>
-                          <h3 className="text-center font-extrabold text-foreground uppercase">
-                            {group.title}
-                          </h3>
-                          {group.rosters.map((roster) => {
-                            const s = roster.section;
-                            const isSelected =
-                              !draftPlacement && targetSectionId === s.id;
-                            const isExpanded = expandedSectionIds.has(s.id);
-                            const isProgramCompatible =
-                              selectedAllowedPrograms?.size === 0 ||
-                              (selectedAllowedPrograms?.size === 1 &&
-                                selectedAllowedPrograms?.has(s.programType));
-
-                            return (
-                              <div
-                                id={`section-card-${s.id}`}
-                                key={s.id}
-                                onClick={() => {
-                                  if (autoAssignPhase !== "idle") return;
-                                  if (draftPlacement) {
-                                    toggleExpandedSection(s.id);
-                                    return;
-                                  }
-
-                                  if (selectedAppIds.length > 0) {
-                                    if (isProgramCompatible) {
-                                      setTargetSectionId(s.id);
-                                    }
-                                  } else {
-                                    if (s.currentCount > 0) {
-                                      setMasterlistModalSectionId(s.id);
-                                    } else if (isProgramCompatible) {
-                                      setTargetSectionId(s.id);
-                                    }
-                                  }
-                                }}
-                                className={cn(
-                                  "group cursor-pointer rounded-xl border p-4 transition-all relative overflow-hidden",
-                                  autoAssignPhase === "loading" && roster.learners.length === 0 && "animate-pulse bg-muted/50",
-                                  autoAssignPhase !== "idle" && "pointer-events-none",
-                                  !isProgramCompatible && "cursor-not-allowed opacity-45",
-                                  isSelected
-                                    ? "bg-primary/5 border-primary shadow-sm"
-                                    : "bg-background hover:bg-muted/50 border-border",
-                                  draftPlacement &&
-                                  isExpanded &&
-                                  "border-primary/50 bg-primary/5",
-                                )}>
-                                <div className="flex items-start justify-between gap-3 mb-3">
-                                  <div>
-                                    <h4
-                                      className={cn(
-                                        "font-extrabold text-xl uppercase transition-colors flex items-center gap-2 flex-wrap",
-                                        isSelected ? "text-primary" : "text-foreground",
-                                      )}>
-                                      {s.name}
-                                      {s.isHomogeneous && s.programType === "REGULAR" && (
-                                        <Badge
-                                          variant="outline"
-                                          className="text-xs font-bold uppercase bg-blue-50 text-blue-700 border-blue-200 shrink-0">
-                                          Top BEC
-                                        </Badge>
-                                      )}
-                                    </h4>
-                                    <span className="text-sm uppercase text-foreground font-bold">
-                                      Adviser: {s.adviser || "No Adviser Assigned"}
-                                    </span>
-                                  </div>
-                                  <div className="flex flex-wrap justify-end gap-2">
-                                    {draftPlacement && roster.isOverCapacity && (
-                                      <Badge
-                                        variant="destructive"
-                                        className="text-sm font-bold uppercase">
-                                        Over Capacity
-                                      </Badge>
-                                    )}
-
-                                  </div>
-                                </div>
-                                <div className="space-y-2">
-                                  <div className="flex items-center justify-between text-sm font-bold">
-                                    <span className="text-foreground uppercase">
-                                      Learner Count
-                                    </span>
-                                    <span className="text-foreground">
-                                      <AnimatedCount from={s.currentCount} to={roster.totalCount} animate={autoAssignPhase === "resolving" && !prefersReducedMotion} /> Learners
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-2 text-sm font-bold uppercase text-foreground">
-                                    <Badge className="bg-blue-600/10 text-blue-600 border-blue-600 border-2 px-2 gap-1 flex items-center">
-                                      M: <AnimatedCount from={s.boys} to={roster.genderCounts.boys} animate={autoAssignPhase === "resolving" && !prefersReducedMotion} />
-                                    </Badge>
-                                    <Badge className="bg-pink-600/10 text-pink-600 border-pink-600 border-2 px-2 gap-1 flex items-center">
-                                      F: <AnimatedCount from={s.girls} to={roster.genderCounts.girls} animate={autoAssignPhase === "resolving" && !prefersReducedMotion} />
-                                    </Badge>
-                                    {draftPlacement && (
-                                      <motion.span
-                                        initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.6 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        transition={{ type: "spring", stiffness: 380, damping: 18, delay: 0.15 }}>
-                                        <Badge className="border border-amber-400 bg-amber-100 text-amber-900 hover:bg-amber-100">
-                                          DRAFT: {roster.totalCount}
-                                        </Badge>
-                                      </motion.span>
-                                    )}
-                                    {draftPlacement && (roster.newCount ?? 0) > 0 && (
-                                      <motion.span
-                                        title={`${roster.newCount} new learner${roster.newCount === 1 ? "" : "s"} inserted during re-run.`}
-                                        initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.6 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        transition={{ type: "spring", stiffness: 380, damping: 18, delay: 0.2 }}>
-                                        <Badge className="border border-emerald-500 bg-emerald-100 text-emerald-800 hover:bg-emerald-100 font-bold px-2 gap-0.5 cursor-default">
-                                          +<AnimatedCount from={0} to={roster.newCount!} animate={autoAssignPhase === "resolving" && !prefersReducedMotion} /> NEW
-                                        </Badge>
-                                      </motion.span>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {draftPlacement && isExpanded && (
-                                  <div
-                                    className="mt-4 overflow-x-auto rounded-md border bg-card"
-                                    onClick={(event) => event.stopPropagation()}>
-                                    <table className="w-full text-left text-sm whitespace-nowrap">
-                                      <thead className="bg-muted text-foreground">
-                                        <tr className="uppercase">
-                                          <th className="p-3 font-bold">Learner</th>
-                                          <th className="p-3 text-center font-bold">Sex</th>
-                                          <th className="p-3 text-center font-bold">Status</th>
-                                          <th className="p-3 text-center font-bold">Gen Ave</th>
-                                          <th className="p-3 text-center font-bold">Action</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody className="divide-y">
-                                        {roster.learners.length === 0 ? (
-                                          <tr>
-                                            <td
-                                              colSpan={5}
-                                              className="p-4 text-center font-bold text-foreground">
-                                              No drafted learners in this section.
-                                            </td>
-                                          </tr>
-                                        ) : (
-                                          roster.learners.map((learner, index) => (
-                                            <tr
-                                              id={`draft-learner-${learner.applicationId}`}
-                                              key={learner.applicationId}
-                                              className={cn(
-                                                "hover:bg-muted/60 transition-all duration-300",
-                                                index % 2 === 0 ? "bg-background" : "bg-muted/50",
-                                                highlightedLearnerId === learner.applicationId &&
-                                                  "ring-2 ring-primary bg-primary/10 shadow-md font-semibold",
-                                              )}>
-                                              <td className="p-3">
-                                                <div className="flex flex-col">
-                                                  <span className="font-bold uppercase text-foreground">
-                                                    {formatLearnerName(learner)}
-                                                  </span>
-                                                  <span className="font-bold uppercase text-foreground">
-                                                    {learner.lrn ?? "NO LRN"}
-                                                    {learner.isOverridden && (
-                                                      <Badge className="!text-[11px] ml-2 bg-amber-600 text-white hover:bg-amber-600">
-                                                        Added Manually
-                                                      </Badge>
-                                                    )}
-                                                    {learner.isNew && (
-                                                      <Badge className="!text-[11px] ml-2 bg-emerald-600 text-white hover:bg-emerald-600">
-                                                        NEW
-                                                      </Badge>
-                                                    )}
-                                                  </span>
-                                                </div>
-                                              </td>
-                                              <td className="p-3 font-bold text-center">
-                                                <Badge
-                                                  className={cn(
-                                                    "px-2",
-                                                    learner.sex === "MALE"
-                                                      ? "bg-blue-600/10 text-blue-600 border-blue-600 border-2"
-                                                      : "bg-pink-600/10 text-pink-600 border-pink-600 border-2"
-                                                  )}>
-                                                  {learner.sex === "MALE" ? "M" : "F"}
-                                                </Badge>
-                                              </td>
-                                              <td className="p-2 text-center">
-                                                <Badge className={cn(
-                                                  "px-2 uppercase",
-                                                  learner.status === "OFFICIALLY_ENROLLED" ? "bg-green-600 text-white hover:bg-green-600 border-green-600"
-                                                    : learner.status === "PENDING_CONFIRMATION" ? "bg-amber-500 text-white hover:bg-amber-500 border-amber-500"
-                                                      : "bg-muted text-muted-foreground border-muted hover:bg-muted"
-                                                )}>
-                                                  {learner.status === "OFFICIALLY_ENROLLED" ? "Enrolled" : learner.status === "PENDING_CONFIRMATION" ? "Pending Confirmation" : "Pre-Registered"}
-                                                </Badge>
-                                              </td>
-                                              <td className="p-3 font-bold text-center">
-                                                {learner.genAve?.toFixed(2) ?? "--"}
-                                              </td>
-                                              <td className="p-3 text-center">
-                                                <DropdownMenu>
-                                                  <DropdownMenuTrigger asChild>
-                                                    <Button
-                                                      variant="ghost"
-                                                      size="icon"
-                                                      className="h-8 w-8">
-                                                      <MoreHorizontal className="h-4 w-4" />
-                                                    </Button>
-                                                  </DropdownMenuTrigger>
-                                                  <DropdownMenuContent align="end" className="z-[100]">
-                                                    <DropdownMenuItem
-                                                      onClick={() =>
-                                                        openMoveDialog(
-                                                          learner.applicationId,
-                                                          s.id,
-                                                        )
-                                                      }>
-                                                      <MoveRight className="mr-2 h-4 w-4" />
-                                                      Move to Section
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                      onClick={() =>
-                                                        openSwapDialog(
-                                                          learner.applicationId,
-                                                          s.id,
-                                                        )
-                                                      }>
-                                                      <ArrowRightLeft className="mr-2 h-4 w-4" />
-                                                      Swap Section
-                                                    </DropdownMenuItem>
-                                                  </DropdownMenuContent>
-                                                </DropdownMenu>
-                                              </td>
-                                            </tr>
-                                          ))
-                                        )}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                )}
-
-                                {!draftPlacement && s.currentCount > 0 && (
-                                  <InlineSectionTable
-                                    sectionId={s.id}
-                                    onMoveLearner={!isHistoricalReadOnly ? openNormalMoveDialog : undefined}
-                                    onRemoveLearner={!isHistoricalReadOnly ? openRemoveDialog : undefined}
-                                    onForfeitSlot={!isHistoricalReadOnly ? openForfeitDialog : undefined}
-                                  />
-                                )}
-                                {draftPlacement && selectedAppIds.length > 0 && isProgramCompatible && (
-                                  <div className="mt-4">
-                                    <Button
-                                      className="w-full text-base font-bold uppercase"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        assignSelectedToDraftSection(s.id);
-                                      }}
-                                    >
-                                      Add Selected Here
-                                    </Button>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })
-                          }
-                        </div>
-                      ));
-                  })()
-                )}
-              </div>
-              <AnimatePresence>
-                {(draftPlacement || selectedAppIds.length > 0) && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 20 }}
-                    transition={{ duration: 0.2, ease: "easeOut" }}
-                    className="p-4 border-t border-border bg-muted/20 w-full shrink-0">
-                    {draftPlacement ? (
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => {
-                            setDraftPlacement(null);
-                            setSelectedAppIds([]);
-                            setTargetSectionId(null);
-                            sileo.info({
-                              title: "Draft discarded",
-                              description: "Returned to official class sections.",
-                            });
-                          }}
-                          disabled={
-                            commitProcessing ||
-                            autoAssignPhase !== "idle" ||
-                            isHistoricalReadOnly
-                          }
-                          className="h-12 font-bold uppercase border-destructive text-destructive hover:bg-destructive/10">
-                          Discard Draft
-                        </Button>
-                        <Button
-                          onClick={() => setCommitDialogOpen(true)}
-                          disabled={
-                            commitProcessing ||
-                            autoAssignPhase !== "idle" ||
-                            draftLearnerCount === 0 ||
-                            isHistoricalReadOnly
-                          }
-                          className="flex-1 h-12 text-base font-bold uppercase">
-                          FINALIZE OFFICIAL SECTIONS
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        onClick={assignLearners}
-                        disabled={
-                          selectedAppIds.length === 0 ||
-                          !targetSectionId ||
-                          processing ||
-                          isHistoricalReadOnly
-                        }
-                        className={cn(
-                          "w-full h-12 text-base leading-tight font-bold uppercase transition-all shadow-none",
-                          selectedAppIds.length > 0 && targetSectionId
-                            ? "bg-primary hover:bg-primary/90 text-primary-foreground"
-                            : "bg-muted text-foreground hover:bg-muted",
-                        )}>
-                        {processing ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 " />
-                            Assigning...
-                          </>
-                        ) : (
-                          `Assign to Section ${targetSectionId ? (sections.find(s => s.id === targetSectionId)?.name ?? '') : ''} (${selectedAppIds.length})`
-                        )}
-                      </Button>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+            <SectionCardsPane
+              isDesktop={isDesktop}
+              isTablet={isTablet}
+              isMobile={isMobile}
+              mobileSectioningView={mobileSectioningView}
+              panelPercentage={panelPercentage}
+              isRightPaneFullscreen={isRightPaneFullscreen}
+              onToggleFullscreen={toggleRightPaneFullscreen}
+              isHistoricalReadOnly={isHistoricalReadOnly}
+              isExporting={isExporting}
+              onExportGradeLevel={handleExportGradeLevel}
+              poolLength={currentGradePool.length}
+              sectionsCount={currentGradeSections.length}
+              processing={processing}
+              autoAssignPhase={autoAssignPhase}
+              onTriggerReRun={handleTriggerReRun}
+              onOpenHowSystemPlaces={() => setAutoAssignConfirmOpen(true)}
+              displayedRosters={displayedRosters}
+              draftPlacement={draftPlacement}
+              selectedAllowedPrograms={selectedAllowedPrograms}
+              selectedAppIdsCount={selectedAppIds.size}
+              targetSectionId={targetSectionId}
+              expandedSectionIds={expandedSectionIds}
+              onToggleExpandedSection={handleToggleExpandedSection}
+              onSelectTargetSection={handleSelectTargetSection}
+              onOpenMasterlistModal={setMasterlistModalSectionId}
+              prefersReducedMotion={prefersReducedMotion}
+              highlightedLearnerId={highlightedLearnerId}
+              openMoveDialog={openMoveDialog}
+              openSwapDialog={openSwapDialog}
+              openNormalMoveDialog={openNormalMoveDialog}
+              openRemoveDialog={openRemoveDialog}
+              openForfeitDialog={openForfeitDialog}
+              onAssignSelectedToDraftSection={assignSelectedToDraftSection}
+              onDiscardDraft={handleDiscardDraft}
+              onOpenCommitDialog={() => setCommitDialogOpen(true)}
+              commitProcessing={commitProcessing}
+              draftLearnerCount={draftLearnerCount}
+              onAssignLearners={assignLearners}
+              targetSectionName={targetSectionId ? (sections.find((s) => s.id === targetSectionId)?.name ?? "") : ""}
+              renderInlineSectionTable={renderInlineSectionTable}
+            />
           </div>
         </Card>
       </PageTransition>

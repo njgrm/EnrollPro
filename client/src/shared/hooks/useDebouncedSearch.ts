@@ -8,7 +8,7 @@ interface UseDebouncedSearchResult {
   clearSearch: () => void;
 }
 
-export function useDebouncedSearch(initialValue = ""): UseDebouncedSearchResult {
+export function useDebouncedSearch(initialValue = "", delay = 400): UseDebouncedSearchResult {
   const [inputValue, setInputValue] = useState(initialValue);
   const [activeFilter, setActiveFilter] = useState(initialValue.trim());
   const [isSearching, setIsSearching] = useState(false);
@@ -48,10 +48,7 @@ export function useDebouncedSearch(initialValue = ""): UseDebouncedSearchResult 
 
     const trimmedValue = inputValue.trim();
     if (trimmedValue === activeFilter) {
-      if (isSearching) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setIsSearching(false);
-      }
+      setIsSearching((prev) => (prev ? false : prev));
       return;
     }
 
@@ -60,10 +57,10 @@ export function useDebouncedSearch(initialValue = ""): UseDebouncedSearchResult 
       setActiveFilter(trimmedValue);
       setIsSearching(false);
       debounceTimerRef.current = null;
-    }, 300);
+    }, delay);
 
     return clearTimers;
-  }, [activeFilter, clearTimers, inputValue]);
+  }, [activeFilter, clearTimers, delay, inputValue]);
 
   useEffect(() => {
     return clearTimers;

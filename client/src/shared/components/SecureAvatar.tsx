@@ -43,19 +43,18 @@ export function SecureAvatar({
   children,
   ...props
 }: SecureAvatarProps) {
+  const cleanPhoto = photo ? photo.trim() : null;
+  const effectiveId = entityId || (cleanPhoto ? cleanPhoto.replace(/^\/uploads\//, "") : null);
+  const hasPhoto = Boolean(cleanPhoto || effectiveId);
+
   const [signedSrc, setSignedSrc] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(hasPhoto);
   const [hasError, setHasError] = useState<boolean>(false);
   const [retryCount, setRetryCount] = useState<number>(0);
 
   const fallbackInitials = useMemo(() => {
     return computeInitials(firstName, lastName, name, explicitInitials);
   }, [firstName, lastName, name, explicitInitials]);
-
-  const cleanPhoto = photo ? photo.trim() : null;
-
-  // Determine effective ID or key for media request
-  const effectiveId = entityId || (cleanPhoto ? cleanPhoto.replace(/^\/uploads\//, "") : null);
 
   const fetchUrl = useCallback(
     async (isRetry = false) => {
@@ -154,6 +153,8 @@ export function SecureAvatar({
         <img
           src={signedSrc ?? undefined}
           alt={alt}
+          loading={props.loading ?? "lazy"}
+          decoding="async"
           className={cn("w-full h-full object-cover rounded-[inherit]", className)}
           onError={handleImageError}
           {...props}

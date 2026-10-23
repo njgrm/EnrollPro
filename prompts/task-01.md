@@ -1,34 +1,38 @@
-# UI/UX Refactoring Prompt: Account Activation Screen
+# Full-Stack Architecture & UI/UX Prompt: Global System Optimization for High-Density DepEd Data
 
 **Target System:** EnrollPro: DepEd Junior High School System  
-**Target Module:** First-Time Login / Account Activation Screen  
-**Reference Image:** `image_14a4cd.jpg` (or the provided reference)
+**Target Scope:** Global Frontend Architecture (All Modules handling Learner/Personnel Data)  
 
 ---
 
-**Act as a Senior UI/UX Engineer and Frontend Developer.**
+**Act as a Senior React/Frontend Engineer and System Architect.**
 
-Your task is to refactor the "Activate Official Account" screen. While the layout is clean, it currently suffers from a brand mismatch and a few significant UX flaws regarding form validation. We need to elevate this to a professional, enterprise-grade interface that strictly follows the established EnrollPro design system.
+Your task is to optimize the entire EnrollPro system to gracefully handle massive datasets without browser lag, memory leaks, or frame drops. Department of Education (DepEd) public Junior High Schools frequently manage 1,000 to 3,000 learners *per grade level*. Rendering this volume of data dynamically requires strict frontend and backend architectural discipline.
 
-Implement the following UI/UX improvements:
+Implement the following system-wide performance mandates and UX improvements across all pages (Learner Directory, Section Assignment, EOSY Updating, Early Registration, and System Logs):
 
-### 1. Align with the EnrollPro Brand Identity
-*   **The Problem:** The current screen uses a generic blue grid background and a bright blue button[cite: 52]. This breaks consistency with the rest of the EnrollPro system, which uses a distinct maroon/dark red primary color palette (representing typical DepEd institutional colors).
-*   **The Fix:** 
-    *   Change the primary button color from blue to the established EnrollPro dark red/maroon.
-    *   Replace the generic blue grid background with a softer, more professional institutional background (e.g., an off-white or very subtle gray geometric pattern, similar to the main dashboard background).
-    *   Change the shield icon at the top to match the brand colors.
+### 1. Strategic Data Delivery: Pagination vs. Virtualization
+Do not rely on a single data rendering strategy. Apply the correct technique based on the user's operational intent:
+*   **Server-Side Pagination (Directories & Logs):** For the `Learner Directory`, `Personnel Directory`, and `System Activity Logs`, never fetch 1,000+ records at once. Implement server-side pagination fetching 25, 50, or 100 rows per API call. The frontend must only manage the active page state to keep memory consumption near zero.
+*   **DOM Virtualization (Workspaces):** For operational workspaces where users must review massive lists simultaneously (e.g., `Section Assignment` queues, `EOSY Updating` grids), implement DOM virtualization using `@tanstack/react-virtual` or `react-window`. This ensures that even if 1,500 records are held in the client's memory, only the 15-20 rows currently visible in the viewport are painted to the DOM, recycling nodes as the user scrolls.
 
-### 2. Fix the Password Requirements UX (Interactive Checkboxes)
-*   **The Problem:** The "SECURITY REQUIREMENTS" box uses actual HTML checkbox inputs (`<input type="checkbox">`)[cite: 52]. This is a severe UX anti-pattern because checkboxes imply user interaction. Users might try to click them, causing confusion.
-*   **The Fix:** Replace the interactive checkboxes with passive, dynamic status icons (e.g., a small gray dot or a red "x"). As the user types their password, use JavaScript to evaluate the string. When a requirement is met, smoothly transition the corresponding icon to a green checkmark (`✓`) and change the text color from gray to a darker, success-indicating shade.
+### 2. State Management & Render Isolation (React Optimization)
+Coupling heavy lists to global state or parent components will cause catastrophic input lag (e.g., typing in a search bar freezing the page).
+*   **Granular Memoization:** Wrap all repeated row components, avatar cards, and status badges in `React.memo()`. Ensure rows only re-render if their specific primitive props change (e.g., a learner's `isSelected` or `enrollmentStatus`), ignoring updates to neighboring rows.
+*   **Decoupled Input State:** Never store the `Search` input state in the same component that renders a 1,000-item virtualized list. Extract search bars into their own isolated components so typing does not trigger massive re-renders.
+*   **Debounced Interactions:** Wrap all search bars (e.g., "Search LRN, First Name...") in a `useDebounce` hook with a minimum 400ms delay. Prevent the system from filtering large arrays or pinging the database on every single keystroke.
 
-### 3. Enhance Input Field Usability
-*   **The Problem:** The "New Password" field has an eye icon to toggle visibility, but the "Confirm New Password" field is missing it[cite: 52]. Users frequently make typos in the confirmation field and need to see what they typed.
-*   **The Fix:** 
-    *   Add the password visibility toggle (eye icon) to the "Confirm New Password" field.
-    *   Ensure both input fields have a distinct `:focus` ring (using the primary maroon brand color) so users know exactly which field is active.
+### 3. Asset & Media Throttling
+Loading 1,000 student profile pictures simultaneously will exhaust browser connection limits and severely bottleneck the system.
+*   **Lazy Loading:** Enforce `loading="lazy"` on every `<img>` tag across the system so the browser only fetches images as they scroll into view.
+*   **Pure-CSS Fallbacks:** Implement a lightweight CSS placeholder (e.g., a colored circular div displaying the learner's initials) that renders instantly while the image network request is pending, or serves as the permanent fallback for learners without uploaded photos.
 
-### 4. Implement Error Prevention (Button State)
-*   **The Problem:** The "Activate Account & Enter System" button appears fully active by default[cite: 52].
-*   **The Fix:** Apply a disabled state (`opacity-50`, `cursor-not-allowed`) to the primary button. The button must remain disabled until the JavaScript validation confirms that all five security requirements (8 characters, uppercase, number, special character, and matching passwords) are successfully met.
+### 4. Headless UI & Portal Optimization
+Rendering thousands of hidden dropdown menus or tooltips in the background consumes massive memory.
+*   **Conditional Mounting:** Ensure all actionable dropdowns (like the `(...)` menu in EOSY Updating or Action columns in the Directory) are strictly conditionally mounted (`{isOpen && <Menu />}`) rather than hidden via CSS (`display: none`).
+*   **React Portals:** When a dropdown or modal is opened from inside a dense table row, use React Portals to append it directly to `document.body`. This prevents complex CSS stacking context calculations and keeps the row components lightweight.
+
+### 5. Offloading Heavy Computation (Web Workers & SSE)
+DepEd systems require heavy sorting algorithms (e.g., Homogeneous academic ranking, Heterogeneous gender balancing, or bulk SF1/SF5 grade synchronization).
+*   **Backend Processing:** Never run heavy sorting or bulk data mutation algorithms on the frontend main thread. Clicking buttons like `Auto Assign Sections` or `Sync Grades` must trigger asynchronous backend tasks.
+*   **Non-Blocking UI:** While the backend processes the data, immediately transition the frontend button to a loading state. Use Server-Sent Events (SSE) or WebSockets to stream a progress bar (e.g., "Processing: 450 / 1500...") to the client. Keep the main UI thread completely free so the user can continue scrolling or viewing other tabs without the browser locking up.

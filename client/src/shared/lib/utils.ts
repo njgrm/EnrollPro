@@ -53,8 +53,26 @@ export const getGradeLevelSolidBgStyles = (gradeLevel: string | null | undefined
   if (normalized.includes("10") || normalized.includes("g10")) {
     return "bg-indigo-600";
   }
-  return "bg-primary";
+  return "bg-emerald-600";
 };
+
+export const getGradeLevelActiveTabStyles = (gradeLevel: string | null | undefined): string => {
+  const normalized = String(gradeLevel || "").trim().toLowerCase();
+  if (normalized.includes("7") || normalized.includes("g7")) {
+    return "data-[state=active]:bg-emerald-600 data-[state=active]:text-white";
+  }
+  if (normalized.includes("8") || normalized.includes("g8")) {
+    return "data-[state=active]:bg-amber-600 data-[state=active]:text-white";
+  }
+  if (normalized.includes("9") || normalized.includes("g9")) {
+    return "data-[state=active]:bg-rose-600 data-[state=active]:text-white";
+  }
+  if (normalized.includes("10") || normalized.includes("g10")) {
+    return "data-[state=active]:bg-indigo-600 data-[state=active]:text-white";
+  }
+  return "data-[state=active]:bg-emerald-600 data-[state=active]:text-white";
+};
+
 
 export const getGradeLevelSolidButtonStyles = (gradeLevel: string | null | undefined): string => {
   const normalized = String(gradeLevel || "").trim().toLowerCase();
