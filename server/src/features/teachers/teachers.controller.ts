@@ -384,7 +384,11 @@ export async function index(req: Request, res: Response) {
               : null,
             ancillaryRoles: designation.ancillaryRoles,
             atlasAssignTeachingLoad: designation.atlasAssignTeachingLoad,
+            atlasAssignTeachingLoadAllGrades: designation.atlasAssignTeachingLoadAllGrades,
+            atlasAssignTeachingLoadGradeLevelIds: designation.atlasAssignTeachingLoadGradeLevelIds,
             atlasBuildSchedules: designation.atlasBuildSchedules,
+            atlasBuildSchedulesAllGrades: designation.atlasBuildSchedulesAllGrades,
+            atlasBuildSchedulesGradeLevelIds: designation.atlasBuildSchedulesGradeLevelIds,
             effectiveFrom: designation.effectiveFrom,
             effectiveTo: designation.effectiveTo,
           }
@@ -530,7 +534,11 @@ export async function getProfile(req: Request, res: Response) {
           functionalAssignment: user.designation,
           ancillaryRoles: [],
           atlasAssignTeachingLoad: false,
+          atlasAssignTeachingLoadAllGrades: true,
+          atlasAssignTeachingLoadGradeLevelIds: [],
           atlasBuildSchedules: false,
+          atlasBuildSchedulesAllGrades: true,
+          atlasBuildSchedulesGradeLevelIds: [],
           sectionCount: 0,
           designation: null,
           isActive: user.isActive,
@@ -644,7 +652,11 @@ export async function show(req: Request, res: Response) {
       return res.status(403).json({ message: "Access denied to this personnel profile" });
     }
 
-    const latestDesignation = teacher.teacherDesignations[0] || null;
+    const targetSyId = req.schoolYearId;
+    const matchedDesignation = targetSyId
+      ? teacher.teacherDesignations.find((d) => d.schoolYearId === targetSyId)
+      : null;
+    const latestDesignation = matchedDesignation || teacher.teacherDesignations[0] || null;
 
     res.json({
       teacher: {
@@ -703,7 +715,11 @@ export async function store(req: Request, res: Response) {
       ancillaryRoles,
       postgraduateDegrees,
       atlasAssignTeachingLoad,
+      atlasAssignTeachingLoadAllGrades,
+      atlasAssignTeachingLoadGradeLevelIds,
       atlasBuildSchedules,
+      atlasBuildSchedulesAllGrades,
+      atlasBuildSchedulesGradeLevelIds,
     } = req.body;
 
     const normalizedFirstName = normalizeRequiredUpperText(firstName);
@@ -858,14 +874,18 @@ export async function store(req: Request, res: Response) {
         },
       });
 
-      if (ancillaryRoles !== undefined && req.schoolYearId) {
+      if ((ancillaryRoles !== undefined || atlasAssignTeachingLoad !== undefined || atlasBuildSchedules !== undefined) && req.schoolYearId) {
         await tx.teacherDesignation.create({
           data: {
             teacherId: t.id,
             schoolYearId: req.schoolYearId,
             ancillaryRoles: Array.isArray(ancillaryRoles) ? ancillaryRoles : [],
-            atlasAssignTeachingLoad,
-            atlasBuildSchedules,
+            atlasAssignTeachingLoad: Boolean(atlasAssignTeachingLoad),
+            atlasAssignTeachingLoadAllGrades: atlasAssignTeachingLoadAllGrades !== undefined ? Boolean(atlasAssignTeachingLoadAllGrades) : true,
+            atlasAssignTeachingLoadGradeLevelIds: Array.isArray(atlasAssignTeachingLoadGradeLevelIds) ? atlasAssignTeachingLoadGradeLevelIds : [],
+            atlasBuildSchedules: Boolean(atlasBuildSchedules),
+            atlasBuildSchedulesAllGrades: atlasBuildSchedulesAllGrades !== undefined ? Boolean(atlasBuildSchedulesAllGrades) : true,
+            atlasBuildSchedulesGradeLevelIds: Array.isArray(atlasBuildSchedulesGradeLevelIds) ? atlasBuildSchedulesGradeLevelIds : [],
           },
         });
       }
@@ -948,7 +968,11 @@ export async function update(req: Request, res: Response) {
       ancillaryRoles,
       postgraduateDegrees,
       atlasAssignTeachingLoad,
+      atlasAssignTeachingLoadAllGrades,
+      atlasAssignTeachingLoadGradeLevelIds,
       atlasBuildSchedules,
+      atlasBuildSchedulesAllGrades,
+      atlasBuildSchedulesGradeLevelIds,
     } = req.body;
 
     const existing = await prisma.teacher.findUnique({ where: { id } });
@@ -1012,7 +1036,7 @@ export async function update(req: Request, res: Response) {
     const normalizedPostgraduateDegrees = normalizePostgraduateDegrees(postgraduateDegrees);
     const primaryPostgraduateDegree = normalizedPostgraduateDegrees[0] ?? null;
 
-    const updatedTeacher = await prisma.$transaction(async (tx) => {
+    const { teacher: updatedTeacher, designation: savedDesignation } = await prisma.$transaction(async (tx) => {
       // 1. Update the User record if it exists (linked by employeeId)
       const linkedUserWhere = existing.userId
         ? { id: existing.userId }
@@ -1084,25 +1108,44 @@ export async function update(req: Request, res: Response) {
         }
       }
 
-      if (ancillaryRoles !== undefined && req.schoolYearId) {
-        await tx.teacherDesignation.upsert({
+      let savedDesignation = null;
+      if (
+        (ancillaryRoles !== undefined ||
+          atlasAssignTeachingLoad !== undefined ||
+          atlasAssignTeachingLoadAllGrades !== undefined ||
+          atlasAssignTeachingLoadGradeLevelIds !== undefined ||
+          atlasBuildSchedules !== undefined ||
+          atlasBuildSchedulesAllGrades !== undefined ||
+          atlasBuildSchedulesGradeLevelIds !== undefined) &&
+        req.schoolYearId
+      ) {
+        const updateData: Record<string, unknown> = {};
+        if (ancillaryRoles !== undefined) updateData.ancillaryRoles = Array.isArray(ancillaryRoles) ? ancillaryRoles : [];
+        if (atlasAssignTeachingLoad !== undefined) updateData.atlasAssignTeachingLoad = Boolean(atlasAssignTeachingLoad);
+        if (atlasAssignTeachingLoadAllGrades !== undefined) updateData.atlasAssignTeachingLoadAllGrades = Boolean(atlasAssignTeachingLoadAllGrades);
+        if (atlasAssignTeachingLoadGradeLevelIds !== undefined) updateData.atlasAssignTeachingLoadGradeLevelIds = Array.isArray(atlasAssignTeachingLoadGradeLevelIds) ? atlasAssignTeachingLoadGradeLevelIds : [];
+        if (atlasBuildSchedules !== undefined) updateData.atlasBuildSchedules = Boolean(atlasBuildSchedules);
+        if (atlasBuildSchedulesAllGrades !== undefined) updateData.atlasBuildSchedulesAllGrades = Boolean(atlasBuildSchedulesAllGrades);
+        if (atlasBuildSchedulesGradeLevelIds !== undefined) updateData.atlasBuildSchedulesGradeLevelIds = Array.isArray(atlasBuildSchedulesGradeLevelIds) ? atlasBuildSchedulesGradeLevelIds : [];
+
+        savedDesignation = await tx.teacherDesignation.upsert({
           where: {
             uq_teacher_designations_teacher_sy: {
               teacherId: id,
               schoolYearId: req.schoolYearId,
             },
           },
-          update: {
-            ancillaryRoles: Array.isArray(ancillaryRoles) ? ancillaryRoles : [],
-            atlasAssignTeachingLoad,
-            atlasBuildSchedules,
-          },
+          update: updateData,
           create: {
             teacherId: id,
             schoolYearId: req.schoolYearId,
             ancillaryRoles: Array.isArray(ancillaryRoles) ? ancillaryRoles : [],
-            atlasAssignTeachingLoad,
-            atlasBuildSchedules,
+            atlasAssignTeachingLoad: Boolean(atlasAssignTeachingLoad),
+            atlasAssignTeachingLoadAllGrades: atlasAssignTeachingLoadAllGrades !== undefined ? Boolean(atlasAssignTeachingLoadAllGrades) : true,
+            atlasAssignTeachingLoadGradeLevelIds: Array.isArray(atlasAssignTeachingLoadGradeLevelIds) ? atlasAssignTeachingLoadGradeLevelIds : [],
+            atlasBuildSchedules: Boolean(atlasBuildSchedules),
+            atlasBuildSchedulesAllGrades: atlasBuildSchedulesAllGrades !== undefined ? Boolean(atlasBuildSchedulesAllGrades) : true,
+            atlasBuildSchedulesGradeLevelIds: Array.isArray(atlasBuildSchedulesGradeLevelIds) ? atlasBuildSchedulesGradeLevelIds : [],
           },
         });
       }
@@ -1122,7 +1165,7 @@ export async function update(req: Request, res: Response) {
         }
       }
 
-      return t;
+      return { teacher: t, designation: savedDesignation };
     });
 
     await auditLog({
@@ -1153,6 +1196,7 @@ export async function update(req: Request, res: Response) {
     res.json({
       teacher: {
         ...updatedTeacher,
+        designation: savedDesignation,
       },
     });
   } catch (error: unknown) {
@@ -1619,8 +1663,12 @@ export async function upsertDesignation(req: Request, res: Response) {
           isClassAdviser: payload.isClassAdviser,
           advisorySectionId,
           ancillaryRoles: payload.ancillaryRoles || [],
-          atlasAssignTeachingLoad: payload.atlasAssignTeachingLoad,
-          atlasBuildSchedules: payload.atlasBuildSchedules,
+          atlasAssignTeachingLoad: payload.atlasAssignTeachingLoad !== undefined ? Boolean(payload.atlasAssignTeachingLoad) : false,
+          atlasAssignTeachingLoadAllGrades: payload.atlasAssignTeachingLoadAllGrades !== undefined ? Boolean(payload.atlasAssignTeachingLoadAllGrades) : true,
+          atlasAssignTeachingLoadGradeLevelIds: Array.isArray(payload.atlasAssignTeachingLoadGradeLevelIds) ? payload.atlasAssignTeachingLoadGradeLevelIds : [],
+          atlasBuildSchedules: payload.atlasBuildSchedules !== undefined ? Boolean(payload.atlasBuildSchedules) : false,
+          atlasBuildSchedulesAllGrades: payload.atlasBuildSchedulesAllGrades !== undefined ? Boolean(payload.atlasBuildSchedulesAllGrades) : true,
+          atlasBuildSchedulesGradeLevelIds: Array.isArray(payload.atlasBuildSchedulesGradeLevelIds) ? payload.atlasBuildSchedulesGradeLevelIds : [],
           designationNotes: normalizeOptionalText(payload.designationNotes),
           effectiveFrom: parseDateOnly(payload.effectiveFrom),
           effectiveTo: parseDateOnly(payload.effectiveTo),
@@ -1633,8 +1681,12 @@ export async function upsertDesignation(req: Request, res: Response) {
           isClassAdviser: payload.isClassAdviser,
           advisorySectionId,
           ancillaryRoles: payload.ancillaryRoles || [],
-          atlasAssignTeachingLoad: payload.atlasAssignTeachingLoad,
-          atlasBuildSchedules: payload.atlasBuildSchedules,
+          atlasAssignTeachingLoad: payload.atlasAssignTeachingLoad !== undefined ? Boolean(payload.atlasAssignTeachingLoad) : false,
+          atlasAssignTeachingLoadAllGrades: payload.atlasAssignTeachingLoadAllGrades !== undefined ? Boolean(payload.atlasAssignTeachingLoadAllGrades) : true,
+          atlasAssignTeachingLoadGradeLevelIds: Array.isArray(payload.atlasAssignTeachingLoadGradeLevelIds) ? payload.atlasAssignTeachingLoadGradeLevelIds : [],
+          atlasBuildSchedules: payload.atlasBuildSchedules !== undefined ? Boolean(payload.atlasBuildSchedules) : false,
+          atlasBuildSchedulesAllGrades: payload.atlasBuildSchedulesAllGrades !== undefined ? Boolean(payload.atlasBuildSchedulesAllGrades) : true,
+          atlasBuildSchedulesGradeLevelIds: Array.isArray(payload.atlasBuildSchedulesGradeLevelIds) ? payload.atlasBuildSchedulesGradeLevelIds : [],
           designationNotes: normalizeOptionalText(payload.designationNotes),
           effectiveFrom: parseDateOnly(payload.effectiveFrom),
           effectiveTo: parseDateOnly(payload.effectiveTo),

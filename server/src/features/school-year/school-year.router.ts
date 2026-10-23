@@ -44,7 +44,7 @@ router.get(
 router.get(
   "/grade-levels",
   authenticate,
-  authorize("HEAD_REGISTRAR", "SYSTEM_ADMIN", "TEACHER"),
+  authorize("HEAD_REGISTRAR", "SYSTEM_ADMIN", "TEACHER", "PRINCIPAL"),
   listGradeLevels,
 );
 router.get("/:id", authenticate, authorize("SYSTEM_ADMIN"), getSchoolYear);

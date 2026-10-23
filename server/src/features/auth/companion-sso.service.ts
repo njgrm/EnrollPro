@@ -546,11 +546,25 @@ export async function exchangeCompanionSsoCode(input: {
                 gradeLevelIds = gradeLevels.map(g => g.id);
               }
 
+              const assignTeachingLoadGradeLevelIds = designation.atlasAssignTeachingLoad
+                ? (designation.atlasAssignTeachingLoadAllGrades || !designation.atlasAssignTeachingLoadGradeLevelIds?.length
+                    ? "ALL"
+                    : designation.atlasAssignTeachingLoadGradeLevelIds)
+                : undefined;
+
+              const buildSchedulesGradeLevelIds = designation.atlasBuildSchedules
+                ? (designation.atlasBuildSchedulesAllGrades || !designation.atlasBuildSchedulesGradeLevelIds?.length
+                    ? "ALL"
+                    : designation.atlasBuildSchedulesGradeLevelIds)
+                : undefined;
+
               atlasAccess = {
                 schoolYearId: activeSchoolYear.active.schoolYearId,
                 assignTeachingLoad: designation.atlasAssignTeachingLoad,
                 buildSchedules: designation.atlasBuildSchedules,
-                gradeLevelIds
+                gradeLevelIds,
+                ...(assignTeachingLoadGradeLevelIds !== undefined ? { assignTeachingLoadGradeLevelIds } : {}),
+                ...(buildSchedulesGradeLevelIds !== undefined ? { buildSchedulesGradeLevelIds } : {}),
               };
             }
           }

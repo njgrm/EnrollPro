@@ -45,12 +45,6 @@ import { sileo } from "sileo";
 import { useHistoricalReadOnly } from "@/shared/hooks/useHistoricalReadOnly";
 import { useSchoolYearContext } from "@/shared/hooks/useSchoolYearContext";
 import { cn, SCP_LABELS, getGradeLevelBadgeStyles, formatGradeLevel, formatSectionProgramLabel } from "@/shared/lib/utils";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/shared/ui/tooltip";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { isAxiosError } from "axios";
 import {
@@ -838,10 +832,77 @@ export function SectioningWorkspace() {
     });
   };
 
-  const activeGradeLevelId = useSettingsStore((s) => s.uiPreferences.sectioningGradeId);
+  const rawActiveGradeLevelId = useSettingsStore((s) => s.uiPreferences.sectioningGradeId);
   const setActiveGradeLevelId = useCallback((id: string) => {
     useSettingsStore.getState().updateUiPreference("sectioningGradeId", id);
   }, []);
+
+  const homogeneousSectionCount = useSettingsStore((s) => s.homogeneousSectionCount);
+  const { spaEnabled, spsEnabled, steEnabled } = useSettingsStore();
+  const ancillaryRolesRaw = useAuthStore((s) => s.user?.ancillaryRoles);
+  const ancillaryRoles = useMemo(() => ancillaryRolesRaw ?? [], [ancillaryRolesRaw]);
+
+  const { data: activeSchoolYear } = useQuery({
+    queryKey: ["school-years", "active", "grade-levels"],
+    queryFn: async () => {
+      const res = await api.get<GradeLevelsResponse>("/school-years/grade-levels");
+      return res.data;
+    },
+    staleTime: 60_000,
+  });
+
+  const { data: gradeLevelsResponse, isLoading: gradeLevelsLoading } = useQuery(
+    {
+      queryKey: ["settings", "grade-levels"],
+      queryFn: () =>
+        api
+          .get<GradeLevelsResponse>("/school-years/grade-levels")
+          .then((response) => response.data),
+      staleTime: 60_000,
+    },
+  );
+
+  const userRoles = useAuthStore((s) => s.user?.roles) ?? [];
+  const isAdminOrRegistrar = userRoles.includes("SYSTEM_ADMIN") || userRoles.includes("HEAD_REGISTRAR") || userRoles.includes("SCHOOL_REGISTRAR");
+
+  const gradeLevels = useMemo(() => {
+    const raw = gradeLevelsResponse?.gradeLevels ?? [];
+    let jhs = raw.filter((gradeLevel) =>
+      ["Grade 7", "Grade 8", "Grade 9", "Grade 10"].includes(gradeLevel.name),
+    );
+
+    if (!isAdminOrRegistrar) {
+      const allowedNames: string[] = [];
+      if (ancillaryRoles.includes("GRADE 7 COORDINATOR")) allowedNames.push("Grade 7");
+      if (ancillaryRoles.includes("GRADE 8 COORDINATOR")) allowedNames.push("Grade 8");
+      if (ancillaryRoles.includes("GRADE 9 COORDINATOR")) allowedNames.push("Grade 9");
+      if (ancillaryRoles.includes("GRADE 10 COORDINATOR")) allowedNames.push("Grade 10");
+
+      if (allowedNames.length > 0) {
+        jhs = jhs.filter((g) => allowedNames.includes(g.name));
+      }
+    }
+
+    return jhs.sort((a, b) => {
+      const orderA = a.displayOrder ?? parseInt(a.name.replace(/\D/g, "")) ?? 0;
+      const orderB = b.displayOrder ?? parseInt(b.name.replace(/\D/g, "")) ?? 0;
+      return orderA - orderB;
+    });
+  }, [gradeLevelsResponse, isAdminOrRegistrar, ancillaryRoles]);
+
+  const activeGradeLevelId = useMemo(() => {
+    if (gradeLevels.length === 0) return rawActiveGradeLevelId;
+    if (gradeLevels.some((g) => String(g.id) === rawActiveGradeLevelId)) {
+      return rawActiveGradeLevelId;
+    }
+    return String(gradeLevels[0].id);
+  }, [gradeLevels, rawActiveGradeLevelId]);
+
+  useEffect(() => {
+    if (activeGradeLevelId && activeGradeLevelId !== rawActiveGradeLevelId) {
+      setActiveGradeLevelId(activeGradeLevelId);
+    }
+  }, [activeGradeLevelId, rawActiveGradeLevelId, setActiveGradeLevelId]);
 
   const { ayId, ayLabel } = useSchoolYearContext();
   const storageKey = `enrollpro_draft_placements_${ayId || "active"}`;
@@ -940,23 +1001,6 @@ export function SectioningWorkspace() {
     [activeGradeLevelId, ayId],
   );
 
-  const homogeneousSectionCount = useSettingsStore((s) => s.homogeneousSectionCount);
-  const { spaEnabled, spsEnabled, steEnabled } = useSettingsStore();
-  const ancillaryRolesRaw = useAuthStore((s) => s.user?.ancillaryRoles);
-  const ancillaryRoles = useMemo(() => ancillaryRolesRaw ?? [], [ancillaryRolesRaw]);
-
-  const { data: activeSchoolYear } = useQuery({
-    queryKey: ["school-years", "active", "grade-levels"],
-    queryFn: async () => {
-      const res = await api.get<GradeLevelsResponse>("/school-years/grade-levels");
-      return res.data;
-    },
-    staleTime: 60_000,
-  });
-
-  const userRoles = useAuthStore((s) => s.user?.roles) ?? [];
-  const isAdminOrRegistrar = userRoles.includes("SYSTEM_ADMIN") || userRoles.includes("HEAD_REGISTRAR") || userRoles.includes("SCHOOL_REGISTRAR");
-
   useRealtimeRefresh({
     topics: ["sectioning:pool", "sectioning:sections", "students:list"],
     onRefresh: () => {
@@ -1012,35 +1056,30 @@ export function SectioningWorkspace() {
     staleTime: 3_000,
   });
 
-  const { data: gradeLevelsResponse, isLoading: gradeLevelsLoading } = useQuery(
-    {
-      queryKey: ["settings", "grade-levels"],
-      queryFn: () =>
-        api
-          .get<GradeLevelsResponse>("/school-years/grade-levels")
-          .then((response) => response.data),
-      staleTime: 60_000,
-    },
-  );
-
   useEffect(() => {
     if (sectionsData) {
       if (!draftPlacement || sections.length === 0) {
-        setSections(sectionsData);
+        setSections((prev) => (prev === sectionsData ? prev : sectionsData));
       }
     }
   }, [sectionsData, draftPlacement, sections.length]);
+
   useEffect(() => {
     if (justCommittedRef.current) return;
     if (poolData) {
       if (!draftPlacement) {
-        setPool(
-          poolData.filter(
-            (p) => !p.isFinalized,
-          ),
-        );
+        const unfinalized = poolData.filter((p) => !p.isFinalized);
+        setPool((prev) => {
+          if (
+            prev.length === unfinalized.length &&
+            prev.every((p, i) => p.applicationId === unfinalized[i]?.applicationId)
+          ) {
+            return prev;
+          }
+          return unfinalized;
+        });
       } else {
-        setPool(poolData);
+        setPool((prev) => (prev === poolData ? prev : poolData));
       }
     }
   }, [poolData, draftPlacement]);
@@ -1299,40 +1338,6 @@ export function SectioningWorkspace() {
     activeFilter: activeSearchQuery,
   } = useDebouncedSearch();
   const [targetSectionId, setTargetSectionId] = useState<number | null>(null);
-
-  const gradeLevels = useMemo(() => {
-    const raw = gradeLevelsResponse?.gradeLevels ?? [];
-    let jhs = raw.filter((gradeLevel) =>
-      ["Grade 7", "Grade 8", "Grade 9", "Grade 10"].includes(gradeLevel.name),
-    );
-
-    if (!isAdminOrRegistrar) {
-      const allowedNames: string[] = [];
-      if (ancillaryRoles.includes("GRADE 7 COORDINATOR")) allowedNames.push("Grade 7");
-      if (ancillaryRoles.includes("GRADE 8 COORDINATOR")) allowedNames.push("Grade 8");
-      if (ancillaryRoles.includes("GRADE 9 COORDINATOR")) allowedNames.push("Grade 9");
-      if (ancillaryRoles.includes("GRADE 10 COORDINATOR")) allowedNames.push("Grade 10");
-
-      if (allowedNames.length > 0) {
-        jhs = jhs.filter((g) => allowedNames.includes(g.name));
-      }
-    }
-
-    return jhs.sort((a, b) => {
-      const orderA = a.displayOrder ?? parseInt(a.name.replace(/\D/g, "")) ?? 0;
-      const orderB = b.displayOrder ?? parseInt(b.name.replace(/\D/g, "")) ?? 0;
-      return orderA - orderB;
-    });
-  }, [gradeLevelsResponse, isAdminOrRegistrar, ancillaryRoles]);
-
-  useEffect(() => {
-    if (gradeLevels.length > 0) {
-      const isValid = gradeLevels.some(g => String(g.id) === activeGradeLevelId);
-      if (!isValid) {
-        setActiveGradeLevelId(String(gradeLevels[0].id));
-      }
-    }
-  }, [gradeLevels, activeGradeLevelId, setActiveGradeLevelId]);
 
   useEffect(() => {
     setSelectedAppIds([]);
@@ -2809,24 +2814,15 @@ export function SectioningWorkspace() {
                                   className="p-4"
                                   onClick={(e) => e.stopPropagation()}>
                                   {isDraftPlaced ? (
-                                    <TooltipProvider>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <span className="inline-flex cursor-not-allowed">
-                                            <Checkbox
-                                              checked={false}
-                                              disabled={true}
-                                              aria-label={`Assigned to draft section ${draftSectionName}`}
-                                            />
-                                          </span>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p className="text-xs font-semibold">
-                                            Assigned to draft section: {draftSectionName}
-                                          </p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </TooltipProvider>
+                                    <span
+                                      className="inline-flex cursor-not-allowed"
+                                      title={`Assigned to draft section: ${draftSectionName}`}>
+                                      <Checkbox
+                                        checked={false}
+                                        disabled={true}
+                                        aria-label={`Assigned to draft section ${draftSectionName}`}
+                                      />
+                                    </span>
                                   ) : (
                                     <Checkbox
                                       checked={isSelected}
@@ -3010,38 +3006,32 @@ export function SectioningWorkspace() {
                     )}
 
                     {isDesktop && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            aria-label={
-                              isRightPaneFullscreen
-                                ? "Restore split pane"
-                                : "Expand section list"
-                            }
-                            aria-pressed={isRightPaneFullscreen}
-                            onClick={() =>
-                              setIsRightPaneFullscreen((current) => !current)
-                            }
-                            className="shrink-0">
-                            {isRightPaneFullscreen ? (
-                              <Minimize2 className="h-5 w-5" />
-                            ) : (
-                              <Maximize2 className="h-5 w-5" />
-                            )}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left">
-                          {isRightPaneFullscreen
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        title={
+                          isRightPaneFullscreen
                             ? "Restore split pane"
-                            : "Expand section list"}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
+                            : "Expand section list"
+                        }
+                        aria-label={
+                          isRightPaneFullscreen
+                            ? "Restore split pane"
+                            : "Expand section list"
+                        }
+                        aria-pressed={isRightPaneFullscreen}
+                        onClick={() =>
+                          setIsRightPaneFullscreen((current) => !current)
+                        }
+                        className="shrink-0">
+                        {isRightPaneFullscreen ? (
+                          <Minimize2 className="h-5 w-5" />
+                        ) : (
+                          <Maximize2 className="h-5 w-5" />
+                        )}
+                      </Button>
+                    )}
                 </div>
               </div>
 
@@ -3253,25 +3243,15 @@ export function SectioningWorkspace() {
                                       </motion.span>
                                     )}
                                     {draftPlacement && (roster.newCount ?? 0) > 0 && (
-                                      <TooltipProvider>
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <motion.span
-                                              initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.6 }}
-                                              animate={{ opacity: 1, scale: 1 }}
-                                              transition={{ type: "spring", stiffness: 380, damping: 18, delay: 0.2 }}>
-                                              <Badge className="border border-emerald-500 bg-emerald-100 text-emerald-800 hover:bg-emerald-100 font-bold px-2 gap-0.5 cursor-default">
-                                                +<AnimatedCount from={0} to={roster.newCount!} animate={autoAssignPhase === "resolving" && !prefersReducedMotion} /> NEW
-                                              </Badge>
-                                            </motion.span>
-                                          </TooltipTrigger>
-                                          <TooltipContent>
-                                            <p className="text-xs font-semibold">
-                                              {roster.newCount} new learner{roster.newCount === 1 ? "" : "s"} inserted during re-run.
-                                            </p>
-                                          </TooltipContent>
-                                        </Tooltip>
-                                      </TooltipProvider>
+                                      <motion.span
+                                        title={`${roster.newCount} new learner${roster.newCount === 1 ? "" : "s"} inserted during re-run.`}
+                                        initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.6 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ type: "spring", stiffness: 380, damping: 18, delay: 0.2 }}>
+                                        <Badge className="border border-emerald-500 bg-emerald-100 text-emerald-800 hover:bg-emerald-100 font-bold px-2 gap-0.5 cursor-default">
+                                          +<AnimatedCount from={0} to={roster.newCount!} animate={autoAssignPhase === "resolving" && !prefersReducedMotion} /> NEW
+                                        </Badge>
+                                      </motion.span>
                                     )}
                                   </div>
                                 </div>

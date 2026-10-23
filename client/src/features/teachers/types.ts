@@ -12,7 +12,11 @@ export interface TeacherDesignation {
   } | null;
   ancillaryRoles: string[];
   atlasAssignTeachingLoad: boolean;
+  atlasAssignTeachingLoadAllGrades?: boolean;
+  atlasAssignTeachingLoadGradeLevelIds?: number[];
   atlasBuildSchedules: boolean;
+  atlasBuildSchedulesAllGrades?: boolean;
+  atlasBuildSchedulesGradeLevelIds?: number[];
   designationNotes: string | null;
   effectiveFrom: string | null;
   effectiveTo: string | null;
@@ -52,7 +56,11 @@ export interface Teacher {
   functionalAssignment: string | null;
   ancillaryRoles: string[];
   atlasAssignTeachingLoad: boolean;
+  atlasAssignTeachingLoadAllGrades?: boolean;
+  atlasAssignTeachingLoadGradeLevelIds?: number[];
   atlasBuildSchedules: boolean;
+  atlasBuildSchedulesAllGrades?: boolean;
+  atlasBuildSchedulesGradeLevelIds?: number[];
   sectionCount: number;
   designation: TeacherDesignation | null;
   isActive: boolean;

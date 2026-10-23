@@ -711,7 +711,27 @@ export async function listIntegrationFaculty(
       effectiveFrom: designation?.effectiveFrom ?? null,
       effectiveTo: designation?.effectiveTo ?? null,
       atlasAssignTeachingLoad: designation?.atlasAssignTeachingLoad ?? false,
+      atlasAssignTeachingLoadAllGrades: designation?.atlasAssignTeachingLoadAllGrades ?? true,
+      atlasAssignTeachingLoadGradeLevelIds: designation?.atlasAssignTeachingLoadGradeLevelIds ?? [],
       atlasBuildSchedules: designation?.atlasBuildSchedules ?? false,
+      atlasBuildSchedulesAllGrades: designation?.atlasBuildSchedulesAllGrades ?? true,
+      atlasBuildSchedulesGradeLevelIds: designation?.atlasBuildSchedulesGradeLevelIds ?? [],
+      assignTeachingLoad: designation?.atlasAssignTeachingLoad ?? false,
+      buildSchedules: designation?.atlasBuildSchedules ?? false,
+      ...(designation?.atlasAssignTeachingLoad
+        ? {
+            assignTeachingLoadGradeLevelIds: designation.atlasAssignTeachingLoadAllGrades || !designation.atlasAssignTeachingLoadGradeLevelIds?.length
+              ? "ALL"
+              : designation.atlasAssignTeachingLoadGradeLevelIds,
+          }
+        : {}),
+      ...(designation?.atlasBuildSchedules
+        ? {
+            buildSchedulesGradeLevelIds: designation.atlasBuildSchedulesAllGrades || !designation.atlasBuildSchedulesGradeLevelIds?.length
+              ? "ALL"
+              : designation.atlasBuildSchedulesGradeLevelIds,
+          }
+        : {}),
       companionAccess: (() => {
         const mergedAncillary = mergeAncillaryRoles(teacher.ancillaryRoles, designation?.ancillaryRoles);
         const displayOrders = Object.entries(gradeCoordinatorRoleToOrder)
@@ -723,12 +743,30 @@ export async function listIntegrationFaculty(
             .filter((g) => displayOrders.includes(g.displayOrder as any))
             .map((g) => g.id);
         }
+
+        const assignTeachingLoad = designation?.atlasAssignTeachingLoad ?? false;
+        const buildSchedules = designation?.atlasBuildSchedules ?? false;
+
+        const assignTeachingLoadGradeLevelIds = assignTeachingLoad
+          ? (designation?.atlasAssignTeachingLoadAllGrades || !designation?.atlasAssignTeachingLoadGradeLevelIds?.length
+              ? "ALL"
+              : designation.atlasAssignTeachingLoadGradeLevelIds)
+          : undefined;
+
+        const buildSchedulesGradeLevelIds = buildSchedules
+          ? (designation?.atlasBuildSchedulesAllGrades || !designation?.atlasBuildSchedulesGradeLevelIds?.length
+              ? "ALL"
+              : designation.atlasBuildSchedulesGradeLevelIds)
+          : undefined;
+
         return {
           atlas: {
             schoolYearId: scope.schoolYearId,
-            assignTeachingLoad: designation?.atlasAssignTeachingLoad ?? false,
-            buildSchedules: designation?.atlasBuildSchedules ?? false,
+            assignTeachingLoad,
+            buildSchedules,
             gradeLevelIds,
+            ...(assignTeachingLoadGradeLevelIds !== undefined ? { assignTeachingLoadGradeLevelIds } : {}),
+            ...(buildSchedulesGradeLevelIds !== undefined ? { buildSchedulesGradeLevelIds } : {}),
           },
         };
       })(),

@@ -58,6 +58,8 @@ export const companionSsoExchangeResponseSchema = z.object({
         assignTeachingLoad: z.boolean(),
         buildSchedules: z.boolean(),
         gradeLevelIds: z.array(z.number().int().positive()).nullable(),
+        assignTeachingLoadGradeLevelIds: z.union([z.literal("ALL"), z.array(z.number().int().positive()).min(1)]).optional(),
+        buildSchedulesGradeLevelIds: z.union([z.literal("ALL"), z.array(z.number().int().positive()).min(1)]).optional(),
       }).optional(),
     }).optional(),
   }),

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Briefcase,
@@ -109,6 +110,20 @@ const ViewRow = ({
   </div>
 );
 
+function formatAtlasAccess(
+  enabled?: boolean,
+  allGrades?: boolean,
+  gradeLevelIds?: number[],
+  availableGradeLevels: Array<{ id: number; name: string }> = [],
+): string {
+  if (!enabled) return "No";
+  if (allGrades) return "Yes (All grades)";
+  if (!gradeLevelIds || gradeLevelIds.length === 0) return "Yes";
+  const nameMap = new Map(availableGradeLevels.map((g) => [g.id, g.name]));
+  const names = gradeLevelIds.map((id) => nameMap.get(id) || `Grade ${id}`);
+  return `Yes (${names.join(", ")})`;
+}
+
 export default function PersonnelProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -118,6 +133,22 @@ export default function PersonnelProfile() {
   const [teacher, setTeacher] = useState<TeacherProfileResponse["teacher"] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const { data: gradeLevelsResponse } = useQuery({
+    queryKey: ["settings", "grade-levels"],
+    queryFn: () =>
+      api
+        .get<{ schoolYearId: number; gradeLevels: Array<{ id: number; name: string; displayOrder?: number }> }>(
+          "/school-years/grade-levels",
+        )
+        .then((res) => res.data),
+    staleTime: 60_000,
+  });
+
+  const availableGradeLevels = useMemo(() => {
+    const raw = gradeLevelsResponse?.gradeLevels ?? [];
+    return [...raw].sort((a, b) => (a.displayOrder ?? a.id) - (b.displayOrder ?? b.id));
+  }, [gradeLevelsResponse]);
 
   const canEdit = useMemo(() => {
     return (
@@ -423,11 +454,21 @@ export default function PersonnelProfile() {
             <div className="text-base leading-tight font-bold divide-y divide-border">
               <ViewRow
                 label="Assign Teaching Load"
-                value={teacher.designation?.atlasAssignTeachingLoad ? "Yes" : "No"}
+                value={formatAtlasAccess(
+                  teacher.designation?.atlasAssignTeachingLoad,
+                  teacher.designation?.atlasAssignTeachingLoadAllGrades,
+                  teacher.designation?.atlasAssignTeachingLoadGradeLevelIds,
+                  availableGradeLevels,
+                )}
               />
               <ViewRow
                 label="Build Schedules"
-                value={teacher.designation?.atlasBuildSchedules ? "Yes" : "No"}
+                value={formatAtlasAccess(
+                  teacher.designation?.atlasBuildSchedules,
+                  teacher.designation?.atlasBuildSchedulesAllGrades,
+                  teacher.designation?.atlasBuildSchedulesGradeLevelIds,
+                  availableGradeLevels,
+                )}
               />
             </div>
           </div>

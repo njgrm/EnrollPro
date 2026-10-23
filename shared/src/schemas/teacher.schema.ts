@@ -210,7 +210,11 @@ export const teacherSchemaBase = z
       .optional()
       .default([]),
     atlasAssignTeachingLoad: z.boolean().optional().default(false),
+    atlasAssignTeachingLoadAllGrades: z.boolean().optional().default(true),
+    atlasAssignTeachingLoadGradeLevelIds: z.array(z.number().int().positive()).optional().default([]),
     atlasBuildSchedules: z.boolean().optional().default(false),
+    atlasBuildSchedulesAllGrades: z.boolean().optional().default(true),
+    atlasBuildSchedulesGradeLevelIds: z.array(z.number().int().positive()).optional().default([]),
     accessExpirationDate: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/, "Access expiration date must be in YYYY-MM-DD format")
@@ -228,6 +232,26 @@ export const teacherSchemaBase = z
         message: "Bachelor major/specialization is required when bachelor degree is provided",
         path: ["bachelorMajor"],
       });
+    }
+
+    if (data.atlasAssignTeachingLoad) {
+      if (!data.atlasAssignTeachingLoadAllGrades && (!data.atlasAssignTeachingLoadGradeLevelIds || data.atlasAssignTeachingLoadGradeLevelIds.length === 0)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "At least one grade level or All grades must be selected when Assign Teaching Load is enabled",
+          path: ["atlasAssignTeachingLoadGradeLevelIds"],
+        });
+      }
+    }
+
+    if (data.atlasBuildSchedules) {
+      if (!data.atlasBuildSchedulesAllGrades && (!data.atlasBuildSchedulesGradeLevelIds || data.atlasBuildSchedulesGradeLevelIds.length === 0)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "At least one grade level or All grades must be selected when Build Schedules is enabled",
+          path: ["atlasBuildSchedulesGradeLevelIds"],
+        });
+      }
     }
   });
 
@@ -312,21 +336,45 @@ export const teacherDesignationSchema = z
     effectiveTo: optionalDateOnly,
     reason: z.string().max(500).optional().nullable(),
     allowAdviserOverride: z.boolean().optional().default(false),
+    atlasAssignTeachingLoad: z.boolean().optional().default(false),
+    atlasAssignTeachingLoadAllGrades: z.boolean().optional().default(true),
+    atlasAssignTeachingLoadGradeLevelIds: z.array(z.number().int().positive()).optional().default([]),
+    atlasBuildSchedules: z.boolean().optional().default(false),
+    atlasBuildSchedulesAllGrades: z.boolean().optional().default(true),
+    atlasBuildSchedulesGradeLevelIds: z.array(z.number().int().positive()).optional().default([]),
   })
   .superRefine((value, ctx) => {
-    if (!value.effectiveFrom || !value.effectiveTo) {
-      return;
+    if (value.effectiveFrom && value.effectiveTo) {
+      const from = new Date(`${value.effectiveFrom}T00:00:00.000Z`);
+      const to = new Date(`${value.effectiveTo}T00:00:00.000Z`);
+
+      if (to < from) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["effectiveTo"],
+          message: "effectiveTo cannot be earlier than effectiveFrom",
+        });
+      }
     }
 
-    const from = new Date(`${value.effectiveFrom}T00:00:00.000Z`);
-    const to = new Date(`${value.effectiveTo}T00:00:00.000Z`);
+    if (value.atlasAssignTeachingLoad) {
+      if (!value.atlasAssignTeachingLoadAllGrades && (!value.atlasAssignTeachingLoadGradeLevelIds || value.atlasAssignTeachingLoadGradeLevelIds.length === 0)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "At least one grade level or All grades must be selected when Assign Teaching Load is enabled",
+          path: ["atlasAssignTeachingLoadGradeLevelIds"],
+        });
+      }
+    }
 
-    if (to < from) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["effectiveTo"],
-        message: "effectiveTo cannot be earlier than effectiveFrom",
-      });
+    if (value.atlasBuildSchedules) {
+      if (!value.atlasBuildSchedulesAllGrades && (!value.atlasBuildSchedulesGradeLevelIds || value.atlasBuildSchedulesGradeLevelIds.length === 0)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "At least one grade level or All grades must be selected when Build Schedules is enabled",
+          path: ["atlasBuildSchedulesGradeLevelIds"],
+        });
+      }
     }
   });
 

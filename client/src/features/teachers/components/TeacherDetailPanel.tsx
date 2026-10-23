@@ -1,5 +1,6 @@
 import { AnimatedError } from "@/shared/components/AnimatedError";
 import { memo, useCallback, useState, useEffect, useMemo, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@/shared/lib/zodResolver";
@@ -177,7 +178,11 @@ const formSchema = z
     ]).optional().nullable(),
     ancillaryRoles: z.array(z.string()).default([]),
     atlasAssignTeachingLoad: z.boolean().default(false),
+    atlasAssignTeachingLoadAllGrades: z.boolean().default(true),
+    atlasAssignTeachingLoadGradeLevelIds: z.array(z.number()).default([]),
     atlasBuildSchedules: z.boolean().default(false),
+    atlasBuildSchedulesAllGrades: z.boolean().default(true),
+    atlasBuildSchedulesGradeLevelIds: z.array(z.number()).default([]),
     roles: z.array(z.string()).min(1, "Please select at least one system role for this personnel."),
 
     contactNumber: z
@@ -294,6 +299,26 @@ const formSchema = z
         });
       }
     }
+
+    if (data.atlasAssignTeachingLoad) {
+      if (!data.atlasAssignTeachingLoadAllGrades && (!data.atlasAssignTeachingLoadGradeLevelIds || data.atlasAssignTeachingLoadGradeLevelIds.length === 0)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Please select at least one grade level or All grades.",
+          path: ["atlasAssignTeachingLoadGradeLevelIds"],
+        });
+      }
+    }
+
+    if (data.atlasBuildSchedules) {
+      if (!data.atlasBuildSchedulesAllGrades && (!data.atlasBuildSchedulesGradeLevelIds || data.atlasBuildSchedulesGradeLevelIds.length === 0)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Please select at least one grade level or All grades.",
+          path: ["atlasBuildSchedulesGradeLevelIds"],
+        });
+      }
+    }
   });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -327,6 +352,20 @@ function getApiErrorMessage(error: unknown, fallback: string): string {
   return apiError.response?.data?.message ?? fallback;
 }
 
+function formatAtlasAccess(
+  enabled?: boolean,
+  allGrades?: boolean,
+  gradeLevelIds?: number[],
+  availableGradeLevels: Array<{ id: number; name: string }> = [],
+): string {
+  if (!enabled) return "No";
+  if (allGrades) return "Yes (All grades)";
+  if (!gradeLevelIds || gradeLevelIds.length === 0) return "Yes";
+  const nameMap = new Map(availableGradeLevels.map((g) => [g.id, g.name]));
+  const names = gradeLevelIds.map((id) => nameMap.get(id) || `Grade ${id}`);
+  return `Yes (${names.join(", ")})`;
+}
+
 
 
 export const TeacherDetailPanel = memo(function TeacherDetailPanel({
@@ -355,6 +394,22 @@ export const TeacherDetailPanel = memo(function TeacherDetailPanel({
 
   const globalDefaultPassword = useSettingsStore((s) => s.globalDefaultPassword);
   const activeSchoolYearLabel = useSettingsStore((s) => s.activeSchoolYearLabel);
+
+  const { data: gradeLevelsResponse } = useQuery({
+    queryKey: ["settings", "grade-levels"],
+    queryFn: () =>
+      api
+        .get<{ schoolYearId: number; gradeLevels: Array<{ id: number; name: string; displayOrder?: number }> }>(
+          "/school-years/grade-levels",
+        )
+        .then((res) => res.data),
+    staleTime: 60_000,
+  });
+
+  const availableGradeLevels = useMemo(() => {
+    const raw = gradeLevelsResponse?.gradeLevels ?? [];
+    return [...raw].sort((a, b) => (a.displayOrder ?? a.id) - (b.displayOrder ?? b.id));
+  }, [gradeLevelsResponse]);
 
   useEffect(() => {
     let pwd = globalDefaultPassword || "DepEd2026!";
@@ -404,7 +459,7 @@ export const TeacherDetailPanel = memo(function TeacherDetailPanel({
     reset,
     watch,
     setValue,
-    trigger,
+    getValues,
     formState: { isDirty, errors },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -434,7 +489,11 @@ export const TeacherDetailPanel = memo(function TeacherDetailPanel({
       roles: [],
       ancillaryRoles: [],
       atlasAssignTeachingLoad: false,
+      atlasAssignTeachingLoadAllGrades: true,
+      atlasAssignTeachingLoadGradeLevelIds: [],
       atlasBuildSchedules: false,
+      atlasBuildSchedulesAllGrades: true,
+      atlasBuildSchedulesGradeLevelIds: [],
       contactNumber: "",
       serviceStatus: "ACTIVE",
       serviceEffectiveDate: new Date().toISOString().slice(0, 10),
@@ -482,6 +541,14 @@ export const TeacherDetailPanel = memo(function TeacherDetailPanel({
   const formLastName = watch("lastName");
   const formSuffix = watch("suffix");
 
+  const watchAtlasAssignTeachingLoad = watch("atlasAssignTeachingLoad");
+  const watchAtlasAssignTeachingLoadAllGrades = watch("atlasAssignTeachingLoadAllGrades");
+  const watchAtlasAssignTeachingLoadGradeLevelIds = watch("atlasAssignTeachingLoadGradeLevelIds") || [];
+
+  const watchAtlasBuildSchedules = watch("atlasBuildSchedules");
+  const watchAtlasBuildSchedulesAllGrades = watch("atlasBuildSchedulesAllGrades");
+  const watchAtlasBuildSchedulesGradeLevelIds = watch("atlasBuildSchedulesGradeLevelIds") || [];
+
   useEffect(() => {
     if (teacher) {
       const isTeacherOrAdviser = teacher.userAccount?.roles?.some(r => ["TEACHER", "CLASS_ADVISER"].includes(r)) ?? false;
@@ -507,34 +574,34 @@ export const TeacherDetailPanel = memo(function TeacherDetailPanel({
         undergraduateDegree: (teacher.undergraduateDegree === "NONE" ? "" : teacher.undergraduateDegree) || "",
         bachelorMajor: (() => {
           const val = (teacher.bachelorMajor === "NONE" ? "" : teacher.bachelorMajor) || "";
-          return val && !DEPED_TEACHER_SPECIALIZATION_VALUES.includes(val as any) ? "OTHER" : val;
+          return val && !(DEPED_TEACHER_SPECIALIZATION_VALUES as readonly string[]).includes(val) ? "OTHER" : val;
         })(),
         bachelorMajorCustom: (() => {
           const val = (teacher.bachelorMajor === "NONE" ? "" : teacher.bachelorMajor) || "";
-          return val && !DEPED_TEACHER_SPECIALIZATION_VALUES.includes(val as any) ? val : "";
+          return val && !(DEPED_TEACHER_SPECIALIZATION_VALUES as readonly string[]).includes(val) ? val : "";
         })(),
         bachelorMinor: (() => {
           const val = (teacher.bachelorMinor === "NONE" ? "" : teacher.bachelorMinor) || "";
-          return val && !DEPED_TEACHER_SPECIALIZATION_VALUES.includes(val as any) ? "OTHER" : val;
+          return val && !(DEPED_TEACHER_SPECIALIZATION_VALUES as readonly string[]).includes(val) ? "OTHER" : val;
         })(),
         bachelorMinorCustom: (() => {
           const val = (teacher.bachelorMinor === "NONE" ? "" : teacher.bachelorMinor) || "";
-          return val && !DEPED_TEACHER_SPECIALIZATION_VALUES.includes(val as any) ? val : "";
+          return val && !(DEPED_TEACHER_SPECIALIZATION_VALUES as readonly string[]).includes(val) ? val : "";
         })(),
         postgraduateDegrees: teacher.postgraduateDegrees?.length
           ? teacher.postgraduateDegrees.map((entry) => ({
             degree: entry.degree === "NONE" ? "" : entry.degree,
-            major: entry.major && !DEPED_TEACHER_SPECIALIZATION_VALUES.includes(entry.major as any) ? "OTHER" : (entry.major || ""),
-            majorCustom: entry.major && !DEPED_TEACHER_SPECIALIZATION_VALUES.includes(entry.major as any) ? entry.major : "",
-            minor: entry.minor && !DEPED_TEACHER_SPECIALIZATION_VALUES.includes(entry.minor as any) ? "OTHER" : (entry.minor || ""),
-            minorCustom: entry.minor && !DEPED_TEACHER_SPECIALIZATION_VALUES.includes(entry.minor as any) ? entry.minor : "",
+            major: entry.major && !(DEPED_TEACHER_SPECIALIZATION_VALUES as readonly string[]).includes(entry.major) ? "OTHER" : (entry.major || ""),
+            majorCustom: entry.major && !(DEPED_TEACHER_SPECIALIZATION_VALUES as readonly string[]).includes(entry.major) ? entry.major : "",
+            minor: entry.minor && !(DEPED_TEACHER_SPECIALIZATION_VALUES as readonly string[]).includes(entry.minor) ? "OTHER" : (entry.minor || ""),
+            minorCustom: entry.minor && !(DEPED_TEACHER_SPECIALIZATION_VALUES as readonly string[]).includes(entry.minor) ? entry.minor : "",
           }))
           : [{
             degree: (teacher.postgraduateDegree === "NONE" ? "" : teacher.postgraduateDegree) || "",
-            major: teacher.majorSpecialization && !DEPED_TEACHER_SPECIALIZATION_VALUES.includes(teacher.majorSpecialization as any) ? "OTHER" : (teacher.majorSpecialization || ""),
-            majorCustom: teacher.majorSpecialization && !DEPED_TEACHER_SPECIALIZATION_VALUES.includes(teacher.majorSpecialization as any) ? teacher.majorSpecialization : "",
-            minor: teacher.minorSpecialization && !DEPED_TEACHER_SPECIALIZATION_VALUES.includes(teacher.minorSpecialization as any) ? "OTHER" : (teacher.minorSpecialization || ""),
-            minorCustom: teacher.minorSpecialization && !DEPED_TEACHER_SPECIALIZATION_VALUES.includes(teacher.minorSpecialization as any) ? teacher.minorSpecialization : "",
+            major: teacher.majorSpecialization && !(DEPED_TEACHER_SPECIALIZATION_VALUES as readonly string[]).includes(teacher.majorSpecialization) ? "OTHER" : (teacher.majorSpecialization || ""),
+            majorCustom: teacher.majorSpecialization && !(DEPED_TEACHER_SPECIALIZATION_VALUES as readonly string[]).includes(teacher.majorSpecialization) ? teacher.majorSpecialization : "",
+            minor: teacher.minorSpecialization && !(DEPED_TEACHER_SPECIALIZATION_VALUES as readonly string[]).includes(teacher.minorSpecialization) ? "OTHER" : (teacher.minorSpecialization || ""),
+            minorCustom: teacher.minorSpecialization && !(DEPED_TEACHER_SPECIALIZATION_VALUES as readonly string[]).includes(teacher.minorSpecialization) ? teacher.minorSpecialization : "",
           }],
         indigenousCommunity: (teacher.indigenousCommunity as unknown as FormValues['indigenousCommunity']) || "NOT APPLICABLE",
         natureOfAppointment: teacher.natureOfAppointment || "REGULAR_PERMANENT",
@@ -542,7 +609,11 @@ export const TeacherDetailPanel = memo(function TeacherDetailPanel({
         roles: teacher.userAccount?.roles || [],
         ancillaryRoles: teacher.designation?.ancillaryRoles || teacher.ancillaryRoles || [],
         atlasAssignTeachingLoad: teacher.designation?.atlasAssignTeachingLoad ?? false,
+        atlasAssignTeachingLoadAllGrades: teacher.designation?.atlasAssignTeachingLoadAllGrades ?? true,
+        atlasAssignTeachingLoadGradeLevelIds: teacher.designation?.atlasAssignTeachingLoadGradeLevelIds ?? [],
         atlasBuildSchedules: teacher.designation?.atlasBuildSchedules ?? false,
+        atlasBuildSchedulesAllGrades: teacher.designation?.atlasBuildSchedulesAllGrades ?? true,
+        atlasBuildSchedulesGradeLevelIds: teacher.designation?.atlasBuildSchedulesGradeLevelIds ?? [],
         contactNumber: teacher.contactNumber || "",
         serviceStatus: teacher.serviceStatus || "ACTIVE",
         serviceEffectiveDate: formatDateInput(serviceMetadata.serviceEffectiveDate),
@@ -578,7 +649,11 @@ export const TeacherDetailPanel = memo(function TeacherDetailPanel({
         roles: [],
         ancillaryRoles: [],
         atlasAssignTeachingLoad: false,
+        atlasAssignTeachingLoadAllGrades: true,
+        atlasAssignTeachingLoadGradeLevelIds: [],
         atlasBuildSchedules: false,
+        atlasBuildSchedulesAllGrades: true,
+        atlasBuildSchedulesGradeLevelIds: [],
         contactNumber: "",
         serviceStatus: "ACTIVE",
         serviceEffectiveDate: new Date().toISOString().slice(0, 10),
@@ -696,7 +771,15 @@ export const TeacherDetailPanel = memo(function TeacherDetailPanel({
         roles: data.roles,
         ancillaryRoles: data.ancillaryRoles,
         atlasAssignTeachingLoad: data.atlasAssignTeachingLoad,
+        atlasAssignTeachingLoadAllGrades: data.atlasAssignTeachingLoadAllGrades,
+        atlasAssignTeachingLoadGradeLevelIds: data.atlasAssignTeachingLoadAllGrades
+          ? []
+          : data.atlasAssignTeachingLoadGradeLevelIds,
         atlasBuildSchedules: data.atlasBuildSchedules,
+        atlasBuildSchedulesAllGrades: data.atlasBuildSchedulesAllGrades,
+        atlasBuildSchedulesGradeLevelIds: data.atlasBuildSchedulesAllGrades
+          ? []
+          : data.atlasBuildSchedulesGradeLevelIds,
         contactNumber: data.contactNumber,
         serviceStatus: data.serviceStatus,
         serviceEffectiveDate: data.serviceEffectiveDate,
@@ -1079,8 +1162,24 @@ export const TeacherDetailPanel = memo(function TeacherDetailPanel({
                         </span>
                       </div>
                       <div className="text-base leading-tight font-bold divide-y divide-border">
-                        <ViewRow label="Assign Teaching Load" value={teacher.designation?.atlasAssignTeachingLoad ? "Yes" : "No"} />
-                        <ViewRow label="Build Schedules" value={teacher.designation?.atlasBuildSchedules ? "Yes" : "No"} />
+                        <ViewRow
+                          label="Assign Teaching Load"
+                          value={formatAtlasAccess(
+                            teacher.designation?.atlasAssignTeachingLoad,
+                            teacher.designation?.atlasAssignTeachingLoadAllGrades,
+                            teacher.designation?.atlasAssignTeachingLoadGradeLevelIds,
+                            availableGradeLevels,
+                          )}
+                        />
+                        <ViewRow
+                          label="Build Schedules"
+                          value={formatAtlasAccess(
+                            teacher.designation?.atlasBuildSchedules,
+                            teacher.designation?.atlasBuildSchedulesAllGrades,
+                            teacher.designation?.atlasBuildSchedulesGradeLevelIds,
+                            availableGradeLevels,
+                          )}
+                        />
                       </div>
                     </div>
 
@@ -1944,44 +2043,235 @@ export const TeacherDetailPanel = memo(function TeacherDetailPanel({
                                 ATLAS Access Toggles
                               </Label>
                               <div className="grid sm:grid-cols-2 gap-4 pt-2">
-                                <Controller
-                                  name="atlasAssignTeachingLoad"
-                                  control={control}
-                                  render={({ field }) => (
-                                    <div className={cn("flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3 bg-background", !isEditing && "opacity-60")}>
-                                      <Checkbox
-                                        id="toggle-assign-load"
-                                        checked={field.value}
-                                        onCheckedChange={(checked) => field.onChange(checked === true)}
-                                        disabled={!isEditing}
-                                        className="mt-1"
-                                      />
-                                      <label htmlFor="toggle-assign-load" className={cn("leading-none", isEditing ? "cursor-pointer" : "cursor-not-allowed")}>
-                                        <p className="font-bold uppercase">Assign Teaching Load</p>
-                                        <p className="text-sm text-foreground">Allow this user to manage teaching loads in ATLAS.</p>
-                                      </label>
+                                {/* 1. Assign Teaching Load Card */}
+                                <div className={cn("flex flex-col rounded-md border p-3 bg-background space-y-3", !isEditing && "opacity-60")}>
+                                  <Controller
+                                    name="atlasAssignTeachingLoad"
+                                    control={control}
+                                    render={({ field }) => (
+                                      <div className="flex flex-row items-start space-x-3 space-y-0">
+                                        <Checkbox
+                                          id="toggle-assign-load"
+                                          checked={field.value}
+                                          onCheckedChange={(checked) => {
+                                            const isChecked = checked === true;
+                                            field.onChange(isChecked);
+                                            if (isChecked) {
+                                              if (
+                                                !getValues("atlasAssignTeachingLoadAllGrades") &&
+                                                (getValues("atlasAssignTeachingLoadGradeLevelIds")?.length ?? 0) === 0
+                                              ) {
+                                                setValue("atlasAssignTeachingLoadAllGrades", true, { shouldDirty: true, shouldValidate: true });
+                                                setValue(
+                                                  "atlasAssignTeachingLoadGradeLevelIds",
+                                                  availableGradeLevels.map((g) => g.id),
+                                                  { shouldDirty: true, shouldValidate: true },
+                                                );
+                                              }
+                                            }
+                                          }}
+                                          disabled={!isEditing}
+                                          className="mt-1"
+                                        />
+                                        <label htmlFor="toggle-assign-load" className={cn("leading-none", isEditing ? "cursor-pointer" : "cursor-not-allowed")}>
+                                          <p className="font-bold uppercase">Assign Teaching Load</p>
+                                          <p className="text-sm text-muted-foreground mt-0.5">Allow this user to manage teaching loads in ATLAS.</p>
+                                        </label>
+                                      </div>
+                                    )}
+                                  />
+
+                                  {watchAtlasAssignTeachingLoad && (
+                                    <div className="border-t pt-3 pl-7 space-y-2">
+                                      <p className="text-sm font-bold uppercase tracking-wider">
+                                        Grade Levels Allowed
+                                      </p>
+
+                                      {/* All grades checkbox */}
+                                      <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                          id="assign-load-grade-all"
+                                          checked={watchAtlasAssignTeachingLoadAllGrades}
+                                          disabled={!isEditing}
+                                          onCheckedChange={(checked) => {
+                                            const isAll = checked === true;
+                                            setValue("atlasAssignTeachingLoadAllGrades", isAll, { shouldDirty: true, shouldValidate: true });
+                                            if (isAll) {
+                                              setValue(
+                                                "atlasAssignTeachingLoadGradeLevelIds",
+                                                availableGradeLevels.map((g) => g.id),
+                                                { shouldDirty: true, shouldValidate: true },
+                                              );
+                                            } else {
+                                              setValue("atlasAssignTeachingLoadGradeLevelIds", [], { shouldDirty: true, shouldValidate: true });
+                                            }
+                                          }}
+                                        />
+                                        <label
+                                          htmlFor="assign-load-grade-all"
+                                          className={cn("text-sm font-semibold uppercase", isEditing ? "cursor-pointer" : "cursor-not-allowed")}
+                                        >
+                                          All grades
+                                        </label>
+                                      </div>
+
+                                      {/* Individual grade level checkboxes */}
+                                      <div className="grid grid-cols-2 gap-2 pt-1">
+                                        {availableGradeLevels.map((gl) => {
+                                          const isChecked =
+                                            watchAtlasAssignTeachingLoadAllGrades ||
+                                            watchAtlasAssignTeachingLoadGradeLevelIds.includes(gl.id);
+                                          return (
+                                            <div key={gl.id} className="flex items-center space-x-2">
+                                              <Checkbox
+                                                id={`assign-load-grade-${gl.id}`}
+                                                checked={isChecked}
+                                                disabled={!isEditing}
+                                                onCheckedChange={(checked) => {
+                                                  const currentIds = watchAtlasAssignTeachingLoadAllGrades
+                                                    ? availableGradeLevels.map((g) => g.id)
+                                                    : watchAtlasAssignTeachingLoadGradeLevelIds;
+                                                  let nextIds: number[];
+                                                  if (checked === true) {
+                                                    nextIds = Array.from(new Set([...currentIds, gl.id]));
+                                                  } else {
+                                                    nextIds = currentIds.filter((id) => id !== gl.id);
+                                                  }
+                                                  setValue("atlasAssignTeachingLoadGradeLevelIds", nextIds, { shouldDirty: true, shouldValidate: true });
+                                                  const isAll = availableGradeLevels.length > 0 && availableGradeLevels.every((item) => nextIds.includes(item.id));
+                                                  setValue("atlasAssignTeachingLoadAllGrades", isAll, { shouldDirty: true, shouldValidate: true });
+                                                }}
+                                              />
+                                              <label
+                                                htmlFor={`assign-load-grade-${gl.id}`}
+                                                className={cn("text-xs font-medium uppercase", isEditing ? "cursor-pointer" : "cursor-not-allowed")}
+                                              >
+                                                {gl.name}
+                                              </label>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+
+                                      <AnimatedError error={errors.atlasAssignTeachingLoadGradeLevelIds?.message as string} />
                                     </div>
                                   )}
-                                />
-                                <Controller
-                                  name="atlasBuildSchedules"
-                                  control={control}
-                                  render={({ field }) => (
-                                    <div className={cn("flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3 bg-background", !isEditing && "opacity-60")}>
-                                      <Checkbox
-                                        id="toggle-build-schedules"
-                                        checked={field.value}
-                                        onCheckedChange={(checked) => field.onChange(checked === true)}
-                                        disabled={!isEditing}
-                                        className="mt-1"
-                                      />
-                                      <label htmlFor="toggle-build-schedules" className={cn("leading-none", isEditing ? "cursor-pointer" : "cursor-not-allowed")}>
-                                        <p className="font-bold uppercase">Build Schedules</p>
-                                        <p className="text-sm text-foreground">Allow this user to build section schedules in ATLAS.</p>
-                                      </label>
+                                </div>
+
+                                {/* 2. Build Schedules Card */}
+                                <div className={cn("flex flex-col rounded-md border p-3 bg-background space-y-3", !isEditing && "opacity-60")}>
+                                  <Controller
+                                    name="atlasBuildSchedules"
+                                    control={control}
+                                    render={({ field }) => (
+                                      <div className="flex flex-row items-start space-x-3 space-y-0">
+                                        <Checkbox
+                                          id="toggle-build-schedules"
+                                          checked={field.value}
+                                          onCheckedChange={(checked) => {
+                                            const isChecked = checked === true;
+                                            field.onChange(isChecked);
+                                            if (isChecked) {
+                                              if (
+                                                !getValues("atlasBuildSchedulesAllGrades") &&
+                                                (getValues("atlasBuildSchedulesGradeLevelIds")?.length ?? 0) === 0
+                                              ) {
+                                                setValue("atlasBuildSchedulesAllGrades", true, { shouldDirty: true, shouldValidate: true });
+                                                setValue(
+                                                  "atlasBuildSchedulesGradeLevelIds",
+                                                  availableGradeLevels.map((g) => g.id),
+                                                  { shouldDirty: true, shouldValidate: true },
+                                                );
+                                              }
+                                            }
+                                          }}
+                                          disabled={!isEditing}
+                                          className="mt-1"
+                                        />
+                                        <label htmlFor="toggle-build-schedules" className={cn("leading-none", isEditing ? "cursor-pointer" : "cursor-not-allowed")}>
+                                          <p className="font-bold uppercase">Build Schedules</p>
+                                          <p className="text-sm text-muted-foreground mt-0.5">Allow this user to build section schedules in ATLAS.</p>
+                                        </label>
+                                      </div>
+                                    )}
+                                  />
+
+                                  {watchAtlasBuildSchedules && (
+                                    <div className="border-t pt-3 pl-7 space-y-2">
+                                      <p className="text-sm font-bold uppercase tracking-wider">
+                                        Grade Levels Allowed
+                                      </p>
+
+                                      {/* All grades checkbox */}
+                                      <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                          id="build-schedules-grade-all"
+                                          checked={watchAtlasBuildSchedulesAllGrades}
+                                          disabled={!isEditing}
+                                          onCheckedChange={(checked) => {
+                                            const isAll = checked === true;
+                                            setValue("atlasBuildSchedulesAllGrades", isAll, { shouldDirty: true, shouldValidate: true });
+                                            if (isAll) {
+                                              setValue(
+                                                "atlasBuildSchedulesGradeLevelIds",
+                                                availableGradeLevels.map((g) => g.id),
+                                                { shouldDirty: true, shouldValidate: true },
+                                              );
+                                            } else {
+                                              setValue("atlasBuildSchedulesGradeLevelIds", [], { shouldDirty: true, shouldValidate: true });
+                                            }
+                                          }}
+                                        />
+                                        <label
+                                          htmlFor="build-schedules-grade-all"
+                                          className={cn("text-sm font-bold uppercase", isEditing ? "cursor-pointer" : "cursor-not-allowed")}
+                                        >
+                                          All grades
+                                        </label>
+                                      </div>
+
+                                      {/* Individual grade level checkboxes */}
+                                      <div className="grid grid-cols-2 gap-2 pt-1">
+                                        {availableGradeLevels.map((gl) => {
+                                          const isChecked =
+                                            watchAtlasBuildSchedulesAllGrades ||
+                                            watchAtlasBuildSchedulesGradeLevelIds.includes(gl.id);
+                                          return (
+                                            <div key={gl.id} className="flex items-center space-x-2">
+                                              <Checkbox
+                                                id={`build-schedules-grade-${gl.id}`}
+                                                checked={isChecked}
+                                                disabled={!isEditing}
+                                                onCheckedChange={(checked) => {
+                                                  const currentIds = watchAtlasBuildSchedulesAllGrades
+                                                    ? availableGradeLevels.map((g) => g.id)
+                                                    : watchAtlasBuildSchedulesGradeLevelIds;
+                                                  let nextIds: number[];
+                                                  if (checked === true) {
+                                                    nextIds = Array.from(new Set([...currentIds, gl.id]));
+                                                  } else {
+                                                    nextIds = currentIds.filter((id) => id !== gl.id);
+                                                  }
+                                                  setValue("atlasBuildSchedulesGradeLevelIds", nextIds, { shouldDirty: true, shouldValidate: true });
+                                                  const isAll = availableGradeLevels.length > 0 && availableGradeLevels.every((item) => nextIds.includes(item.id));
+                                                  setValue("atlasBuildSchedulesAllGrades", isAll, { shouldDirty: true, shouldValidate: true });
+                                                }}
+                                              />
+                                              <label
+                                                htmlFor={`build-schedules-grade-${gl.id}`}
+                                                className={cn("text-xs font-bold uppercase", isEditing ? "cursor-pointer" : "cursor-not-allowed")}
+                                              >
+                                                {gl.name}
+                                              </label>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+
+                                      <AnimatedError error={errors.atlasBuildSchedulesGradeLevelIds?.message as string} />
                                     </div>
                                   )}
-                                />
+                                </div>
                               </div>
                             </div>
                           </div>
