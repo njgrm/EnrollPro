@@ -118,23 +118,31 @@ function getInvalidationPrefixes(
         break;
       case "enrollment:pending-verifications":
         prefixes.push(["enrollment", "pending-verifications"]);
+        prefixes.push(["early-registrations"]);
         break;
       case "enrollment:applications":
         prefixes.push(["applications"]);
         prefixes.push(["enrollment"]);
+        prefixes.push(["early-registrations"]);
+        prefixes.push(["scp-applicants"]);
         break;
       case "bosy:queue":
         prefixes.push(["bosy"]);
+        prefixes.push(["early-registrations"]);
         break;
       case "bosy:readiness":
         prefixes.push(["bosy"]);
         break;
       case "students:list":
         prefixes.push(["students"]);
+        prefixes.push(["early-registrations"]);
+        prefixes.push(["scp-applicants"]);
         break;
       case "students:detail":
         prefixes.push(["students"]);
         prefixes.push(["student"]);
+        prefixes.push(["early-registrations"]);
+        prefixes.push(["scp-applicants"]);
         break;
       case "teachers:list":
         prefixes.push(["teachers", "list"]);
@@ -161,6 +169,7 @@ function getInvalidationPrefixes(
         break;
       case "sectioning:pool":
         prefixes.push(["sectioning", "pool"]);
+        prefixes.push(["early-registrations"]);
         break;
       case "eosy:sections":
         prefixes.push(["eosy"]);
@@ -222,6 +231,7 @@ export function useRealtimeInvalidations(): void {
             prefixes.some((prefix) =>
               queryKeyStartsWith(query.queryKey, prefix),
             ),
+          refetchType: "active",
         });
       }
 

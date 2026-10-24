@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   REALTIME_INVALIDATION_EVENT,
   type RealtimeInvalidationEvent,
@@ -16,6 +16,11 @@ export function useRealtimeRefresh({
   schoolYearId,
   onRefresh,
 }: UseRealtimeRefreshOptions): void {
+  const onRefreshRef = useRef(onRefresh);
+  const topicsRef = useRef(topics);
+  onRefreshRef.current = onRefresh;
+  topicsRef.current = topics;
+
   useEffect(() => {
     const handleRealtimeInvalidation = (event: Event) => {
       const payload = (event as CustomEvent<RealtimeInvalidationEvent>).detail;
@@ -25,11 +30,11 @@ export function useRealtimeRefresh({
       }
 
       const shouldRefresh = payload.topics.some((topic) =>
-        topics.includes(topic),
+        topicsRef.current.includes(topic),
       );
 
       if (shouldRefresh) {
-        onRefresh();
+        onRefreshRef.current();
       }
     };
 
@@ -44,5 +49,5 @@ export function useRealtimeRefresh({
         handleRealtimeInvalidation,
       );
     };
-  }, [onRefresh, schoolYearId, topics]);
+  }, [schoolYearId]);
 }

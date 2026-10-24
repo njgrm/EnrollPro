@@ -1232,6 +1232,8 @@ export async function saveScpAssessment(req: Request, res: Response, next: NextF
       },
     });
 
+    broadcastEnrollmentInvalidation(application.schoolYearId, [application.learnerId]);
+
     return res.json({
       success: true,
       message: "Assessment saved successfully.",

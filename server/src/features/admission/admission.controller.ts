@@ -592,6 +592,8 @@ async function processAdmissionSubmission(
       });
     });
 
+    broadcastEnrollmentInvalidation(activeSchoolYearId, [learner.id]);
+
     res.status(201).json({
       message: "Admission submitted successfully",
       trackingNumber: admission.trackingNumber,
@@ -1575,7 +1577,7 @@ export async function markEarlyRegistrationNoShow(req: Request, res: Response) {
       req,
     });
 
-    broadcastEnrollmentInvalidation(application.schoolYearId);
+    broadcastEnrollmentInvalidation(application.schoolYearId, [application.learnerId]);
 
     res.json({ success: true, application: updated });
   } catch (error) {
@@ -1622,7 +1624,7 @@ export async function restoreEarlyRegistration(req: Request, res: Response) {
       req,
     });
 
-    broadcastEnrollmentInvalidation(application.schoolYearId);
+    broadcastEnrollmentInvalidation(application.schoolYearId, [application.learnerId]);
 
     res.json({ success: true, application: updated });
   } catch (error) {

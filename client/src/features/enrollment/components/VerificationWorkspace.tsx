@@ -26,6 +26,7 @@ import { useAuthStore } from "@/store/auth.slice";
 import { useHistoricalReadOnly } from "@/shared/hooks/useHistoricalReadOnly";
 import { cn, getGradeLevelBadgeStyles, getGradeLevelButtonStyles, formatGradeLevel, formatSectionProgramLabel } from "@/shared/lib/utils";
 import { WalkInEncodePanel } from "./WalkInEncodePanel";
+import { VerificationFilterPopover } from "./VerificationFilterPopover";
 import { StudentDetailModal } from "@/features/students/components/StudentDetailModal";
 import { useResizablePanel } from "@/shared/hooks/useResizablePanel";
 import { ConfirmationModal } from "@/shared/ui/confirmation-modal";
@@ -241,24 +242,6 @@ export function VerificationWorkspace() {
   const [showOnline, setShowOnline] = useState(true);
   const [showWalkIn, setShowWalkIn] = useState(true);
 
-  const [localIntakeCategoryFilter, setLocalIntakeCategoryFilter] = useState<string>(
-    isTransfereeOnlyCoordinator ? "TRANSFEREE" : "ALL",
-  );
-  const [localProgramFilter, setLocalProgramFilter] = useState<string>("ALL");
-  const [localTrackingNumberFilter, setLocalTrackingNumberFilter] = useState("");
-  const [localShowOnline, setLocalShowOnline] = useState(true);
-  const [localShowWalkIn, setLocalShowWalkIn] = useState(true);
-  const [isFilterPopoverOpen, setIsFilterPopoverOpen] = useState(false);
-
-  useEffect(() => {
-    if (isFilterPopoverOpen) {
-      setLocalIntakeCategoryFilter(intakeCategoryFilter);
-      setLocalProgramFilter(programFilter);
-      setLocalTrackingNumberFilter(trackingNumberFilter);
-      setLocalShowOnline(showOnline);
-      setLocalShowWalkIn(showWalkIn);
-    }
-  }, [isFilterPopoverOpen, intakeCategoryFilter, programFilter, trackingNumberFilter, showOnline, showWalkIn]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -331,6 +314,67 @@ export function VerificationWorkspace() {
     350,
     activeTab,
   );
+
+  const handleApplyFilters = useCallback(
+    (filters: {
+      intakeCategoryFilter: string;
+      programFilter: string;
+      trackingNumberFilter: string;
+      showOnline: boolean;
+      showWalkIn: boolean;
+    }) => {
+      setIntakeCategoryFilter(filters.intakeCategoryFilter);
+      setProgramFilter(filters.programFilter);
+      setTrackingNumberFilter(filters.trackingNumberFilter);
+      setShowOnline(filters.showOnline);
+      setShowWalkIn(filters.showWalkIn);
+
+      if (filters.trackingNumberFilter.trim() !== "") {
+        const q = filters.trackingNumberFilter.trim().toLowerCase();
+        const matchedApps = pendingVerifications.filter((app) =>
+          app.trackingNumber?.toLowerCase().includes(q)
+        );
+        let targetApp = null;
+
+        if (matchedApps.length === 1) {
+          targetApp = matchedApps[0];
+        } else if (matchedApps.length > 1) {
+          targetApp =
+            matchedApps.find((app) => app.trackingNumber?.toLowerCase() === q) ||
+            matchedApps[0];
+        }
+
+        if (targetApp) {
+          let targetTab: VerificationTab | null = null;
+          if (targetApp.status === "PENDING_VERIFICATION") {
+            targetTab = "PENDING";
+          } else if (targetApp.status === "READY_FOR_ENROLLMENT") {
+            targetTab = "READY";
+          } else if (targetApp.status === "INCOMPLETE") {
+            targetTab = "INCOMPLETE";
+          } else if (
+            targetApp.status === "REJECTED" ||
+            targetApp.status === "CANCELLED"
+          ) {
+            targetTab = "CANCELLED";
+          }
+
+          if (targetTab && targetTab !== activeTab) {
+            setActiveTab(targetTab);
+          }
+        }
+      }
+    },
+    [pendingVerifications, activeTab, setActiveTab]
+  );
+
+  const handleClearFilters = useCallback(() => {
+    setIntakeCategoryFilter(isTransfereeOnlyCoordinator ? "TRANSFEREE" : "ALL");
+    setProgramFilter("ALL");
+    setTrackingNumberFilter("");
+    setShowOnline(true);
+    setShowWalkIn(true);
+  }, [isTransfereeOnlyCoordinator]);
 
   const previousAppIdsRef = useRef<Set<number> | null>(null);
 
@@ -951,163 +995,18 @@ export function VerificationWorkspace() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <Popover open={isFilterPopoverOpen} onOpenChange={setIsFilterPopoverOpen}>
-              <PopoverTrigger asChild>
-                <button className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center h-10 w-10 text-gray-500 hover:bg-gray-100 hover:text-gray-900 rounded-md transition-colors">
-                  <SlidersHorizontal className="h-5 w-5" />
-                  {activeFilterCount > 0 && (
-                    <span className="absolute top-2 right-2 flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-red-500 rounded-full shadow-sm">
-                      {activeFilterCount}
-                    </span>
-                  )}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-[320px] p-0 shadow-xl border-border bg-card">
-                <div className="p-4 border-b">
-                  <h4 className="text-lg font-bold">Filter Learners</h4>
-                </div>
-                <div className="p-4 space-y-4 flex flex-col">
-                  <div className="space-y-1.5">
-                    <Label className="text-sm text-muted-foreground uppercase">Enrollment Status</Label>
-                    <Select
-                      isFilter
-                      value={localIntakeCategoryFilter}
-                      onValueChange={setLocalIntakeCategoryFilter}
-                      disabled={isTransfereeOnlyCoordinator}
-                    >
-                      <SelectTrigger className="h-10 w-full leading-tight font-bold transition-colors">
-                        <SelectValue placeholder="All Enrollment Statuses" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {!isTransfereeOnlyCoordinator && <SelectItem value="ALL" className="leading-tight font-bold">All Enrollment Statuses</SelectItem>}
-                        {!isTransfereeOnlyCoordinator && <SelectItem value="NEW_ENROLLEE" className="leading-tight font-bold">New Entrants</SelectItem>}
-                        <SelectItem value="TRANSFEREE" className="leading-tight font-bold">Transferees</SelectItem>
-                        {!isTransfereeOnlyCoordinator && <SelectItem value="RETURNING" className="leading-tight font-bold">Returnee (Balik-Aral)</SelectItem>}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-sm text-muted-foreground uppercase">Program Type</Label>
-                    <Select
-                      isFilter
-                      value={localProgramFilter}
-                      onValueChange={setLocalProgramFilter}
-                    >
-                      <SelectTrigger className="h-10 w-full leading-tight font-bold transition-colors">
-                        <SelectValue placeholder="All Programs" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ALL" className="leading-tight font-bold">All Programs</SelectItem>
-                        {activeProgramOptions.map(({ value, label }) => (
-                          <SelectItem key={value} value={value} className="leading-tight font-bold">
-                            {label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-sm text-muted-foreground uppercase">Application Tracking Number</Label>
-                    <Input
-                      placeholder="e.g. BEC20270000001"
-                      value={localTrackingNumberFilter}
-                      onChange={(e) => setLocalTrackingNumberFilter(e.target.value)}
-                      className="h-10 font-bold uppercase"
-                    />
-                  </div>
-
-                  <div className="space-y-2 pt-2 border-t">
-                    <Label className="text-sm text-muted-foreground uppercase">Admission Channel</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          id="filter-online"
-                          checked={localShowOnline}
-                          onCheckedChange={(c) => setLocalShowOnline(c as boolean)}
-                        />
-                        <label htmlFor="filter-online" className="font-bold cursor-pointer select-none">Show Online</label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          id="filter-walkin"
-                          checked={localShowWalkIn}
-                          onCheckedChange={(c) => setLocalShowWalkIn(c as boolean)}
-                        />
-                        <label htmlFor="filter-walkin" className="font-bold cursor-pointer select-none">Show Walk-in</label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-3 border-t bg-gray-50 flex items-center justify-end gap-2 rounded-b-md">
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setLocalIntakeCategoryFilter(isTransfereeOnlyCoordinator ? "TRANSFEREE" : "ALL");
-                      setLocalProgramFilter("ALL");
-                      setLocalTrackingNumberFilter("");
-                      setLocalShowOnline(true);
-                      setLocalShowWalkIn(true);
-                      setIntakeCategoryFilter(isTransfereeOnlyCoordinator ? "TRANSFEREE" : "ALL");
-                      setProgramFilter("ALL");
-                      setTrackingNumberFilter("");
-                      setShowOnline(true);
-                      setShowWalkIn(true);
-                      setIsFilterPopoverOpen(false);
-                    }}
-                    className="font-bold uppercase"
-                  >
-                    Clear All
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setIntakeCategoryFilter(localIntakeCategoryFilter);
-                      setProgramFilter(localProgramFilter);
-                      setTrackingNumberFilter(localTrackingNumberFilter);
-                      setShowOnline(localShowOnline);
-                      setShowWalkIn(localShowWalkIn);
-                      setIsFilterPopoverOpen(false);
-
-                      if (localTrackingNumberFilter.trim() !== "") {
-                        const q = localTrackingNumberFilter.trim().toLowerCase();
-                        const matchedApps = pendingVerifications.filter(app => app.trackingNumber?.toLowerCase().includes(q));
-                        let targetApp = null;
-
-                        if (matchedApps.length === 1) {
-                          targetApp = matchedApps[0];
-                        } else if (matchedApps.length > 1) {
-                          targetApp = matchedApps.find(app => app.trackingNumber?.toLowerCase() === q) || matchedApps[0];
-                        }
-
-                        if (targetApp) {
-                          let targetTab: VerificationTab | null = null;
-                          if (targetApp.status === "PENDING_VERIFICATION") {
-                            targetTab = "PENDING";
-                          } else if (targetApp.status === "WITHDRAWN") {
-                            targetTab = "CANCELLED";
-                          } else if (targetApp.status === "FOR_REVISION") {
-                            targetTab = "INCOMPLETE";
-                          } else if (targetApp.status === "READY_FOR_SECTIONING" || targetApp.status === "OFFICIALLY_ENROLLED") {
-                            const hasMissingDocs = targetApp.isMissingSf9 || !targetApp.learner?.hasPsaBirthCertificate;
-                            targetTab = hasMissingDocs ? "INCOMPLETE" : "READY";
-                          }
-
-                          if (targetTab && activeTab !== targetTab) {
-                            setActiveTab(targetTab);
-                          }
-                          setSelectedAppId(targetApp.id);
-                        }
-                      }
-                    }}
-                    className="font-bold bg-primary hover:bg-primary/90 text-white"
-                  >
-                    Apply Filters
-                  </Button>
-                </div>
-              </PopoverContent>
-            </Popover>
+            <VerificationFilterPopover
+              intakeCategoryFilter={intakeCategoryFilter}
+              programFilter={programFilter}
+              trackingNumberFilter={trackingNumberFilter}
+              showOnline={showOnline}
+              showWalkIn={showWalkIn}
+              isTransfereeOnlyCoordinator={isTransfereeOnlyCoordinator}
+              activeProgramOptions={activeProgramOptions}
+              activeFilterCount={activeFilterCount}
+              onApplyFilters={handleApplyFilters}
+              onClearFilters={handleClearFilters}
+            />
           </div>
 
           <div className="flex flex-row flex-wrap items-center justify-start xl:justify-end gap-3 w-full xl:w-auto shrink-0">

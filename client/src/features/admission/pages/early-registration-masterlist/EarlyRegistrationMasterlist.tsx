@@ -117,7 +117,7 @@ export default function EarlyRegistrationMasterlist() {
     onSuccess: () => {
       sileo.success({ title: "Success", description: "Learner record marked as No Show." });
       setSelectedLearnerForModal(null);
-      void queryClient.invalidateQueries({ queryKey: ["early-registrations"] });
+      void queryClient.invalidateQueries({ queryKey: ["early-registrations"], refetchType: "active" });
     },
     onError: (error: unknown) => {
       toastApiError(error as never);
@@ -131,7 +131,7 @@ export default function EarlyRegistrationMasterlist() {
     onSuccess: () => {
       sileo.success({ title: "Success", description: "Learner application restored to pending review." });
       setSelectedLearnerForRestoreModal(null);
-      void queryClient.invalidateQueries({ queryKey: ["early-registrations"] });
+      void queryClient.invalidateQueries({ queryKey: ["early-registrations"], refetchType: "active" });
     },
     onError: (error: unknown) => {
       toastApiError(error as never);
@@ -144,9 +144,19 @@ export default function EarlyRegistrationMasterlist() {
   }, [setTitle]);
 
   useRealtimeRefresh({
-    topics: ["enrollment:applications", "students:list", "students:detail"],
+    topics: [
+      "enrollment:applications",
+      "enrollment:pending-verifications",
+      "students:list",
+      "students:detail",
+      "sectioning:pool",
+      "bosy:queue",
+    ],
     onRefresh: () => {
-      void queryClient.invalidateQueries({ queryKey: ["early-registrations"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["early-registrations"],
+        refetchType: "active",
+      });
     },
   });
 
@@ -158,6 +168,7 @@ export default function EarlyRegistrationMasterlist() {
       });
       return data;
     },
+    staleTime: 0,
     placeholderData: keepPreviousData,
   });
 
@@ -417,7 +428,7 @@ export default function EarlyRegistrationMasterlist() {
           <Card className="border-none shadow-sm bg-[hsl(var(--card))] flex flex-col flex-1 h-full min-h-0 overflow-hidden">
             {(() => {
               const pendingCount = baseFilteredData.filter((app) => app.status === "EARLY_REGISTRATION" || app.status === "PENDING_VERIFICATION").length;
-              const enrolledCount = baseFilteredData.filter((app) => app.status === "OFFICIALLY_ENROLLED").length;
+              const enrolledCount = baseFilteredData.filter((app) => app.status === "OFFICIALLY_ENROLLED" || app.status === "READY_FOR_SECTIONING").length;
               const cancelledCount = baseFilteredData.filter((app) => app.status === "WITHDRAWN" || app.status === "DROPPED" || app.status === "ARCHIVED_NO_SHOW").length;
               const allCount = baseFilteredData.length;
 
@@ -502,14 +513,14 @@ export default function EarlyRegistrationMasterlist() {
         id={selectedApplicationId}
         onClose={() => setSelectedApplicationId(null)}
         onRefreshData={() => {
-          void queryClient.invalidateQueries({ queryKey: ["early-registrations"] });
+          void queryClient.invalidateQueries({ queryKey: ["early-registrations"], refetchType: "active" });
         }}
       />
       <StudentDetailModal 
         id={viewingLearnerId}
         onClose={() => setViewingLearnerId(null)}
         onRefreshData={() => {
-          void queryClient.invalidateQueries({ queryKey: ["early-registrations"] });
+          void queryClient.invalidateQueries({ queryKey: ["early-registrations"], refetchType: "active" });
         }}
       />
       <ConfirmationModal

@@ -83,6 +83,7 @@ export default function RootLayout({ children }: { children?: ReactNode }) {
       return res.data;
     },
     enabled: isHydrated,
+    staleTime: 0,
   });
 
   useEffect(() => {

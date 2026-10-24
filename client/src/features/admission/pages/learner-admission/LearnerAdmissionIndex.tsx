@@ -312,6 +312,7 @@ export default function LearnerAdmissionIndex() {
       return data
     },
     enabled: activeTab !== "",
+    staleTime: 0,
     placeholderData: keepPreviousData,
   })
 
@@ -325,9 +326,10 @@ export default function LearnerAdmissionIndex() {
   }, [searchParams, setSearchParams, isFetching])
 
   useRealtimeRefresh({
-    topics: ["enrollment:applications", "students:list"],
+    topics: ["settings:public", "enrollment:applications", "students:list"],
     onRefresh: () => {
-      void queryClient.invalidateQueries({ queryKey: ["scp-applicants"] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.publicSettings, refetchType: "active" })
+      void queryClient.invalidateQueries({ queryKey: ["scp-applicants"], refetchType: "active" })
     }
   })
 
@@ -337,8 +339,17 @@ export default function LearnerAdmissionIndex() {
       return data
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.publicSettings })
-      await queryClient.invalidateQueries({ queryKey: ["scp-applicants"] })
+      setEdits({})
+      sessionStorage.removeItem("scpAssessmentEdits")
+      if (activeTab === "SCIENCE_TECHNOLOGY_AND_ENGINEERING") {
+        useSettingsStore.getState().setSettings({ steRosterLocked: true })
+      } else if (activeTab === "SPECIAL_PROGRAM_IN_THE_ARTS") {
+        useSettingsStore.getState().setSettings({ spaRosterLocked: true })
+      } else if (activeTab === "SPECIAL_PROGRAM_IN_SPORTS") {
+        useSettingsStore.getState().setSettings({ spsRosterLocked: true })
+      }
+      await queryClient.invalidateQueries({ queryKey: queryKeys.publicSettings, refetchType: "active" })
+      await queryClient.invalidateQueries({ queryKey: ["scp-applicants"], refetchType: "active" })
       sileo.success({ title: "Roster Locked", description: "The roster has been finalized and locked." })
       setIsLockModalOpen(false)
     },
@@ -353,8 +364,17 @@ export default function LearnerAdmissionIndex() {
       return data
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.publicSettings })
-      await queryClient.invalidateQueries({ queryKey: ["scp-applicants"] })
+      setEdits({})
+      sessionStorage.removeItem("scpAssessmentEdits")
+      if (activeTab === "SCIENCE_TECHNOLOGY_AND_ENGINEERING") {
+        useSettingsStore.getState().setSettings({ steRosterLocked: false })
+      } else if (activeTab === "SPECIAL_PROGRAM_IN_THE_ARTS") {
+        useSettingsStore.getState().setSettings({ spaRosterLocked: false })
+      } else if (activeTab === "SPECIAL_PROGRAM_IN_SPORTS") {
+        useSettingsStore.getState().setSettings({ spsRosterLocked: false })
+      }
+      await queryClient.invalidateQueries({ queryKey: queryKeys.publicSettings, refetchType: "active" })
+      await queryClient.invalidateQueries({ queryKey: ["scp-applicants"], refetchType: "active" })
       sileo.success({ title: "Roster Unlocked", description: "The roster has been unlocked." })
       setIsUnlockModalOpen(false)
     },
@@ -938,7 +958,7 @@ export default function LearnerAdmissionIndex() {
         )
       }
     } as ColumnDef<ApplicationTableRow>] : []),
-  ], [page, limit, setForfeitTarget, setIsForfeitModalOpen, setRestoreTarget, setIsRestoreModalOpen, previousSchoolYearFilter])
+  ], [page, limit, setForfeitTarget, setIsForfeitModalOpen, setRestoreTarget, setIsRestoreModalOpen, previousSchoolYearFilter, isRosterLocked])
 
   const handleSaveBulk = () => {
     const updatesMap = new Map<number, AssessmentUpdate>();
@@ -1171,8 +1191,8 @@ export default function LearnerAdmissionIndex() {
           <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
             <div className="min-h-0 flex-1 overflow-auto bg/5">
               <DataTable<ApplicationTableRow, unknown>
-                key={activeTab}
-                transitionKey={activeTab}
+                key={`${activeTab}-${isRosterLocked}`}
+                transitionKey={`${activeTab}-${isRosterLocked}`}
                 loading={isFetching}
                 columns={columns}
                 data={paginatedApplicants}

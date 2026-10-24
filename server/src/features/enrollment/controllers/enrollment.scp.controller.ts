@@ -4,7 +4,10 @@ import { z } from "zod"
 import type { ApplicantType, ScpAssessmentResult, ScpAssessmentState } from "../../../generated/prisma/index.js"
 import { AppError } from "../../../lib/AppError.js"
 import { prisma } from "../../../lib/prisma.js"
-import { broadcastEnrollmentInvalidation } from "../../../lib/realtime-events.js"
+import {
+  broadcastEnrollmentInvalidation,
+  broadcastDomainInvalidation,
+} from "../../../lib/realtime-events.js"
 
 const supportedProgramSchema = z.enum([
   "SCIENCE_TECHNOLOGY_AND_ENGINEERING",
@@ -205,6 +208,7 @@ export const bulkSaveScpAssessments = async (req: Request, res: Response): Promi
     throw new AppError(400, "One or more applicants cannot be assessed for this school year.")
   }
 
+  let updatedLearnerIds: number[] = [];
   await prisma.$transaction(async (tx) => {
     // 1. Initial save of edits
     await Promise.all(
@@ -228,6 +232,7 @@ export const bulkSaveScpAssessments = async (req: Request, res: Response): Promi
         program,
       },
     })
+    updatedLearnerIds = allProfiles.map((p) => p.learnerId);
 
     // 3. Get Capacity
     const settings = await tx.schoolSetting.findFirst()
@@ -284,7 +289,7 @@ export const bulkSaveScpAssessments = async (req: Request, res: Response): Promi
     }
   })
 
-  broadcastEnrollmentInvalidation(schoolYearId);
+  broadcastEnrollmentInvalidation(schoolYearId, updatedLearnerIds);
 
   res.json({ message: "Assessments updated successfully.", updatedCount: updates.length })
 }
@@ -312,7 +317,15 @@ export const lockScpRoster = async (req: Request, res: Response): Promise<void> 
     data: updateData
   })
 
-  // We could broadcastSettingsInvalidation here if needed, but the frontend will rely on useMutation invalidation or SSE.
+  broadcastDomainInvalidation({
+    topics: [
+      "settings:public",
+      "enrollment:applications",
+      "students:list",
+      "dashboard:summary",
+    ],
+    schoolYearId,
+  });
   res.json({ message: "Roster successfully locked." })
 }
 
@@ -339,6 +352,15 @@ export const unlockScpRoster = async (req: Request, res: Response): Promise<void
     data: updateData
   })
 
+  broadcastDomainInvalidation({
+    topics: [
+      "settings:public",
+      "enrollment:applications",
+      "students:list",
+      "dashboard:summary",
+    ],
+    schoolYearId,
+  });
   res.json({ message: "Roster successfully unlocked." })
 }
 
@@ -353,6 +375,7 @@ export const forfeitScpSlot = async (req: Request, res: Response): Promise<void>
     throw new AppError(400, "Invalid application ID.")
   }
 
+  let targetLearnerId: number | null = null;
   const result = await prisma.$transaction(async (tx) => {
     const scpAdmission = await tx.scpAdmission.findUnique({
       where: { id: applicationId },
@@ -365,6 +388,8 @@ export const forfeitScpSlot = async (req: Request, res: Response): Promise<void>
     if (scpAdmission.schoolYearId !== schoolYearId) {
       throw new AppError(400, "Application belongs to a different school year.")
     }
+
+    targetLearnerId = scpAdmission.learnerId;
 
     const program = scpAdmission.program
     if (!program) {
@@ -404,7 +429,7 @@ export const forfeitScpSlot = async (req: Request, res: Response): Promise<void>
     return { promotedApplicant };
   })
 
-  broadcastEnrollmentInvalidation(schoolYearId);
+  broadcastEnrollmentInvalidation(schoolYearId, targetLearnerId ? [targetLearnerId] : undefined);
 
   res.json({ 
     message: "Slot successfully forfeited.", 
@@ -428,6 +453,7 @@ export const restoreScpApplication = async (req: Request, res: Response): Promis
     throw new AppError(400, "Invalid application ID.")
   }
 
+  let targetLearnerId: number | null = null;
   const resultStatus = await prisma.$transaction(async (tx) => {
     const scpAdmission = await tx.scpAdmission.findUnique({
       where: { id: applicationId },
@@ -440,6 +466,8 @@ export const restoreScpApplication = async (req: Request, res: Response): Promis
     if (scpAdmission.schoolYearId !== schoolYearId) {
       throw new AppError(400, "Application belongs to a different school year.")
     }
+
+    targetLearnerId = scpAdmission.learnerId;
 
     const program = scpAdmission.program
     if (!program) {
@@ -474,7 +502,7 @@ export const restoreScpApplication = async (req: Request, res: Response): Promis
     return newStatus
   })
 
-  broadcastEnrollmentInvalidation(schoolYearId);
+  broadcastEnrollmentInvalidation(schoolYearId, targetLearnerId ? [targetLearnerId] : undefined);
 
   res.json({ message: "Application restored successfully.", status: resultStatus })
 }

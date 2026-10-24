@@ -17,6 +17,7 @@ import { Badge } from "@/shared/ui/badge"
 import { SheetTitle, SheetDescription } from "@/shared/ui/sheet"
 import { UserPhoto } from "@/shared/components/UserPhoto"
 import { cn } from "@/shared/lib/utils"
+import { useRealtimeRefresh } from "@/shared/hooks/useRealtimeRefresh"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -223,6 +224,13 @@ export function EarlyRegistrationReviewPanel({ id, onClose }: Props) {
       void fetchDetail()
     }
   }, [id, fetchDetail])
+
+  useRealtimeRefresh({
+    topics: ["enrollment:applications", "students:list", "students:detail"],
+    onRefresh: () => {
+      void fetchDetail()
+    },
+  })
 
   // ── Loading skeleton ──────────────────────────────────────────────────────
 

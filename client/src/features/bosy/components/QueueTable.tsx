@@ -1,5 +1,5 @@
+import React, { useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { useMemo } from "react";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { DataTable } from "@/shared/ui/data-table";
@@ -369,7 +369,7 @@ function ActionMenuButton({
   );
 }
 
-function QueueMobileCard({
+const QueueMobileCard = React.memo(function QueueMobileCard({
   item,
   queueState,
   allowActions,
@@ -558,9 +558,9 @@ function QueueMobileCard({
       </div>
     </motion.article>
   );
-}
+});
 
-export function QueueTable({
+export const QueueTable = React.memo(function QueueTable({
   items,
   loading,
   isSearching,
@@ -814,7 +814,7 @@ export function QueueTable({
   const isMobileLoading = useDelayedLoading(loading, 350, queueState);
 
   return (
-    <div className="flex flex-col flex-1 h-full w-full min-h-0">
+    <div className="flex flex-col flex-1 h-full w-full min-h-0 max-h-[75vh]">
       <motion.div
         layout
         className="space-y-3 md:hidden">
@@ -910,4 +910,4 @@ export function QueueTable({
       </div>
     </div>
   );
-}
+});
