@@ -702,7 +702,7 @@ export default function Login() {
                   <Label
                     htmlFor="accountName"
                     className="text-gray-800 font-bold text-base leading-tight pl-1">
-                    Employee ID
+                    Employee ID or TIN
                   </Label>
                   <div className="relative group">
                     <div className="absolute left-0 top-0 bottom-0 w-11 flex items-center justify-center pointer-events-none z-10">
@@ -713,7 +713,7 @@ export default function Login() {
                     <Input
                       id="accountName"
                       type="text"
-                      placeholder="Employee ID or LR#"
+                      placeholder="Employee ID or TIN"
                       value={accountName}
                       maxLength={7}
                       onChange={(event) => {
@@ -745,7 +745,7 @@ export default function Login() {
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
-                      placeholder="Enter your password"
+                      placeholder="Password"
                       value={password}
                       onChange={(event) => {
                         setPassword(event.target.value);

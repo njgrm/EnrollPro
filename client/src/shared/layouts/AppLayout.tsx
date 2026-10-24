@@ -403,6 +403,12 @@ function SYSwitcher() {
     };
   };
 
+  const formatSchoolYearLabel = (label?: string | null): string => {
+    if (!label || label === "No School Year Set") return label || "No School Year Set";
+    if (/^s\.?y\.?\s*/i.test(label)) return label;
+    return `S.Y. ${label}`;
+  };
+
   const renderStatusBadge = (status?: string | null) => {
     const badge = getStatusBadgeMeta(status);
     return (
@@ -440,7 +446,7 @@ function SYSwitcher() {
             onClick={() => setOpen(!open)}>
             <Calendar className="text-foreground w-4 h-4" />
             <span className="text-sm sm:text-sm text-foreground whitespace-nowrap font-bold">
-              {currentLabel}
+              {formatSchoolYearLabel(currentLabel)}
             </span>
             <div className="hidden md:block">
               {currentStatus ? renderStatusBadge(currentStatus) : null}
@@ -484,7 +490,7 @@ function SYSwitcher() {
                       <Check className="h-3.5 w-3.5" />
                     ) : null}
                   </span>
-                  <span className="flex-1 text-left">{currentAcademicYear.yearLabel}</span>
+                  <span className="flex-1 text-left">{formatSchoolYearLabel(currentAcademicYear.yearLabel)}</span>
                   {renderStatusBadge(currentAcademicYear.status)}
                 </button>
               ) : (
@@ -515,7 +521,7 @@ function SYSwitcher() {
                     <span className="w-4 text-slate-600">
                       {y.id === currentId ? <Check className="h-3.5 w-3.5" /> : null}
                     </span>
-                    <span className="flex-1 text-left">{y.yearLabel}</span>
+                    <span className="flex-1 text-left">{formatSchoolYearLabel(y.yearLabel)}</span>
                     {renderStatusBadge(y.status)}
                   </button>
                 ))
