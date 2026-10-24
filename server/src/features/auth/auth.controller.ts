@@ -597,7 +597,8 @@ export async function changeExternalDefaultPassword(
       "PASSWORD_CHANGE_ACCOUNT_UNAVAILABLE",
     );
   }
-  if (!user.mustChangePassword) {
+  const isStoredDefault = await isPasswordHashOfDefault(user.password);
+  if (!user.mustChangePassword && !isStoredDefault) {
     throw new AppError(
       409,
       "The default password has already been replaced. Return to the companion system and sign in again.",
@@ -665,6 +666,7 @@ export async function verifyCredentials(
           { email: accountName },
         ],
       },
+      orderBy: { id: "asc" },
     });
     if (!user) {
       res.status(401).json({ valid: false, message: "User not found" });
@@ -707,10 +709,20 @@ export async function verifyCredentials(
       }
     }
 
+    const isStoredDefault = await isPasswordHashOfDefault(user.password);
     const usesDefaultPassword = await isConfiguredDefaultPassword(password);
-    const requiresPasswordChange = user.mustChangePassword || usesDefaultPassword;
+
+    if (!isStoredDefault && user.mustChangePassword) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { mustChangePassword: false },
+      });
+      user.mustChangePassword = false;
+    }
+
+    const requiresPasswordChange = isStoredDefault || (user.mustChangePassword && usesDefaultPassword);
     const { ancillaryRoles, photoPath } = await getTeacherExtraInfo(user.id);
-    const authUser = { ...user, ancillaryRoles };
+    const authUser = { ...user, ancillaryRoles, photoPath };
 
     if (requiresPasswordChange) {
       const returnTo = getSafeCompanionReturnUrl(req, requestedReturnUrl);
