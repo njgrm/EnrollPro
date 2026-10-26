@@ -129,15 +129,29 @@ export function SecureAvatar({
   };
 
   const showProgrammaticFallback = hasError || (!isLoading && !signedSrc);
+  const canEnlarge = Boolean(onEnlarge && signedSrc && !hasError);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!canEnlarge) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onEnlarge?.();
+    }
+  };
 
   return (
     <div
+      role={canEnlarge ? "button" : undefined}
+      tabIndex={canEnlarge ? 0 : undefined}
+      aria-label={canEnlarge ? (alt ? `Enlarge photo for ${alt}` : "Click to enlarge photo") : undefined}
+      title={canEnlarge ? "Click to enlarge photo" : undefined}
+      onKeyDown={canEnlarge ? handleKeyDown : undefined}
       className={cn(
         "relative overflow-hidden bg-muted flex items-center justify-center shrink-0 select-none",
-        onEnlarge && signedSrc && !hasError && "cursor-zoom-in hover:opacity-90 transition-opacity",
+        canEnlarge && "cursor-zoom-in hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
         containerClassName
       )}
-      onClick={onEnlarge && signedSrc && !hasError ? onEnlarge : undefined}
+      onClick={canEnlarge ? onEnlarge : undefined}
     >
       {isLoading ? (
         // Circular shimmering UI skeleton loader matching avatar dimensions

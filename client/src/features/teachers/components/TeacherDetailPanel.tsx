@@ -43,6 +43,7 @@ import { HybridDatePicker } from "@/shared/components/HybridDatePicker";
 import { SearchableCombobox } from "@/shared/ui/searchable-combobox";
 import { MultiSearchableCombobox } from "@/shared/ui/multi-searchable-combobox";
 import { UserPhoto } from "@/shared/components/UserPhoto";
+import { ImageEnlarger } from "@/shared/components/ImageEnlarger";
 import {
   cn,
 } from "@/shared/lib/utils";
@@ -390,6 +391,7 @@ export const TeacherDetailPanel = memo(function TeacherDetailPanel({
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
   const [removeExistingPhoto, setRemoveExistingPhoto] = useState(false);
+  const [isPhotoEnlarged, setIsPhotoEnlarged] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const globalDefaultPassword = useSettingsStore((s) => s.globalDefaultPassword);
@@ -967,6 +969,12 @@ export const TeacherDetailPanel = memo(function TeacherDetailPanel({
                       <div className="flex items-start gap-4 sm:gap-6">
                         <UserPhoto
                           photo={teacher?.photoPath}
+                          entityType="personnel"
+                          entityId={teacher?.id}
+                          firstName={formFirstName || teacher?.firstName}
+                          lastName={formLastName || teacher?.lastName}
+                          alt={teacher ? formatTeacherName(teacher) : "Personnel photo"}
+                          onEnlarge={!isEditing && teacher?.photoPath ? () => setIsPhotoEnlarged(true) : undefined}
                           containerClassName="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 border-primary border-dashed shadow-md shrink-0"
                           className="w-full h-full object-cover rounded-full"
                           fallbackIcon={
@@ -1335,6 +1343,10 @@ export const TeacherDetailPanel = memo(function TeacherDetailPanel({
                             <div className="group relative h-[150px] w-[130px]">
                               <UserPhoto
                                 photo={photoPreviewUrl ?? (removeExistingPhoto ? null : teacher?.photoPath)}
+                                entityType="personnel"
+                                entityId={teacher?.id}
+                                firstName={formFirstName || teacher?.firstName}
+                                lastName={formLastName || teacher?.lastName}
                                 containerClassName={cn(
                                   "h-[150px] w-[130px] rounded-lg border-2 border-dashed transition-all duration-200",
                                   photoPreviewUrl || (!removeExistingPhoto && teacher?.photoPath)
@@ -2494,6 +2506,19 @@ export const TeacherDetailPanel = memo(function TeacherDetailPanel({
         onConfirm={handleResetPasswordConfirm}
         variant="danger"
       />
+
+      {teacher?.photoPath && (
+        <ImageEnlarger
+          src={teacher.photoPath}
+          entityType="personnel"
+          entityId={teacher.id}
+          isOpen={isPhotoEnlarged}
+          onClose={() => setIsPhotoEnlarged(false)}
+          alt={teacher ? `${formatTeacherName(teacher)} profile photo` : "Personnel photo"}
+          caption={teacher ? formatTeacherName(teacher) : undefined}
+          subtitle={teacher.employeeId ? `Employee ID: ${teacher.employeeId}` : undefined}
+        />
+      )}
     </>
   );
 });

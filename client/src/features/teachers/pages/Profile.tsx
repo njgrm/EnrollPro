@@ -19,6 +19,7 @@ import { toastApiError } from "@/shared/hooks/useApiToast";
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
 import { UserPhoto } from "@/shared/components/UserPhoto";
+import { ImageEnlarger } from "@/shared/components/ImageEnlarger";
 import { useAuthStore } from "@/store/auth.slice";
 import { useSettingsStore } from "@/store/settings.slice";
 import {
@@ -133,6 +134,7 @@ export default function PersonnelProfile() {
   const [teacher, setTeacher] = useState<TeacherProfileResponse["teacher"] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isPhotoEnlarged, setIsPhotoEnlarged] = useState(false);
 
   const { data: gradeLevelsResponse } = useQuery({
     queryKey: ["settings", "grade-levels"],
@@ -262,6 +264,12 @@ export default function PersonnelProfile() {
               <div className="flex items-start gap-4 sm:gap-6">
                 <UserPhoto
                   photo={teacher.photoPath}
+                  entityType="personnel"
+                  entityId={teacher.id}
+                  firstName={teacher.firstName}
+                  lastName={teacher.lastName}
+                  alt={`${formatTeacherName(teacher)} profile photo`}
+                  onEnlarge={teacher.photoPath ? () => setIsPhotoEnlarged(true) : undefined}
                   containerClassName="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 border-primary border-dashed shadow-md shrink-0"
                   className="w-full h-full object-cover rounded-full"
                   fallbackIcon={
@@ -763,6 +771,19 @@ export default function PersonnelProfile() {
           </div>
         </div>
       </div>
+
+      {teacher?.photoPath && (
+        <ImageEnlarger
+          src={teacher.photoPath}
+          entityType="personnel"
+          entityId={teacher.id}
+          isOpen={isPhotoEnlarged}
+          onClose={() => setIsPhotoEnlarged(false)}
+          alt={`${formatTeacherName(teacher)} profile photo`}
+          caption={formatTeacherName(teacher)}
+          subtitle={teacher.employeeId ? `Employee ID: ${teacher.employeeId}` : undefined}
+        />
+      )}
     </div>
   );
 }

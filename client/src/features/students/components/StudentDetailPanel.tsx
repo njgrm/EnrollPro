@@ -2702,9 +2702,13 @@ export function StudentDetailPanel({
       {student.studentPhoto && (
         <ImageEnlarger
           src={getImageUrl(student.studentPhoto) || ""}
+          entityType="learner"
+          entityId={student.id}
           isOpen={isPhotoEnlarged}
           onClose={() => setIsPhotoEnlarged(false)}
-          alt={`${student.lastName} profile photo`}
+          alt={`${student.fullName || student.lastName} profile photo`}
+          caption={student.fullName}
+          subtitle={student.lrn ? `LRN: ${student.lrn}` : undefined}
         />
       )}
 

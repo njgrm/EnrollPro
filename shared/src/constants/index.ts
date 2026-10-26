@@ -718,9 +718,9 @@ export const DEPED_TEACHER_ANCILLARY_ROLE_OPTIONS = [
   { value: "GRADE 10 COORDINATOR", label: "Grade 10 Coordinator", group: "Enrollment & Sectioning Chairs" },
 
   // Special Curricular Program (SCP) Heads
-  { value: "STE HEAD TEACHER", label: "STE Head Teacher", group: "Special Curricular Program (SCP) Heads" },
-  { value: "SPA HEAD TEACHER", label: "SPA Head Teacher", group: "Special Curricular Program (SCP) Heads" },
-  { value: "SPS HEAD TEACHER", label: "SPS Head Teacher", group: "Special Curricular Program (SCP) Heads" },
+  { value: "STE COORDINATOR", label: "STE Coordinator", group: "Special Curricular Program (SCP) Coordinators" },
+  { value: "SPA COORDINATOR", label: "SPA Coordinator", group: "Special Curricular Program (SCP) Coordinators" },
+  { value: "SPS COORDINATOR", label: "SPS Coordinator", group: "Special Curricular Program (SCP) Coordinators" },
 
   // System-Wide Roles
   { value: "SCHOOL REGISTRAR", label: "School Registrar", group: "System-Wide Roles" },
