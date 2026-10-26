@@ -91,6 +91,75 @@ export const getGradeLevelSolidButtonStyles = (gradeLevel: string | null | undef
   return "bg-primary hover:bg-primary/90 text-primary-foreground";
 };
 
+export interface GradeLevelComboboxStyles {
+  selectedItem: string;
+  searchRing: string;
+  triggerFocus: string;
+  triggerActive: string;
+  hoverItem: string;
+  searchIcon: string;
+  popoverBorder: string;
+}
+
+export const getGradeLevelComboboxStyles = (
+  gradeLevel: string | null | undefined
+): GradeLevelComboboxStyles => {
+  const normalized = String(gradeLevel || "").trim().toLowerCase();
+  if (normalized.includes("7") || normalized.includes("g7")) {
+    return {
+      selectedItem: "bg-emerald-600 text-white hover:bg-emerald-700 hover:text-white",
+      searchRing: "ring-emerald-600 focus-visible:ring-emerald-600",
+      triggerFocus: "focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:border-emerald-600",
+      triggerActive: "border-emerald-600 ring-2 ring-emerald-600/20",
+      hoverItem: "hover:bg-emerald-50 hover:text-emerald-900 dark:hover:bg-emerald-950/50 dark:hover:text-emerald-100",
+      searchIcon: "text-emerald-600 dark:text-emerald-400",
+      popoverBorder: "border-emerald-200 dark:border-emerald-800/60",
+    };
+  }
+  if (normalized.includes("8") || normalized.includes("g8")) {
+    return {
+      selectedItem: "bg-amber-600 text-white hover:bg-amber-700 hover:text-white",
+      searchRing: "ring-amber-600 focus-visible:ring-amber-600",
+      triggerFocus: "focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:border-amber-600",
+      triggerActive: "border-amber-600 ring-2 ring-amber-600/20",
+      hoverItem: "hover:bg-amber-50 hover:text-amber-900 dark:hover:bg-amber-950/50 dark:hover:text-amber-100",
+      searchIcon: "text-amber-600 dark:text-amber-400",
+      popoverBorder: "border-amber-200 dark:border-amber-800/60",
+    };
+  }
+  if (normalized.includes("9") || normalized.includes("g9")) {
+    return {
+      selectedItem: "bg-rose-600 text-white hover:bg-rose-700 hover:text-white",
+      searchRing: "ring-rose-600 focus-visible:ring-rose-600",
+      triggerFocus: "focus-visible:ring-2 focus-visible:ring-rose-600 focus-visible:border-rose-600",
+      triggerActive: "border-rose-600 ring-2 ring-rose-600/20",
+      hoverItem: "hover:bg-rose-50 hover:text-rose-900 dark:hover:bg-rose-950/50 dark:hover:text-rose-100",
+      searchIcon: "text-rose-600 dark:text-rose-400",
+      popoverBorder: "border-rose-200 dark:border-rose-800/60",
+    };
+  }
+  if (normalized.includes("10") || normalized.includes("g10")) {
+    return {
+      selectedItem: "bg-indigo-600 text-white hover:bg-indigo-700 hover:text-white",
+      searchRing: "ring-indigo-600 focus-visible:ring-indigo-600",
+      triggerFocus: "focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:border-indigo-600",
+      triggerActive: "border-indigo-600 ring-2 ring-indigo-600/20",
+      hoverItem: "hover:bg-indigo-50 hover:text-indigo-900 dark:hover:bg-indigo-950/50 dark:hover:text-indigo-100",
+      searchIcon: "text-indigo-600 dark:text-indigo-400",
+      popoverBorder: "border-indigo-200 dark:border-indigo-800/60",
+    };
+  }
+  return {
+    selectedItem: "bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground",
+    searchRing: "ring-primary focus-visible:ring-primary",
+    triggerFocus: "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+    triggerActive: "border-primary ring-2 ring-primary/20",
+    hoverItem: "hover:bg-accent hover:text-accent-foreground",
+    searchIcon: "text-foreground",
+    popoverBorder: "border-border",
+  };
+};
+
 export const formatGradeLevel = (gradeLevel: string | null | undefined): string => {
   if (!gradeLevel) return "";
   return gradeLevel.replace(/Grade\s+/i, "G");

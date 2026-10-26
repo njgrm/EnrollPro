@@ -67,7 +67,8 @@ export function ImageEnlarger({
     >
       <DialogContent
         showClose={false}
-        className='p-0 overflow-hidden rounded-xl border border-border bg-card shadow-2xl w-full max-w-[420px] sm:max-w-[460px] flex flex-col gap-0 animate-in fade-in zoom-in-95 duration-200'
+        overlayClassName='z-[110] bg-black/80'
+        className='p-0 overflow-hidden rounded-xl border border-border bg-card shadow-2xl w-full max-w-[420px] sm:max-w-[460px] flex flex-col gap-0 z-[111]'
       >
         {/* DepEd Institutional Header Bar */}
         <div className='bg-primary text-primary-foreground px-4 py-3 sm:px-5 sm:py-3.5 flex items-center justify-between border-b border-primary/20 shrink-0 select-none'>

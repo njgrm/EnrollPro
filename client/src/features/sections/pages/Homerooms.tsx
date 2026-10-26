@@ -447,8 +447,9 @@ function SectionCard({
                     onChange={(val) => onDraftAdviserChange?.(val, initialAdviser)}
                     placeholder="UNASSIGNED"
                     searchPlaceholder="Search adviser..."
+                    gradeLevel={glName}
                     className={cn(
-                      "w-full h-11 sm:h-8 sm:min-h-0 px-3 sm:px-2 bg-white/90 dark:bg-card border-current/30 hover:bg-white focus:ring-0 font-bold uppercase truncate shadow-none",
+                      "w-full h-11 sm:h-8 sm:min-h-0 px-3 sm:px-2 bg-white/90 dark:bg-card border-current/30 hover:bg-white font-bold uppercase truncate shadow-none",
                       !section.advisingTeacher && "text-foreground"
                     )}
                   />

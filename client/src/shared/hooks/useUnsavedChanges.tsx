@@ -49,8 +49,19 @@ interface UnsavedChangesBarProps {
   changesList?: string[];
 }
 
-const UnsavedChangesContext = createContext<UnsavedChangesContextValue | null>(
-  null,
+const defaultUnsavedChangesContext: UnsavedChangesContextValue = {
+  hasDirtyChanges: false,
+  dirtySources: [],
+  registerSource: () => {},
+  unregisterSource: () => {},
+  confirmOrRun: (action) => {
+    void action();
+  },
+  discardAll: async () => {},
+};
+
+const UnsavedChangesContext = createContext<UnsavedChangesContextValue>(
+  defaultUnsavedChangesContext,
 );
 
 function sourceKey(source: UnsavedChangeSource): string {
@@ -404,12 +415,7 @@ export function UnsavedChangesProvider({ children }: { children: ReactNode }) {
 
 export function useUnsavedChangesContext() {
   const context = useContext(UnsavedChangesContext);
-  if (!context) {
-    throw new Error(
-      "useUnsavedChangesContext must be used inside UnsavedChangesProvider",
-    );
-  }
-  return context;
+  return context ?? defaultUnsavedChangesContext;
 }
 
 export function useUnsavedChanges(source: UnsavedChangeSource) {

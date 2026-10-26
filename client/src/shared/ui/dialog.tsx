@@ -103,6 +103,7 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 interface DialogContentProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
   showClose?: boolean;
   closeClassName?: string;
+  overlayClassName?: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -111,46 +112,48 @@ const MotionDialogContent = motion.create(DialogPrimitive.Content as any) as any
 const DialogContent = React.forwardRef<
   React.ComponentRef<typeof DialogPrimitive.Content>,
   DialogContentProps
->(({ className, children, showClose = true, closeClassName, ...props }, ref) => {
+>(({ className, children, showClose = true, closeClassName, overlayClassName, ...props }, ref) => {
   const { open } = React.useContext(DialogContext);
   const ready = useDeferredMount();
 
   return (
-    <AnimatePresence>
-      {open && (
-        <DialogPortal forceMount>
-          <DialogOverlay />
-          <MotionDialogContent
-            forceMount
-            ref={ref}
-            aria-describedby={props["aria-describedby"] ?? undefined}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.95 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
-            style={{ willChange: "transform, opacity" }}
-            className={cn(
-              "fixed inset-0 m-auto z-[100] grid w-full max-w-3xl h-fit max-h-[95vh] overflow-y-auto gap-4 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6 shadow-lg",
-              className,
-            )}
-            {...props}
-          >
-            <DialogPrimitive.Title className="sr-only">Dialog</DialogPrimitive.Title>
-            {children}
-            {showClose ? (
-              <DialogPrimitive.Close className={cn(
-                "absolute right-4 top-3 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full p-2 text-primary-foreground bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))] focus:ring-offset-2 disabled:pointer-events-none cursor-pointer",
-                motionClassNames.closeButton,
-                closeClassName,
-              )}>
-                <X strokeWidth={3} className="h-5 w-5" />
-                <span className="sr-only">Close</span>
-              </DialogPrimitive.Close>
-            ) : null}
-          </MotionDialogContent>
-        </DialogPortal>
-      )}
-    </AnimatePresence>
+    <DialogPortal forceMount>
+      <AnimatePresence>
+        {open && (
+          <>
+            <DialogOverlay className={overlayClassName} />
+            <MotionDialogContent
+              forceMount
+              ref={ref}
+              aria-describedby={props["aria-describedby"] ?? undefined}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={ready ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.95 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+              style={{ willChange: "transform, opacity" }}
+              className={cn(
+                "fixed inset-0 m-auto z-[100] grid w-full max-w-3xl h-fit max-h-[95vh] overflow-y-auto gap-4 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6 shadow-lg",
+                className,
+              )}
+              {...props}
+            >
+              <DialogPrimitive.Title className="sr-only">Dialog</DialogPrimitive.Title>
+              {children}
+              {showClose ? (
+                <DialogPrimitive.Close className={cn(
+                  "absolute right-4 top-3 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full p-2 text-primary-foreground bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))] focus:ring-offset-2 disabled:pointer-events-none cursor-pointer",
+                  motionClassNames.closeButton,
+                  closeClassName,
+                )}>
+                  <X strokeWidth={3} className="h-5 w-5" />
+                  <span className="sr-only">Close</span>
+                </DialogPrimitive.Close>
+              ) : null}
+            </MotionDialogContent>
+          </>
+        )}
+      </AnimatePresence>
+    </DialogPortal>
   );
 });
 DialogContent.displayName = DialogPrimitive.Content.displayName;
