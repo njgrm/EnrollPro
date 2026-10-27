@@ -21,7 +21,7 @@ import { toastApiError } from "@/shared/hooks/useApiToast";
 import { Button } from "@/shared/ui/button";
 import { Label } from "@/shared/ui/label";
 import { Badge } from "@/shared/ui/badge";
-import { cn, formatUserRole } from "@/shared/lib/utils";
+import { cn, formatUserRole, getMockedSystemDate } from "@/shared/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import {
   Select,
@@ -308,7 +308,7 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
   }, [selfOnly]);
 
   const handlePresetDate = (daysBack: number | null) => {
-    const today = new Date();
+    const today = getMockedSystemDate() ?? new Date();
     const to = today.toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
     const from = daysBack !== null
       ? new Date(today.getTime() - daysBack * 24 * 60 * 60 * 1000)
@@ -602,9 +602,10 @@ export default function AuditLogs({ selfOnly = false }: AuditLogsProps) {
         | string
         | undefined;
       const filenameMatch = disposition?.match(/filename=([^;]+)/i);
+      const exportDate = getMockedSystemDate() ?? new Date();
       const filename = filenameMatch
         ? filenameMatch[1].replaceAll('"', "")
-        : `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+        : `audit-logs-${exportDate.toISOString().slice(0, 10)}.csv`;
 
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const a = document.createElement("a");

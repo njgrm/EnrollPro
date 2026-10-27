@@ -7,6 +7,7 @@ export interface AuditContextStore {
   actionType?: string;
   subjectType?: string | null;
   suppressAutomaticAudit?: boolean;
+  mockedDate?: Date | null;
 }
 
 export const auditContext = new AsyncLocalStorage<AuditContextStore>();
@@ -27,6 +28,7 @@ export function runWithAutomaticAuditSuppressed<T>(
       actionType: current?.actionType,
       subjectType: current?.subjectType,
       suppressAutomaticAudit: true,
+      mockedDate: current?.mockedDate,
     },
     callback,
   );

@@ -38,6 +38,7 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import { historicalReadOnlyGuard } from "./middleware/historical-read-only.guard.js";
 import { schoolYearContext } from "./middleware/school-year-context.middleware.js";
 import { auditContext } from "./lib/context.js";
+import { getSystemDateOverride } from "./lib/date-wrapper.js";
 import { streamEvents } from "./lib/sse.js";
 import {
   authenticate,
@@ -112,9 +113,22 @@ app.use(cookieParser());
 
 // 4. Guards, Context, & Routes
 app.use((req, res, next) => {
+  let mockedDate: Date | null = null;
+  const mockHeader = req.headers["x-mock-date"];
+  if (mockHeader && typeof mockHeader === "string") {
+    const parsed = new Date(mockHeader);
+    if (!Number.isNaN(parsed.getTime())) {
+      mockedDate = parsed;
+    }
+  }
+  if (!mockedDate) {
+    mockedDate = getSystemDateOverride();
+  }
+
   auditContext.run({
     ipAddress: req.ip ?? "0.0.0.0",
     userAgent: (req.headers["user-agent"] as string) ?? null,
+    mockedDate,
   }, next);
 });
 

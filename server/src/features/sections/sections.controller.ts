@@ -2,6 +2,7 @@ import { fileURLToPath } from "url";
 import type { Request, Response } from "express";
 import { prisma } from "../../lib/prisma.js";
 import { auditLog } from "../audit-logs/audit-logs.service.js";
+import { getSystemDate } from "../../lib/date-wrapper.js";
 import bcrypt from "bcryptjs";
 import fs from "fs";
 import path from "path";
@@ -448,7 +449,7 @@ export async function createSection(
             teacherId: advisingTeacherId,
             schoolYearId: parsedSchoolYearId,
             status: SectionAdviserStatus.ACTIVE,
-            effectiveFrom: sy?.classOpeningDate || new Date(),
+            effectiveFrom: sy?.classOpeningDate || getSystemDate(req),
           },
         });
 
@@ -603,7 +604,7 @@ export async function updateSection(
               where: { id: currentActive.id },
               data: {
                 status: SectionAdviserStatus.HANDED_OVER,
-                effectiveTo: new Date(),
+                effectiveTo: getSystemDate(req),
                 handoverReason: "Administrative Update",
               },
             });
@@ -633,7 +634,7 @@ export async function updateSection(
               },
               data: {
                 status: SectionAdviserStatus.HANDED_OVER,
-                effectiveTo: new Date(),
+                effectiveTo: getSystemDate(req),
                 handoverReason: "Reassigned to another section",
               },
             });
@@ -647,7 +648,7 @@ export async function updateSection(
                 teacherId: advisingTeacherId,
                 schoolYearId: s.schoolYearId,
                 status: SectionAdviserStatus.ACTIVE,
-                effectiveFrom: sy?.classOpeningDate || new Date(),
+                effectiveFrom: sy?.classOpeningDate || getSystemDate(req),
               },
             });
 
@@ -1161,7 +1162,7 @@ export async function handoverAdviser(req: Request, res: Response) {
 
     const resolvedHandoverDate = handoverDate
       ? new Date(handoverDate)
-      : new Date();
+      : getSystemDate(req);
     const nextDay = new Date(resolvedHandoverDate);
     nextDay.setDate(nextDay.getDate() + 1);
 
@@ -1763,7 +1764,7 @@ export async function exportSectionSf1(
     // Footer Provenance & Timestamp
     ws.getCell("AN55").value = "Generated thru EnrollPro";
 
-    const now = new Date();
+    const now = getSystemDate(req);
     const dateOptions: Intl.DateTimeFormatOptions = {
       weekday: "long",
       year: "numeric",

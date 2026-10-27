@@ -1,6 +1,9 @@
+import type { Request } from 'express';
 import { Prisma } from '../../generated/prisma/index.js';
 import { prisma } from '../../lib/prisma.js';
 import { broadcastDomainInvalidation } from '../../lib/realtime-events.js';
+import { getAuditContext } from '../../lib/context.js';
+import { getSystemDate } from '../../lib/date-wrapper.js';
 
 function normalizeAuditMetadata(
 	metadata: unknown,
@@ -31,6 +34,9 @@ export async function auditLog({
 	metadata?: unknown;
 	req: { ip?: string; headers: Record<string, string | string[] | undefined> };
 }) {
+	const ctx = getAuditContext();
+	const effectiveDate = ctx?.mockedDate ?? getSystemDate(req as unknown as Request);
+
 	await prisma.auditLog.create({
 		data: {
 			userId: userId ?? null,
@@ -43,6 +49,7 @@ export async function auditLog({
 			metadata: normalizeAuditMetadata(metadata),
 			ipAddress: req.ip ?? '0.0.0.0',
 			userAgent: (req.headers['user-agent'] as string) ?? null,
+			createdAt: effectiveDate,
 		},
 	});
 

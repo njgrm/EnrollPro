@@ -46,16 +46,18 @@ export function getSystemDateOverrideRaw(): SystemDateOverride | null {
 }
 
 /**
- * ONLY use this wrapper for lifecycle and configured-period evaluation.
- * Do NOT use it for database created_at timestamps, JWT expiration checks, or audit logs, to preserve system integrity.
+ * Returns the effective system date, considering active mock date overrides (header or settings).
+ * Security tokens (JWT) should still use standard Date.now() / real clock.
  */
-export function getSystemDate(req: Request): Date {
-  const mockDateHeader = req.headers["x-mock-date"]
+export function getSystemDate(req?: Request): Date {
+  if (req?.headers) {
+    const mockDateHeader = req.headers["x-mock-date"]
 
-  if (mockDateHeader && typeof mockDateHeader === "string") {
-    const parsed = new Date(mockDateHeader)
-    if (!Number.isNaN(parsed.getTime())) {
-      return parsed
+    if (mockDateHeader && typeof mockDateHeader === "string") {
+      const parsed = new Date(mockDateHeader)
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed
+      }
     }
   }
 

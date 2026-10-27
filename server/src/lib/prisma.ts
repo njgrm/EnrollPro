@@ -3,6 +3,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import * as pg from 'pg';
 import { getAuditContext } from './context.js';
 import { formatAuditField } from '../features/audit-logs/field-mapper.js';
+import { getSystemDateOverride } from './date-wrapper.js';
 
 const pool = new pg.Pool({
 	connectionString: process.env.DATABASE_URL,
@@ -37,13 +38,60 @@ const toJsonValue = (value: unknown): Prisma.InputJsonValue => {
   return JSON.parse(stringifySafe(value)) as Prisma.InputJsonValue;
 };
 
+const modelFieldsMap = new Map<string, Set<string>>(
+  Prisma.dmmf.datamodel.models.map((m) => [m.name, new Set(m.fields.map((f) => f.name))])
+);
+
 export const prisma = basePrisma.$extends({
   query: {
     $allModels: {
-      async update({ model, operation, args, query }) {
-        if (model === 'AuditLog') return query(args);
-
+      async create({ model, operation, args, query }) {
         const ctx = getAuditContext();
+        const effectiveDate = ctx?.mockedDate ?? getSystemDateOverride();
+        if (effectiveDate && args.data && typeof args.data === 'object') {
+          const modelFields = model ? modelFieldsMap.get(model) : undefined;
+          const d = args.data as Record<string, unknown>;
+          if (modelFields?.has('createdAt') && d.createdAt === undefined) {
+            d.createdAt = effectiveDate;
+          }
+          if (modelFields?.has('updatedAt') && d.updatedAt === undefined) {
+            d.updatedAt = effectiveDate;
+          }
+        }
+        return query(args);
+      },
+      async createMany({ model, operation, args, query }) {
+        const ctx = getAuditContext();
+        const effectiveDate = ctx?.mockedDate ?? getSystemDateOverride();
+        if (effectiveDate && args.data) {
+          const modelFields = model ? modelFieldsMap.get(model) : undefined;
+          const items = Array.isArray(args.data) ? args.data : [args.data];
+          for (const item of items) {
+            if (item && typeof item === 'object') {
+              const d = item as Record<string, unknown>;
+              if (modelFields?.has('createdAt') && d.createdAt === undefined) {
+                d.createdAt = effectiveDate;
+              }
+              if (modelFields?.has('updatedAt') && d.updatedAt === undefined) {
+                d.updatedAt = effectiveDate;
+              }
+            }
+          }
+        }
+        return query(args);
+      },
+      async update({ model, operation, args, query }) {
+        const ctx = getAuditContext();
+        const effectiveDate = ctx?.mockedDate ?? getSystemDateOverride();
+        if (effectiveDate && args.data && typeof args.data === 'object') {
+          const modelFields = model ? modelFieldsMap.get(model) : undefined;
+          const d = args.data as Record<string, unknown>;
+          if (modelFields?.has('updatedAt') && d.updatedAt === undefined) {
+            d.updatedAt = effectiveDate;
+          }
+        }
+
+        if (model === 'AuditLog') return query(args);
         if (!ctx || ctx.suppressAutomaticAudit) return query(args);
 
         const oldRecord = await getDynamicModelClient(model).findUnique({
@@ -90,6 +138,7 @@ export const prisma = basePrisma.$extends({
                         userId: ctx.userId ?? null,
                         ipAddress: ctx.ipAddress ?? "0.0.0.0",
                         userAgent: ctx.userAgent,
+                        createdAt: effectiveDate ?? new Date(),
                         metadata: {
                            previousData: oldData,
                            newData: newData
@@ -104,6 +153,7 @@ export const prisma = basePrisma.$extends({
         if (model === 'AuditLog') return query(args);
 
         const ctx = getAuditContext();
+        const effectiveDate = ctx?.mockedDate ?? getSystemDateOverride();
         if (!ctx || ctx.suppressAutomaticAudit) return query(args);
 
         const oldRecord = await getDynamicModelClient(model).findUnique({
@@ -129,6 +179,7 @@ export const prisma = basePrisma.$extends({
                     userId: ctx.userId ?? null,
                     ipAddress: ctx.ipAddress ?? "0.0.0.0",
                     userAgent: ctx.userAgent,
+                    createdAt: effectiveDate ?? new Date(),
                     metadata: {
                        previousData: oldData,
                        newData: null
@@ -137,6 +188,41 @@ export const prisma = basePrisma.$extends({
             });
         }
         return result;
+      },
+      async updateMany({ model, operation, args, query }) {
+        const ctx = getAuditContext();
+        const effectiveDate = ctx?.mockedDate ?? getSystemDateOverride();
+        if (effectiveDate && args.data && typeof args.data === 'object') {
+          const modelFields = model ? modelFieldsMap.get(model) : undefined;
+          const d = args.data as Record<string, unknown>;
+          if (modelFields?.has('updatedAt') && d.updatedAt === undefined) {
+            d.updatedAt = effectiveDate;
+          }
+        }
+        return query(args);
+      },
+      async upsert({ model, operation, args, query }) {
+        const ctx = getAuditContext();
+        const effectiveDate = ctx?.mockedDate ?? getSystemDateOverride();
+        if (effectiveDate) {
+          const modelFields = model ? modelFieldsMap.get(model) : undefined;
+          if (args.create && typeof args.create === 'object') {
+            const d = args.create as Record<string, unknown>;
+            if (modelFields?.has('createdAt') && d.createdAt === undefined) {
+              d.createdAt = effectiveDate;
+            }
+            if (modelFields?.has('updatedAt') && d.updatedAt === undefined) {
+              d.updatedAt = effectiveDate;
+            }
+          }
+          if (args.update && typeof args.update === 'object') {
+            const d = args.update as Record<string, unknown>;
+            if (modelFields?.has('updatedAt') && d.updatedAt === undefined) {
+              d.updatedAt = effectiveDate;
+            }
+          }
+        }
+        return query(args);
       }
     }
   }
